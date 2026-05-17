@@ -101,7 +101,7 @@ stdlib):
 ### Tests for US1 (Test-First per Constitution II)
 
 - [X] T013 [P] [US1] [Test] Vitest unit test for `AccountPrismaRepository.findByPhone` in `account.prisma.repository.spec.ts`（Testcontainers PG）— RED
-- [ ] T014 [P] [US1] [Test] Vitest unit test for `SmsCodeRedisRepository.store + lookup + clear` in `sms-code.redis.repository.spec.ts`（Testcontainers Redis）— RED
+- [X] T014 [P] [US1] [Test] Vitest unit test for `SmsCodeRedisRepository.store + lookup + clear` in `sms-code.redis.repository.spec.ts`（Testcontainers Redis）— RED
 - [ ] T015 [P] [US1] [Test] Vitest unit test for `RequestSmsCodeUseCase`（mock SmsGateway + SmsCodeRepo）— RED
 - [ ] T016 [P] [US1] [Test] Vitest unit test for `PhoneSmsAuthUseCase` 已注册路径（mock AccountRepo + SmsCodeRepo + JwtTokenService）— RED
 - [ ] T017 [P] [US1] [Test] Vitest e2e test `accounts.smoke.us1.e2e.spec.ts`（Testcontainers + Nest app + Fastify; preseed ACTIVE → POST endpoints → 200 assertions）— RED
@@ -109,7 +109,7 @@ stdlib):
 ### Implementation for US1
 
 - [X] T018 [Infra] [US1] 实装 `AccountPrismaRepository` in `apps/server/src/auth/infrastructure/account.prisma.repository.ts`（依赖 `PrismaService`；method `findByPhone` / `save` / `updateLastLoginAt`）— GREEN T013
-- [ ] T019 [Infra] [US1] 实装 `SmsCodeRedisRepository` in `apps/server/src/auth/infrastructure/sms-code.redis.repository.ts`（依赖 ioredis client；`store(phone, code, ttl=300)` 写 `sms_code:<phone>` = bcrypt hash；`lookup` 取 + compare；`clear` del）— GREEN T014
+- [X] T019 [Infra] [US1] 实装 `SmsCodeRedisRepository` in `apps/server/src/auth/infrastructure/sms-code.redis.repository.ts`（依赖 ioredis client；`store(phone, code, ttl=300)` 写 `sms_code:<phone>` = bcrypt hash；`lookup` 取 + compare；`clear` del）— GREEN T014
 - [ ] T020 [Infra] [US1] 实装 `MockSmsGateway` in `apps/server/src/auth/infrastructure/mock-sms.gateway.ts`（in-memory Map<phone, code>；log "发出"；export `getLastCode(phone)` 给 test 读）（W2 占位，W3 替 Aliyun）
 - [ ] T021 [App] [US1] 实装 `RequestSmsCodeUseCase` in `apps/server/src/auth/application/request-sms-code.usecase.ts`（gen 6 digit code → store Redis + send via SmsGateway；returns void or `{ ttl }`）— GREEN T015
 - [ ] T022 [App] [US1] 实装 `PhoneSmsAuthUseCase` 已注册路径 in `apps/server/src/auth/application/phone-sms-auth.usecase.ts`（findByPhone → 若 ACTIVE + code 匹配 → `markLoggedIn()` + `updateLastLoginAt` + sign tokens；返回 `{ accountId, accessToken, refreshToken }`）— GREEN T016
