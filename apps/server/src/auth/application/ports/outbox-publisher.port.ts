@@ -1,18 +1,23 @@
 /**
  * OutboxPublisher port (FR-S11 outbox pattern).
  *
- * 在业务 transaction 内调 publish() 把 domain event 写入 `event_publication` 表
- * (published_at = null); 后台 cron job 异步分发 (T041 placeholder; 真消费方
- * 由后续 use case 加).
+ * publish() 把 domain event 写入 outbox 表 (published_at = null); 后台 cron job
+ * 异步分发 (T041 placeholder; 真消费方由后续 use case 加).
  *
- * Implementation: EventPublicationPrismaPublisher (T029).
+ * Implementation: OutboxEventPrismaPublisher (T029) — 写新 `outbox_event` 表;
+ * Spring Modulith 老 `event_publication` 保留不动 (per US2 step-0 decision).
+ *
+ * Transaction model: caller MUST pass the Prisma client (or TransactionClient
+ * from $transaction) as `client` so publish 与业务写共享同一 tx, 避免
+ * 业务 rollback 后 outbox row 残留. Port 用 `unknown` 不泄露 Prisma 到 domain;
+ * infra impl 内 narrow 到具体 Prisma 类型.
  */
 export const OUTBOX_PUBLISHER = Symbol('OUTBOX_PUBLISHER');
 
 export interface OutboxPublisher {
-  /**
-   * 写 domain event 到 outbox 表. Caller 必须确保此 publish 与业务写 1 起在外层
-   * transaction 内 (避免 outbox 写成功而业务 rollback 不一致).
-   */
-  publish(eventType: string, payload: Record<string, unknown>): Promise<void>;
+  publish(
+    client: unknown,
+    eventType: string,
+    payload: Record<string, unknown>,
+  ): Promise<void>;
 }

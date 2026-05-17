@@ -30,7 +30,7 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
     });
 
     prisma = new PrismaService(url);
-    publisher = new OutboxEventPrismaPublisher(prisma);
+    publisher = new OutboxEventPrismaPublisher();
   }, 120_000);
 
   afterAll(async () => {
@@ -38,7 +38,7 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
     await container?.stop();
   });
 
-  it('publish() writes row with event_type + payload + published_at=null', async () => {
+  it('publish(prisma, ...) writes row with event_type + payload + published_at=null', async () => {
     const eventType = 'auth.account.created';
     const payload = {
       accountId: '42',
@@ -46,7 +46,7 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
       createdAt: '2026-05-17T12:00:00.000Z',
     };
 
-    await publisher.publish(eventType, payload);
+    await publisher.publish(prisma, eventType, payload);
 
     const rows = await prisma.outbox_event.findMany({
       where: { event_type: eventType },
@@ -61,11 +61,10 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
     );
   });
 
-  it('publish() inside $transaction is included in commit', async () => {
+  it('publish(tx, ...) inside $transaction is included in commit', async () => {
     const eventType = 'auth.tx.committed';
     await prisma.$transaction(async (tx) => {
-      const txPublisher = new OutboxEventPrismaPublisher(tx as PrismaService);
-      await txPublisher.publish(eventType, { foo: 'bar' });
+      await publisher.publish(tx, eventType, { foo: 'bar' });
     });
 
     const rows = await prisma.outbox_event.findMany({
@@ -75,12 +74,11 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
     expect(rows[0]!.payload).toEqual({ foo: 'bar' });
   });
 
-  it('publish() inside $transaction is rolled back when business throws', async () => {
+  it('publish(tx, ...) inside $transaction is rolled back when business throws', async () => {
     const eventType = 'auth.tx.rolled-back';
     await expect(
       prisma.$transaction(async (tx) => {
-        const txPublisher = new OutboxEventPrismaPublisher(tx as PrismaService);
-        await txPublisher.publish(eventType, { x: 1 });
+        await publisher.publish(tx, eventType, { x: 1 });
         throw new Error('simulated business failure');
       }),
     ).rejects.toThrow('simulated business failure');

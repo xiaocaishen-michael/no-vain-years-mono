@@ -8,15 +8,17 @@ import type { AccountRepository } from './ports/account.repository.port';
 import type { SmsCodeRepository } from './ports/sms-code.repository.port';
 import type { OutboxPublisher } from './ports/outbox-publisher.port';
 import type { JwtTokenService } from '../infrastructure/jwt-token.service';
+import type { PrismaService } from '../infrastructure/prisma.service';
 import { ACCOUNT_CREATED_EVENT_TYPE } from '../domain/events/account-created.event';
 
-// T030 GREEN 会把 PhoneSmsAuthUseCase constructor 扩为 4 参（加 OutboxPublisher）。
-// 当前 RED 期通过 `as any` cast 保留 type-check 不破，spec 测期望行为。
+// T030 GREEN 会把 PhoneSmsAuthUseCase ctor 扩为 5 参 (+ OutboxPublisher + PrismaService).
+// 当前 RED 期通过 cast bridge 保留 type-check 不破; spec 测期望行为.
 type UseCaseCtor = new (
   accountRepo: AccountRepository,
   smsCodeRepo: SmsCodeRepository,
   jwtTokenService: JwtTokenService,
   outboxPublisher?: OutboxPublisher,
+  prismaService?: PrismaService,
 ) => PhoneSmsAuthUseCase;
 
 describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
@@ -139,6 +141,8 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
   let smsCodeRepo: SmsCodeRepository;
   let jwtTokenService: JwtTokenService;
   let outboxPublisher: OutboxPublisher;
+  let prismaService: PrismaService;
+  let fakeTx: { account: { create: ReturnType<typeof vi.fn> } };
   let useCase: PhoneSmsAuthUseCase;
 
   const phone = Phone.create('+8613900139001');
@@ -147,7 +151,7 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
   beforeEach(() => {
     accountRepo = {
       findByPhone: vi.fn().mockResolvedValue(null),
-      save: vi.fn().mockResolvedValue(99n as never),
+      save: vi.fn().mockResolvedValue(undefined),
       updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
     };
     smsCodeRepo = {
@@ -161,30 +165,53 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
     } as unknown as JwtTokenService;
     outboxPublisher = { publish: vi.fn().mockResolvedValue(undefined) };
 
+    fakeTx = {
+      account: {
+        create: vi.fn().mockResolvedValue({
+          id: 99n,
+          phone: '+8613900139001',
+          status: 'ACTIVE',
+          created_at: new Date('2026-05-17T12:00:00Z'),
+          last_login_at: new Date('2026-05-17T12:00:00Z'),
+        }),
+      },
+    };
+    prismaService = {
+      $transaction: vi
+        .fn()
+        .mockImplementation(
+          async (cb: (tx: typeof fakeTx) => unknown) => cb(fakeTx),
+        ),
+    } as unknown as PrismaService;
+
     useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
       accountRepo,
       smsCodeRepo,
       jwtTokenService,
       outboxPublisher,
+      prismaService,
     );
   });
 
-  it('unregistered phone → save Account ACTIVE + publish AccountCreatedEvent + return tokens', async () => {
-    vi.mocked(smsCodeRepo.verify).mockResolvedValue(true);
-
+  it('unregistered phone → create Account ACTIVE in tx + publish AccountCreatedEvent + return tokens', async () => {
     const result = await useCase.execute(phone, code);
 
-    expect(accountRepo.save).toHaveBeenCalledTimes(1);
-    const savedAccount = vi.mocked(accountRepo.save).mock.calls[0]![0];
-    expect(savedAccount.phone.value).toBe('+8613900139001');
-    expect(savedAccount.isActive()).toBe(true);
+    // tx-internal account create
+    expect(fakeTx.account.create).toHaveBeenCalledTimes(1);
+    const createArgs = fakeTx.account.create.mock.calls[0]![0] as {
+      data: { phone: string; status: string };
+    };
+    expect(createArgs.data.phone).toBe('+8613900139001');
+    expect(createArgs.data.status).toBe('ACTIVE');
 
+    // outbox publish in same tx (first arg is the tx, not undefined)
     expect(outboxPublisher.publish).toHaveBeenCalledTimes(1);
-    const [eventType, payload] = vi.mocked(outboxPublisher.publish).mock
+    const [client, eventType, payload] = vi.mocked(outboxPublisher.publish).mock
       .calls[0]!;
+    expect(client).toBe(fakeTx);
     expect(eventType).toBe(ACCOUNT_CREATED_EVENT_TYPE);
     expect(payload).toMatchObject({
-      accountId: expect.any(String),
+      accountId: '99',
       phone: '+8613900139001',
       createdAt: expect.any(String),
     });
@@ -200,7 +227,7 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
     await expect(useCase.execute(phone, code)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
-    expect(accountRepo.save).not.toHaveBeenCalled();
+    expect(fakeTx.account.create).not.toHaveBeenCalled();
     expect(outboxPublisher.publish).not.toHaveBeenCalled();
   });
 

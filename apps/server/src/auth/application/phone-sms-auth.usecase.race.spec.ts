@@ -14,12 +14,13 @@ import type { SmsCodeRepository } from './ports/sms-code.repository.port';
 import type { OutboxPublisher } from './ports/outbox-publisher.port';
 import type { JwtTokenService } from '../infrastructure/jwt-token.service';
 
-// Same cast bridge as phone-sms-auth.usecase.spec.ts — T030 GREEN amends ctor.
+// Same cast bridge as phone-sms-auth.usecase.spec.ts — T030 GREEN amends ctor to 5 args.
 type UseCaseCtor = new (
   accountRepo: AccountPrismaRepository,
   smsCodeRepo: SmsCodeRepository,
   jwtTokenService: JwtTokenService,
   outboxPublisher: OutboxPublisher,
+  prismaService: PrismaService,
 ) => PhoneSmsAuthUseCase;
 
 const SERVER_DIR = process.cwd();
@@ -47,7 +48,7 @@ describe('PhoneSmsAuthUseCase concurrent auto-register race (Testcontainers PG)'
     prisma = new PrismaService(url);
 
     const accountRepo = new AccountPrismaRepository(prisma);
-    const outboxPublisher = new OutboxEventPrismaPublisher(prisma);
+    const outboxPublisher = new OutboxEventPrismaPublisher();
 
     const smsCodeRepo: SmsCodeRepository = {
       store: vi.fn().mockResolvedValue(undefined),
@@ -64,6 +65,7 @@ describe('PhoneSmsAuthUseCase concurrent auto-register race (Testcontainers PG)'
       smsCodeRepo,
       jwtTokenService,
       outboxPublisher,
+      prisma,
     );
   }, 120_000);
 
