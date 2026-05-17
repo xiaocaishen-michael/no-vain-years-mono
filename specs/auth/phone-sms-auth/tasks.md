@@ -170,7 +170,7 @@ stdlib):
 
 **Purpose**: Plan 1 § E.3 V1/V2 验收 + cross-cutting cleanup
 
-- [ ] T039 [P] V1 验收：`cloc apps/server/src/auth` 测量 LoC + 对比旧 Java `mbw-account/src/main/java/com/mbw/account/{domain,application,infrastructure,web}` 等价类（`UnifiedPhoneSmsAuthUseCase` + `RequestSmsCodeUseCase` + 配套 Repository / Service / Controller / DTO / Config）；ratio ≤ 1.5x 才 pass；写报告到 `specs/auth/phone-sms-auth/v1-loc-report.md`
+- [X] T039 [P] V1 验收：`cloc apps/server/src/auth` 测量 LoC + 对比旧 Java `mbw-account/src/main/java/com/mbw/account/{domain,application,infrastructure,web}` 等价类（`UnifiedPhoneSmsAuthUseCase` + `RequestSmsCodeUseCase` + 配套 Repository / Service / Controller / DTO / Config）；ratio ≤ 1.5x 才 pass；写报告到 `specs/auth/phone-sms-auth/v1-loc-report.md`
 - [X] T040 [P] V2 验收：`pnpm nx run server:lint` 0 violation；手测 4 类规则各写 1 个 forbidden import → 验证 lint err；写报告到 `specs/auth/phone-sms-auth/v2-boundary-report.md`（含 v5→v6 plugin migration drift 发现 + 修复：`eslint-plugin-boundaries` v6 + legacy `element-types` 语法静默 no-op，amend 为 `boundaries/dependencies` object-selector + `eslint-import-resolver-typescript`）
 - [X] T041 [P] AccountCreatedEvent outbox subscriber placeholder：`OutboxEventCronPublisher.scan()` skeleton — 扫 `outbox_event` WHERE `published_at IS NULL` → mark as published（W2 不分发到真消费方，hook 点保留给 W3+ subscriber 接入；不引 `@nestjs/schedule` 新 dep，scan 触发由 W3+ cron infra 决定）
 - [X] T042 V3 (CI required): mono main-protection ruleset amend 加 `Lint (nx lint server)` + `Test (nx test server)` 2 个 required check（gh api PUT ruleset 16500378，本 PR 直接以 6 required checks 验收）
