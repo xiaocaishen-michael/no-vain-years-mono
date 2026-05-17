@@ -62,7 +62,7 @@ stdlib):
 **Purpose**: Constitution IV gate + 测试框架 + lint 闭环。Implement 前 mandatory。
 
 - [X] T001 装 vitest 2 + @nx/vite + 配 nx test target 在 `apps/server/project.json`（Constitution II TDD prerequisite；CI 加 `Test (nx test server)` job + mono ruleset required check）
-- [ ] T002 装 `eslint` 9 flat config + `@nx/eslint` + `eslint-plugin-boundaries` + 配 4 类规则在 `apps/server/eslint.config.mjs`（domain ↛ infra/web / web ↛ infra / 跨 module 经 api / shared ↛ business）+ 配 nx lint target；CI 加 `Lint (nx lint server)` job + ruleset required check（Constitution IV gate）
+- [X] T002 装 `eslint` 9 flat config + `@nx/eslint` + `eslint-plugin-boundaries` + 配 4 类规则在 `apps/server/eslint.config.mjs`（domain ↛ infra/web / web ↛ infra / 跨 module 经 api / shared ↛ business）+ 配 nx lint target；CI 加 `Lint (nx lint server)` job + ruleset required check（Constitution IV gate）
 - [ ] T003 [P] 装 `class-validator` `class-transformer` 已在 W1.4 ship；verify `apps/server/main.ts` 全局 `ValidationPipe({ transform: true, whitelist: true })` 已配（spec FR-S04）
 - [ ] T004 [P] 验证 W1.4 db pull 后 Prisma schema 含 `account` 表（id / phone / status enum / created_at / last_login_at）+ `event_publication` 表（id / event_type / payload Json / published_at / created_at）；缺则补 migration（FR-S11 outbox）
 

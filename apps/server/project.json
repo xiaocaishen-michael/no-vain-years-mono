@@ -82,6 +82,13 @@
         "watch": true
       }
     },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint src --max-warnings=0",
+        "cwd": "apps/server"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "options": {

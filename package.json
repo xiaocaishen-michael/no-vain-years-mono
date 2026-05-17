@@ -39,6 +39,7 @@
     "@vitest/ui": "^4.1.6",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
+    "eslint-plugin-boundaries": "^6.0.2",
     "nx": "22.7.2",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2",
