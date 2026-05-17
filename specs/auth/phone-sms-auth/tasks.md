@@ -110,7 +110,7 @@ stdlib):
 
 - [X] T018 [Infra] [US1] 实装 `AccountPrismaRepository` in `apps/server/src/auth/infrastructure/account.prisma.repository.ts`（依赖 `PrismaService`；method `findByPhone` / `save` / `updateLastLoginAt`）— GREEN T013
 - [X] T019 [Infra] [US1] 实装 `SmsCodeRedisRepository` in `apps/server/src/auth/infrastructure/sms-code.redis.repository.ts`（依赖 ioredis client；`store(phone, code, ttl=300)` 写 `sms_code:<phone>` = bcrypt hash；`lookup` 取 + compare；`clear` del）— GREEN T014
-- [ ] T020 [Infra] [US1] 实装 `MockSmsGateway` in `apps/server/src/auth/infrastructure/mock-sms.gateway.ts`（in-memory Map<phone, code>；log "发出"；export `getLastCode(phone)` 给 test 读）（W2 占位，W3 替 Aliyun）
+- [X] T020 [Infra] [US1] 实装 `MockSmsGateway` in `apps/server/src/auth/infrastructure/mock-sms.gateway.ts`（in-memory Map<phone, code>；log "发出"；export `getLastCode(phone)` 给 test 读）（W2 占位，W3 替 Aliyun）
 - [X] T021 [App] [US1] 实装 `RequestSmsCodeUseCase` in `apps/server/src/auth/application/request-sms-code.usecase.ts`（gen 6 digit code → store Redis + send via SmsGateway；returns void or `{ ttl }`）— GREEN T015
 - [X] T022 [App] [US1] 实装 `PhoneSmsAuthUseCase` 已注册路径 in `apps/server/src/auth/application/phone-sms-auth.usecase.ts`（findByPhone → 若 ACTIVE + code 匹配 → `markLoggedIn()` + `updateLastLoginAt` + sign tokens；返回 `{ accountId, accessToken, refreshToken }`）— GREEN T016
 - [ ] T023 [Web] [US1] 实装 `AccountSmsCodeController` in `apps/server/src/auth/web/account-sms-code.controller.ts`（`POST /api/v1/accounts/sms-codes` + DTO `RequestSmsCodeRequest`）+ `AccountPhoneSmsAuthController` `POST /api/v1/accounts/phone-sms-auth` + DTOs；class-validator 装饰器 + transform；register in `auth.module.ts`
