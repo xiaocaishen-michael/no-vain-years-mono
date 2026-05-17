@@ -27,3 +27,10 @@ pnpm-debug.log*
 
 # Claude Code local overrides
 .claude/settings.local.json
+
+
+
+.nx/cache
+.nx/workspace-data
+.nx/polygraph
+.claude/worktrees

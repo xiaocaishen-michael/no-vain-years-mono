@@ -15,5 +15,16 @@
       "Bash(npx prisma *)"
     ]
   },
-  "plansDirectory": "./docs/plans"
+  "plansDirectory": "./docs/plans",
+  "extraKnownMarketplaces": {
+    "nx-claude-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "nrwl/nx-ai-agents-config"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "nx@nx-claude-plugins": true
+  }
 }

@@ -1,0 +1,15 @@
+{
+  "name": "no-vain-years-mono",
+  "version": "0.0.0",
+  "private": true,
+  "description": "no-vain-years mono-repo (NestJS + Prisma + Nx, Plan 1 PoC)",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": "^22.0.0",
+    "pnpm": ">=10 <11"
+  },
+  "scripts": {},
+  "devDependencies": {
+    "nx": "22.7.2"
+  }
+}
