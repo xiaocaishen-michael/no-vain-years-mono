@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { Redis } from 'ioredis';
 import { ACCOUNT_REPOSITORY } from './application/ports/account.repository.port';
 import { OUTBOX_PUBLISHER } from './application/ports/outbox-publisher.port';
@@ -46,6 +48,18 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
         secret: config.getOrThrow<string>('AUTH_JWT_SECRET'),
         signOptions: { expiresIn: '15m' },
       }),
+    }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const redis = new Redis(config.getOrThrow<string>('REDIS_URL'));
+        return {
+          throttlers: [
+            { name: 'sms-phone-60s', limit: 1, ttl: 60_000 },
+          ],
+          storage: new ThrottlerStorageRedisService(redis),
+        };
+      },
     }),
   ],
   controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController],

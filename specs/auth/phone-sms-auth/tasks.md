@@ -187,7 +187,7 @@ stdlib):
 
 ### A1 — ThrottlerModule infra + 第 1 条规则 (sms:&lt;phone&gt; 60s)
 
-- [ ] T043 [Infra] 装 dep `@nestjs/throttler` ^6.5.0 + `@nest-lab/throttler-storage-redis` ^1.2.0；`ThrottlerModule.forRootAsync` 配 Redis storage（复用现有 `REDIS` token / ioredis client）+ `ThrottlerGuard` 全局注册（`APP_GUARD`）
+- [X] T043 [Infra] 装 dep `@nestjs/throttler` ^6.5.0 + `@nest-lab/throttler-storage-redis` ^1.2.0；`ThrottlerModule.forRootAsync` 配 Redis storage（独立 throttler Redis instance, 与业务 `REDIS_CLIENT` connection 解耦，best practice + 避免 DI ordering 风险）；默认 throttler config `name='sms-phone-60s', limit=1, ttl=60_000`；不全局注册 ThrottlerGuard（保留 controller-level `@UseGuards` 控制 scope，per A1 最小 scope 设计）
 - [ ] T044 [Web] [Test] `account-sms-code.controller.ts` 加 `@Throttle({ default: { limit: 1, ttl: 60_000 } })` (FR-S07 第 1 条 sms:&lt;phone&gt; 60s 1 次) + Testcontainers Redis IT `sms-rate-limit.it.spec.ts`：起 mono test Redis client → 2 次同 phone POST → 第 1 次 200 + 第 2 次 429 + `Retry-After` header
 
 ### A2 — FR-S07 剩 3 条规则 + 锁 30min + 集成 IT
