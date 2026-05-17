@@ -85,7 +85,7 @@ apps/server/src/
     │   ├── account.prisma.repository.ts
     │   ├── sms-code.redis.repository.ts
     │   ├── mock-sms.gateway.ts                # W2 占位实现 (W3 替 Aliyun SDK)
-    │   ├── event-publication.prisma.publisher.ts  # outbox 表写入
+    │   ├── outbox-event.prisma.publisher.ts  # outbox 表写入
     │   ├── jwt-token.service.ts               # 封装 @nestjs/jwt (FR-S09)
     │   └── problem-detail.filter.ts           # RFC 9457 (FR-S10)
     └── web/                                   # Controller + DTO
@@ -112,7 +112,9 @@ apps/server/src/
 | B. BullMQ + Redis | 生产级 retry + delayed jobs + UI | 引入 BullMQ 依赖；W2 over-engineering | 否 |
 | C. 已有 nest-outbox / 3rd-party | 现成 | 库维护质量未知 | 否 |
 
-**决策**：自实现 outbox（`event_publication` 表 + 后台 cron job 异步分发）。W3+ 生产化时若需要重试 / DLQ 再 swap B。
+**决策**：自实现 outbox（`outbox_event` 表 + 后台 cron job 异步分发）。W3+ 生产化时若需要重试 / DLQ 再 swap B。
+
+**表名 amend（2026-05-17 US2 起步决策）**：W1.4 db pull 把老 Java meta-repo 的 Spring Modulith `event_publication` 表（columns: `listener_id / serialized_event / publication_date / completion_date`）带入新 mono schema；本 plan 简化 outbox 落 `outbox_event`（独立新表），Modulith 老表保留不动待 W3+ 决策（per Plan 1 pivot 精神：不绑老栈技术 schema）。
 
 ### R0.2 — Rate Limit（FR-S07）
 
@@ -199,13 +201,14 @@ enum account_status_enum {
   ANONYMIZED
 }
 
-model event_publication {
-  id            String    @id @default(uuid())
-  eventType     String    @map("event_type")
-  payload       Json
-  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  @@map("event_publication")
+model outbox_event {
+  id           String    @id @default(uuid()) @db.Uuid
+  event_type   String
+  payload      Json
+  published_at DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at], map: "outbox_event_unpublished_idx")
   @@schema("public")
 }
 ```
@@ -264,7 +267,7 @@ curl -X POST http://localhost:3000/api/v1/accounts/sms-codes \
 curl -X POST http://localhost:3000/api/v1/accounts/phone-sms-auth \
   -H 'content-type: application/json' \
   -d '{"phone":"+8613900139000","code":"<from mock log>"}'
-# Expect 200 + tokens; DB new account row + event_publication outbox row
+# Expect 200 + tokens; DB new account row + outbox_event row
 
 # 5. Smoke test 反枚举 (已注册码错 / FROZEN / ANONYMIZED 3 路径字节级一致)
 # manually verify response bytes equal (use diff on body + curl -i headers)

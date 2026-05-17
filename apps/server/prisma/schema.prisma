@@ -112,6 +112,17 @@ model event_publication {
   @@schema("public")
 }
 
+model outbox_event {
+  id           String    @id @default(uuid()) @db.Uuid
+  event_type   String
+  payload     Json
+  published_at DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at], map: "outbox_event_unpublished_idx")
+  @@schema("public")
+}
+
 model flyway_schema_history {
   installed_rank Int      @id(map: "flyway_schema_history_pk")
   version        String?  @db.VarChar(50)
