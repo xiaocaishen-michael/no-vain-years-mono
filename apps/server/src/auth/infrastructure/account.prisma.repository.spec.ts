@@ -4,17 +4,14 @@ import {
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
 import { PrismaClient } from '../../generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { AccountPrismaRepository } from './account.prisma.repository';
 import { Phone } from '../domain/phone.vo';
 import { AccountStatus } from '../domain/account.aggregate';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const SERVER_DIR = path.resolve(__dirname, '../../..');
+// vitest runs with cwd = apps/server (per project.json test target).
+const SERVER_DIR = process.cwd();
 
 describe('AccountPrismaRepository (Testcontainers PG)', () => {
   let container: StartedPostgreSqlContainer;
