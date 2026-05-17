@@ -11,17 +11,7 @@ import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase';
 import { Phone } from '../domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import type { SmsCodeRepository } from './ports/sms-code.repository.port';
-import type { OutboxPublisher } from './ports/outbox-publisher.port';
 import type { JwtTokenService } from '../infrastructure/jwt-token.service';
-
-// Same cast bridge as phone-sms-auth.usecase.spec.ts — T030 GREEN amends ctor to 5 args.
-type UseCaseCtor = new (
-  accountRepo: AccountPrismaRepository,
-  smsCodeRepo: SmsCodeRepository,
-  jwtTokenService: JwtTokenService,
-  outboxPublisher: OutboxPublisher,
-  prismaService: PrismaService,
-) => PhoneSmsAuthUseCase;
 
 const SERVER_DIR = process.cwd();
 
@@ -60,7 +50,7 @@ describe('PhoneSmsAuthUseCase concurrent auto-register race (Testcontainers PG)'
       generateRefreshToken: vi.fn().mockReturnValue('refresh-token-race'),
     } as unknown as JwtTokenService;
 
-    useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
+    useCase = new PhoneSmsAuthUseCase(
       accountRepo,
       smsCodeRepo,
       jwtTokenService,

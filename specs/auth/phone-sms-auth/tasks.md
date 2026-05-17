@@ -135,9 +135,9 @@ stdlib):
 
 ### Implementation for US2
 
-- [ ] T029 [Infra] [US2] 实装 `OutboxEventPrismaPublisher` in `apps/server/src/auth/infrastructure/outbox-event.prisma.publisher.ts`（Prisma `outbox_event.create({ data: { event_type, payload, published_at: null } })`；在 outer transaction 内调；写新表 `outbox_event` — Spring Modulith 老 `event_publication` 保留不动）— GREEN T025
-- [ ] T030 [App] [US2] PhoneSmsAuthUseCase amend 未注册路径（findByPhone returns null → wrap in `prisma.$transaction` with `isolationLevel: 'Serializable'`: account.create + outboxPublisher.publish(AccountCreatedEvent) + sign tokens；catch unique constraint violation → fallback to login path per FR-S08 sub-clause）— GREEN T026 + T027
-- [ ] T031 [US2] E2E smoke pass: GREEN T028（响应 body / headers / status 与 US1 ACTIVE 路径**字节级一致**断言）
+- [X] T029 [Infra] [US2] 实装 `OutboxEventPrismaPublisher` in `apps/server/src/auth/infrastructure/outbox-event.prisma.publisher.ts`（Prisma `outbox_event.create({ data: { event_type, payload, published_at: null } })`；publish 接受 client 首参由 caller 传 tx context；写新表 `outbox_event` — Spring Modulith 老 `event_publication` 保留不动）— GREEN T025
+- [X] T030 [App] [US2] PhoneSmsAuthUseCase amend 未注册路径（findByPhone returns null → verify code first → wrap in `prisma.$transaction` with `isolationLevel: 'Serializable'`: `tx.account.create` + `outboxPublisher.publish(tx, AccountCreatedEvent.type, payload)` + sign tokens；catch P2002 unique constraint violation → fallback to login path per FR-S08 sub-clause；ctor 扩 5 参 + `auth.module.ts` 注册 OUTBOX_PUBLISHER provider）— GREEN T026 + T027
+- [X] T031 [US2] E2E smoke pass: GREEN T028（响应 body / headers / status 与 US1 ACTIVE 路径**字节级一致**断言）
 
 **Checkpoint**: US2 跑通；FR-S08 并发兜底验证；outbox event 写入
 

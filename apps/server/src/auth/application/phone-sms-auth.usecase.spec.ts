@@ -11,20 +11,12 @@ import type { JwtTokenService } from '../infrastructure/jwt-token.service';
 import type { PrismaService } from '../infrastructure/prisma.service';
 import { ACCOUNT_CREATED_EVENT_TYPE } from '../domain/events/account-created.event';
 
-// T030 GREEN 会把 PhoneSmsAuthUseCase ctor 扩为 5 参 (+ OutboxPublisher + PrismaService).
-// 当前 RED 期通过 cast bridge 保留 type-check 不破; spec 测期望行为.
-type UseCaseCtor = new (
-  accountRepo: AccountRepository,
-  smsCodeRepo: SmsCodeRepository,
-  jwtTokenService: JwtTokenService,
-  outboxPublisher?: OutboxPublisher,
-  prismaService?: PrismaService,
-) => PhoneSmsAuthUseCase;
-
 describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
   let accountRepo: AccountRepository;
   let smsCodeRepo: SmsCodeRepository;
   let jwtTokenService: JwtTokenService;
+  let outboxPublisher: OutboxPublisher;
+  let prismaService: PrismaService;
   let useCase: PhoneSmsAuthUseCase;
 
   const phone = Phone.create('+8613800138401');
@@ -53,7 +45,18 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
       signAccessToken: vi.fn().mockReturnValue('access-token-xyz'),
       generateRefreshToken: vi.fn().mockReturnValue('refresh-token-xyz'),
     } as unknown as JwtTokenService;
-    useCase = new PhoneSmsAuthUseCase(accountRepo, smsCodeRepo, jwtTokenService);
+    // US1 ACTIVE path 不进 handleUnregistered, outbox/prisma 不被消费; 占位 mock 即可.
+    outboxPublisher = { publish: vi.fn().mockResolvedValue(undefined) };
+    prismaService = {
+      $transaction: vi.fn(),
+    } as unknown as PrismaService;
+    useCase = new PhoneSmsAuthUseCase(
+      accountRepo,
+      smsCodeRepo,
+      jwtTokenService,
+      outboxPublisher,
+      prismaService,
+    );
   });
 
   it('ACTIVE + matching code → tokens + DB updates', async () => {
@@ -99,15 +102,6 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
       UnauthorizedException,
     );
     expect(accountRepo.updateLastLoginAt).not.toHaveBeenCalled();
-  });
-
-  it('account not found (US2 territory) → 401 (US1 scope: no auto-register yet)', async () => {
-    vi.mocked(accountRepo.findByPhone).mockResolvedValue(null);
-
-    await expect(useCase.execute(phone, code)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
-    expect(smsCodeRepo.verify).not.toHaveBeenCalled();
   });
 
   it('FROZEN account (US3 territory) → 401 (US1 scope: defer real anti-enum)', async () => {
@@ -184,7 +178,7 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
         ),
     } as unknown as PrismaService;
 
-    useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
+    useCase = new PhoneSmsAuthUseCase(
       accountRepo,
       smsCodeRepo,
       jwtTokenService,
