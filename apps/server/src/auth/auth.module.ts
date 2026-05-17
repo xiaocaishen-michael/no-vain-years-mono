@@ -7,13 +7,14 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
 import { Redis } from 'ioredis';
 import { ACCOUNT_REPOSITORY } from './application/ports/account.repository.port';
 import { OUTBOX_PUBLISHER } from './application/ports/outbox-publisher.port';
-import { RETRY_EXECUTOR } from './application/ports/retry-executor.port';
+import { RETRY_EXECUTOR, type RetryExecutor } from './application/ports/retry-executor.port';
 import { SMS_CODE_REPOSITORY } from './application/ports/sms-code.repository.port';
 import { SMS_GATEWAY } from './application/ports/sms-gateway.port';
 import { TIMING_DEFENSE_EXECUTOR } from './application/ports/timing-defense.port';
 import { PhoneSmsAuthUseCase } from './application/phone-sms-auth.usecase';
 import { RequestSmsCodeUseCase } from './application/request-sms-code.usecase';
 import { AccountPrismaRepository } from './infrastructure/account.prisma.repository';
+import { AliyunSmsGateway } from './infrastructure/aliyun-sms.gateway';
 import { AuthFailureLockService } from './infrastructure/auth-failure-lock.service';
 import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor';
 import { CockatielRetryExecutor } from './infrastructure/cockatiel-retry.executor';
@@ -97,7 +98,40 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
     },
     { provide: ACCOUNT_REPOSITORY, useClass: AccountPrismaRepository },
     { provide: SMS_CODE_REPOSITORY, useClass: SmsCodeRedisRepository },
-    { provide: SMS_GATEWAY, useClass: MockSmsGateway },
+    {
+      // SMS_GATEWAY=aliyun → AliyunSmsGateway (要求 ALIYUN_* env 全配, fail-fast)
+      // SMS_GATEWAY=mock | undefined → MockSmsGateway (dev/test 默认)
+      provide: SMS_GATEWAY,
+      useFactory: (config: ConfigService, retryExecutor: RetryExecutor) => {
+        const gatewayKind = config.get<string>('SMS_GATEWAY', 'mock');
+        if (gatewayKind === 'aliyun') {
+          const accessKeyId = config.getOrThrow<string>(
+            'ALIYUN_ACCESS_KEY_ID',
+          );
+          const accessKeySecret = config.getOrThrow<string>(
+            'ALIYUN_ACCESS_KEY_SECRET',
+          );
+          const signName = config.getOrThrow<string>('ALIYUN_SMS_SIGN_NAME');
+          const templateCode = config.getOrThrow<string>(
+            'ALIYUN_SMS_TEMPLATE_CODE',
+          );
+          const client = AliyunSmsGateway.createClient({
+            accessKeyId,
+            accessKeySecret,
+            signName,
+            templateCode,
+          });
+          return new AliyunSmsGateway(
+            client,
+            signName,
+            templateCode,
+            retryExecutor,
+          );
+        }
+        return new MockSmsGateway();
+      },
+      inject: [ConfigService, RETRY_EXECUTOR],
+    },
     { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
     { provide: TIMING_DEFENSE_EXECUTOR, useClass: BcryptTimingDefenseExecutor },
     { provide: RETRY_EXECUTOR, useClass: CockatielRetryExecutor },

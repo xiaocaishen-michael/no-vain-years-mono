@@ -203,9 +203,9 @@ stdlib):
 
 ### A4 — Aliyun SMS gateway skeleton + replace MockSmsGateway
 
-- [ ] T050 [Infra] 装 dep `@alicloud/dysmsapi20170525`（A4 启动时 fact-check 最新版本）；写 `aliyun-sms.gateway.ts` impl `SmsGatewayPort`：从 ENV 读 `ALIYUN_ACCESS_KEY_ID/SECRET/SIGN_NAME/TEMPLATE_CODE` (`@nestjs/config` ConfigService + fail-fast on missing)，调 SDK `sendSms` + 接入 `RetryExecutor` (T048) 包 retry 策略；ENV `SMS_GATEWAY=aliyun|mock` 切换（dev / test 默认 mock，prod 默认 aliyun）
-- [ ] T051 [Infra] [Test] `aliyun-sms.gateway.spec.ts` mock Aliyun SDK 验证：(a) ENV fail-fast on missing key；(b) 成功路径调 sendSms 一次；(c) SDK throw → RetryExecutor 触发；真 SMS env-gated IT defer 到 cred 就绪后单独 PR（per 2026-05-17 W3 起手 user choice "Skeleton-only"）
-- [ ] T052 [Infra] `auth.module.ts` 改 `SmsGatewayPort` provider 切换逻辑（per `SMS_GATEWAY` ENV）；W3 dev mode 仍可 fallback Mock；E2E 测试维持 mock
+- [X] T050 [Infra] 装 dep `@alicloud/dysmsapi20170525` ^4.5.1 + `@alicloud/openapi-core` ^1.0.7 (transitive promote 直接 dep 拿 `$OpenApiUtil.Config` 类型); 写 `aliyun-sms.gateway.ts` impl SmsGatewayPort: ctor 接 (client + signName + templateCode + retryExecutor) testable design; 静态 `createClient(cred)` 工厂; sendCode 内 phoneNumbers 去 +86 prefix + templateParam JSON + 接 RetryExecutor.execute(client.sendSms); response.body.code != 'OK' throw
+- [X] T051 [Infra] [Test] `aliyun-sms.gateway.spec.ts` mock SDK + retry executor 4 cases: (a) success path 验 request 字段 (phone 去 +86 / signName / templateCode / templateParam JSON); (b) response code != OK throws; (c) SDK throw RetryExecutor 接到 propagate; (d) 国际号未来扩展 phone 保持原样; 真 SMS env-gated IT defer 到 cred + SignName/TemplateCode 审批后单独 PR (per 2026-05-17 W3 起手 user choice "Skeleton-only")
+- [X] T052 [Infra] `auth.module.ts` SMS_GATEWAY provider useFactory: `SMS_GATEWAY=aliyun` → `getOrThrow ALIYUN_ACCESS_KEY_ID/SECRET/SIGN_NAME/TEMPLATE_CODE` fail-fast + new AliyunSmsGateway; `SMS_GATEWAY=mock` (default dev/test) → MockSmsGateway; inject [ConfigService, RETRY_EXECUTOR]
 
 ---
 
