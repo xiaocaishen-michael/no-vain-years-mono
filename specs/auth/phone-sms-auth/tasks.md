@@ -151,16 +151,16 @@ stdlib):
 
 ### Tests for US3
 
-- [ ] T032 [P] [US3] [Test] Vitest unit `PhoneSmsAuthUseCase` FROZEN 路径（mock FROZEN account + correct code → throw `UnauthorizedException('INVALID_CREDENTIALS')`，不签 token，不调 markLoggedIn）— RED
-- [ ] T033 [P] [US3] [Test] Vitest unit `PhoneSmsAuthUseCase` ANONYMIZED 路径（同上 mock + ANONYMIZED）— RED
-- [ ] T034 [P] [US3] [Test] Vitest unit timing defense（mock 不存在的 phone + correct code → dummy bcrypt compare 走完 → timing 与已注册码错路径差 ≤ 5ms in-process）— RED
-- [ ] T035 [P] [US3] [Test] Vitest e2e `accounts.smoke.us3.e2e.spec.ts` 反枚举 4 路径字节级一致（已注册+码错 / FROZEN+正确码 / ANONYMIZED+正确码 / 未注册号+任意码 NOT — 后者自动注册成功）；diff response body+headers+status 3 个 401 路径 100% equal — RED
+- [ ] T032 [P] [US3] [Test] Vitest unit `PhoneSmsAuthUseCase` FROZEN 路径（mock FROZEN account with `freezeUntil` + correct code → throw `AccountInFreezePeriodException` (HTTP 403, body `code: ACCOUNT_IN_FREEZE_PERIOD`, `freezeUntil` ISO string)，不签 token，不调 markLoggedIn，**不走 timing pad** per CL-006）— RED
+- [ ] T033 [P] [US3] [Test] Vitest unit `PhoneSmsAuthUseCase` ANONYMIZED 路径（mock ANONYMIZED account with phone populated + correct code → dummy bcrypt timing pad runs → throw `UnauthorizedException('INVALID_CREDENTIALS')`，不签 token；assert `TimingDefenseExecutor.executeInConstantTime` was invoked）— RED
+- [ ] T034 [P] [US3] [Test] Vitest unit timing defense **3 anti-enum 401 paths**（mock ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED+正确码 → all run TimingDefenseExecutor dummy bcrypt → in-process P95 wall-clock 差 ≤ 5ms across 3 paths；FROZEN excluded per CL-006）— RED
+- [ ] T035 [P] [US3] [Test] Vitest e2e `accounts.smoke.us3.e2e.spec.ts` 反枚举（per CL-006 amended SC-S03）：(a) 3 个 401 路径 (ACTIVE+码错 / ANONYMIZED+正确码 / ANONYMIZED+码错) 响应 body+headers+status 字节级 equal；(b) FROZEN+正确码 → HTTP 403 + ProblemDetail body 含 `code: ACCOUNT_IN_FREEZE_PERIOD` + `freezeUntil`（distinct from 401 反枚举吞）；(c) 不 assert P95 ≤ 50ms in e2e（推 W3+ 由独立 IT 覆盖，per spec FR-S06 referencing `SingleEndpointEnumerationDefenseIT`）— RED
 
 ### Implementation for US3
 
-- [ ] T036 [App] [US3] PhoneSmsAuthUseCase amend FROZEN/ANONYMIZED 路径（findByPhone returns account；若 status !== ACTIVE → 仍走 SmsCodeRepo.lookup + 比对（time-equalize）→ throw UnauthorizedException('INVALID_CREDENTIALS')，不签 token）— GREEN T032+T033
-- [ ] T037 [App] [US3] PhoneSmsAuthUseCase timing defense（"已注册码错 / FROZEN+正确码 / ANONYMIZED+正确码" 3 路径走完全相同 code path until throw；用 dummy bcrypt + same-shape exception）— GREEN T034
-- [ ] T038 [US3] E2E smoke pass: GREEN T035（4 路径响应字节级 diff assertion；timing P95 测量 in-process）
+- [ ] T036 [App] [US3] PhoneSmsAuthUseCase amend FROZEN/ANONYMIZED 路径（per CL-006）：findByPhone returns account；若 status=FROZEN → 取 `freezeUntil` → throw `AccountInFreezePeriodException(freezeUntil)`（disclosure，不签 token，不走 timing pad）；若 status=ANONYMIZED → 走 `TimingDefenseExecutor` dummy bcrypt → throw `UnauthorizedException('INVALID_CREDENTIALS')`；新增 `AccountInFreezePeriodException` 类 + amend `ProblemDetailFilter` 映射 → HTTP 403 + body { code, freezeUntil } — GREEN T032+T033
+- [ ] T037 [App] [US3] `TimingDefenseExecutor` 新写 (TS + `bcrypt` npm; `executeInConstantTime(action, { bypassPad? })`)；ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED+正确 3 路径走 executor + dummy bcrypt 保证 timing 一致；新增 `bcrypt` + `@types/bcrypt` deps — GREEN T034
+- [ ] T038 [US3] E2E smoke pass: GREEN T035（3 个 401 路径 byte-equal + FROZEN 403 + freezeUntil disclosure；P95 ≤ 50ms 测量 defer W3+ `SingleEndpointEnumerationDefenseIT`）
 
 **Checkpoint**: US3 反枚举验收；SC-S03 字节级一致 satisfied
 
