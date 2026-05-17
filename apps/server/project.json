@@ -81,6 +81,21 @@
         "stripLeadingPaths": true,
         "watch": true
       }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --reporter=default",
+        "cwd": "apps/server"
+      }
+    },
+    "test:watch": {
+      "continuous": true,
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest",
+        "cwd": "apps/server"
+      }
     }
   }
 }
