@@ -11,7 +11,18 @@ import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase';
 import { Phone } from '../domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import type { SmsCodeRepository } from './ports/sms-code.repository.port';
+import type { TimingDefenseExecutor } from './ports/timing-defense.port';
 import type { JwtTokenService } from '../infrastructure/jwt-token.service';
+
+// T036/T037 GREEN amends PhoneSmsAuthUseCase ctor to 6 args (+ TimingDefenseExecutor).
+type UseCaseCtor = new (
+  accountRepo: AccountPrismaRepository,
+  smsCodeRepo: SmsCodeRepository,
+  jwtTokenService: JwtTokenService,
+  outboxPublisher: OutboxEventPrismaPublisher,
+  prismaService: PrismaService,
+  timingDefense: TimingDefenseExecutor,
+) => PhoneSmsAuthUseCase;
 
 const SERVER_DIR = process.cwd();
 
@@ -50,12 +61,16 @@ describe('PhoneSmsAuthUseCase concurrent auto-register race (Testcontainers PG)'
       generateRefreshToken: vi.fn().mockReturnValue('refresh-token-race'),
     } as unknown as JwtTokenService;
 
-    useCase = new PhoneSmsAuthUseCase(
+    const timingDefense: TimingDefenseExecutor = {
+      pad: vi.fn().mockResolvedValue(undefined),
+    };
+    useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
       accountRepo,
       smsCodeRepo,
       jwtTokenService,
       outboxPublisher,
       prisma,
+      timingDefense,
     );
   }, 120_000);
 

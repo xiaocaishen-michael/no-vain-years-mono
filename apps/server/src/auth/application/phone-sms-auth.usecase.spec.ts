@@ -4,12 +4,25 @@ import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase';
 import { Phone } from '../domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import { Account } from '../domain/account.aggregate';
+import { AccountInFreezePeriodException } from '../domain/account-in-freeze-period.exception';
 import type { AccountRepository } from './ports/account.repository.port';
 import type { SmsCodeRepository } from './ports/sms-code.repository.port';
 import type { OutboxPublisher } from './ports/outbox-publisher.port';
+import type { TimingDefenseExecutor } from './ports/timing-defense.port';
 import type { JwtTokenService } from '../infrastructure/jwt-token.service';
 import type { PrismaService } from '../infrastructure/prisma.service';
 import { ACCOUNT_CREATED_EVENT_TYPE } from '../domain/events/account-created.event';
+
+// T036/T037 GREEN 会把 PhoneSmsAuthUseCase ctor 扩为 6 参 (+ TimingDefenseExecutor).
+// 当前 RED 期通过 cast bridge 保留 type-check 不破; spec 测期望行为.
+type UseCaseCtor = new (
+  accountRepo: AccountRepository,
+  smsCodeRepo: SmsCodeRepository,
+  jwtTokenService: JwtTokenService,
+  outboxPublisher: OutboxPublisher,
+  prismaService: PrismaService,
+  timingDefense?: TimingDefenseExecutor,
+) => PhoneSmsAuthUseCase;
 
 describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
   let accountRepo: AccountRepository;
@@ -17,6 +30,7 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
   let jwtTokenService: JwtTokenService;
   let outboxPublisher: OutboxPublisher;
   let prismaService: PrismaService;
+  let timingDefense: TimingDefenseExecutor;
   let useCase: PhoneSmsAuthUseCase;
 
   const phone = Phone.create('+8613800138401');
@@ -28,6 +42,7 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
     status: 'ACTIVE' as const,
     created_at: new Date('2026-01-01T00:00:00Z'),
     last_login_at: null,
+    freeze_until: null,
   };
 
   beforeEach(() => {
@@ -50,12 +65,14 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
     prismaService = {
       $transaction: vi.fn(),
     } as unknown as PrismaService;
-    useCase = new PhoneSmsAuthUseCase(
+    timingDefense = { pad: vi.fn().mockResolvedValue(undefined) };
+    useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
       accountRepo,
       smsCodeRepo,
       jwtTokenService,
       outboxPublisher,
       prismaService,
+      timingDefense,
     );
   });
 
@@ -104,17 +121,6 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
     expect(accountRepo.updateLastLoginAt).not.toHaveBeenCalled();
   });
 
-  it('FROZEN account (US3 territory) → 401 (US1 scope: defer real anti-enum)', async () => {
-    vi.mocked(accountRepo.findByPhone).mockResolvedValue(
-      Account.fromPrisma({ ...activeAccountRow, status: 'FROZEN' }),
-    );
-
-    await expect(useCase.execute(phone, code)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
-    expect(smsCodeRepo.verify).not.toHaveBeenCalled();
-  });
-
   it('signs access token with bigint accountId payload', async () => {
     vi.mocked(accountRepo.findByPhone).mockResolvedValue(
       Account.fromPrisma(activeAccountRow),
@@ -136,6 +142,7 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
   let jwtTokenService: JwtTokenService;
   let outboxPublisher: OutboxPublisher;
   let prismaService: PrismaService;
+  let timingDefense: TimingDefenseExecutor;
   let fakeTx: { account: { create: ReturnType<typeof vi.fn> } };
   let useCase: PhoneSmsAuthUseCase;
 
@@ -177,13 +184,15 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
           async (cb: (tx: typeof fakeTx) => unknown) => cb(fakeTx),
         ),
     } as unknown as PrismaService;
+    timingDefense = { pad: vi.fn().mockResolvedValue(undefined) };
 
-    useCase = new PhoneSmsAuthUseCase(
+    useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
       accountRepo,
       smsCodeRepo,
       jwtTokenService,
       outboxPublisher,
       prismaService,
+      timingDefense,
     );
   });
 
@@ -230,5 +239,191 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
     expect(Object.keys(result).sort()).toEqual(
       ['accessToken', 'accountId', 'refreshToken'].sort(),
     );
+  });
+});
+
+// ===== US3 anti-enumeration (per CL-006) =====
+
+const baseAccountRow = {
+  id: 7n,
+  phone: '+8613800138701',
+  status: 'ACTIVE' as const,
+  created_at: new Date('2026-01-01T00:00:00Z'),
+  last_login_at: null,
+  freeze_until: null as Date | null,
+};
+
+function buildUseCaseHarness(): {
+  accountRepo: AccountRepository;
+  smsCodeRepo: SmsCodeRepository;
+  jwtTokenService: JwtTokenService;
+  outboxPublisher: OutboxPublisher;
+  prismaService: PrismaService;
+  timingDefense: TimingDefenseExecutor;
+  useCase: PhoneSmsAuthUseCase;
+} {
+  const accountRepo: AccountRepository = {
+    findByPhone: vi.fn(),
+    save: vi.fn().mockResolvedValue(undefined),
+    updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+  };
+  const smsCodeRepo: SmsCodeRepository = {
+    store: vi.fn().mockResolvedValue(undefined),
+    verify: vi.fn().mockResolvedValue(true),
+    clear: vi.fn().mockResolvedValue(undefined),
+  };
+  const jwtTokenService = {
+    signAccessToken: vi.fn().mockReturnValue('access-token-us3'),
+    generateRefreshToken: vi.fn().mockReturnValue('refresh-token-us3'),
+  } as unknown as JwtTokenService;
+  const outboxPublisher: OutboxPublisher = {
+    publish: vi.fn().mockResolvedValue(undefined),
+  };
+  const prismaService = {
+    $transaction: vi.fn(),
+  } as unknown as PrismaService;
+  const timingDefense: TimingDefenseExecutor = {
+    pad: vi.fn().mockResolvedValue(undefined),
+  };
+  const useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
+    accountRepo,
+    smsCodeRepo,
+    jwtTokenService,
+    outboxPublisher,
+    prismaService,
+    timingDefense,
+  );
+  return {
+    accountRepo,
+    smsCodeRepo,
+    jwtTokenService,
+    outboxPublisher,
+    prismaService,
+    timingDefense,
+    useCase,
+  };
+}
+
+describe('PhoneSmsAuthUseCase US3 FROZEN disclosure path (CL-006)', () => {
+  const phone = Phone.create('+8613800138701');
+  const code = SmsCode.create('123456');
+  const freezeUntil = new Date('2026-06-17T00:00:00Z');
+
+  it('FROZEN + correct code → throws AccountInFreezePeriodException with freezeUntil (HTTP 403)', async () => {
+    const h = buildUseCaseHarness();
+    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(
+      Account.fromPrisma({
+        ...baseAccountRow,
+        status: 'FROZEN',
+        freeze_until: freezeUntil,
+      }),
+    );
+
+    let caught: unknown;
+    try {
+      await h.useCase.execute(phone, code);
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(AccountInFreezePeriodException);
+    expect((caught as AccountInFreezePeriodException).freezeUntil).toEqual(
+      freezeUntil,
+    );
+  });
+
+  it('FROZEN does NOT call timingDefense.pad (disclosure path, FR-S06 + CL-006)', async () => {
+    const h = buildUseCaseHarness();
+    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(
+      Account.fromPrisma({
+        ...baseAccountRow,
+        status: 'FROZEN',
+        freeze_until: freezeUntil,
+      }),
+    );
+
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
+      AccountInFreezePeriodException,
+    );
+    expect(h.timingDefense.pad).not.toHaveBeenCalled();
+  });
+
+  it('FROZEN does not sign token / not updateLastLoginAt / not verify code', async () => {
+    const h = buildUseCaseHarness();
+    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(
+      Account.fromPrisma({
+        ...baseAccountRow,
+        status: 'FROZEN',
+        freeze_until: freezeUntil,
+      }),
+    );
+
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
+      AccountInFreezePeriodException,
+    );
+    expect(h.smsCodeRepo.verify).not.toHaveBeenCalled();
+    expect(h.accountRepo.updateLastLoginAt).not.toHaveBeenCalled();
+    expect(h.jwtTokenService.signAccessToken).not.toHaveBeenCalled();
+  });
+});
+
+describe('PhoneSmsAuthUseCase US3 ANONYMIZED anti-enumeration (CL-006)', () => {
+  const phone = Phone.create('+8613800138702');
+  const code = SmsCode.create('123456');
+
+  it('ANONYMIZED + correct code → timingDefense.pad called → throws UnauthorizedException', async () => {
+    const h = buildUseCaseHarness();
+    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(
+      Account.fromPrisma({ ...baseAccountRow, status: 'ANONYMIZED' }),
+    );
+
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(h.timingDefense.pad).toHaveBeenCalledTimes(1);
+    expect(h.jwtTokenService.signAccessToken).not.toHaveBeenCalled();
+    expect(h.accountRepo.updateLastLoginAt).not.toHaveBeenCalled();
+  });
+});
+
+describe('PhoneSmsAuthUseCase US3 timing defense across 3 anti-enum 401 paths', () => {
+  const phone = Phone.create('+8613800138703');
+  const code = SmsCode.create('123456');
+
+  it('path 1 ACTIVE + verify false → timingDefense.pad invoked before 401', async () => {
+    const h = buildUseCaseHarness();
+    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(
+      Account.fromPrisma(baseAccountRow),
+    );
+    vi.mocked(h.smsCodeRepo.verify).mockResolvedValue(false);
+
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(h.timingDefense.pad).toHaveBeenCalledTimes(1);
+  });
+
+  it('path 2 ACTIVE + verify null (code expired) → timingDefense.pad invoked before 401', async () => {
+    const h = buildUseCaseHarness();
+    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(
+      Account.fromPrisma(baseAccountRow),
+    );
+    vi.mocked(h.smsCodeRepo.verify).mockResolvedValue(null);
+
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(h.timingDefense.pad).toHaveBeenCalledTimes(1);
+  });
+
+  it('path 3 ANONYMIZED + correct code → timingDefense.pad invoked before 401', async () => {
+    const h = buildUseCaseHarness();
+    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(
+      Account.fromPrisma({ ...baseAccountRow, status: 'ANONYMIZED' }),
+    );
+
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(h.timingDefense.pad).toHaveBeenCalledTimes(1);
   });
 });

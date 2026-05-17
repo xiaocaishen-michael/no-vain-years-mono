@@ -22,6 +22,7 @@ export interface AccountPrismaRow {
   status: 'ACTIVE' | 'FROZEN' | 'ANONYMIZED';
   created_at: Date;
   last_login_at: Date | null;
+  freeze_until: Date | null;
 }
 
 export class Account {
@@ -31,14 +32,22 @@ export class Account {
     public status: AccountStatus,
     public readonly createdAt: Date,
     public lastLoginAt: Date | null,
+    public readonly freezeUntil: Date | null,
   ) {}
 
   static createNew(id: bigint, phone: Phone): Account {
-    return new Account(id, phone, AccountStatus.ACTIVE, new Date(), null);
+    return new Account(id, phone, AccountStatus.ACTIVE, new Date(), null, null);
   }
 
   static fromPrisma(row: AccountPrismaRow): Account {
-    return new Account(row.id, Phone.create(row.phone), row.status as AccountStatus, row.created_at, row.last_login_at);
+    return new Account(
+      row.id,
+      Phone.create(row.phone),
+      row.status as AccountStatus,
+      row.created_at,
+      row.last_login_at,
+      row.freeze_until,
+    );
   }
 
   markLoggedIn(): void {
