@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "plan",
+    "allow": [
+      "Bash(pnpm dlx nx *)",
+      "Bash(pnpm dlx prisma *)",
+      "Bash(pnpm dlx @nestjs/cli *)",
+      "Bash(pnpm dlx create-nx-workspace *)",
+      "Bash(pnpm nx *)",
+      "Bash(pnpm prisma *)",
+      "Bash(pnpm exec nx *)",
+      "Bash(pnpm exec prisma *)",
+      "Bash(npx nx *)",
+      "Bash(npx prisma *)"
+    ]
+  },
+  "plansDirectory": "./docs/plans"
+}
