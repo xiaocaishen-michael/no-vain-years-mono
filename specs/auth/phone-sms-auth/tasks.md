@@ -78,7 +78,7 @@ stdlib):
 - [X] T006 [P] 实装 RFC 9457 `ProblemDetailFilter` in `apps/server/src/auth/infrastructure/problem-detail.filter.ts`（NestJS `@Catch()` 全局 filter；映射 `BadRequestException` / `UnauthorizedException` / `HttpException` → `application/problem+json`）+ 单测 (FR-S10)
 - [X] T007 [P] [Domain] 实装 Phone VO in `apps/server/src/auth/domain/phone.vo.ts`（E.164 +86 regex 校验 `/^\+861[3-9]\d{9}$/` + trim + immutable class）+ 单测覆盖合法 / 不合法 / 边界
 - [X] T008 [P] [Domain] 实装 SmsCode VO in `apps/server/src/auth/domain/sms-code.vo.ts`（6 digit `^\d{6}$` + immutable + verify(other) 方法）+ 单测
-- [ ] T009 [Infra] 实装 `JwtTokenService` in `apps/server/src/auth/infrastructure/jwt-token.service.ts`（封装 `@nestjs/jwt` `JwtService.sign(payload, { expiresIn: '15m' })` + `crypto.randomBytes(32).toString('base64url')` 生 256-bit refresh；从 `ConfigService.getOrThrow('AUTH_JWT_SECRET')` 拿 secret）+ 单测（FR-S09）
+- [X] T009 [Infra] 实装 `JwtTokenService` in `apps/server/src/auth/infrastructure/jwt-token.service.ts`（封装 `@nestjs/jwt` `JwtService.sign(payload, { expiresIn: '15m' })` + `crypto.randomBytes(32).toString('base64url')` 生 256-bit refresh；从 `ConfigService.getOrThrow('AUTH_JWT_SECRET')` 拿 secret）+ 单测（FR-S09）
 - [ ] T010 [P] [Domain] 实装 `Account` aggregate in `apps/server/src/auth/domain/account.aggregate.ts`（id / phone / status enum / lastLoginAt；business invariant `markLoggedIn()` / `isActive() / isFrozen() / isAnonymized()`）+ Prisma → Account adapter `Account.fromPrisma()` 工厂；单测
 - [ ] T011 [P] [Domain] 实装 4 个 port interface in `apps/server/src/auth/application/ports/`：
   - `account.repository.port.ts`（`findByPhone(phone) / save(account) / updateLastLoginAt(id)`）
