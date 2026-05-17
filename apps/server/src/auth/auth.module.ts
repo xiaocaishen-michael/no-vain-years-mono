@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { Redis } from 'ioredis';
 import { ACCOUNT_REPOSITORY } from './application/ports/account.repository.port';
 import { OUTBOX_PUBLISHER } from './application/ports/outbox-publisher.port';
@@ -22,6 +24,7 @@ import { REDIS_CLIENT } from './infrastructure/redis.token';
 import { SmsCodeRedisRepository } from './infrastructure/sms-code.redis.repository';
 import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller';
 import { AccountSmsCodeController } from './web/account-sms-code.controller';
+import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
 
 /**
  * NestJS Module: auth use case (phone-sms-auth).
@@ -47,6 +50,20 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
         signOptions: { expiresIn: '15m' },
       }),
     }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const redis = new Redis(config.getOrThrow<string>('REDIS_URL'));
+        return {
+          throttlers: [
+            // FR-S07 第 1 条: sms:<phone> 60s 1 次 (default name → 标准
+            // Retry-After header; A2 加多 throttler 时再 named distinguish)
+            { limit: 1, ttl: 60_000 },
+          ],
+          storage: new ThrottlerStorageRedisService(redis),
+        };
+      },
+    }),
   ],
   controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController],
   providers: [
@@ -71,6 +88,7 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
     OutboxEventCronPublisher,
+    SmsPhoneThrottlerGuard,
     { provide: APP_FILTER, useClass: ProblemDetailFilter },
   ],
   exports: [],

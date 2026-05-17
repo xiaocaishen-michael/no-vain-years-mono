@@ -166,7 +166,7 @@ stdlib):
 
 ---
 
-## Phase N: Polish & V1/V2 Acceptance
+## Phase N: Polish & V1/V2 Acceptance (W2 final)
 
 **Purpose**: Plan 1 § E.3 V1/V2 验收 + cross-cutting cleanup
 
@@ -174,6 +174,38 @@ stdlib):
 - [X] T040 [P] V2 验收：`pnpm nx run server:lint` 0 violation；手测 4 类规则各写 1 个 forbidden import → 验证 lint err；写报告到 `specs/auth/phone-sms-auth/v2-boundary-report.md`（含 v5→v6 plugin migration drift 发现 + 修复：`eslint-plugin-boundaries` v6 + legacy `element-types` 语法静默 no-op，amend 为 `boundaries/dependencies` object-selector + `eslint-import-resolver-typescript`）
 - [X] T041 [P] AccountCreatedEvent outbox subscriber placeholder：`OutboxEventCronPublisher.scan()` skeleton — 扫 `outbox_event` WHERE `published_at IS NULL` → mark as published（W2 不分发到真消费方，hook 点保留给 W3+ subscriber 接入；不引 `@nestjs/schedule` 新 dep，scan 触发由 W3+ cron infra 决定）
 - [X] T042 V3 (CI required): mono main-protection ruleset amend 加 `Lint (nx lint server)` + `Test (nx test server)` 2 个 required check（gh api PUT ruleset 16500378，本 PR 直接以 6 required checks 验收）
+
+---
+
+## Phase O: W3 Infrastructure (rate limit + retry + Aliyun SMS)
+
+**Purpose**: 实装 plan.md R0.2 (rate limit FR-S07) / R0.3 (Aliyun SMS FR-S03) / R0.5 (cockatiel retry) 三个 W2 显式 defer 的 deferred items。
+
+**Ship 顺序**: A1 → A2 → A3 → A4（per memory `feedback_complex_external_dep_migration_last`：复杂外部 SDK 后迁不拖主线）。
+
+**Sub-PR 拆分**: 4 个 sub-PR 对应 A1-A4，每个独立可 ship + auto-merge。
+
+### A1 — ThrottlerModule infra + 第 1 条规则 (sms:&lt;phone&gt; 60s)
+
+- [X] T043 [Infra] 装 dep `@nestjs/throttler` ^6.5.0 + `@nest-lab/throttler-storage-redis` ^1.2.0；`ThrottlerModule.forRootAsync` 配 Redis storage（独立 throttler Redis instance, 与业务 `REDIS_CLIENT` connection 解耦，best practice + 避免 DI ordering 风险）；默认 throttler config `name='sms-phone-60s', limit=1, ttl=60_000`；不全局注册 ThrottlerGuard（保留 controller-level `@UseGuards` 控制 scope，per A1 最小 scope 设计）
+- [X] T044 [Web] [Test] `account-sms-code.controller.ts` 加 `@Throttle({ default: { limit: 1, ttl: 60_000 } })` + `@UseGuards(SmsPhoneThrottlerGuard)` (FR-S07 第 1 条 sms:&lt;phone&gt; 60s 1 次)；自定义 `SmsPhoneThrottlerGuard` extends `ThrottlerGuard` override `getTracker` 返回 `sms:<phone>` key (而非 IP)；Testcontainers Redis IT `account-sms-code.rate-limit.it.spec.ts` 2 cases：(a) 同 phone 60s 内第 2 次 → 429 + 标准 `Retry-After` header；(b) 不同 phone 仍 200 (tracker key 是 phone 不是 IP)
+
+### A2 — FR-S07 剩 3 条规则 + 锁 30min + 集成 IT
+
+- [ ] T045 [Web] [Test] 加 sms:&lt;phone&gt; 24h 10 次 限流（throttler 多 throttler config + 自定义 `getTracker` key extractor 用 phone）
+- [ ] T046 [Web] [Test] 加 sms:&lt;ip&gt; 24h 50 次 限流（getTracker 用 req.ip）
+- [ ] T047 [App] [Test] auth:&lt;phone&gt; 5 次失败 → 锁 30min：失败计数 Redis key `auth-fail:&lt;phone&gt;` (INCR + EXPIRE 24h)；失败到 5 → set Redis key `auth-lock:&lt;phone&gt;` (TTL 30min)；`PhoneSmsAuthUseCase` 入口校验 lock key 存在 → throw 429 + `Retry-After: 1800`；锁状态 100% Redis（per 2026-05-17 W3 起手 user choice "Redis lock store"）
+
+### A3 — RetryExecutor port + cockatiel adapter
+
+- [ ] T048 [App] [Infra] [Test] 抽 `application/ports/retry-executor.port.ts` interface (`execute&lt;T&gt;(operation: () => Promise&lt;T&gt;, opts?): Promise&lt;T&gt;`) + `infrastructure/cockatiel-retry.executor.ts` adapter (`wrap(retry, circuitBreaker)` per plan.md R0.5) + unit spec 验证 exponential backoff 触发 + circuit breaker open / close (per 2026-05-17 W3 起手 user choice "RetryExecutor port + cockatiel adapter")
+- [ ] T049 [Infra] 装 dep `cockatiel` ^3.2.1；DI 注册到 `auth.module.ts`（W3 SmsGateway 与未来其他外部调用复用）
+
+### A4 — Aliyun SMS gateway skeleton + replace MockSmsGateway
+
+- [ ] T050 [Infra] 装 dep `@alicloud/dysmsapi20170525`（A4 启动时 fact-check 最新版本）；写 `aliyun-sms.gateway.ts` impl `SmsGatewayPort`：从 ENV 读 `ALIYUN_ACCESS_KEY_ID/SECRET/SIGN_NAME/TEMPLATE_CODE` (`@nestjs/config` ConfigService + fail-fast on missing)，调 SDK `sendSms` + 接入 `RetryExecutor` (T048) 包 retry 策略；ENV `SMS_GATEWAY=aliyun|mock` 切换（dev / test 默认 mock，prod 默认 aliyun）
+- [ ] T051 [Infra] [Test] `aliyun-sms.gateway.spec.ts` mock Aliyun SDK 验证：(a) ENV fail-fast on missing key；(b) 成功路径调 sendSms 一次；(c) SDK throw → RetryExecutor 触发；真 SMS env-gated IT defer 到 cred 就绪后单独 PR（per 2026-05-17 W3 起手 user choice "Skeleton-only"）
+- [ ] T052 [Infra] `auth.module.ts` 改 `SmsGatewayPort` provider 切换逻辑（per `SMS_GATEWAY` ENV）；W3 dev mode 仍可 fallback Mock；E2E 测试维持 mock
 
 ---
 
