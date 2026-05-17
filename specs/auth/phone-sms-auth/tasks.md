@@ -74,7 +74,7 @@ stdlib):
 
 **Purpose**: 跨 US 复用基础设施（VO / ports / module skeleton / global filter）；所有 US 实现前必跑完
 
-- [ ] T005 创建 `apps/server/src/auth/auth.module.ts` skeleton（NestJS `@Module({ imports: [], providers: [], exports: [] })`）+ 在 `app.module.ts` import；空 module 跑通 server bootstrap（typecheck pass）
+- [X] T005 创建 `apps/server/src/auth/auth.module.ts` skeleton（NestJS `@Module({ imports: [], providers: [], exports: [] })`）+ 在 `app.module.ts` import；空 module 跑通 server bootstrap（typecheck pass）
 - [ ] T006 [P] 实装 RFC 9457 `ProblemDetailFilter` in `apps/server/src/auth/infrastructure/problem-detail.filter.ts`（NestJS `@Catch()` 全局 filter；映射 `BadRequestException` / `UnauthorizedException` / `HttpException` → `application/problem+json`）+ 单测 (FR-S10)
 - [ ] T007 [P] [Domain] 实装 Phone VO in `apps/server/src/auth/domain/phone.vo.ts`（E.164 +86 regex 校验 `/^\+861[3-9]\d{9}$/` + trim + immutable class）+ 单测覆盖合法 / 不合法 / 边界
 - [ ] T008 [P] [Domain] 实装 SmsCode VO in `apps/server/src/auth/domain/sms-code.vo.ts`（6 digit `^\d{6}$` + immutable + verify(other) 方法）+ 单测
