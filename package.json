@@ -17,7 +17,8 @@
       "@parcel/watcher",
       "less",
       "prisma",
-      "@prisma/engines"
+      "@prisma/engines",
+      "bcrypt"
     ]
   },
   "devDependencies": {
