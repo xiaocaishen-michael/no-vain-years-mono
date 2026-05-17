@@ -79,14 +79,14 @@ stdlib):
 - [X] T007 [P] [Domain] 实装 Phone VO in `apps/server/src/auth/domain/phone.vo.ts`（E.164 +86 regex 校验 `/^\+861[3-9]\d{9}$/` + trim + immutable class）+ 单测覆盖合法 / 不合法 / 边界
 - [X] T008 [P] [Domain] 实装 SmsCode VO in `apps/server/src/auth/domain/sms-code.vo.ts`（6 digit `^\d{6}$` + immutable + verify(other) 方法）+ 单测
 - [X] T009 [Infra] 实装 `JwtTokenService` in `apps/server/src/auth/infrastructure/jwt-token.service.ts`（封装 `@nestjs/jwt` `JwtService.sign(payload, { expiresIn: '15m' })` + `crypto.randomBytes(32).toString('base64url')` 生 256-bit refresh；从 `ConfigService.getOrThrow('AUTH_JWT_SECRET')` 拿 secret）+ 单测（FR-S09）
-- [ ] T010 [P] [Domain] 实装 `Account` aggregate in `apps/server/src/auth/domain/account.aggregate.ts`（id / phone / status enum / lastLoginAt；business invariant `markLoggedIn()` / `isActive() / isFrozen() / isAnonymized()`）+ Prisma → Account adapter `Account.fromPrisma()` 工厂；单测
-- [ ] T011 [P] [Domain] 实装 4 个 port interface in `apps/server/src/auth/application/ports/`：
+- [X] T010 [P] [Domain] 实装 `Account` aggregate in `apps/server/src/auth/domain/account.aggregate.ts`（id / phone / status enum / lastLoginAt；business invariant `markLoggedIn()` / `isActive() / isFrozen() / isAnonymized()`）+ Prisma → Account adapter `Account.fromPrisma()` 工厂；单测
+- [X] T011 [P] [Domain] 实装 4 个 port interface in `apps/server/src/auth/application/ports/`：
   - `account.repository.port.ts`（`findByPhone(phone) / save(account) / updateLastLoginAt(id)`）
-  - `sms-code.repository.port.ts`（`store(phone, code, ttlSec) / lookup(phone): SmsCode | null / clear(phone)`）
-  - `sms-gateway.port.ts`（`send(phone, templateCode, params): Promise<void>`）
+  - `sms-code.repository.port.ts`（`store(phone, code, ttlSec) / verify(phone, code): boolean | null / clear(phone)`）
+  - `sms-gateway.port.ts`（`sendCode(phone, code): Promise<void>`）
   - `outbox-publisher.port.ts`（`publish(eventType, payload): Promise<void>`）
   + 单测（interface 本身无测，但 fake 实现给后续 use case test 用）
-- [ ] T012 [P] [Domain] 实装 `AccountCreatedEvent` in `apps/server/src/auth/domain/events/account-created.event.ts`（payload `{ accountId, phone, createdAt }`，类型 export 给 outbox 消费）+ 类型 test
+- [X] T012 [P] [Domain] 实装 `AccountCreatedEvent` in `apps/server/src/auth/domain/events/account-created.event.ts`（payload `{ accountId, phone, createdAt }`，类型 export 给 outbox 消费）+ 类型 test
 
 **Checkpoint**: Foundational ready → US1/US2/US3 implementation 可启动（per 5 原则 III Atomic Task + II Test-First）
 
