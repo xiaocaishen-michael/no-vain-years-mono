@@ -1,26 +1,44 @@
-import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { SwaggerModule, OpenAPIObject } from '@nestjs/swagger';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Test } from '@nestjs/testing';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from './app/app.module';
+import { PrismaService } from './auth/infrastructure/prisma.service';
 import { buildOpenApiConfig } from './openapi.config';
 
 /**
  * W4 V8 acceptance: @nestjs/swagger 产 OpenAPI 3.1 JSON,
  * 顶层 openapi: '3.1.0' + 含所有公开 endpoint + 含 schema 引用.
  *
- * 不 listen — 仅装配 AppModule 后 createDocument,避免 Fastify 端口冲突.
+ * Mock PrismaService so the test does not require a live PG connection in CI.
+ * REDIS_URL / DATABASE_URL set via env defaults so ConfigService.getOrThrow
+ * doesn't blow up during AppModule wiring (ioredis Redis() is lazy — no
+ * actual TCP until first command).
  */
 describe('OpenAPI document (W4 V8)', () => {
   let app: NestFastifyApplication;
   let document: OpenAPIObject;
 
   beforeAll(async () => {
-    app = await NestFactory.create<NestFastifyApplication>(
-      AppModule,
+    process.env.DATABASE_URL ??= 'postgresql://nobody@localhost:5432/none';
+    process.env.REDIS_URL ??= 'redis://localhost:6379';
+    process.env.JWT_ACCESS_SECRET ??= 'test-access-secret-32-char-min-len-pad';
+    process.env.JWT_REFRESH_SECRET ??= 'test-refresh-secret-32-char-min-len-pa';
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideProvider(PrismaService)
+      .useValue({
+        $connect: vi.fn().mockResolvedValue(undefined),
+        $disconnect: vi.fn().mockResolvedValue(undefined),
+      })
+      .compile();
+
+    app = moduleRef.createNestApplication<NestFastifyApplication>(
       new FastifyAdapter(),
       { logger: false },
     );
