@@ -1,11 +1,16 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { AccountInFreezePeriodException } from '../domain/account-in-freeze-period.exception';
 
 /**
  * RFC 9457 ProblemDetail global exception filter (FR-S10).
  *
  * 把所有 HttpException + 未知 Error 映射到 `application/problem+json` 响应体。
  * 未知 Error 不暴露内部细节 (per OWASP API Security 最佳实践).
+ *
+ * Domain-specific mappings:
+ * - AccountInFreezePeriodException → HTTP 403 + body { code, freezeUntil }
+ *   (per CL-006 FROZEN disclosure path)
  */
 @Catch()
 export class ProblemDetailFilter implements ExceptionFilter {
@@ -15,6 +20,21 @@ export class ProblemDetailFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<FastifyReply>();
     const request = ctx.getRequest<FastifyRequest>();
+
+    if (exception instanceof AccountInFreezePeriodException) {
+      response
+        .status(403)
+        .header('content-type', 'application/problem+json')
+        .send({
+          type: 'about:blank',
+          title: 'Forbidden',
+          status: 403,
+          code: AccountInFreezePeriodException.code,
+          freezeUntil: exception.freezeUntil.toISOString(),
+          instance: request.url,
+        });
+      return;
+    }
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();

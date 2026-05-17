@@ -19,6 +19,7 @@ export class AccountPrismaRepository implements AccountRepository {
       status: row.status as 'ACTIVE' | 'FROZEN' | 'ANONYMIZED',
       created_at: row.created_at,
       last_login_at: row.last_login_at,
+      freeze_until: row.freeze_until,
     });
   }
 

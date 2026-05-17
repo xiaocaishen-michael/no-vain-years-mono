@@ -23,12 +23,14 @@ describe('Account aggregate', () => {
       status: 'FROZEN' as const,
       created_at: new Date('2026-01-01'),
       last_login_at: new Date('2026-05-01'),
+      freeze_until: new Date('2026-06-01'),
     };
     const account = Account.fromPrisma(row);
     expect(account.id).toBe(42n);
     expect(account.phone.value).toBe('+8615900159000');
     expect(account.status).toBe(AccountStatus.FROZEN);
     expect(account.lastLoginAt).toEqual(new Date('2026-05-01'));
+    expect(account.freezeUntil).toEqual(new Date('2026-06-01'));
     expect(account.isFrozen()).toBe(true);
   });
 
@@ -43,8 +45,8 @@ describe('Account aggregate', () => {
   });
 
   it('isActive() / isFrozen() / isAnonymized() reflect status enum', () => {
-    expect(Account.fromPrisma({ id: 1n, phone: '+8613800138000', status: 'ACTIVE', created_at: new Date(), last_login_at: null }).isActive()).toBe(true);
-    expect(Account.fromPrisma({ id: 1n, phone: '+8613800138000', status: 'FROZEN', created_at: new Date(), last_login_at: null }).isFrozen()).toBe(true);
-    expect(Account.fromPrisma({ id: 1n, phone: '+8613800138000', status: 'ANONYMIZED', created_at: new Date(), last_login_at: null }).isAnonymized()).toBe(true);
+    expect(Account.fromPrisma({ id: 1n, phone: '+8613800138000', status: 'ACTIVE', created_at: new Date(), last_login_at: null, freeze_until: null }).isActive()).toBe(true);
+    expect(Account.fromPrisma({ id: 1n, phone: '+8613800138000', status: 'FROZEN', created_at: new Date(), last_login_at: null, freeze_until: null }).isFrozen()).toBe(true);
+    expect(Account.fromPrisma({ id: 1n, phone: '+8613800138000', status: 'ANONYMIZED', created_at: new Date(), last_login_at: null, freeze_until: null }).isAnonymized()).toBe(true);
   });
 });

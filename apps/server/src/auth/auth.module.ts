@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { Redis } from 'ioredis';
@@ -6,9 +7,11 @@ import { ACCOUNT_REPOSITORY } from './application/ports/account.repository.port'
 import { OUTBOX_PUBLISHER } from './application/ports/outbox-publisher.port';
 import { SMS_CODE_REPOSITORY } from './application/ports/sms-code.repository.port';
 import { SMS_GATEWAY } from './application/ports/sms-gateway.port';
+import { TIMING_DEFENSE_EXECUTOR } from './application/ports/timing-defense.port';
 import { PhoneSmsAuthUseCase } from './application/phone-sms-auth.usecase';
 import { RequestSmsCodeUseCase } from './application/request-sms-code.usecase';
 import { AccountPrismaRepository } from './infrastructure/account.prisma.repository';
+import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor';
 import { JwtTokenService } from './infrastructure/jwt-token.service';
 import { MockSmsGateway } from './infrastructure/mock-sms.gateway';
 import { OutboxEventPrismaPublisher } from './infrastructure/outbox-event.prisma.publisher';
@@ -30,7 +33,8 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
  * - Phase 3 US1: AccountPrismaRepository + SmsCodeRedisRepository + MockSmsGateway +
  *   RequestSmsCodeUseCase + PhoneSmsAuthUseCase ACTIVE 路径 + 2 controllers
  * - Phase 4 US2: OutboxEventPrismaPublisher + 未注册路径 amend
- * - Phase 5 US3: 反枚举 + timing defense
+ * - Phase 5 US3: BcryptTimingDefenseExecutor + AccountInFreezePeriodException
+ *   filter + 反枚举 / FROZEN disclosure (CL-006)
  */
 @Module({
   imports: [
@@ -61,10 +65,11 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
     { provide: SMS_CODE_REPOSITORY, useClass: SmsCodeRedisRepository },
     { provide: SMS_GATEWAY, useClass: MockSmsGateway },
     { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
+    { provide: TIMING_DEFENSE_EXECUTOR, useClass: BcryptTimingDefenseExecutor },
     JwtTokenService,
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
-    ProblemDetailFilter,
+    { provide: APP_FILTER, useClass: ProblemDetailFilter },
   ],
   exports: [],
 })
