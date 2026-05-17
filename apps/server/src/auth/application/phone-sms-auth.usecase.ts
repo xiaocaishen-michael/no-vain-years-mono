@@ -45,8 +45,9 @@ export class PhoneSmsAuthUseCase {
 
     await this.smsCodeRepo.clear(phone);
 
+    const loginAt = new Date();
     account.markLoggedIn();
-    await this.accountRepo.updateLastLoginAt(account.id, account.lastLoginAt!);
+    await this.accountRepo.updateLastLoginAt(account.id, loginAt);
 
     const accessToken = this.jwtTokenService.signAccessToken({
       accountId: account.id,
