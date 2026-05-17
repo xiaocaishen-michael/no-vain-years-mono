@@ -198,8 +198,8 @@ stdlib):
 
 ### A3 — RetryExecutor port + cockatiel adapter
 
-- [ ] T048 [App] [Infra] [Test] 抽 `application/ports/retry-executor.port.ts` interface (`execute&lt;T&gt;(operation: () => Promise&lt;T&gt;, opts?): Promise&lt;T&gt;`) + `infrastructure/cockatiel-retry.executor.ts` adapter (`wrap(retry, circuitBreaker)` per plan.md R0.5) + unit spec 验证 exponential backoff 触发 + circuit breaker open / close (per 2026-05-17 W3 起手 user choice "RetryExecutor port + cockatiel adapter")
-- [ ] T049 [Infra] 装 dep `cockatiel` ^3.2.1；DI 注册到 `auth.module.ts`（W3 SmsGateway 与未来其他外部调用复用）
+- [X] T048 [App] [Infra] [Test] 抽 `application/ports/retry-executor.port.ts` interface (`execute<T>(operation: () => Promise<T>): Promise<T>`) + `infrastructure/cockatiel-retry.executor.ts` adapter (`wrap(retry maxAttempts=3 ExponentialBackoff initialDelay=200/maxDelay=2000, circuitBreaker ConsecutiveBreaker(5) halfOpenAfter=10s)` per plan.md R0.5) + unit spec 3 cases (success / transient retry 4 calls / exhausted throws); cockatiel 语义验证 `maxAttempts: N` = N retries + 1 initial = N+1 total (per 2026-05-17 W3 起手 user choice "RetryExecutor port + cockatiel adapter")
+- [X] T049 [Infra] 装 dep `cockatiel` ^3.2.1；DI 注册到 `auth.module.ts` (RETRY_EXECUTOR token + CockatielRetryExecutor useClass; W3 SmsGateway 与未来其他外部调用复用 singleton breaker state)
 
 ### A4 — Aliyun SMS gateway skeleton + replace MockSmsGateway
 
