@@ -14,6 +14,7 @@ import { AccountPrismaRepository } from './infrastructure/account.prisma.reposit
 import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor';
 import { JwtTokenService } from './infrastructure/jwt-token.service';
 import { MockSmsGateway } from './infrastructure/mock-sms.gateway';
+import { OutboxEventCronPublisher } from './infrastructure/outbox-event-cron.publisher';
 import { OutboxEventPrismaPublisher } from './infrastructure/outbox-event.prisma.publisher';
 import { PrismaService } from './infrastructure/prisma.service';
 import { ProblemDetailFilter } from './infrastructure/problem-detail.filter';
@@ -69,6 +70,7 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
     JwtTokenService,
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
+    OutboxEventCronPublisher,
     { provide: APP_FILTER, useClass: ProblemDetailFilter },
   ],
   exports: [],

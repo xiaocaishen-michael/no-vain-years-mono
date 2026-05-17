@@ -19,6 +19,12 @@ export default [
     files: ['src/**/*.ts'],
     plugins: { boundaries },
     settings: {
+      'import/resolver': {
+        typescript: {
+          alwaysTryTypes: true,
+          project: './tsconfig.json',
+        },
+      },
       'boundaries/elements': [
         { type: 'domain', pattern: 'src/auth/domain/**' },
         { type: 'application', pattern: 'src/auth/application/**' },
@@ -31,13 +37,26 @@ export default [
       'boundaries/include': ['src/**/*.ts'],
     },
     rules: {
-      'boundaries/element-types': [
+      // v6 object-selector syntax (per eslint-plugin-boundaries v5→v6 migration).
+      // v5 legacy `boundaries/element-types` + string `disallow` array
+      // silently no-op'd under v6, hiding Constitution IV gate breach.
+      'boundaries/dependencies': [
         'error',
         {
           default: 'allow',
           rules: [
-            { from: 'domain', disallow: ['application', 'infrastructure', 'web', 'module'] },
-            { from: 'web', disallow: ['infrastructure'] },
+            {
+              from: { type: 'domain' },
+              disallow: {
+                to: {
+                  type: ['application', 'infrastructure', 'web', 'module'],
+                },
+              },
+            },
+            {
+              from: { type: 'web' },
+              disallow: { to: { type: 'infrastructure' } },
+            },
           ],
         },
       ],
@@ -46,7 +65,7 @@ export default [
   {
     files: ['src/**/*.spec.ts', 'src/**/*.test.ts', 'src/__smoke__/**'],
     rules: {
-      'boundaries/element-types': 'off',
+      'boundaries/dependencies': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-empty-function': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
