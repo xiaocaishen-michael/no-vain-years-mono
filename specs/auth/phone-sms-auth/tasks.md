@@ -158,9 +158,9 @@ stdlib):
 
 ### Implementation for US3
 
-- [ ] T036 [App] [US3] PhoneSmsAuthUseCase amend FROZEN/ANONYMIZED 路径（per CL-006）：findByPhone returns account；若 status=FROZEN → 取 `freezeUntil` → throw `AccountInFreezePeriodException(freezeUntil)`（disclosure，不签 token，不走 timing pad）；若 status=ANONYMIZED → 走 `TimingDefenseExecutor` dummy bcrypt → throw `UnauthorizedException('INVALID_CREDENTIALS')`；新增 `AccountInFreezePeriodException` 类 + amend `ProblemDetailFilter` 映射 → HTTP 403 + body { code, freezeUntil } — GREEN T032+T033
-- [ ] T037 [App] [US3] `TimingDefenseExecutor` 新写 (TS + `bcrypt` npm; `executeInConstantTime(action, { bypassPad? })`)；ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED+正确 3 路径走 executor + dummy bcrypt 保证 timing 一致；新增 `bcrypt` + `@types/bcrypt` deps — GREEN T034
-- [ ] T038 [US3] E2E smoke pass: GREEN T035（3 个 401 路径 byte-equal + FROZEN 403 + freezeUntil disclosure；P95 ≤ 50ms 测量 defer W3+ `SingleEndpointEnumerationDefenseIT`）
+- [X] T036 [App] [US3] PhoneSmsAuthUseCase amend FROZEN/ANONYMIZED 路径（per CL-006）：findByPhone returns account；若 status=FROZEN → 取 `freezeUntil` → throw `AccountInFreezePeriodException(freezeUntil)`（disclosure，不签 token，不走 timing pad）；若 status=ANONYMIZED → 走 `TimingDefenseExecutor.pad()` dummy bcrypt → throw `UnauthorizedException('INVALID_CREDENTIALS')`；新增 `AccountInFreezePeriodException` 类 + amend `ProblemDetailFilter` 映射 → HTTP 403 + body { code, freezeUntil } — GREEN T032+T033
+- [X] T037 [App] [US3] `BcryptTimingDefenseExecutor` 新写 (TS + `bcrypt` npm, cost=10, `pad()` 接口)；ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED+正确 / 未注册+码错 4 路径走 executor + dummy bcrypt 保证 timing 一致；新增 `bcrypt` + `@types/bcrypt` deps — GREEN T034
+- [X] T038 [US3] E2E smoke pass: GREEN T035（3 个 401 路径 byte-equal + FROZEN 403 + freezeUntil disclosure；P95 ≤ 50ms 测量 defer W3+ `SingleEndpointEnumerationDefenseIT`）
 
 **Checkpoint**: US3 反枚举验收；SC-S03 字节级一致 satisfied
 

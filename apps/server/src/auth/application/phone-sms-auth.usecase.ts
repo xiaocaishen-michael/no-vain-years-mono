@@ -13,12 +13,17 @@ import {
   OUTBOX_PUBLISHER,
   type OutboxPublisher,
 } from './ports/outbox-publisher.port';
+import {
+  TIMING_DEFENSE_EXECUTOR,
+  type TimingDefenseExecutor,
+} from './ports/timing-defense.port';
 import { JwtTokenService } from '../infrastructure/jwt-token.service';
 import { PrismaService } from '../infrastructure/prisma.service';
 import {
   ACCOUNT_CREATED_EVENT_TYPE,
   AccountCreatedEvent,
 } from '../domain/events/account-created.event';
+import { AccountInFreezePeriodException } from '../domain/account-in-freeze-period.exception';
 
 export interface PhoneSmsAuthResult {
   accountId: bigint;
@@ -37,6 +42,8 @@ export class PhoneSmsAuthUseCase {
     @Inject(OUTBOX_PUBLISHER)
     private readonly outboxPublisher: OutboxPublisher,
     private readonly prisma: PrismaService,
+    @Inject(TIMING_DEFENSE_EXECUTOR)
+    private readonly timingDefense: TimingDefenseExecutor,
   ) {}
 
   async execute(phone: Phone, code: SmsCode): Promise<PhoneSmsAuthResult> {
@@ -46,13 +53,24 @@ export class PhoneSmsAuthUseCase {
       return this.handleUnregistered(phone, code);
     }
 
-    // US3 territory — FROZEN/ANONYMIZED. 反枚举完整实装在 T036/T037.
-    if (!account.isActive()) {
+    // CL-006 FROZEN disclosure — 403 + freezeUntil, NOT in timing pad scope.
+    if (account.isFrozen()) {
+      throw new AccountInFreezePeriodException(
+        account.freezeUntil ?? new Date(),
+      );
+    }
+
+    // CL-006 ANONYMIZED anti-enumeration — 401 + dummy bcrypt timing pad.
+    if (account.isAnonymized()) {
+      await this.timingDefense.pad();
       throw new UnauthorizedException('INVALID_CREDENTIALS');
     }
 
+    // ACTIVE path
     const verifyResult = await this.smsCodeRepo.verify(phone, code);
     if (verifyResult !== true) {
+      // FR-S06 timing defense: 码错 / 码过期 → pad before throw.
+      await this.timingDefense.pad();
       throw new UnauthorizedException('INVALID_CREDENTIALS');
     }
 
@@ -74,9 +92,10 @@ export class PhoneSmsAuthUseCase {
     phone: Phone,
     code: SmsCode,
   ): Promise<PhoneSmsAuthResult> {
-    // FR-S05 sub-clause: code 必须先匹配, 再自动注册 (拒绝任意 code 触发注册).
     const verifyResult = await this.smsCodeRepo.verify(phone, code);
     if (verifyResult !== true) {
+      // FR-S06 timing defense: 未注册 + 码错 → pad before throw.
+      await this.timingDefense.pad();
       throw new UnauthorizedException('INVALID_CREDENTIALS');
     }
 
