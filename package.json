@@ -9,7 +9,44 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {},
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "@nestjs/core",
+      "nx",
+      "@parcel/watcher",
+      "less"
+    ]
+  },
   "devDependencies": {
-    "nx": "22.7.2"
+    "@eslint/js": "^9.8.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
+    "@nx/eslint": "22.7.2",
+    "@nx/eslint-plugin": "22.7.2",
+    "@nx/js": "22.7.2",
+    "@nx/nest": "^22.7.2",
+    "@nx/node": "22.7.2",
+    "@nx/web": "22.7.2",
+    "@nx/webpack": "22.7.2",
+    "@swc-node/register": "~1.11.1",
+    "@swc/core": "~1.15.5",
+    "@swc/helpers": "~0.5.18",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.8.0",
+    "eslint-config-prettier": "^10.0.0",
+    "nx": "22.7.2",
+    "tslib": "^2.3.0",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.40.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-fastify": "^11.0.0",
+    "fastify": "^5.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0"
   }
 }
