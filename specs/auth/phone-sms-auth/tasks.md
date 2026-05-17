@@ -61,10 +61,10 @@ stdlib):
 
 **Purpose**: Constitution IV gate + 测试框架 + lint 闭环。Implement 前 mandatory。
 
-- [ ] T001 装 vitest 2 + @nx/vite + 配 nx test target 在 `apps/server/project.json`（Constitution II TDD prerequisite；CI 加 `Test (nx test server)` job + mono ruleset required check）
-- [ ] T002 装 `eslint` 9 flat config + `@nx/eslint` + `eslint-plugin-boundaries` + 配 4 类规则在 `apps/server/eslint.config.mjs`（domain ↛ infra/web / web ↛ infra / 跨 module 经 api / shared ↛ business）+ 配 nx lint target；CI 加 `Lint (nx lint server)` job + ruleset required check（Constitution IV gate）
-- [ ] T003 [P] 装 `class-validator` `class-transformer` 已在 W1.4 ship；verify `apps/server/main.ts` 全局 `ValidationPipe({ transform: true, whitelist: true })` 已配（spec FR-S04）
-- [ ] T004 [P] 验证 W1.4 db pull 后 Prisma schema 含 `account` 表（id / phone / status enum / created_at / last_login_at）+ `event_publication` 表（id / event_type / payload Json / published_at / created_at）；缺则补 migration（FR-S11 outbox）
+- [X] T001 装 vitest 2 + @nx/vite + 配 nx test target 在 `apps/server/project.json`（Constitution II TDD prerequisite；CI 加 `Test (nx test server)` job + mono ruleset required check）
+- [X] T002 装 `eslint` 9 flat config + `@nx/eslint` + `eslint-plugin-boundaries` + 配 4 类规则在 `apps/server/eslint.config.mjs`（domain ↛ infra/web / web ↛ infra / 跨 module 经 api / shared ↛ business）+ 配 nx lint target；CI 加 `Lint (nx lint server)` job + ruleset required check（Constitution IV gate）
+- [X] T003 [P] 装 `class-validator` `class-transformer` 已在 W1.4 ship；verify `apps/server/main.ts` 全局 `ValidationPipe({ transform: true, whitelist: true })` 已配（spec FR-S04）— **verified** main.ts:1+18
+- [X] T004 [P] 验证 W1.4 db pull 后 Prisma schema 含 `account` 表（id / phone / status enum / created_at / last_login_at）+ `event_publication` 表（id / event_type / payload Json / published_at / created_at）；缺则补 migration（FR-S11 outbox）— **verified** schema.prisma 含 model account / model event_publication
 
 **Checkpoint**: Setup done → nx test / nx lint 在 CI 必跑；implement phase 可启动
 
@@ -74,19 +74,19 @@ stdlib):
 
 **Purpose**: 跨 US 复用基础设施（VO / ports / module skeleton / global filter）；所有 US 实现前必跑完
 
-- [ ] T005 创建 `apps/server/src/auth/auth.module.ts` skeleton（NestJS `@Module({ imports: [], providers: [], exports: [] })`）+ 在 `app.module.ts` import；空 module 跑通 server bootstrap（typecheck pass）
-- [ ] T006 [P] 实装 RFC 9457 `ProblemDetailFilter` in `apps/server/src/auth/infrastructure/problem-detail.filter.ts`（NestJS `@Catch()` 全局 filter；映射 `BadRequestException` / `UnauthorizedException` / `HttpException` → `application/problem+json`）+ 单测 (FR-S10)
-- [ ] T007 [P] [Domain] 实装 Phone VO in `apps/server/src/auth/domain/phone.vo.ts`（E.164 +86 regex 校验 `/^\+861[3-9]\d{9}$/` + trim + immutable class）+ 单测覆盖合法 / 不合法 / 边界
-- [ ] T008 [P] [Domain] 实装 SmsCode VO in `apps/server/src/auth/domain/sms-code.vo.ts`（6 digit `^\d{6}$` + immutable + verify(other) 方法）+ 单测
-- [ ] T009 [Infra] 实装 `JwtTokenService` in `apps/server/src/auth/infrastructure/jwt-token.service.ts`（封装 `@nestjs/jwt` `JwtService.sign(payload, { expiresIn: '15m' })` + `crypto.randomBytes(32).toString('base64url')` 生 256-bit refresh；从 `ConfigService.getOrThrow('AUTH_JWT_SECRET')` 拿 secret）+ 单测（FR-S09）
-- [ ] T010 [P] [Domain] 实装 `Account` aggregate in `apps/server/src/auth/domain/account.aggregate.ts`（id / phone / status enum / lastLoginAt；business invariant `markLoggedIn()` / `isActive() / isFrozen() / isAnonymized()`）+ Prisma → Account adapter `Account.fromPrisma()` 工厂；单测
-- [ ] T011 [P] [Domain] 实装 4 个 port interface in `apps/server/src/auth/application/ports/`：
+- [X] T005 创建 `apps/server/src/auth/auth.module.ts` skeleton（NestJS `@Module({ imports: [], providers: [], exports: [] })`）+ 在 `app.module.ts` import；空 module 跑通 server bootstrap（typecheck pass）
+- [X] T006 [P] 实装 RFC 9457 `ProblemDetailFilter` in `apps/server/src/auth/infrastructure/problem-detail.filter.ts`（NestJS `@Catch()` 全局 filter；映射 `BadRequestException` / `UnauthorizedException` / `HttpException` → `application/problem+json`）+ 单测 (FR-S10)
+- [X] T007 [P] [Domain] 实装 Phone VO in `apps/server/src/auth/domain/phone.vo.ts`（E.164 +86 regex 校验 `/^\+861[3-9]\d{9}$/` + trim + immutable class）+ 单测覆盖合法 / 不合法 / 边界
+- [X] T008 [P] [Domain] 实装 SmsCode VO in `apps/server/src/auth/domain/sms-code.vo.ts`（6 digit `^\d{6}$` + immutable + verify(other) 方法）+ 单测
+- [X] T009 [Infra] 实装 `JwtTokenService` in `apps/server/src/auth/infrastructure/jwt-token.service.ts`（封装 `@nestjs/jwt` `JwtService.sign(payload, { expiresIn: '15m' })` + `crypto.randomBytes(32).toString('base64url')` 生 256-bit refresh；从 `ConfigService.getOrThrow('AUTH_JWT_SECRET')` 拿 secret）+ 单测（FR-S09）
+- [X] T010 [P] [Domain] 实装 `Account` aggregate in `apps/server/src/auth/domain/account.aggregate.ts`（id / phone / status enum / lastLoginAt；business invariant `markLoggedIn()` / `isActive() / isFrozen() / isAnonymized()`）+ Prisma → Account adapter `Account.fromPrisma()` 工厂；单测
+- [X] T011 [P] [Domain] 实装 4 个 port interface in `apps/server/src/auth/application/ports/`：
   - `account.repository.port.ts`（`findByPhone(phone) / save(account) / updateLastLoginAt(id)`）
-  - `sms-code.repository.port.ts`（`store(phone, code, ttlSec) / lookup(phone): SmsCode | null / clear(phone)`）
-  - `sms-gateway.port.ts`（`send(phone, templateCode, params): Promise<void>`）
+  - `sms-code.repository.port.ts`（`store(phone, code, ttlSec) / verify(phone, code): boolean | null / clear(phone)`）
+  - `sms-gateway.port.ts`（`sendCode(phone, code): Promise<void>`）
   - `outbox-publisher.port.ts`（`publish(eventType, payload): Promise<void>`）
   + 单测（interface 本身无测，但 fake 实现给后续 use case test 用）
-- [ ] T012 [P] [Domain] 实装 `AccountCreatedEvent` in `apps/server/src/auth/domain/events/account-created.event.ts`（payload `{ accountId, phone, createdAt }`，类型 export 给 outbox 消费）+ 类型 test
+- [X] T012 [P] [Domain] 实装 `AccountCreatedEvent` in `apps/server/src/auth/domain/events/account-created.event.ts`（payload `{ accountId, phone, createdAt }`，类型 export 给 outbox 消费）+ 类型 test
 
 **Checkpoint**: Foundational ready → US1/US2/US3 implementation 可启动（per 5 原则 III Atomic Task + II Test-First）
 
@@ -100,21 +100,21 @@ stdlib):
 
 ### Tests for US1 (Test-First per Constitution II)
 
-- [ ] T013 [P] [US1] [Test] Vitest unit test for `AccountPrismaRepository.findByPhone` in `account.prisma.repository.spec.ts`（Testcontainers PG）— RED
-- [ ] T014 [P] [US1] [Test] Vitest unit test for `SmsCodeRedisRepository.store + lookup + clear` in `sms-code.redis.repository.spec.ts`（Testcontainers Redis）— RED
-- [ ] T015 [P] [US1] [Test] Vitest unit test for `RequestSmsCodeUseCase`（mock SmsGateway + SmsCodeRepo）— RED
-- [ ] T016 [P] [US1] [Test] Vitest unit test for `PhoneSmsAuthUseCase` 已注册路径（mock AccountRepo + SmsCodeRepo + JwtTokenService）— RED
-- [ ] T017 [P] [US1] [Test] Vitest e2e test `accounts.smoke.us1.e2e.spec.ts`（Testcontainers + Nest app + Fastify; preseed ACTIVE → POST endpoints → 200 assertions）— RED
+- [X] T013 [P] [US1] [Test] Vitest unit test for `AccountPrismaRepository.findByPhone` in `account.prisma.repository.spec.ts`（Testcontainers PG）— RED
+- [X] T014 [P] [US1] [Test] Vitest unit test for `SmsCodeRedisRepository.store + lookup + clear` in `sms-code.redis.repository.spec.ts`（Testcontainers Redis）— RED
+- [X] T015 [P] [US1] [Test] Vitest unit test for `RequestSmsCodeUseCase`（mock SmsGateway + SmsCodeRepo）— RED
+- [X] T016 [P] [US1] [Test] Vitest unit test for `PhoneSmsAuthUseCase` 已注册路径（mock AccountRepo + SmsCodeRepo + JwtTokenService）— RED
+- [X] T017 [P] [US1] [Test] Vitest e2e test `accounts.smoke.us1.e2e.spec.ts`（Testcontainers + Nest app + Fastify; preseed ACTIVE → POST endpoints → 200 assertions）— RED
 
 ### Implementation for US1
 
-- [ ] T018 [Infra] [US1] 实装 `AccountPrismaRepository` in `apps/server/src/auth/infrastructure/account.prisma.repository.ts`（依赖 `PrismaService`；method `findByPhone` / `save` / `updateLastLoginAt`）— GREEN T013
-- [ ] T019 [Infra] [US1] 实装 `SmsCodeRedisRepository` in `apps/server/src/auth/infrastructure/sms-code.redis.repository.ts`（依赖 ioredis client；`store(phone, code, ttl=300)` 写 `sms_code:<phone>` = bcrypt hash；`lookup` 取 + compare；`clear` del）— GREEN T014
-- [ ] T020 [Infra] [US1] 实装 `MockSmsGateway` in `apps/server/src/auth/infrastructure/mock-sms.gateway.ts`（in-memory Map<phone, code>；log "发出"；export `getLastCode(phone)` 给 test 读）（W2 占位，W3 替 Aliyun）
-- [ ] T021 [App] [US1] 实装 `RequestSmsCodeUseCase` in `apps/server/src/auth/application/request-sms-code.usecase.ts`（gen 6 digit code → store Redis + send via SmsGateway；returns void or `{ ttl }`）— GREEN T015
-- [ ] T022 [App] [US1] 实装 `PhoneSmsAuthUseCase` 已注册路径 in `apps/server/src/auth/application/phone-sms-auth.usecase.ts`（findByPhone → 若 ACTIVE + code 匹配 → `markLoggedIn()` + `updateLastLoginAt` + sign tokens；返回 `{ accountId, accessToken, refreshToken }`）— GREEN T016
-- [ ] T023 [Web] [US1] 实装 `AccountSmsCodeController` in `apps/server/src/auth/web/account-sms-code.controller.ts`（`POST /api/v1/accounts/sms-codes` + DTO `RequestSmsCodeRequest`）+ `AccountPhoneSmsAuthController` `POST /api/v1/accounts/phone-sms-auth` + DTOs；class-validator 装饰器 + transform；register in `auth.module.ts`
-- [ ] T024 [US1] E2E smoke pass: GREEN T017（preseed ACTIVE account via Prisma 直接 insert → 2 endpoints 200 → tokens 验证 + last_login_at DB check）
+- [X] T018 [Infra] [US1] 实装 `AccountPrismaRepository` in `apps/server/src/auth/infrastructure/account.prisma.repository.ts`（依赖 `PrismaService`；method `findByPhone` / `save` / `updateLastLoginAt`）— GREEN T013
+- [X] T019 [Infra] [US1] 实装 `SmsCodeRedisRepository` in `apps/server/src/auth/infrastructure/sms-code.redis.repository.ts`（依赖 ioredis client；`store(phone, code, ttl=300)` 写 `sms_code:<phone>` = bcrypt hash；`lookup` 取 + compare；`clear` del）— GREEN T014
+- [X] T020 [Infra] [US1] 实装 `MockSmsGateway` in `apps/server/src/auth/infrastructure/mock-sms.gateway.ts`（in-memory Map<phone, code>；log "发出"；export `getLastCode(phone)` 给 test 读）（W2 占位，W3 替 Aliyun）
+- [X] T021 [App] [US1] 实装 `RequestSmsCodeUseCase` in `apps/server/src/auth/application/request-sms-code.usecase.ts`（gen 6 digit code → store Redis + send via SmsGateway；returns void or `{ ttl }`）— GREEN T015
+- [X] T022 [App] [US1] 实装 `PhoneSmsAuthUseCase` 已注册路径 in `apps/server/src/auth/application/phone-sms-auth.usecase.ts`（findByPhone → 若 ACTIVE + code 匹配 → `markLoggedIn()` + `updateLastLoginAt` + sign tokens；返回 `{ accountId, accessToken, refreshToken }`）— GREEN T016
+- [X] T023 [Web] [US1] 实装 `AccountSmsCodeController` in `apps/server/src/auth/web/account-sms-code.controller.ts`（`POST /api/v1/accounts/sms-codes` + DTO `RequestSmsCodeRequest`）+ `AccountPhoneSmsAuthController` `POST /api/v1/accounts/phone-sms-auth` + DTOs；class-validator 装饰器 + transform；register in `auth.module.ts`
+- [X] T024 [US1] E2E smoke pass: GREEN T017（preseed ACTIVE account via Prisma 直接 insert → 2 endpoints 200 → tokens 验证 + last_login_at DB check）
 
 **Checkpoint**: US1 MVP — 主流程已注册登录跑通；前后端可冒烟（前端 W4+ 接入时复用）
 

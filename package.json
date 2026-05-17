@@ -17,7 +17,8 @@
       "@parcel/watcher",
       "less",
       "prisma",
-      "@prisma/engines"
+      "@prisma/engines",
+      "bcrypt"
     ]
   },
   "devDependencies": {
@@ -29,18 +30,23 @@
     "@nx/js": "22.7.2",
     "@nx/nest": "^22.7.2",
     "@nx/node": "22.7.2",
+    "@nx/vite": "^22.7.2",
     "@nx/web": "22.7.2",
     "@swc-node/register": "~1.11.1",
     "@swc/cli": "^0.8.1",
     "@swc/core": "~1.15.5",
     "@swc/helpers": "~0.5.18",
     "@types/node": "^22.0.0",
+    "@vitest/ui": "^4.1.6",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
+    "eslint-plugin-boundaries": "^6.0.2",
     "nx": "22.7.2",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2",
-    "typescript-eslint": "^8.40.0"
+    "typescript-eslint": "^8.40.0",
+    "unplugin-swc": "^1.5.9",
+    "vitest": "^4.1.6"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
