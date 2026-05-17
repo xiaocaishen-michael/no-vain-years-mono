@@ -1,0 +1,129 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["account", "public"]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model account {
+  id                  BigInt       @id @default(autoincrement())
+  phone               String?      @unique(map: "uk_account_phone") @db.VarChar(20)
+  status              String       @db.VarChar(16)
+  created_at          DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime     @default(now()) @db.Timestamptz(6)
+  last_login_at       DateTime?    @db.Timestamptz(6)
+  display_name        String?      @db.VarChar(64)
+  freeze_until        DateTime?    @db.Timestamptz(6)
+  previous_phone_hash String?      @db.VarChar(64)
+  credential          credential[]
+
+  @@index([freeze_until], map: "idx_account_freeze_until_active", where: raw("(((status)::text = 'FROZEN'::text) AND (freeze_until IS NOT NULL))"))
+  @@index([previous_phone_hash], map: "idx_account_previous_phone_hash", where: raw("(previous_phone_hash IS NOT NULL)"))
+  @@schema("account")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model account_sms_code {
+  id         BigInt    @id @default(autoincrement())
+  account_id BigInt
+  code_hash  String    @db.VarChar(64)
+  purpose    String    @db.VarChar(32)
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([account_id, purpose], map: "idx_account_sms_code_account_purpose_active", where: raw("(used_at IS NULL)"))
+  @@schema("account")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model credential {
+  id            BigInt    @id @default(autoincrement())
+  account_id    BigInt
+  type          String    @db.VarChar(16)
+  password_hash String?   @db.VarChar(60)
+  last_used_at  DateTime? @db.Timestamptz(6)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  account       account   @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([account_id, type], map: "uk_credential_account_type")
+  @@index([account_id], map: "idx_credential_account_id")
+  @@schema("account")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model realname_profile {
+  id              BigInt    @id @default(autoincrement())
+  account_id      BigInt    @unique
+  status          String    @db.VarChar(16)
+  real_name_enc   Bytes?
+  id_card_no_enc  Bytes?
+  id_card_hash    String?   @unique(map: "uk_realname_profile_id_card_hash", where: raw("(id_card_hash IS NOT NULL)")) @db.VarChar(64)
+  provider_biz_id String?   @db.VarChar(64)
+  verified_at     DateTime? @db.Timestamptz(6)
+  failed_reason   String?   @db.VarChar(32)
+  failed_at       DateTime? @db.Timestamptz(6)
+  retry_count_24h Int       @default(0)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([provider_biz_id], map: "idx_realname_profile_provider_biz_id")
+  @@schema("account")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model refresh_token {
+  id           BigInt    @id @default(autoincrement())
+  token_hash   String    @unique(map: "uk_refresh_token_token_hash") @db.VarChar(64)
+  account_id   BigInt
+  expires_at   DateTime  @db.Timestamptz(6)
+  revoked_at   DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  device_id    String    @db.VarChar(36)
+  device_name  String?   @db.VarChar(64)
+  device_type  String    @default("UNKNOWN") @db.VarChar(16)
+  ip_address   String?   @db.VarChar(45)
+  login_method String    @default("PHONE_SMS") @db.VarChar(16)
+
+  @@index([account_id, device_id], map: "idx_refresh_token_account_device_active", where: raw("(revoked_at IS NULL)"))
+  @@index([account_id], map: "idx_refresh_token_account_id_active", where: raw("(revoked_at IS NULL)"))
+  @@schema("account")
+}
+
+model event_publication {
+  id               String    @id @db.Uuid
+  listener_id      String
+  event_type       String
+  serialized_event String
+  publication_date DateTime  @db.Timestamptz(6)
+  completion_date  DateTime? @db.Timestamptz(6)
+
+  @@index([completion_date], map: "event_publication_by_completion_date_idx")
+  @@index([serialized_event], map: "event_publication_serialized_event_hash_idx", type: Hash)
+  @@schema("public")
+}
+
+model flyway_schema_history {
+  installed_rank Int      @id(map: "flyway_schema_history_pk")
+  version        String?  @db.VarChar(50)
+  description    String   @db.VarChar(200)
+  type           String   @db.VarChar(20)
+  script         String   @db.VarChar(1000)
+  checksum       Int?
+  installed_by   String   @db.VarChar(100)
+  installed_on   DateTime @default(now()) @db.Timestamp(6)
+  execution_time Int
+  success        Boolean
+
+  @@index([success], map: "flyway_schema_history_s_idx")
+  @@schema("public")
+}

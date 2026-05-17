@@ -15,7 +15,9 @@
       "@nestjs/core",
       "nx",
       "@parcel/watcher",
-      "less"
+      "less",
+      "prisma",
+      "@prisma/engines"
     ]
   },
   "devDependencies": {
