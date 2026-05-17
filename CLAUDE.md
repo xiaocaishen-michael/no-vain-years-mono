@@ -37,3 +37,8 @@ Nx mono-repo。`apps/server/`（NestJS + Fastify adapter + Prisma，Plan 1 PoC �
 <!-- nx configuration start-->
 <!-- intentionally empty — nx CLI / skill hints belong in docs/conventions/nx-usage.md (TBD), not in always-load CLAUDE.md. Please do not refill. -->
 <!-- nx configuration end-->
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

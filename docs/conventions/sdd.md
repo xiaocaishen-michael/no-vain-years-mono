@@ -77,11 +77,15 @@ mono-repo 单仓共享。M1.1 起业务模块按此流程开发。基于 [GitHub
 
 ## server impl 后的 mobile types 同步
 
-server `/speckit-implement` 完成含 `[Server]` / `[Contract]` task 后：
+mono 内 server → api-client → mobile 走 **Nx target 依赖链**（不装 `api-types-sync` preset，per W2.0 决策）：
 
-1. **hook 自动跑**：`api-types-sync` preset 的 `after_implement` hook 触发 mono 内 `pnpm api:gen`，产物落 `packages/api-client/src/generated/`（hook `optional: true`，失败不阻塞 impl）
-2. **手工兜底**：hook silent skip（dev server 未起 / 无 `[Server]` task）时，user 跑 `pnpm api:gen` / `/sync-api-types`
-3. **PR 边界**：mono 单仓内 types regen 可与 server impl **同 PR**（meta 时代要拆 PR 是因为跨仓边界，mono 不再适用）；commit message `chore(api-client): sync types — <feature-slug>`
+1. `apps/server` `@nestjs/swagger` 装饰器 → `nx run server:export-openapi` 启临时实例 curl `/docs-json` → 写 `apps/server/openapi.json`
+2. `packages/api-client` `nx run api-client:generate` 依赖 server openapi.json，跑 `openapi-typescript` 生成 TS client
+3. `apps/mobile` 依赖 `packages/api-client`，`nx affected` 改 server endpoint 自动传导触发 api-client regen + mobile rebuild
+
+**触发**：`/speckit-implement` 完成含 `[Server]` / `[Contract]` task 后，用 `pnpm nx affected --target=generate` 一行覆盖 api-client + mobile 链。失败信号在 PR CI（nx affected）可见，不依赖 hook silent skip。
+
+**PR 边界**：mono 单仓内 server impl + api-client regen + mobile 消费**可同 PR**（跨仓 PR 拆分概念 meta 时代专属，mono 不适用）；commit message `chore(api-client): sync types — <feature-slug>` 或并入主 PR commit message 备注 types 已 regen。
 
 ## 反模式
 
