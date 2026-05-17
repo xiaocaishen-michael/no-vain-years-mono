@@ -24,6 +24,7 @@ import { REDIS_CLIENT } from './infrastructure/redis.token';
 import { SmsCodeRedisRepository } from './infrastructure/sms-code.redis.repository';
 import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller';
 import { AccountSmsCodeController } from './web/account-sms-code.controller';
+import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
 
 /**
  * NestJS Module: auth use case (phone-sms-auth).
@@ -55,7 +56,9 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
         const redis = new Redis(config.getOrThrow<string>('REDIS_URL'));
         return {
           throttlers: [
-            { name: 'sms-phone-60s', limit: 1, ttl: 60_000 },
+            // FR-S07 第 1 条: sms:<phone> 60s 1 次 (default name → 标准
+            // Retry-After header; A2 加多 throttler 时再 named distinguish)
+            { limit: 1, ttl: 60_000 },
           ],
           storage: new ThrottlerStorageRedisService(redis),
         };
@@ -85,6 +88,7 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
     OutboxEventCronPublisher,
+    SmsPhoneThrottlerGuard,
     { provide: APP_FILTER, useClass: ProblemDetailFilter },
   ],
   exports: [],
