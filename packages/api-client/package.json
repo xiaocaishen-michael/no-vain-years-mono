@@ -1,0 +1,23 @@
+{
+  "name": "@nvy/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "no-vain-years-mono": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "api:gen": "openapi-ts -f openapi-ts.config.ts",
+    "typecheck": "tsc --build tsconfig.json --emitDeclarationOnly",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "^0.97.1"
+  }
+}

@@ -1,0 +1,285 @@
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/api": {
+      "get": {
+        "operationId": "AppController_getData",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/hello": {
+      "get": {
+        "operationId": "AppController_hello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/v1/accounts/sms-codes": {
+      "post": {
+        "description": "Generates a 6-digit code, stores in Redis with TTL, dispatches via SmsGateway. Rate-limited per phone (60s + 24h 10) and per IP (24h 50).",
+        "operationId": "AccountSmsCodeController_request",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestSmsCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Code dispatched — client should start ttlSec countdown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestSmsCodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failure (invalid phone format)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (FR-S07 #1-3)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Request an SMS verification code",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/phone-sms-auth": {
+      "post": {
+        "description": "Verifies SMS code; auto-registers unregistered phones (US2); returns identical shape across all paths for byte-level anti-enumeration (US3).",
+        "operationId": "AccountPhoneSmsAuthController_auth",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneSmsAuthRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Auth success — tokens issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneSmsAuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failure (invalid phone format / code format)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Anti-enumeration auth failure (wrong code / expired / etc.)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account in 30-day freeze period (FR-S11; FROZEN disclosure)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Auth attempts locked (FR-S07 #4; 5 failures → 30-min lock)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Authenticate via phone + SMS code",
+        "tags": [
+          "accounts"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "no-vain-years API",
+    "description": "no-vain-years backend HTTP API. Generated from NestJS controllers; consumed by packages/api-client for cross-app TS types.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "accounts",
+      "description": "Account lifecycle: SMS code request, phone-SMS auth"
+    }
+  ],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "RequestSmsCodeRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "E.164 +86 CN mobile phone number",
+            "example": "+8613800138000",
+            "pattern": "^\\+861[3-9]\\d{9}$"
+          }
+        },
+        "required": [
+          "phone"
+        ]
+      },
+      "RequestSmsCodeResponse": {
+        "type": "object",
+        "properties": {
+          "ttlSec": {
+            "type": "number",
+            "description": "SMS code TTL in seconds (client countdown / resend gating)",
+            "example": 60,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "ttlSec"
+        ]
+      },
+      "ProblemDetailResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "RFC 9457 problem type URI; \"about:blank\" if generic",
+            "example": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary of the problem type",
+            "example": "Forbidden"
+          },
+          "status": {
+            "type": "number",
+            "description": "HTTP status code",
+            "example": 403
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable explanation specific to this occurrence",
+            "example": "Account is in 30-day freeze period"
+          },
+          "instance": {
+            "type": "string",
+            "description": "URI reference identifying the specific occurrence",
+            "example": "/api/v1/accounts/phone-sms-auth"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status"
+        ]
+      },
+      "PhoneSmsAuthRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "E.164 +86 CN mobile phone number",
+            "example": "+8613800138000",
+            "pattern": "^\\+861[3-9]\\d{9}$"
+          },
+          "code": {
+            "type": "string",
+            "description": "6-digit SMS verification code",
+            "example": "123456",
+            "pattern": "^\\d{6}$"
+          }
+        },
+        "required": [
+          "phone",
+          "code"
+        ]
+      },
+      "PhoneSmsAuthResponse": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Account ID (serialized as string to remain JSON-safe vs BigInt; matches JWT sub claim)",
+            "example": "1234567890"
+          },
+          "accessToken": {
+            "type": "string",
+            "description": "JWT access token (short-lived)",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "JWT refresh token",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        },
+        "required": [
+          "accountId",
+          "accessToken",
+          "refreshToken"
+        ]
+      }
+    }
+  }
+}

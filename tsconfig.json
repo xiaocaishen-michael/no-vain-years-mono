@@ -5,6 +5,9 @@
   "references": [
     {
       "path": "./apps/server"
+    },
+    {
+      "path": "./packages/api-client"
     }
   ]
 }
