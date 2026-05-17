@@ -19,7 +19,7 @@ interface PhoneSmsAuthResponse {
  *
  * accountId serialized as string (JSON-safe vs BigInt; matches FR-S09 + JWT sub claim).
  */
-@Controller('api/v1/accounts')
+@Controller('v1/accounts')
 export class AccountPhoneSmsAuthController {
   constructor(private readonly useCase: PhoneSmsAuthUseCase) {}
 

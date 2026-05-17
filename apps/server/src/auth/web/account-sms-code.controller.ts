@@ -9,7 +9,7 @@ import { RequestSmsCodeRequest } from './dto/request-sms-code.request';
  * Trigger code generation + dispatch via configured SmsGateway (W2 = MockSms).
  * Returns ttlSec for client UX (countdown / resend gating).
  */
-@Controller('api/v1/accounts')
+@Controller('v1/accounts')
 export class AccountSmsCodeController {
   constructor(private readonly useCase: RequestSmsCodeUseCase) {}
 
