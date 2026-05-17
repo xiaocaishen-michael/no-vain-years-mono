@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { Redis } from 'ioredis';
 import { ACCOUNT_REPOSITORY } from './application/ports/account.repository.port';
+import { OUTBOX_PUBLISHER } from './application/ports/outbox-publisher.port';
 import { SMS_CODE_REPOSITORY } from './application/ports/sms-code.repository.port';
 import { SMS_GATEWAY } from './application/ports/sms-gateway.port';
 import { PhoneSmsAuthUseCase } from './application/phone-sms-auth.usecase';
@@ -10,6 +11,7 @@ import { RequestSmsCodeUseCase } from './application/request-sms-code.usecase';
 import { AccountPrismaRepository } from './infrastructure/account.prisma.repository';
 import { JwtTokenService } from './infrastructure/jwt-token.service';
 import { MockSmsGateway } from './infrastructure/mock-sms.gateway';
+import { OutboxEventPrismaPublisher } from './infrastructure/outbox-event.prisma.publisher';
 import { PrismaService } from './infrastructure/prisma.service';
 import { ProblemDetailFilter } from './infrastructure/problem-detail.filter';
 import { REDIS_CLIENT } from './infrastructure/redis.token';
@@ -27,7 +29,7 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
  * - Phase 2 Foundational: VOs / ports / JwtTokenService / AccountCreatedEvent
  * - Phase 3 US1: AccountPrismaRepository + SmsCodeRedisRepository + MockSmsGateway +
  *   RequestSmsCodeUseCase + PhoneSmsAuthUseCase ACTIVE 路径 + 2 controllers
- * - Phase 4 US2: EventPublicationPrismaPublisher + 未注册路径 amend
+ * - Phase 4 US2: OutboxEventPrismaPublisher + 未注册路径 amend
  * - Phase 5 US3: 反枚举 + timing defense
  */
 @Module({
@@ -58,6 +60,7 @@ import { AccountSmsCodeController } from './web/account-sms-code.controller';
     { provide: ACCOUNT_REPOSITORY, useClass: AccountPrismaRepository },
     { provide: SMS_CODE_REPOSITORY, useClass: SmsCodeRedisRepository },
     { provide: SMS_GATEWAY, useClass: MockSmsGateway },
+    { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
     JwtTokenService,
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
