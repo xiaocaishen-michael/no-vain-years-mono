@@ -7,6 +7,7 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
 import { Redis } from 'ioredis';
 import { ACCOUNT_REPOSITORY } from './application/ports/account.repository.port';
 import { OUTBOX_PUBLISHER } from './application/ports/outbox-publisher.port';
+import { RETRY_EXECUTOR } from './application/ports/retry-executor.port';
 import { SMS_CODE_REPOSITORY } from './application/ports/sms-code.repository.port';
 import { SMS_GATEWAY } from './application/ports/sms-gateway.port';
 import { TIMING_DEFENSE_EXECUTOR } from './application/ports/timing-defense.port';
@@ -15,6 +16,7 @@ import { RequestSmsCodeUseCase } from './application/request-sms-code.usecase';
 import { AccountPrismaRepository } from './infrastructure/account.prisma.repository';
 import { AuthFailureLockService } from './infrastructure/auth-failure-lock.service';
 import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor';
+import { CockatielRetryExecutor } from './infrastructure/cockatiel-retry.executor';
 import { JwtTokenService } from './infrastructure/jwt-token.service';
 import { MockSmsGateway } from './infrastructure/mock-sms.gateway';
 import { OutboxEventCronPublisher } from './infrastructure/outbox-event-cron.publisher';
@@ -98,6 +100,7 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
     { provide: SMS_GATEWAY, useClass: MockSmsGateway },
     { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
     { provide: TIMING_DEFENSE_EXECUTOR, useClass: BcryptTimingDefenseExecutor },
+    { provide: RETRY_EXECUTOR, useClass: CockatielRetryExecutor },
     JwtTokenService,
     AuthFailureLockService,
     RequestSmsCodeUseCase,
