@@ -13,8 +13,9 @@ import { SmsCode } from '../domain/sms-code.vo';
 import type { SmsCodeRepository } from './ports/sms-code.repository.port';
 import type { TimingDefenseExecutor } from './ports/timing-defense.port';
 import type { JwtTokenService } from '../infrastructure/jwt-token.service';
+import type { AuthFailureLockService } from '../infrastructure/auth-failure-lock.service';
 
-// T036/T037 GREEN amends PhoneSmsAuthUseCase ctor to 6 args (+ TimingDefenseExecutor).
+// Ctor amend 轨迹: T036/T037 +TimingDefenseExecutor=6 / T047 +AuthFailureLockService=7
 type UseCaseCtor = new (
   accountRepo: AccountPrismaRepository,
   smsCodeRepo: SmsCodeRepository,
@@ -22,6 +23,7 @@ type UseCaseCtor = new (
   outboxPublisher: OutboxEventPrismaPublisher,
   prismaService: PrismaService,
   timingDefense: TimingDefenseExecutor,
+  authFailureLock: AuthFailureLockService,
 ) => PhoneSmsAuthUseCase;
 
 const SERVER_DIR = process.cwd();
@@ -64,6 +66,10 @@ describe('PhoneSmsAuthUseCase concurrent auto-register race (Testcontainers PG)'
     const timingDefense: TimingDefenseExecutor = {
       pad: vi.fn().mockResolvedValue(undefined),
     };
+    const authFailureLock: AuthFailureLockService = {
+      assertNotLocked: vi.fn().mockResolvedValue(undefined),
+      recordFailure: vi.fn().mockResolvedValue(undefined),
+    } as unknown as AuthFailureLockService;
     useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
       accountRepo,
       smsCodeRepo,
@@ -71,6 +77,7 @@ describe('PhoneSmsAuthUseCase concurrent auto-register race (Testcontainers PG)'
       outboxPublisher,
       prisma,
       timingDefense,
+      authFailureLock,
     );
   }, 120_000);
 

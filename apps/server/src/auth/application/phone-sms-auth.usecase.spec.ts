@@ -11,18 +11,32 @@ import type { OutboxPublisher } from './ports/outbox-publisher.port';
 import type { TimingDefenseExecutor } from './ports/timing-defense.port';
 import type { JwtTokenService } from '../infrastructure/jwt-token.service';
 import type { PrismaService } from '../infrastructure/prisma.service';
+import type { AuthFailureLockService } from '../infrastructure/auth-failure-lock.service';
 import { ACCOUNT_CREATED_EVENT_TYPE } from '../domain/events/account-created.event';
 
-// T036/T037 GREEN 会把 PhoneSmsAuthUseCase ctor 扩为 6 参 (+ TimingDefenseExecutor).
-// 当前 RED 期通过 cast bridge 保留 type-check 不破; spec 测期望行为.
+// PhoneSmsAuthUseCase ctor 历史 amend 轨迹:
+// - T036/T037 (US3): +TimingDefenseExecutor → 6 args
+// - T047 (W3 A2): +AuthFailureLockService → 7 args
 type UseCaseCtor = new (
   accountRepo: AccountRepository,
   smsCodeRepo: SmsCodeRepository,
   jwtTokenService: JwtTokenService,
   outboxPublisher: OutboxPublisher,
   prismaService: PrismaService,
-  timingDefense?: TimingDefenseExecutor,
+  timingDefense: TimingDefenseExecutor,
+  authFailureLock: AuthFailureLockService,
 ) => PhoneSmsAuthUseCase;
+
+/**
+ * Default mock: assertNotLocked passes (not locked), recordFailure no-op.
+ * Per spec override to test lock 路径。
+ */
+function buildAuthFailureLockMock(): AuthFailureLockService {
+  return {
+    assertNotLocked: vi.fn().mockResolvedValue(undefined),
+    recordFailure: vi.fn().mockResolvedValue(undefined),
+  } as unknown as AuthFailureLockService;
+}
 
 describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
   let accountRepo: AccountRepository;
@@ -73,6 +87,7 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
       outboxPublisher,
       prismaService,
       timingDefense,
+      buildAuthFailureLockMock(),
     );
   });
 
@@ -193,6 +208,7 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
       outboxPublisher,
       prismaService,
       timingDefense,
+      buildAuthFailureLockMock(),
     );
   });
 
@@ -292,6 +308,7 @@ function buildUseCaseHarness(): {
     outboxPublisher,
     prismaService,
     timingDefense,
+    buildAuthFailureLockMock(),
   );
   return {
     accountRepo,

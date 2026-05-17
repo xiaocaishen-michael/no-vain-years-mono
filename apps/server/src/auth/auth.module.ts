@@ -13,6 +13,7 @@ import { TIMING_DEFENSE_EXECUTOR } from './application/ports/timing-defense.port
 import { PhoneSmsAuthUseCase } from './application/phone-sms-auth.usecase';
 import { RequestSmsCodeUseCase } from './application/request-sms-code.usecase';
 import { AccountPrismaRepository } from './infrastructure/account.prisma.repository';
+import { AuthFailureLockService } from './infrastructure/auth-failure-lock.service';
 import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor';
 import { JwtTokenService } from './infrastructure/jwt-token.service';
 import { MockSmsGateway } from './infrastructure/mock-sms.gateway';
@@ -56,9 +57,22 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
         const redis = new Redis(config.getOrThrow<string>('REDIS_URL'));
         return {
           throttlers: [
-            // FR-S07 第 1 条: sms:<phone> 60s 1 次 (default name → 标准
-            // Retry-After header; A2 加多 throttler 时再 named distinguish)
+            // FR-S07 第 1 条: sms:<phone> 60s 1 次 (default → 标准 Retry-After)
             { limit: 1, ttl: 60_000 },
+            // FR-S07 第 2 条: sms:<phone> 24h 10 次 (复用 guard phone tracker)
+            { name: 'sms-phone-24h', limit: 10, ttl: 86_400_000 },
+            // FR-S07 第 3 条: sms:<ip> 24h 50 次 (per-throttler getTracker = IP)
+            {
+              name: 'sms-ip-24h',
+              limit: 50,
+              ttl: 86_400_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const ip = req['ip'];
+                return Promise.resolve(
+                  `ip:${typeof ip === 'string' ? ip : 'unknown'}`,
+                );
+              },
+            },
           ],
           storage: new ThrottlerStorageRedisService(redis),
         };
@@ -85,6 +99,7 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
     { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
     { provide: TIMING_DEFENSE_EXECUTOR, useClass: BcryptTimingDefenseExecutor },
     JwtTokenService,
+    AuthFailureLockService,
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
     OutboxEventCronPublisher,
