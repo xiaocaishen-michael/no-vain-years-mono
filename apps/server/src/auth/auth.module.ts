@@ -1,4 +1,21 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { Redis } from 'ioredis';
+import { ACCOUNT_REPOSITORY } from './application/ports/account.repository.port';
+import { SMS_CODE_REPOSITORY } from './application/ports/sms-code.repository.port';
+import { SMS_GATEWAY } from './application/ports/sms-gateway.port';
+import { PhoneSmsAuthUseCase } from './application/phone-sms-auth.usecase';
+import { RequestSmsCodeUseCase } from './application/request-sms-code.usecase';
+import { AccountPrismaRepository } from './infrastructure/account.prisma.repository';
+import { JwtTokenService } from './infrastructure/jwt-token.service';
+import { MockSmsGateway } from './infrastructure/mock-sms.gateway';
+import { PrismaService } from './infrastructure/prisma.service';
+import { ProblemDetailFilter } from './infrastructure/problem-detail.filter';
+import { REDIS_CLIENT } from './infrastructure/redis.token';
+import { SmsCodeRedisRepository } from './infrastructure/sms-code.redis.repository';
+import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller';
+import { AccountSmsCodeController } from './web/account-sms-code.controller';
 
 /**
  * NestJS Module: auth use case (phone-sms-auth).
@@ -14,9 +31,38 @@ import { Module } from '@nestjs/common';
  * - Phase 5 US3: 反枚举 + timing defense
  */
 @Module({
-  imports: [],
-  controllers: [],
-  providers: [],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.getOrThrow<string>('AUTH_JWT_SECRET'),
+        signOptions: { expiresIn: '15m' },
+      }),
+    }),
+  ],
+  controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController],
+  providers: [
+    {
+      provide: PrismaService,
+      useFactory: (config: ConfigService) =>
+        new PrismaService(config.getOrThrow<string>('DATABASE_URL')),
+      inject: [ConfigService],
+    },
+    {
+      provide: REDIS_CLIENT,
+      useFactory: (config: ConfigService) =>
+        new Redis(config.getOrThrow<string>('REDIS_URL')),
+      inject: [ConfigService],
+    },
+    { provide: ACCOUNT_REPOSITORY, useClass: AccountPrismaRepository },
+    { provide: SMS_CODE_REPOSITORY, useClass: SmsCodeRedisRepository },
+    { provide: SMS_GATEWAY, useClass: MockSmsGateway },
+    JwtTokenService,
+    RequestSmsCodeUseCase,
+    PhoneSmsAuthUseCase,
+    ProblemDetailFilter,
+  ],
   exports: [],
 })
 export class AuthModule {}

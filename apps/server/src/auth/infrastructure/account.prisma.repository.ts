@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Account, AccountStatus } from '../domain/account.aggregate';
 import { Phone } from '../domain/phone.vo';
 import type { AccountRepository } from '../application/ports/account.repository.port';
-import type { PrismaClient } from '../../generated/prisma/client';
+import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class AccountPrismaRepository implements AccountRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findByPhone(phone: Phone): Promise<Account | null> {
     const row = await this.prisma.account.findUnique({

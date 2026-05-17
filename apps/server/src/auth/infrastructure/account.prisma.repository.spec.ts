@@ -4,8 +4,7 @@ import {
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
-import { PrismaClient } from '../../generated/prisma/client.js';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaService } from './prisma.service';
 import { AccountPrismaRepository } from './account.prisma.repository';
 import { Phone } from '../domain/phone.vo';
 import { AccountStatus } from '../domain/account.aggregate';
@@ -15,7 +14,7 @@ const SERVER_DIR = process.cwd();
 
 describe('AccountPrismaRepository (Testcontainers PG)', () => {
   let container: StartedPostgreSqlContainer;
-  let prisma: PrismaClient;
+  let prisma: PrismaService;
   let repo: AccountPrismaRepository;
 
   beforeAll(async () => {
@@ -33,8 +32,7 @@ describe('AccountPrismaRepository (Testcontainers PG)', () => {
       stdio: 'inherit',
     });
 
-    const adapter = new PrismaPg({ connectionString: url });
-    prisma = new PrismaClient({ adapter });
+    prisma = new PrismaService(url);
     repo = new AccountPrismaRepository(prisma);
   }, 120_000);
 

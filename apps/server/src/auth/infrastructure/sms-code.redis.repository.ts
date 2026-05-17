@@ -1,16 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import type { Redis } from 'ioredis';
 import { Phone } from '../domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import type { SmsCodeRepository } from '../application/ports/sms-code.repository.port';
+import { REDIS_CLIENT } from './redis.token';
 
 const BCRYPT_COST = 12;
 const KEY_PREFIX = 'sms_code:';
 
 @Injectable()
 export class SmsCodeRedisRepository implements SmsCodeRepository {
-  constructor(private readonly redis: Redis) {}
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
   async store(phone: Phone, code: SmsCode, ttlSec: number): Promise<void> {
     const hash = await bcrypt.hash(code.value, BCRYPT_COST);
