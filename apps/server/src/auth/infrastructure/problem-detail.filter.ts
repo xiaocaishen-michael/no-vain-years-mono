@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { AccountInFreezePeriodException } from '../domain/account-in-freeze-period.exception';
+import { AuthAttemptLockedException } from '../domain/auth-attempt-locked.exception';
 
 /**
  * RFC 9457 ProblemDetail global exception filter (FR-S10).
@@ -31,6 +32,22 @@ export class ProblemDetailFilter implements ExceptionFilter {
           status: 403,
           code: AccountInFreezePeriodException.code,
           freezeUntil: exception.freezeUntil.toISOString(),
+          instance: request.url,
+        });
+      return;
+    }
+
+    if (exception instanceof AuthAttemptLockedException) {
+      response
+        .status(429)
+        .header('content-type', 'application/problem+json')
+        .header('retry-after', String(exception.retryAfterSeconds))
+        .send({
+          type: 'about:blank',
+          title: 'Too Many Requests',
+          status: 429,
+          code: AuthAttemptLockedException.code,
+          retryAfterSeconds: exception.retryAfterSeconds,
           instance: request.url,
         });
       return;

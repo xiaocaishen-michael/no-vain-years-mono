@@ -192,9 +192,9 @@ stdlib):
 
 ### A2 — FR-S07 剩 3 条规则 + 锁 30min + 集成 IT
 
-- [ ] T045 [Web] [Test] 加 sms:&lt;phone&gt; 24h 10 次 限流（throttler 多 throttler config + 自定义 `getTracker` key extractor 用 phone）
-- [ ] T046 [Web] [Test] 加 sms:&lt;ip&gt; 24h 50 次 限流（getTracker 用 req.ip）
-- [ ] T047 [App] [Test] auth:&lt;phone&gt; 5 次失败 → 锁 30min：失败计数 Redis key `auth-fail:&lt;phone&gt;` (INCR + EXPIRE 24h)；失败到 5 → set Redis key `auth-lock:&lt;phone&gt;` (TTL 30min)；`PhoneSmsAuthUseCase` 入口校验 lock key 存在 → throw 429 + `Retry-After: 1800`；锁状态 100% Redis（per 2026-05-17 W3 起手 user choice "Redis lock store"）
+- [X] T045 [Web] [Test] 加 sms:&lt;phone&gt; 24h 10 次 限流（module 多 throttler config + 复用 guard fallback `getTracker` 走 phone key；controller `@Throttle` decorator drop, throttler 6+ 默认 enforce 全部 module throttler）
+- [X] T046 [Web] [Test] 加 sms:&lt;ip&gt; 24h 50 次 限流（per-throttler `getTracker` 返 `ip:<req.ip>` 覆盖 guard fallback）
+- [X] T047 [App] [Test] auth:&lt;phone&gt; 5 次失败 → 锁 30min：新 `AuthFailureLockService` (Testcontainers Redis 单测 4 cases) + `AuthAttemptLockedException` domain exception (429) + `ProblemDetailFilter` 加 mapping (Retry-After header + body code `AUTH_ATTEMPT_LOCKED`) + `PhoneSmsAuthUseCase` 入口 wrap `executeInternal` (assertNotLocked → executeInternal → catch UnauthorizedException → recordFailure); 锁状态 100% Redis (per 2026-05-17 W3 起手 user choice "Redis lock store")
 
 ### A3 — RetryExecutor port + cockatiel adapter
 

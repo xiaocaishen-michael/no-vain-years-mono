@@ -17,6 +17,7 @@ import {
   TIMING_DEFENSE_EXECUTOR,
   type TimingDefenseExecutor,
 } from './ports/timing-defense.port';
+import { AuthFailureLockService } from '../infrastructure/auth-failure-lock.service';
 import { JwtTokenService } from '../infrastructure/jwt-token.service';
 import { PrismaService } from '../infrastructure/prisma.service';
 import {
@@ -44,9 +45,28 @@ export class PhoneSmsAuthUseCase {
     private readonly prisma: PrismaService,
     @Inject(TIMING_DEFENSE_EXECUTOR)
     private readonly timingDefense: TimingDefenseExecutor,
+    private readonly authFailureLock: AuthFailureLockService,
   ) {}
 
   async execute(phone: Phone, code: SmsCode): Promise<PhoneSmsAuthResult> {
+    // FR-S07 #4: lock check — locked phone 直接 throw 429 + Retry-After。
+    await this.authFailureLock.assertNotLocked(phone);
+    try {
+      return await this.executeInternal(phone, code);
+    } catch (err) {
+      // 仅 UnauthorizedException 算认证失败 (码错 / 码过期 / ANONYMIZED 反枚举)。
+      // FROZEN 抛 AccountInFreezePeriodException 不算失败 (合法 403)。
+      if (err instanceof UnauthorizedException) {
+        await this.authFailureLock.recordFailure(phone);
+      }
+      throw err;
+    }
+  }
+
+  private async executeInternal(
+    phone: Phone,
+    code: SmsCode,
+  ): Promise<PhoneSmsAuthResult> {
     const account = await this.accountRepo.findByPhone(phone);
 
     if (!account) {
