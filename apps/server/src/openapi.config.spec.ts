@@ -1,41 +1,46 @@
+import { CanActivate, ExecutionContext } from '@nestjs/common';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { SwaggerModule, OpenAPIObject } from '@nestjs/swagger';
 import { Test } from '@nestjs/testing';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { AppModule } from './app/app.module';
-import { PrismaService } from './auth/infrastructure/prisma.service';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PhoneSmsAuthUseCase } from './auth/application/phone-sms-auth.usecase';
+import { RequestSmsCodeUseCase } from './auth/application/request-sms-code.usecase';
+import { AccountPhoneSmsAuthController } from './auth/web/account-phone-sms-auth.controller';
+import { AccountSmsCodeController } from './auth/web/account-sms-code.controller';
+import { SmsPhoneThrottlerGuard } from './auth/web/sms-phone-throttler.guard';
 import { buildOpenApiConfig } from './openapi.config';
 
 /**
  * W4 V8 acceptance: @nestjs/swagger 产 OpenAPI 3.1 JSON,
  * 顶层 openapi: '3.1.0' + 含所有公开 endpoint + 含 schema 引用.
  *
- * Mock PrismaService so the test does not require a live PG connection in CI.
- * REDIS_URL / DATABASE_URL set via env defaults so ConfigService.getOrThrow
- * doesn't blow up during AppModule wiring (ioredis Redis() is lazy — no
- * actual TCP until first command).
+ * 不 import AppModule — full AppModule init 会让 ioredis 真连 REDIS_URL,
+ * GitHub runner 无 Redis 会 EPIPE。改用 controllers-only test module + mock
+ * use cases + bypass throttler guard,scope 仅 swagger metadata 验证。
+ *
+ * Spec 不替代 e2e 测试:e2e 走 Testcontainers 起真 PG+Redis 跑实际 HTTP。
  */
+const passthroughGuard: CanActivate = {
+  canActivate: (_ctx: ExecutionContext) => true,
+};
+
 describe('OpenAPI document (W4 V8)', () => {
   let app: NestFastifyApplication;
   let document: OpenAPIObject;
 
   beforeAll(async () => {
-    process.env.DATABASE_URL ??= 'postgresql://nobody@localhost:5432/none';
-    process.env.REDIS_URL ??= 'redis://localhost:6379';
-    process.env.JWT_ACCESS_SECRET ??= 'test-access-secret-32-char-min-len-pad';
-    process.env.JWT_REFRESH_SECRET ??= 'test-refresh-secret-32-char-min-len-pa';
-
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
+      controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController],
+      providers: [
+        { provide: RequestSmsCodeUseCase, useValue: { execute: async () => ({ ttlSec: 60 }) } },
+        { provide: PhoneSmsAuthUseCase, useValue: { execute: async () => null } },
+      ],
     })
-      .overrideProvider(PrismaService)
-      .useValue({
-        $connect: vi.fn().mockResolvedValue(undefined),
-        $disconnect: vi.fn().mockResolvedValue(undefined),
-      })
+      .overrideGuard(SmsPhoneThrottlerGuard)
+      .useValue(passthroughGuard)
       .compile();
 
     app = moduleRef.createNestApplication<NestFastifyApplication>(
