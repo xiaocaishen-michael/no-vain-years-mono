@@ -123,3 +123,38 @@ jobs:
 
       - name: Lint server (eslint + plugin-boundaries)
         run: pnpm nx lint server
+
+  # V9 acceptance gate (Plan 1 § E.3): Docker build + Trivy image scan.
+  # Trigger strategy mirrors my-beloved-server ci.yml — PR skip / main push run.
+  # Rationale: image scan ~3-5min, no PR-time value (Dockerfile rarely changes
+  # per PR; native deps caught by build job). main push catches base-image /
+  # transitive CVE on the merged commit within revert window. Not in ruleset
+  # required_status_checks. nightly cron is follow-up (see memory).
+  docker-image:
+    name: Docker build + Trivy image scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build server image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/server/Dockerfile
+          load: true
+          tags: nvy/server:ci
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: nvy/server:ci
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
