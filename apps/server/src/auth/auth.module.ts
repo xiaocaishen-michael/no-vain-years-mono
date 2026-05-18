@@ -97,7 +97,17 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
       inject: [ConfigService],
     },
     { provide: ACCOUNT_REPOSITORY, useClass: AccountPrismaRepository },
-    { provide: SMS_CODE_REPOSITORY, useClass: SmsCodeRedisRepository },
+    {
+      // Per ADR-0023: HMAC-SHA256 + timingSafeEqual 替换 bcrypt cost=12.
+      // SMS_CODE_HMAC_SECRET fail-fast,与 AUTH_JWT_SECRET 同管理面.
+      provide: SMS_CODE_REPOSITORY,
+      useFactory: (redis: Redis, config: ConfigService) =>
+        new SmsCodeRedisRepository(
+          redis,
+          config.getOrThrow<string>('SMS_CODE_HMAC_SECRET'),
+        ),
+      inject: [REDIS_CLIENT, ConfigService],
+    },
     {
       // SMS_GATEWAY=aliyun → AliyunSmsGateway (要求 ALIYUN_* env 全配, fail-fast)
       // SMS_GATEWAY=mock | undefined → MockSmsGateway (dev/test 默认)

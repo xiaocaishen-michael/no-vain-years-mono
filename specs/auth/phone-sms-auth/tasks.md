@@ -209,6 +209,21 @@ stdlib):
 
 ---
 
+## Phase F: W3+ FR-S06 timing defense fix — SMS code storage HMAC 切换
+
+**Purpose**: 修 W3 deferred Item 4 实证 spec gap — `SingleEndpointEnumerationDefenseIT` 200-rep diff ≈ 193ms 违反 FR-S06 P95 ≤ 50ms 阈值。根因 = `SmsCodeRedisRepository.verify` bcrypt cost=12 单边 ~150ms 仅 ACTIVE+码错路径触发,pad 抹不平。
+
+**Ship 决策**: Option B(per project memory `project-fr-s06-timing-defense-spec-gap` + ADR-0023) — SMS code 存储从 bcrypt 改 HMAC-SHA256 + `crypto.timingSafeEqual`，verify <1ms 让 3 路径自然均一,pad 保留作纵深防御。
+
+- [X] T053 [Infra] [Test] rewrite `apps/server/src/auth/infrastructure/sms-code.redis.repository.ts` 用 `crypto.createHmac('sha256', secret).update(code).digest('base64url')` 存 + `crypto.timingSafeEqual` 验; ctor 改 `(redis: Redis, hmacSecret: string)`; spec test `sms-code.redis.repository.spec.ts` 5 原 case + 3 新 case (HMAC deterministic / negative / secret rotation)
+- [X] T054 [Infra] `auth.module.ts` SMS_CODE_REPOSITORY provider 从 `useClass` 改 `useFactory` 注入 `REDIS_CLIENT + ConfigService.getOrThrow('SMS_CODE_HMAC_SECRET')` fail-fast; `.env.example` 加 `SMS_CODE_HMAC_SECRET` doc 含轮换策略注脚
+- [X] T055 [Test] 4 e2e IT (`accounts.us1/us2/us3.e2e.spec.ts` + `timing-defense.p95.it.spec.ts`) beforeAll 加 `process.env.SMS_CODE_HMAC_SECRET` setup; timing IT 头部 doc 反映新机制 (verify <1ms, pad ~80ms 单边支配, 3 路径均一)
+- [X] T056 [Test] RUN_PERF_IT=true PERF_IT_REPS=200 实测 P95 PASS: p95Active_wrong 51.38ms / p95Active_expired 51.57ms / p95Anonymized_any 51.37ms / diff **0.20ms** << 50ms 阈值; 对比 PR #23 实证 diff ≈ 193ms (缩 ~1000x)
+- [X] T057 [Docs] ADR-0023 `docs/adr/0023-sms-code-storage-hmac.md` Accepted (2026-05-18) 含 4 options 决策记录 + bcrypt vs HMAC trade-off + 验证证据
+- [X] T058 [Spec] `spec.md` FR-S03 / FR-S06 / Key Entities `password_hash` / Change Log 4 处 amend; FR-S06 加 storage sub-clause + ADR-0023 link
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

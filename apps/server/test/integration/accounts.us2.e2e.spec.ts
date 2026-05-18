@@ -42,6 +42,8 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
     process.env.REDIS_URL = redisContainer.getConnectionUrl();
     process.env.AUTH_JWT_SECRET =
       'us2-e2e-test-jwt-secret-min-32-bytes-pad-abc';
+    process.env.SMS_CODE_HMAC_SECRET =
+      'us2-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
 
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       cwd: SERVER_DIR,
