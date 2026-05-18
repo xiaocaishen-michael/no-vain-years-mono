@@ -83,7 +83,7 @@ packages/                   # 共享包(api-client / shared-types / ...)
 
 ## References
 
-* [Plan 1 — Claude+Java vs Claude+AI meta-repo 推倒重来选型](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)(在旧 meta 仓)
+* [Plan 1 — Claude+Java vs Claude+AI meta-repo 推倒重来选型](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
 * [V10 验收 — Claude Code agent loop 体感](../experiences/v10-claude-agent-loop.md)
 * [V1 LoC 验收 — mono 0.119 / Java 5705](../../specs/auth/phone-sms-auth/v1-loc-report.md)
 * [ADR-0019: ORM = Prisma](0019-orm-prisma.md)
