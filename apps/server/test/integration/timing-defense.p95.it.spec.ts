@@ -51,14 +51,16 @@ const WRONG_CODE = '999999';
  * 与 T034 unit 测的差别:
  *   - 本 IT 走完整 HTTP 栈 (Fastify + ValidationPipe + Guard + Filter)
  *   - 真 PG + Redis (Testcontainers), 不 mock
- *   - 真 bcrypt cost=10 pad + cost=12 SMS code hash
+ *   - 真 bcrypt cost=10 pad + HMAC-SHA256 SMS code hash (per ADR-0023)
  *   - 阈值 ≤ 50ms (HTTP wall-clock variance > in-process 5ms)
  *
- * **静默踩坑预警**:
- *   - P1 vs P2 timing diff 隐含来自 bcrypt.compare(cost=12) ≈ 50ms 单边差
- *     (P1 verify 跑 bcrypt.compare, P2 verify redis.get 返 null 0ms)
- *   - 若实测 diff > 50ms,反向修复 = SmsCodeRedisRepository.verify 在 redis miss 时
- *     也跑 dummy bcrypt.compare (现 impl 未做);M2+ 再评 (PoC scope: 揭示 issue 即可)
+ * **机制说明** (per ADR-0023, 2026-05-18 切换):
+ *   - SmsCodeRedisRepository 用 HMAC-SHA256 + crypto.timingSafeEqual 替换 bcrypt cost=12
+ *   - verify <1ms,3 个反枚举路径(ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED) 时延均一
+ *   - BcryptTimingDefenseExecutor.pad(cost=10) ~80ms 保留作纵深防御抹平 redis.get
+ *     抖动 / Phone VO 构造等残余微差
+ *   - 历史: mono PR #23 200-rep 实测 diff ≈ 193ms 违反阈值, 根因 = bcrypt verify
+ *     ~150ms 单边支配仅 ACTIVE+码错 path. PR #25 (本 PR) 切 HMAC 后预期 diff ≤ 50ms
  *
  * **CI 默认 skip** (env-gated):
  *   - 本 IT 5-10min wall time, CI 不默认跑
@@ -95,6 +97,8 @@ describe.skipIf(!RUN_PERF)(
       process.env.REDIS_URL = redisContainer.getConnectionUrl();
       process.env.AUTH_JWT_SECRET =
         'p95-it-jwt-secret-min-32-bytes-pad-abcdef';
+      process.env.SMS_CODE_HMAC_SECRET =
+        'p95-it-hmac-secret-min-32-bytes-pad-zzzzzz';
 
       execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
         cwd: SERVER_DIR,

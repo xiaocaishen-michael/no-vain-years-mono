@@ -129,7 +129,7 @@
 
 - **FR-S01（Endpoint）**：唯一 endpoint `POST /api/v1/accounts/phone-sms-auth`，入参 `{phone: string, code: string}`，响应 `{accountId, accessToken, refreshToken}` 或 RFC 9457 ProblemDetail 错误。**无 password / email 字段**（per ADR-0016 决策 2 + 3）
 - **FR-S02（Phone 格式）**：`^\+861[3-9]\d{9}$`（仅大陆段）；不匹配 → `INVALID_PHONE_FORMAT` HTTP 400
-- **FR-S03（SMS code 存储）**：复用既有 SMS code 基础设施 — Redis `sms_code:<phone>` 5min TTL，hash 存储（不存明文，per CL-002）；与 SMS gateway / RateLimitService 完全复用
+- **FR-S03（SMS code 存储）**：复用既有 SMS code 基础设施 — Redis `sms_code:<phone>` 5min TTL，hash 存储（不存明文，per CL-002）；存储算法 = **HMAC-SHA256 + `crypto.timingSafeEqual`**（per [ADR-0023](../../../docs/adr/0023-sms-code-storage-hmac.md)，2026-05-18 从 bcrypt cost=12 切换，根因见 FR-S06 timing 段）；secret env `SMS_CODE_HMAC_SECRET` fail-fast；与 SMS gateway / RateLimitService 完全复用
 - **FR-S04（SMS Purpose 隐藏）**：`/api/v1/accounts/sms-codes` endpoint 入参**简化为 `{phone}`**（删除 purpose 字段）；server 内部根据 phone 是否存在动态决定 SMS template：
   - phone 存在 ACTIVE → Template A（真实验证码，文案"登录验证码"）
   - phone 不存在 → Template A（真实验证码，文案与上同——per User Story 2 反枚举一致）
@@ -141,9 +141,10 @@
   - phone 存在 + status=FROZEN → 抛 `AccountInFreezePeriodException` → HTTP 403 + body `code: ACCOUNT_IN_FREEZE_PERIOD` + `freezeUntil`；**不**走 timing defense pad（disclosure path，wall-clock < 100ms，per spec D `expose-frozen-account-status` FR-002 + CL-006）
   - phone 存在 + status=ANONYMIZED → 反枚举吞下：dummy bcrypt 计算（timing defense pad 仍生效） + 抛 `InvalidCredentialsException` → HTTP 401
 - **FR-S06（反枚举 timing defense）**：timing defense 范围**缩为 ANONYMIZED + 码错 + 码过期 + 未注册自动创建 + 已注册 ACTIVE 路径**——FROZEN 路径已显式 disclosure 不参与（per spec D `expose-frozen-account-status` FR-004 + CL-003 `TimingDefenseExecutor.executeInConstantTime` bypassPad 参数）。覆盖范围内成功路径（已注册 ACTIVE / 未注册自动注册）+ 失败路径（ANONYMIZED / 码错 / 码过期）必须**响应 P95 时延差 ≤ 50ms**：
-  - 失败路径调用 `TimingDefenseExecutor` 计算 dummy BCrypt hash（cost=12，5-15ms）
-  - 复用既有 `TimingDefenseExecutor` 实现（原 register-by-phone use case 引入，DB schema `password_hash` 字段保留作 dummy hash 计算输入）
-  - 由独立集成测试 `SingleEndpointEnumerationDefenseIT` 验证 1000 次请求 P95 差 ≤ 50ms（**不含 FROZEN 路径**——单独由 spec D `FrozenAccountStatusDisclosureIT` 覆盖）
+  - SMS code 存储 = HMAC-SHA256 + `crypto.timingSafeEqual`（per FR-S03 + [ADR-0023](../../../docs/adr/0023-sms-code-storage-hmac.md)）— verify 路径耗时 < 1ms,3 个反枚举路径自然时延均一
+  - 失败路径仍调用 `TimingDefenseExecutor.pad()` 计算 dummy bcrypt compare(cost=10，~80ms)作纵深防御 — 抹平 redis.get 抖动 / Phone VO 构造 / ConfigService.get / account 查询等任何残余微差异
+  - mono `BcryptTimingDefenseExecutor` 由 TS + `bcrypt` npm 包新写（不沿用 Java 老类），dummy hash input 用固定内存常量（不依赖 DB password_hash 列）
+  - 由独立集成测试 `SingleEndpointEnumerationDefenseIT`（`apps/server/test/integration/timing-defense.p95.it.spec.ts`，env-gated `RUN_PERF_IT=true PERF_IT_REPS=N`）验证 P95 差 ≤ 50ms（**不含 FROZEN 路径**——单独由 spec D `FrozenAccountStatusDisclosureIT` 覆盖）；PoC 阶段 200-rep fast feedback，1000-rep nightly job 在 Plan 2 dedicated slow-IT job 引入时启用
 - **FR-S07（限流规则，复用 + 新增）**：
   - 复用 `sms:<phone>` 60s 1 次（per RateLimitService 既有规则）
   - 复用 `sms:<phone>` 24h 10 次
@@ -184,7 +185,7 @@
 
 - **Account（聚合根）**：复用既有 Account；本 use case 不引入新字段
   - `email` 字段保留 schema 但不写入新值（`[DEPRECATED M1.2 ADR-0016]`，per PRD 修订）
-  - `password_hash` 字段保留 schema 但不写入新值（**作 dummy hash 计算输入用**，per FR-S06 timing defense）
+  - `password_hash` 字段保留 schema 但**不写入新值且不被读取**（mono `BcryptTimingDefenseExecutor` 用固定内存常量作 dummy hash input，不依赖此列，per 2026-05-17 Changelog (c)；M2+ 评估真删该字段）
 - **新增**：无（不引入新聚合根 / 实体 / 值对象）
 - **删除**：无（domain 层无变化；删的是 application / web / DTO 层）
 
@@ -335,6 +336,7 @@
 - **2026-05-17** — mono W2 amend：(a) FR-S11 outbox 表名 `event_publication` → `outbox_event`（per W2.4 US2 决策；Spring Modulith 老表保留不动）；(b) User Story 3 Acceptance Scenarios L70-73 narrative 保留 pre-CL-006 的早期描述作上下文，实施严格按 FR-S05/FR-S06/SC-S03 post-CL-006 amended terms（FROZEN→403 disclosure，ANONYMIZED→401 反枚举吞 + dummy bcrypt timing pad）；(c) mono `TimingDefenseExecutor` 由 TS + `bcrypt` npm 包新写（不沿用 Java 老类），dummy hash input 用固定内存常量（不需 DB password_hash 列）；(d) ANONYMIZED 测试 setup 用 phone NOT NULL hack 触达 code path（生产中 phone 应 NULL per PRD § 5.5，测试为覆盖反枚举行为路径需要 denormalized state）。
 - **2026-05-15** — Meta canonical 合并 server `mbw-account/phone-sms-auth/spec.md` + app `apps/native/specs/auth/login/spec.md` 双源（per meta-repo spec-kit 抽 single source of truth 计划）；server FR-001..012 重编 FR-S01..S12 / app FR-001..015 重编 FR-C01..C15；client UI flow / a11y / OAuth placeholder / errorScope 完整保留；后续 server / app 仓 spec.md 转 symlink 指向本 canonical。
 - **2026-05-17** — **mono W2 migration**：从 meta canonical copy 到 mono `specs/auth/phone-sms-auth/spec.md`，8 处 Java/Spring 实现绑定描述替换为 NestJS / Prisma / TS 中立等价描述（`mbw-account` → `apps/server` Module `auth` / `@Transactional` Java annotation → Prisma `$transaction` / `mbw-shared.web.GlobalExceptionHandler` → NestJS `@Catch()` filter / Spring Modulith Event → outbox pattern / `MBW_AUTH_JWT_SECRET` → `AUTH_JWT_SECRET` / ArchUnit + Spring Modulith Verifier → `eslint-plugin-boundaries` 4 类规则 / FR-S12 "删除既有 endpoint" → "命名/路由统一"（mono 从零写无既有可删））；业务规则 / Acceptance Scenarios / FR-S01-S08 / SC-S01-S06 / Clarifications 1:1 保留；client 段 FR-C01-C15 / SC-C01-C09 完全保留作 W4+ mobile reference。
+- **2026-05-18** — **FR-S03 / FR-S06 storage amend**：SMS code Redis 存储算法从 bcrypt cost=12 切到 HMAC-SHA256 + `crypto.timingSafeEqual`，per [ADR-0023](../../../docs/adr/0023-sms-code-storage-hmac.md)。根因 = W3 deferred Item 4 `SingleEndpointEnumerationDefenseIT`（mono PR #23）实测 200-rep diff ≈ 193ms，违反 FR-S06 P95 ≤ 50ms。新机制 verify <1ms 让 3 个反枚举 401 路径时延自然均一,`BcryptTimingDefenseExecutor.pad`(cost=10) 保留作纵深防御。新增 env `SMS_CODE_HMAC_SECRET` fail-fast；Key Entities `password_hash` 注脚补充"不被读取"。
 
 ## References
 

@@ -41,6 +41,8 @@ describe('US1 e2e smoke (Testcontainers PG + Redis + Fastify)', () => {
     process.env.REDIS_URL = redisContainer.getConnectionUrl();
     process.env.AUTH_JWT_SECRET =
       'e2e-test-jwt-secret-min-32-bytes-pad-abcdef';
+    process.env.SMS_CODE_HMAC_SECRET =
+      'us1-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
 
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       cwd: SERVER_DIR,

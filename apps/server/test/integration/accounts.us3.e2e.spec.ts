@@ -51,6 +51,8 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
     process.env.REDIS_URL = redisContainer.getConnectionUrl();
     process.env.AUTH_JWT_SECRET =
       'us3-e2e-test-jwt-secret-min-32-bytes-pad-abc';
+    process.env.SMS_CODE_HMAC_SECRET =
+      'us3-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
 
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       cwd: SERVER_DIR,

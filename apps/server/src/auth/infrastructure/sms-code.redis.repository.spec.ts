@@ -8,7 +8,9 @@ import { SmsCodeRedisRepository } from './sms-code.redis.repository';
 import { Phone } from '../domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 
-describe('SmsCodeRedisRepository (Testcontainers Redis)', () => {
+const HMAC_SECRET = 'spec-hmac-secret-min-32-bytes-padding-zzzz';
+
+describe('SmsCodeRedisRepository (Testcontainers Redis, HMAC-SHA256)', () => {
   let container: StartedRedisContainer;
   let redis: Redis;
   let repo: SmsCodeRedisRepository;
@@ -16,7 +18,7 @@ describe('SmsCodeRedisRepository (Testcontainers Redis)', () => {
   beforeAll(async () => {
     container = await new RedisContainer('redis:7-alpine').start();
     redis = new Redis(container.getConnectionUrl());
-    repo = new SmsCodeRedisRepository(redis);
+    repo = new SmsCodeRedisRepository(redis, HMAC_SECRET);
   }, 60_000);
 
   afterAll(async () => {
@@ -62,5 +64,40 @@ describe('SmsCodeRedisRepository (Testcontainers Redis)', () => {
 
     const result = await repo.verify(phone, SmsCode.create('123456'));
     expect(result).toBeNull();
+  });
+
+  it('HMAC deterministic — same code + same secret = same digest in redis', async () => {
+    const phone1 = Phone.create('+8613800138206');
+    const phone2 = Phone.create('+8613800138207');
+    await repo.store(phone1, SmsCode.create('123456'), 300);
+    await repo.store(phone2, SmsCode.create('123456'), 300);
+
+    const d1 = await redis.get(`sms_code:${phone1.value}`);
+    const d2 = await redis.get(`sms_code:${phone2.value}`);
+    expect(d1).toBeTruthy();
+    expect(d1).toBe(d2);
+  });
+
+  it('HMAC negative — different code → different digest', async () => {
+    const phone1 = Phone.create('+8613800138208');
+    const phone2 = Phone.create('+8613800138209');
+    await repo.store(phone1, SmsCode.create('123456'), 300);
+    await repo.store(phone2, SmsCode.create('654321'), 300);
+
+    const d1 = await redis.get(`sms_code:${phone1.value}`);
+    const d2 = await redis.get(`sms_code:${phone2.value}`);
+    expect(d1).not.toBe(d2);
+  });
+
+  it('secret rotation — different secret reads same redis hash → verify false', async () => {
+    const phone = Phone.create('+8613800138210');
+    await repo.store(phone, SmsCode.create('123456'), 300);
+
+    const newSecretRepo = new SmsCodeRedisRepository(
+      redis,
+      'rotated-secret-min-32-bytes-padding-yyyy',
+    );
+    const result = await newSecretRepo.verify(phone, SmsCode.create('123456'));
+    expect(result).toBe(false);
   });
 });
