@@ -128,10 +128,10 @@ stdlib):
 
 ### Tests for US2
 
-- [ ] T025 [P] [US2] [Test] Vitest unit `OutboxEventPrismaPublisher` in `outbox-event.prisma.publisher.spec.ts`（Testcontainers PG；assert `outbox_event` row 写入 with event_type + payload Json + published_at = null）— RED
-- [ ] T026 [P] [US2] [Test] Vitest unit `PhoneSmsAuthUseCase` 未注册路径（mock; assert: account.save + outboxPublisher.publish 都被调；返回 token）— RED
-- [ ] T027 [P] [US2] [Test] Vitest unit 并发同号自动注册 race（Testcontainers PG；2 parallel `phone-sms-auth` for same NEW phone → 仅 1 row + 同 accountId 返）— RED
-- [ ] T028 [P] [US2] [Test] Vitest e2e `accounts.smoke.us2.e2e.spec.ts`（未注册 phone → 2 endpoints → 200 + tokens + DB new account row + outbox row）— RED
+- [X] T025 [P] [US2] [Test] Vitest unit `OutboxEventPrismaPublisher` in `outbox-event.prisma.publisher.spec.ts`（Testcontainers PG；assert `outbox_event` row 写入 with event_type + payload Json + published_at = null）— RED
+- [X] T026 [P] [US2] [Test] Vitest unit `PhoneSmsAuthUseCase` 未注册路径（mock; assert: account.save + outboxPublisher.publish 都被调；返回 token）— RED
+- [X] T027 [P] [US2] [Test] Vitest unit 并发同号自动注册 race（Testcontainers PG；2 parallel `phone-sms-auth` for same NEW phone → 仅 1 row + 同 accountId 返）— RED
+- [X] T028 [P] [US2] [Test] Vitest e2e `accounts.smoke.us2.e2e.spec.ts`（未注册 phone → 2 endpoints → 200 + tokens + DB new account row + outbox row）— RED
 
 ### Implementation for US2
 
@@ -151,10 +151,10 @@ stdlib):
 
 ### Tests for US3
 
-- [ ] T032 [P] [US3] [Test] Vitest unit `PhoneSmsAuthUseCase` FROZEN 路径（mock FROZEN account with `freezeUntil` + correct code → throw `AccountInFreezePeriodException` (HTTP 403, body `code: ACCOUNT_IN_FREEZE_PERIOD`, `freezeUntil` ISO string)，不签 token，不调 markLoggedIn，**不走 timing pad** per CL-006）— RED
-- [ ] T033 [P] [US3] [Test] Vitest unit `PhoneSmsAuthUseCase` ANONYMIZED 路径（mock ANONYMIZED account with phone populated + correct code → dummy bcrypt timing pad runs → throw `UnauthorizedException('INVALID_CREDENTIALS')`，不签 token；assert `TimingDefenseExecutor.executeInConstantTime` was invoked）— RED
-- [ ] T034 [P] [US3] [Test] Vitest unit timing defense **3 anti-enum 401 paths**（mock ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED+正确码 → all run TimingDefenseExecutor dummy bcrypt → in-process P95 wall-clock 差 ≤ 5ms across 3 paths；FROZEN excluded per CL-006）— RED
-- [ ] T035 [P] [US3] [Test] Vitest e2e `accounts.smoke.us3.e2e.spec.ts` 反枚举（per CL-006 amended SC-S03）：(a) 3 个 401 路径 (ACTIVE+码错 / ANONYMIZED+正确码 / ANONYMIZED+码错) 响应 body+headers+status 字节级 equal；(b) FROZEN+正确码 → HTTP 403 + ProblemDetail body 含 `code: ACCOUNT_IN_FREEZE_PERIOD` + `freezeUntil`（distinct from 401 反枚举吞）；(c) 不 assert P95 ≤ 50ms in e2e（推 W3+ 由独立 IT 覆盖，per spec FR-S06 referencing `SingleEndpointEnumerationDefenseIT`）— RED
+- [X] T032 [P] [US3] [Test] Vitest unit `PhoneSmsAuthUseCase` FROZEN 路径（mock FROZEN account with `freezeUntil` + correct code → throw `AccountInFreezePeriodException` (HTTP 403, body `code: ACCOUNT_IN_FREEZE_PERIOD`, `freezeUntil` ISO string)，不签 token，不调 markLoggedIn，**不走 timing pad** per CL-006）— RED
+- [X] T033 [P] [US3] [Test] Vitest unit `PhoneSmsAuthUseCase` ANONYMIZED 路径（mock ANONYMIZED account with phone populated + correct code → dummy bcrypt timing pad runs → throw `UnauthorizedException('INVALID_CREDENTIALS')`，不签 token；assert `TimingDefenseExecutor.executeInConstantTime` was invoked）— RED
+- [X] T034 [P] [US3] [Test] Vitest unit timing defense **3 anti-enum 401 paths**（mock ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED+正确码 → all run TimingDefenseExecutor dummy bcrypt → in-process P95 wall-clock 差 ≤ 5ms across 3 paths；FROZEN excluded per CL-006）— RED
+- [X] T035 [P] [US3] [Test] Vitest e2e `accounts.smoke.us3.e2e.spec.ts` 反枚举（per CL-006 amended SC-S03）：(a) 3 个 401 路径 (ACTIVE+码错 / ANONYMIZED+正确码 / ANONYMIZED+码错) 响应 body+headers+status 字节级 equal；(b) FROZEN+正确码 → HTTP 403 + ProblemDetail body 含 `code: ACCOUNT_IN_FREEZE_PERIOD` + `freezeUntil`（distinct from 401 反枚举吞）；(c) 不 assert P95 ≤ 50ms in e2e（推 W3+ 由独立 IT 覆盖，per spec FR-S06 referencing `SingleEndpointEnumerationDefenseIT`）— RED
 
 ### Implementation for US3
 
