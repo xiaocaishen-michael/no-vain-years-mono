@@ -1,0 +1,65 @@
+# syntax=docker/dockerfile:1.7
+
+ARG NODE_IMAGE=node:22-alpine
+ARG PNPM_VERSION=10.33.2
+
+# ---------- Stage 1: builder ----------
+# Full monorepo install + swc build + Prisma generate + pnpm deploy.
+# Native bcrypt binding compiled here against node:22-alpine ABI; reused by runner.
+FROM ${NODE_IMAGE} AS builder
+
+RUN apk add --no-cache python3 make g++ libc6-compat
+
+ENV PNPM_HOME=/pnpm
+ENV PATH="${PNPM_HOME}:${PATH}"
+RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+
+WORKDIR /workspace
+
+# Workspace manifests first (better layer cache)
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json nx.json tsconfig.base.json tsconfig.json ./
+COPY apps/server/package.json ./apps/server/
+COPY packages/api-client/package.json ./packages/api-client/
+
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# Source after deps for caching
+COPY apps/server ./apps/server
+COPY packages ./packages
+COPY eslint.config.mjs ./
+
+# Prisma 7 driver-adapter mode: TS client generated, no query engine binary at runtime
+RUN pnpm -C apps/server exec prisma generate
+
+# Compile TS → JS via @nx/js:swc (output to apps/server/dist/)
+RUN pnpm nx run server:build --skip-nx-cache
+
+# pnpm deploy: produce portable prod folder at /deploy.
+# Runs in workspace context so it honors root pnpm.onlyBuiltDependencies allowlist
+# (bcrypt/prisma/@prisma/engines build scripts run). --legacy because
+# inject-workspace-packages is not enabled (default false in pnpm 10).
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm --filter=server --prod --legacy deploy /deploy
+
+# ---------- Stage 2: runner ----------
+FROM ${NODE_IMAGE} AS runner
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+WORKDIR /app
+
+# Deployed prod folder (package.json + node_modules with native bindings pre-built).
+COPY --from=builder --chown=node:node /deploy /app
+
+# dist/ and src/generated/prisma are gitignored so pnpm deploy skipped them —
+# copy explicitly. dist/ already contains generated/prisma compiled JS.
+COPY --from=builder --chown=node:node /workspace/apps/server/dist /app/dist
+
+USER node
+
+EXPOSE 3000
+
+# `docker run --init` recommended for proper PID 1 signal handling.
+CMD ["node", "dist/main.js"]
