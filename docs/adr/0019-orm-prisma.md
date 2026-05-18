@@ -51,7 +51,7 @@
 
 ## References
 
-* [Plan 1 § C.1 框架栈 + § C.2 SDK 替换矩阵](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
+* [Plan 1 § C.1 框架栈 + § C.2 SDK 替换矩阵](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
 * [V3 验收(`db pull` 反推 V1-V14)— V10 retro § 3.1](../experiences/v10-claude-agent-loop.md#31-一击中目标0-round-trip)
 * [Prisma 7 driver adapters](https://www.prisma.io/docs/orm/overview/databases/database-drivers)
 * [ADR-0018: 后端 stack root pivot](0018-backend-language-pivot.md)

@@ -109,8 +109,8 @@ apps/server/
 
 ## References
 
-* [Plan 1 § C.3 DDD 实施 — NestJS Module 范式](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
-* [V2 验收 — NestJS module 边界对标 ArchUnit](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
+* [Plan 1 § C.3 DDD 实施 — NestJS Module 范式](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
+* [V2 验收 — NestJS module 边界对标 ArchUnit](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
 * [`apps/server/eslint.config.mjs`](../../apps/server/eslint.config.mjs)
 * [`eslint-plugin-boundaries` v5 → v6 migration](https://github.com/javierbrea/eslint-plugin-boundaries/releases)
 * [ADR-0018: 后端 stack root pivot](0018-backend-language-pivot.md)
