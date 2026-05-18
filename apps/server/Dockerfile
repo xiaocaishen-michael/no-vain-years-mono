@@ -50,6 +50,12 @@ ENV PORT=3000
 
 WORKDIR /app
 
+# Strip global npm shipped with node:22-alpine — we use pnpm exclusively at
+# build time and run plain `node main.js` at runtime, so npm is unused. Its
+# bundled transitive deps (picomatch etc.) drag in HIGH/CRITICAL CVEs that
+# Trivy flags (real, not false positives — e.g. CVE-2026-33671).
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
 # Deployed prod folder (package.json + node_modules with native bindings pre-built).
 COPY --from=builder --chown=node:node /deploy /app
 
