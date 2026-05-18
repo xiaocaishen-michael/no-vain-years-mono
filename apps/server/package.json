@@ -8,6 +8,7 @@
   "dependencies": {
     "@alicloud/dysmsapi20170525": "^4.5.1",
     "@alicloud/openapi-core": "^1.0.7",
+    "@fastify/static": "^8.0.0",
     "@nest-lab/throttler-storage-redis": "^1.2.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.4",
@@ -28,7 +29,8 @@
     "pino": "^10.3.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "@swc/helpers": "^0.5.18"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.0.0",
