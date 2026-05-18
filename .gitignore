@@ -34,3 +34,6 @@ pnpm-debug.log*
 .nx/workspace-data
 .nx/polygraph
 .claude/worktrees
+
+# graphify code knowledge graph
+graphify-out/
