@@ -4,21 +4,37 @@
 
 mono-repo 单仓共享。M1.1 起业务模块按此流程开发。基于 [GitHub Spec-Kit](https://github.com/github/spec-kit)（2025-2026 事实标准）；选型决策见 [`../adr/0010-sdd-with-spec-kit.md`](../adr/0010-sdd-with-spec-kit.md)（Plan 3 阶段迁入）。
 
-## 标准流程（每个 use case 走一遍）
+## 标准流程（每个 feature 走一遍）
 
-6 步必跑 + `constitution` 项目级一次性。**spec.md 单一来源** 在 `specs/<module>/<usecase>/spec.md`（mono root 相对）；plan / tasks / analysis 与 spec 同目录。
+6 步必跑 + `constitution` 项目级一次性。**spec.md 单一来源** 在 `specs/NNN-<feature-slug>/spec.md`（mono root 相对，扁平 feature-first 布局，per [ADR-0024](../adr/0024-spec-feature-first-layout.md)）；plan / tasks / analysis 与 spec 同目录。
 
 | # | 命令 | cwd | 产出位置 |
 |---|---|---|---|
 | 0 | `/speckit-constitution` | mono root | `.specify/memory/constitution.md` |
-| 1 | `/speckit-specify` | mono root | `specs/<module>/<usecase>/spec.md` |
+| 1 | `/speckit-specify` | mono root | `specs/NNN-<feature-slug>/spec.md`（NNN 由 spec-kit 自动 sequential 编号；同时创 git branch `NNN-<feature-slug>`） |
 | 2 | `/speckit-clarify` | mono root | spec.md 内 `## Clarifications` 段（inline）|
-| 3 | `/speckit-plan` | mono root | `specs/<module>/<usecase>/plan.md` |
+| 3 | `/speckit-plan` | mono root | `specs/NNN-<feature-slug>/plan.md` |
 | 4 | `/speckit-tasks` | mono root | `tasks.md`；每条标层级 `[Server]` / `[Mobile]` / `[Contract]`；测试任务不独立，绑定到每个实现 task |
 | 5 | `/speckit-analyze` | mono root | `analysis.md`（跨 spec / plan / tasks / constitution 一致性扫描） |
 | 6 | `/speckit-implement` | mono root | 代码 + 测试 + tasks.md `[X]` flip；TDD 红绿循环 |
 
 **Review gate**：clarify → plan、plan → tasks、analyze → implement 之间均为人工审批卡点，不是装饰。
+
+### spec.md frontmatter（强制，per [ADR-0024](../adr/0024-spec-feature-first-layout.md)）
+
+每个 `spec.md` 顶部 YAML frontmatter 必填三字段，作为**模块倒查 / ownership / lifecycle** 单一来源：
+
+```yaml
+---
+modules: [auth]                       # 影响的代码模块,值域 = business-naming.md 列出的业务模块名
+                                      # 单模块: [auth]   多模块: [pkm, account, notification]
+                                      # 完全跨模块平台改造: [cross-cutting]
+owners: ["@xiaocaishen-michael"]      # GitHub handle,与 CODEOWNERS 兼容
+status: implemented                   # draft | planned | implementing | implemented | superseded | archived
+---
+```
+
+**模块倒查**：`rg -l '^modules:.*\bauth\b' specs/`（不依赖目录结构，靠 frontmatter）。
 
 ## 前端 UI 工作流变体（per ADR-0017）
 

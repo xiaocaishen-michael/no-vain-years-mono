@@ -12,18 +12,27 @@
 
 ## 分支命名
 
-`<type>/<kebab-desc>`，type 取值：
+两套并行，根据改动类型选其一：
+
+**A. SDD feature 分支** — spec-kit 自动产出（per [ADR-0024](../adr/0024-spec-feature-first-layout.md)）
+
+`NNN-<feature-slug>`（3 位 sequential + kebab-case slug），由 `/speckit-specify` 自动创建，与 `specs/NNN-<feature-slug>/` 同名（branch ↔ dir ↔ PR 三位一体）。
+
+示例：`001-phone-sms-auth` / `002-pkm-graph-link`
+
+**B. 非 SDD 改动分支** — 走传统 `<type>/<kebab-desc>`
 
 | type | 用途 |
 |------|------|
-| `feature` | 新功能 |
-| `fix` | bug 修复 |
+| `fix` | bug 修复（非 spec scope，如 infra / build / 紧急 patch） |
 | `hotfix` | 紧急修复（已上线缺陷） |
 | `chore` | 杂项（依赖更新、配置等无业务逻辑改动） |
 | `refactor` | 重构（不改外部行为） |
-| `docs` | 仅文档变更 |
+| `docs` | 仅文档变更（含 ADR / convention amend / experience report） |
 
-示例：`feature/phone-sms-auth-poc` / `fix/prisma-migrate-drift` / `docs/adr-0018`
+示例：`fix/prisma-migrate-drift` / `docs/adr-0024-spec-layout` / `chore/repo-init-skeleton`
+
+**注**：`feature/` 类型在 A 出现后退役 — 新 feature 一律走 spec-kit 自动 `NNN-<slug>`；Plan 1 期间合入的 `feature/phone-sms-auth-<usX>` 系列 PR 历史不追溯。
 
 ## Commit 消息
 

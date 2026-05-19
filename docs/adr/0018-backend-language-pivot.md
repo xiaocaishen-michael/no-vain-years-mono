@@ -61,7 +61,7 @@ packages/                   # 共享包(api-client / shared-types / ...)
 ### Positive
 
 * **Claude+NestJS loop 实测命中率 ~90% / 1-2 round-trip ~25% / 大返工 ~5%**(详 V10 retro § 3.4)— Plan 1 § H R4 风险未触发
-* **LoC 紧凑度 1/8.4**(详 [`v1-loc-report.md`](../../specs/auth/phone-sms-auth/v1-loc-report.md)) — TS structural type + Prisma generic 派生 + Vitest ms 级启动是主要贡献因素
+* **LoC 紧凑度 1/8.4**(详 [`v1-loc-report.md`](../../specs/001-phone-sms-auth/v1-loc-report.md)) — TS structural type + Prisma generic 派生 + Vitest ms 级启动是主要贡献因素
 * **NestJS module 范式 ≈ Spring DI / AOP 概念 0 阵痛** — Plan 1 § H R6 验证为真,solo dev 转栈学习曲线 ≤ 1 个 PR/坑
 * **Plan 2/3 接口契约可立**(Plan 1 § F) — monorepo / Docker / CI / OpenAPI / 共享包 6 项硬产物 ship,Plan 2 直接消费
 * **零用户阶段** API contract / token / migration / device id 全不要求兼容,推倒重来成本最低 — pivot 时间窗准确
@@ -85,7 +85,7 @@ packages/                   # 共享包(api-client / shared-types / ...)
 
 * [Plan 1 — Claude+Java vs Claude+AI meta-repo 推倒重来选型](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
 * [V10 验收 — Claude Code agent loop 体感](../experiences/v10-claude-agent-loop.md)
-* [V1 LoC 验收 — mono 0.119 / Java 5705](../../specs/auth/phone-sms-auth/v1-loc-report.md)
+* [V1 LoC 验收 — mono 0.119 / Java 5705](../../specs/001-phone-sms-auth/v1-loc-report.md)
 * [ADR-0019: ORM = Prisma](0019-orm-prisma.md)
 * [ADR-0020: 模块边界 = NestJS Module + ESLint boundaries](0020-module-boundary-nestjs.md)
 * 旧 meta 仓 ADR-0001(superseded by ADR-0020)/ ADR-0008(superseded by ADR-0020,DDD 思想保留)

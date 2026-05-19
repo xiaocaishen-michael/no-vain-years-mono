@@ -1,6 +1,12 @@
+---
+modules: [auth]
+owners: ["@xiaocaishen-michael"]
+status: implemented
+---
+
 # Feature Specification: Phone SMS Auth (unified login/register)
 
-**Feature Branch**: `feature/phone-sms-auth`
+**Feature Branch**: `001-phone-sms-auth`（per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md)；Plan 1 期间合入的 PR 使用旧命名 `feature/phone-sms-auth-<usX>` 不追溯）
 **Created**: 2026-05-04（meta canonical 起源） / **mono W2 migrated**: 2026-05-17
 **Status**: Server Draft（mono W2 PoC 首个业务 use case，从零实现） / Client 段保留作 W4+ mobile impl reference
 **Module**: server `apps/server` NestJS Module `auth` / client `apps/mobile/app/(auth)/login`（W4+ 物理迁入）
@@ -336,7 +342,8 @@
 - **2026-05-17** — mono W2 amend：(a) FR-S11 outbox 表名 `event_publication` → `outbox_event`（per W2.4 US2 决策；Spring Modulith 老表保留不动）；(b) User Story 3 Acceptance Scenarios L70-73 narrative 保留 pre-CL-006 的早期描述作上下文，实施严格按 FR-S05/FR-S06/SC-S03 post-CL-006 amended terms（FROZEN→403 disclosure，ANONYMIZED→401 反枚举吞 + dummy bcrypt timing pad）；(c) mono `TimingDefenseExecutor` 由 TS + `bcrypt` npm 包新写（不沿用 Java 老类），dummy hash input 用固定内存常量（不需 DB password_hash 列）；(d) ANONYMIZED 测试 setup 用 phone NOT NULL hack 触达 code path（生产中 phone 应 NULL per PRD § 5.5，测试为覆盖反枚举行为路径需要 denormalized state）。
 - **2026-05-15** — Meta canonical 合并 server `mbw-account/phone-sms-auth/spec.md` + app `apps/native/specs/auth/login/spec.md` 双源（per meta-repo spec-kit 抽 single source of truth 计划）；server FR-001..012 重编 FR-S01..S12 / app FR-001..015 重编 FR-C01..C15；client UI flow / a11y / OAuth placeholder / errorScope 完整保留；后续 server / app 仓 spec.md 转 symlink 指向本 canonical。
 - **2026-05-17** — **mono W2 migration**：从 meta canonical copy 到 mono `specs/auth/phone-sms-auth/spec.md`，8 处 Java/Spring 实现绑定描述替换为 NestJS / Prisma / TS 中立等价描述（`mbw-account` → `apps/server` Module `auth` / `@Transactional` Java annotation → Prisma `$transaction` / `mbw-shared.web.GlobalExceptionHandler` → NestJS `@Catch()` filter / Spring Modulith Event → outbox pattern / `MBW_AUTH_JWT_SECRET` → `AUTH_JWT_SECRET` / ArchUnit + Spring Modulith Verifier → `eslint-plugin-boundaries` 4 类规则 / FR-S12 "删除既有 endpoint" → "命名/路由统一"（mono 从零写无既有可删））；业务规则 / Acceptance Scenarios / FR-S01-S08 / SC-S01-S06 / Clarifications 1:1 保留；client 段 FR-C01-C15 / SC-C01-C09 完全保留作 W4+ mobile reference。
-- **2026-05-18** — **FR-S03 / FR-S06 storage amend**：SMS code Redis 存储算法从 bcrypt cost=12 切到 HMAC-SHA256 + `crypto.timingSafeEqual`，per [ADR-0023](../../../docs/adr/0023-sms-code-storage-hmac.md)。根因 = W3 deferred Item 4 `SingleEndpointEnumerationDefenseIT`（mono PR #23）实测 200-rep diff ≈ 193ms，违反 FR-S06 P95 ≤ 50ms。新机制 verify <1ms 让 3 个反枚举 401 路径时延自然均一,`BcryptTimingDefenseExecutor.pad`(cost=10) 保留作纵深防御。新增 env `SMS_CODE_HMAC_SECRET` fail-fast；Key Entities `password_hash` 注脚补充"不被读取"。
+- **2026-05-18** — **FR-S03 / FR-S06 storage amend**：SMS code Redis 存储算法从 bcrypt cost=12 切到 HMAC-SHA256 + `crypto.timingSafeEqual`，per [ADR-0023](../../docs/adr/0023-sms-code-storage-hmac.md)。根因 = W3 deferred Item 4 `SingleEndpointEnumerationDefenseIT`（mono PR #23）实测 200-rep diff ≈ 193ms，违反 FR-S06 P95 ≤ 50ms。新机制 verify <1ms 让 3 个反枚举 401 路径时延自然均一,`BcryptTimingDefenseExecutor.pad`(cost=10) 保留作纵深防御。新增 env `SMS_CODE_HMAC_SECRET` fail-fast；Key Entities `password_hash` 注脚补充"不被读取"。
+- **2026-05-19** — **Path rename**: spec dir 从 `specs/auth/phone-sms-auth/` 重命名为 `specs/001-phone-sms-auth/`（per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md) feature-first 扁平布局）；frontmatter `modules: [auth]` / `owners` / `status: implemented` 同步添加。**业务内容 0 变化**，仅目录结构 + cross-doc ref 调整；spec.md 内 L11 / 上方 2026-05-15 / 2026-05-17 changelog entry 中提及的旧路径 `specs/auth/phone-sms-auth/` 保留不动（描述的是 meta-repo 起源路径 + W2 migration 时刻路径，是历史事实）。
 
 ## References
 
