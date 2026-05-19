@@ -15,7 +15,7 @@ Plan 1 § E.3 V10:
 
 > **主观评估 ≥ 当前 Java**(用 Claude 跑 1 个完整 task 的命中率与速度);**验证方式**: session 记录
 
-V1-V9 全部通过(详见 [`v1-loc-report.md`](../../specs/auth/phone-sms-auth/v1-loc-report.md) + W2-W4 各 PR);V10 是最后 1 个验收门,主观维度,本文件即记录。
+V1-V9 全部通过(详见 [`v1-loc-report.md`](../../specs/001-phone-sms-auth/v1-loc-report.md) + W2-W4 各 PR);V10 是最后 1 个验收门,主观维度,本文件即记录。
 
 ## 2. 速度 — 总耗时
 
@@ -94,7 +94,7 @@ Java baseline: `my-beloved-server` 仓 `mbw-account` 模块 phone-sms-auth use c
 | **模块边界硬度** | Maven 多模块物理隔离 + ArchUnit + Spring Modulith,**硬度强** | NestJS Module export white-list + ESLint `eslint-plugin-boundaries` v6 双保险,**单 jar 内逻辑边界** | **Java 优**(物理隔离 strong),但 Plan 1 § C.3 评估"软约束版"够用于 solo dev 阶段 |
 | **AI 协作命中率** | Claude 对 Spring Boot 模式熟悉;但 mbw-* 多模块 + ArchUnit 4 类自定义规则上下文负担重 | NestJS Module 范式上下文紧凑;每 module 自包含 domain/application/infrastructure/web 4 层;Claude 1 个 module = 1 个完整 mental model | **新栈优**(D1 维度 Plan 1 假设验证) |
 | **生态依赖切换体验** | Bucket4j / Resilience4j / Nimbus / MapStruct 等独立选型;每个有学习曲线 | @nestjs/throttler / cockatiel / jose / class-transformer 框架级集成 | 平偏新栈优 |
-| **LoC** | mbw-account 4 层 192 files / 5705 LoC | apps/server/src/auth 27 files / 680 LoC | **新栈 1/8.4**(详见 [v1-loc-report.md](../../specs/auth/phone-sms-auth/v1-loc-report.md);caveat: Java scope 含多 use case,不严格 apples-to-apples) |
+| **LoC** | mbw-account 4 层 192 files / 5705 LoC | apps/server/src/auth 27 files / 680 LoC | **新栈 1/8.4**(详见 [v1-loc-report.md](../../specs/001-phone-sms-auth/v1-loc-report.md);caveat: Java scope 含多 use case,不严格 apples-to-apples) |
 
 **Caveat 公平性**: Java baseline 是早期项目阶段(M1 起步)产物,部分 boilerplate 反映 ADR-0001/0008 选定的"严格保留拆服务能力"约束。若用相同约束写 TS,新栈 LoC 也会涨 30-50%。**但**绝对差距 8.4x 即使打折后仍可观。
 

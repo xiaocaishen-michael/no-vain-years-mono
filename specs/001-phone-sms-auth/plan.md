@@ -1,7 +1,7 @@
 # Implementation Plan: Phone SMS Auth (W2 server scope)
 
 **Branch**: `feature/phone-sms-auth-plan` | **Date**: 2026-05-17 | **Spec**: [`spec.md`](./spec.md)
-**Input**: Feature specification from `specs/auth/phone-sms-auth/spec.md`（mono W2.1 migrated 自 meta canonical）
+**Input**: Feature specification from `specs/001-phone-sms-auth/spec.md`（mono W2.1 migrated 自 meta canonical；2026-05-19 per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md) 从旧路径 `specs/auth/phone-sms-auth/` 重命名）
 
 ## Summary
 
@@ -49,8 +49,8 @@ mono PoC 首个业务 use case：1 个 endpoint（`POST /accounts/phone-sms-auth
 ### Documentation (this feature)
 
 ```text
-specs/auth/phone-sms-auth/
-├── spec.md                # W2.1 migrated (meta canonical)
+specs/001-phone-sms-auth/
+├── spec.md                # W2.1 migrated (meta canonical); 2026-05-19 path rename per ADR-0024
 ├── plan.md                # W2.2 this file
 ├── tasks.md               # W2.3 /speckit-tasks output
 └── analysis.md            # W2.3 /speckit-analyze output (consistency report)

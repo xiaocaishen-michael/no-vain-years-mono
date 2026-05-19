@@ -6,7 +6,7 @@
 
 ## Context
 
-[FR-S06](../../specs/auth/phone-sms-auth/spec.md) 要求 `/phone-sms-auth` 反枚举 3 个 401 路径（ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED+任意码）P95 wall-clock 时延差 ≤ 50ms。
+[FR-S06](../../specs/001-phone-sms-auth/spec.md) 要求 `/phone-sms-auth` 反枚举 3 个 401 路径（ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED+任意码）P95 wall-clock 时延差 ≤ 50ms。
 
 W3 deferred Item 4 落地 `SingleEndpointEnumerationDefenseIT`（mono PR #23）实测 200-rep diff ≈ 193ms,违反阈值。**根因**:
 
@@ -67,12 +67,12 @@ SMS code Redis 存储**从 bcrypt(cost=12) 改 HMAC-SHA256 + `crypto.timingSafeE
 
 * `SmsCodeRedisRepository` 单测覆盖:store / verify true / verify false / verify null after expire / verify null after clear / HMAC deterministic(同 code 同 secret 同 digest) / negative test(不同 code 不同 digest);Testcontainers Redis
 * `SingleEndpointEnumerationDefenseIT`(`timing-defense.p95.it.spec.ts`)`RUN_PERF_IT=true PERF_IT_REPS=200` 实测 P95 diff ≤ 50ms PASS;200-rep 是 PoC 阶段 fast feedback,1000-rep nightly job 在 Plan 2 引入 dedicated slow-IT job 时启用
-* Spec amend [FR-S06](../../specs/auth/phone-sms-auth/spec.md) 末尾加 storage sub-clause + Changelog 2026-05-18 entry,记录从 bcrypt → HMAC 切换
+* Spec amend [FR-S06](../../specs/001-phone-sms-auth/spec.md) 末尾加 storage sub-clause + Changelog 2026-05-18 entry,记录从 bcrypt → HMAC 切换
 
 ## References
 
 * [Plan 1 § B Security Posture](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
-* [`specs/auth/phone-sms-auth/spec.md` FR-S06](../../specs/auth/phone-sms-auth/spec.md)
+* [`specs/001-phone-sms-auth/spec.md` FR-S06](../../specs/001-phone-sms-auth/spec.md)
 * [`apps/server/src/auth/infrastructure/sms-code.redis.repository.ts`](../../apps/server/src/auth/infrastructure/sms-code.redis.repository.ts)
 * [`apps/server/test/integration/timing-defense.p95.it.spec.ts`](../../apps/server/test/integration/timing-defense.p95.it.spec.ts)
 * mono PR #23 实证 200-rep diff ≈ 193ms(IT first ship 暴露 spec gap)
