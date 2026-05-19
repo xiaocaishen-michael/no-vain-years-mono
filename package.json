@@ -8,7 +8,9 @@
     "node": "^22.0.0",
     "pnpm": ">=10 <11"
   },
-  "scripts": {},
+  "scripts": {
+    "postinstall": "lefthook install"
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@swc/core",
@@ -43,6 +45,7 @@
     "eslint-config-prettier": "^10.0.0",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-boundaries": "^6.0.2",
+    "lefthook": "^2.1.7",
     "nx": "22.7.2",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2",
