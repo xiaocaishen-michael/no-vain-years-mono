@@ -45,11 +45,11 @@ Plan 1（NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020 + ADR-0023/0024 + V1-V
 | **2.2.2 ADR-0022 throttler backfill** | `docs/adr/0022-throttler-nestjs-redis.md` | mono 已实装 @nestjs/throttler + @nest-lab/throttler-storage-redis(W3 A1/A2 ship),ADR 追溯立 |
 | **2.2.3 conventions 按需迁入** | `docs/conventions/*.md` 按 Phase 0 实际需要逐项决定 | 候选 4 项(versioning / agent-view-usage / claude-config-layout / git-workflow-reference)+ worktree(默认不迁,单仓);**不强制全迁**,Phase 0 起手时按"撞到才迁"原则单项决断,记录在 Phase 0 实施日志 |
 | **2.2.4 claude-mem W1 + 2-day A/B** | `~/.claude-mem/` 全装 + .envrc + 2-day 验证报告 | 走 [`project-next-session-starter-claude-mem-eager-charm.md`](project-next-session-starter-claude-mem-eager-charm.md) § 5-6;PASS 则启用,FAIL 则关闭并 Plan 2 仅依赖原生 memory + project-next-session-starter |
-| **2.2.5 Bridge Adapter PoC** | `scripts/orchestrator/`(单文件 TS,Node + tsx,~200-400 LoC) | 输入:`specs/NNN-<slug>/tasks.md` `- [ ] T<N>` 行;输出:Wiggum 可识别的 `task-list.json` shape(W1 实地确认 Wiggum CLI 接口契约后定);**先手动跑 002 第一个 task 摸 tasks.md 真实 shape,再写**(per user "用现有栈"原则,避免 Bun 引入) |
+| **2.2.5 Bridge Adapter PoC** | ~~`scripts/orchestrator/`~~ **DEFERRED (2026-05-19)** | 原计划 Wiggum CLI 适配层。fact-check 后 2 重大发现:(a) Anthropic 官方 `ralph-wiggum` plugin Stop-hook 设计与 SDD 顺序遍历 tasks.md 范式不匹配(loop 同一 prompt 反复重投,非 task-by-task);(b) `/speckit-implement` 本身**原生**走 tasks.md 全部 task — 不需要外部 driver。**defer 到 002 feature 起手时手跑 `/speckit-implement` 后再决**是否需要补 driver / 用 `/loop /speckit-implement` 自动化 |
 | **2.2.6 ADR-0025 deployment 决策落** | `docs/adr/0025-frontend-cloudflare-pages-expo-web.md` | 锁定 plan 3 前端 = Expo Web export → CF Pages;mobile binary 不部署 |
 | **2.2.7 quota-discipline skill ack** | 不新写文档;plan 2 期间 session 纪律完全复用 `claude-quota-discipline` skill | per memory `claude-quota-discipline`,P0-1 v3 双阶段切分 + use case 粒度 /clear |
 
-**Phase 0 完成信号**:`.specify/` Workflows YAML(若试 spec-kit Workflows)+ Bridge Adapter 单元跑通 + claude-mem 状态决断 + ADR-0022/0025 ship。
+**Phase 0 完成信号**(2026-05-19 amend):ADR-0022 throttler backfill(PR #30 ✅)+ schema 旧表清理(PR #31 ✅)+ ADR-0025 frontend deploy(PR #32 ✅)+ lefthook tasks-md-drift(PR #33 ✅)+ claude-mem 2-day A/B 观察期(running)+ § 2.2.5 Bridge Adapter defer 决断 ✅。`.specify/` Workflows YAML + Wiggum CLI 装机均**deferred 到 002 起手实践驱动决**。
 
 ### 2.3 Phase A-E:5 个 feature 顺序迁移(per inventory phase 分组)
 
@@ -78,7 +78,7 @@ Plan 1（NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020 + ADR-0023/0024 + V1-V
 5. `/speckit-analyze` → `analysis.md`(Opus,跨 spec/plan/tasks/constitution 一致性扫,**人工 gate**)
 6. `/speckit-implement` → 代码 + 测试 + tasks.md `[X]` flip
    - **切到 Sonnet**(per `/model sonnet` mid-session 切换,context 保留)
-   - Bridge Adapter 接管 Wiggum CLI Ralph loop(若 Phase 0 PoC PASS),否则手动逐 task
+   - **手动逐 task**(默认):每 task 6 步闭环走完直接 commit;2026-05-19 amend:Bridge Adapter + Wiggum CLI 双 defer per § 2.2.5,实践驱动是否需自动化
    - 每 task 6 步闭环(per sdd.md § /implement 每 task 闭环):红 → 绿 → typecheck/lint → tasks.md [X] → git add → commit
 
 **Per-feature PR 边界**:Server impl + api-client regen + mobile 消费 + tasks.md `[X]` flip **同 1 PR**(per sdd.md "mono 单仓内可同 PR")。Auto-merge per `docs/conventions/git-workflow.md`(CI 全绿自动 squash merge)。
@@ -91,19 +91,18 @@ Plan 1（NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020 + ADR-0023/0024 + V1-V
 /speckit-plan → 人工 review → /speckit-tasks → /speckit-analyze → 人工 gate
 ```
 
-**Stage 2**(implement,Sonnet,Bridge Adapter + Wiggum Ralph loop 主导):
+**Stage 2**(implement,Sonnet,手动 `/speckit-implement` 主导,2026-05-19 amend):
 ```
 /model sonnet                                # mid-session 切,保留 context
-/speckit-implement                            # 进入 tasks.md 闭环
+/speckit-implement                            # 原生走 tasks.md 全部 [ ] 任务
   ↓
-Bridge Adapter 读 tasks.md `- [ ]` 任务
-  ↓
-Wiggum CLI 起 Ralph loop:
-  per task → 调 claude CLI → typecheck/test → flip [X] → commit → 下一 task
+per task → 红测 → 绿实现 → typecheck/lint → flip [X] → git add → commit
   ↓
 claude-mem(若 PASS): session 满时 auto-compact + 跨 session 召回
 原生 memory: project-next-session-starter 写最终 handoff
 ```
+
+**Bridge Adapter + Wiggum CLI defer**(per § 2.2.5):002 起手实践后再决是否补 driver / `/loop /speckit-implement` 自动化。
 
 **Session 纪律**:完全遵循 `claude-quota-discipline` skill 的 P0-1 v3(双阶段切分 + use case 粒度 /clear)。Plan 不重复发明。
 
@@ -136,7 +135,7 @@ per user "mobile per-feature 同步"决策:
 
 | 风险 | 触发信号 | 应对 |
 |---|---|---|
-| Wiggum CLI 与 Claude Code subprocess 接口不兼容 | Phase 0 第一个 task 跑不通 | 退化为手动 `/speckit-implement` per task,保留 Bridge Adapter 半成品作未来选项 |
+| ~~Wiggum CLI 与 Claude Code subprocess 接口不兼容~~ → **资源完结(2026-05-19)**:Wiggum CLI + Bridge Adapter 双 defer | — | 默认手动 `/speckit-implement`;002 起手实践后若需自动化再评估 `/loop` skill 或补 driver |
 | claude-mem 2-day A/B 红线触发 | OpenRouter > $1/day 或起手延迟 > 5s 或 observer error | `unset CLAUDE_MEM_ENABLE`,Plan 2 仅原生 memory |
 | api-client @hey-api 与 mobile RN 不兼容 | 002 起手时 import 报 RN runtime error | 升 SDK 56(顺手 fix Zustand v5 import.meta footgun)或回退 @openapitools/openapi-generator-cli 临时 |
 | realname split-tx 接口形状卡住 | 006 spec/plan 阶段 > 1 周未定 | 暂跳 006,先 ship 002-005;Plan 2 graduation 待 006 完成 |
@@ -215,13 +214,13 @@ per user "mobile per-feature 同步"决策:
 | spec-kit 0.8.7(vendored) | SDD 6 步 | ✅ |
 | michael-speckit-presets | task-closure / context7-injection / user-journey-mermaid | ✅(3 preset 装) |
 | graphify | 代码知识图谱召回(Phase 0 验证是否能喂 LLM context) | ✅(commit 46781a1) |
-| claude-mem | 跨 session memory(W1 + 2-day A/B Phase 0 决断) | drafted,未启 |
-| Wiggum CLI(或 ralph-loop 等价 OSS) | Ralph loop 执行器 | Phase 0 起手装 |
-| spec-kit Workflows(YAML 编排) | 多步流程 + resumable + human gate | 待 fact-check 是否覆盖 mono 场景 |
-| Bridge Adapter(自写 ~200-400 LoC Node + tsx) | tasks.md → Wiggum config | Phase 0 PoC |
+| claude-mem | 跨 session memory(W1 + 2-day A/B Phase 0 决断) | W1 env-gate ✅ (2026-05-19 PR #29);2-day A/B observation running |
+| ~~Wiggum CLI(或 ralph-loop 等价 OSS)~~ | ~~Ralph loop 执行器~~ | **deferred (2026-05-19)** — fact-check 揭示 ralph-wiggum 范式与 SDD 顺序遍历不匹配,`/speckit-implement` 原生覆盖;002 起手实践驱动决 |
+| spec-kit Workflows(YAML 编排) | 多步流程 + resumable + human gate | **deferred (2026-05-19)** — Wiggum 一并 defer |
+| ~~Bridge Adapter(自写 ~200-400 LoC Node + tsx)~~ | ~~tasks.md → Wiggum config~~ | **deferred (2026-05-19)** per § 2.2.5 |
 | Nx affected | server / api-client / mobile 跨包变更传导 | ✅ |
 | Testcontainers | PG + Redis e2e 测试 | ✅ |
-| lefthook(tasks-md-drift) | commit-time 硬拦 | Phase 0 起手装(mono 当前未装) |
+| lefthook(tasks-md-drift) | commit-time 硬拦 | ✅ (2026-05-19 PR #33) |
 
 ## 5. Verification
 
