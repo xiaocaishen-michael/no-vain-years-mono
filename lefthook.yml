@@ -1,0 +1,46 @@
+# Lefthook config — mono single-source (per docs/conventions/sdd.md).
+# 强制层 commit-time 硬拦:`tasks-md-drift` 拒"commit 含 impl 代码但 tasks.md 未 staged"。
+# `--no-verify` 仅限格式化 / typo / 紧急 hotfix 出口。
+
+pre-commit:
+  parallel: true
+  commands:
+    tasks-md-drift:
+      tags: sdd
+      # 三段检查:
+      #  1. impl detection: apps|packages/.../*.ts(x), 排 .spec/.test/.it.spec (TDD 红测同 task,合规)
+      #  2. tasks.md staged: specs/*/tasks.md 任一 staged 即放行
+      #  3. pending detection: 仓库内任一 specs/*/tasks.md 含未完成 "- [ ] T<N>" 行
+      # impl && !tasks_staged && pending → block + 列证据
+      # 避开 lefthook {staged_files} 模板替换吞引号问题,直接 git diff --cached
+      run: |
+        set -eu
+        staged=$(git diff --cached --name-only --diff-filter=ACMR)
+        impl=$(echo "$staged" \
+          | grep -E '^(apps|packages)/.*\.(ts|tsx)$' \
+          | grep -vE '\.(spec|test|it\.spec)\.tsx?$' \
+          || true)
+        if [ -z "$impl" ]; then
+          exit 0
+        fi
+        tasks_staged=$(echo "$staged" | grep -E '^specs/.+/tasks\.md$' || true)
+        if [ -n "$tasks_staged" ]; then
+          exit 0
+        fi
+        pending=$(grep -lE '^[[:space:]]*-[[:space:]]+\[ \][[:space:]]+T[0-9]+' \
+          specs/*/tasks.md 2>/dev/null \
+          || true)
+        if [ -z "$pending" ]; then
+          exit 0
+        fi
+        echo "❌ tasks-md-drift: impl code 改动但无 tasks.md 同 stage"
+        echo ""
+        echo "Staged impl files:"
+        echo "$impl" | sed 's/^/  - /'
+        echo ""
+        echo "Specs with pending [ ] T<N> tasks (对应 task ship 时需 flip):"
+        echo "$pending" | sed 's/^/  - /'
+        echo ""
+        echo "请把对应 tasks.md 中 task 行 \`- [ ] T<N>\` flip \`- [X] T<N>\` 后同 stage."
+        echo "格式化 / typo / 紧急 hotfix 出口: git commit --no-verify"
+        exit 1
