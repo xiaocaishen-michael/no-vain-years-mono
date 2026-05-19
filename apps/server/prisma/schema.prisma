@@ -99,19 +99,6 @@ model refresh_token {
   @@schema("account")
 }
 
-model event_publication {
-  id               String    @id @db.Uuid
-  listener_id      String
-  event_type       String
-  serialized_event String
-  publication_date DateTime  @db.Timestamptz(6)
-  completion_date  DateTime? @db.Timestamptz(6)
-
-  @@index([completion_date], map: "event_publication_by_completion_date_idx")
-  @@index([serialized_event], map: "event_publication_serialized_event_hash_idx", type: Hash)
-  @@schema("public")
-}
-
 model outbox_event {
   id           String    @id @default(uuid()) @db.Uuid
   event_type   String
@@ -123,18 +110,3 @@ model outbox_event {
   @@schema("public")
 }
 
-model flyway_schema_history {
-  installed_rank Int      @id(map: "flyway_schema_history_pk")
-  version        String?  @db.VarChar(50)
-  description    String   @db.VarChar(200)
-  type           String   @db.VarChar(20)
-  script         String   @db.VarChar(1000)
-  checksum       Int?
-  installed_by   String   @db.VarChar(100)
-  installed_on   DateTime @default(now()) @db.Timestamp(6)
-  execution_time Int
-  success        Boolean
-
-  @@index([success], map: "flyway_schema_history_s_idx")
-  @@schema("public")
-}

@@ -114,7 +114,7 @@ apps/server/src/
 
 **决策**：自实现 outbox（`outbox_event` 表 + 后台 cron job 异步分发）。W3+ 生产化时若需要重试 / DLQ 再 swap B。
 
-**表名 amend（2026-05-17 US2 起步决策）**：W1.4 db pull 把老 Java meta-repo 的 Spring Modulith `event_publication` 表（columns: `listener_id / serialized_event / publication_date / completion_date`）带入新 mono schema；本 plan 简化 outbox 落 `outbox_event`（独立新表），Modulith 老表保留不动待 W3+ 决策（per Plan 1 pivot 精神：不绑老栈技术 schema）。
+**表名 amend（2026-05-17 US2 起步决策）**：W1.4 db pull 把老 Java meta-repo 的 Spring Modulith `event_publication` 表（columns: `listener_id / serialized_event / publication_date / completion_date`）带入新 mono schema；本 plan 简化 outbox 落 `outbox_event`（独立新表），Modulith 老表保留不动待 W3+ 决策（per Plan 1 pivot 精神：不绑老栈技术 schema）。**2026-05-19 follow-up**：Plan 2 Phase 0 § 2.2.1 落 migration `2_drop_legacy_modulith_flyway_tables` 已 DROP `event_publication` + `flyway_schema_history`；上述"保留不动"条款语义 supersede。
 
 ### R0.2 — Rate Limit（FR-S07）
 
