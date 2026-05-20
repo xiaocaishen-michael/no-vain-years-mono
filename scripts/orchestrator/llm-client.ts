@@ -65,7 +65,11 @@ const DEFAULT_ALLOWED_TOOLS = [
 // covering 1-file simple write/typecheck (~3 turns) up to multi-file config
 // (~15-25 turns including research). Future: per-task override via tasks-meta.
 const DEFAULT_MAX_TURNS = 30;
-const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
+// 2026-05-20 A-002 PoC surfaced blind spot 7: 5min wall-clock is too tight
+// when max_turns=30 and each turn takes 10-30s. T001 (Expo workspace bootstrap)
+// timed out mid-stream after burning research turns + file writes. Bumped to
+// 20min. Future: per-task timeout override via tasks-meta + env var.
+const DEFAULT_TIMEOUT_MS = 20 * 60 * 1000;
 
 /**
  * Build the argv vector for the live `claude -p` invocation. Exported
