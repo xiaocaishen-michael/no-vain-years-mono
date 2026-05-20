@@ -1,4 +1,11 @@
 #!/usr/bin/env -S node --no-warnings
+import * as path from 'node:path';
+import {
+  FileOpPathEscapeError,
+  planFileOps,
+  summarizePlan,
+  type FileOpPlanResult,
+} from './fs-ops.js';
 import { ConstitutionViolationError } from './parsers/plan.js';
 import {
   FeatureFileMissingError,
@@ -110,8 +117,80 @@ function printDryRunReport(state: FeatureState): void {
   for (const b of s.batches) {
     lines.push(`     B${b.index}: ${b.ids.join(', ')}`);
   }
+  lines.push('');
+  appendFilePlanReport(state, lines);
   // eslint-disable-next-line no-console
   console.log(lines.join('\n'));
+}
+
+function appendFilePlanReport(state: FeatureState, lines: string[]): void {
+  const repoRoot = path.resolve(state.featureDir, '..', '..');
+  const workspaceCwdById = new Map<string, string>();
+  for (const w of state.plan.config.workspaces) {
+    workspaceCwdById.set(w.id, path.resolve(repoRoot, w.cwd));
+  }
+
+  const pending = state.tasks.tasks.filter((t) => t.status === 'pending');
+  if (pending.length === 0) {
+    lines.push(`✅ File Plan`);
+    lines.push(`   (no pending tasks — nothing to plan)`);
+    return;
+  }
+
+  lines.push(`✅ File Plan (pre-emptive ops, dry-run only — no mutations)`);
+
+  const totals = { create: 0, delete: 0, rename: 0, modify: 0, noop: 0 };
+  const allWarnings: string[] = [];
+
+  for (const task of pending) {
+    const cwd = workspaceCwdById.get(task.workspace);
+    if (!cwd) {
+      lines.push(
+        `   ${task.id}: ✗ workspace "${task.workspace}" not declared in plan.config.workspaces`,
+      );
+      continue;
+    }
+
+    let result: FileOpPlanResult;
+    try {
+      result = planFileOps(cwd, task.files, task.id);
+    } catch (e) {
+      if (e instanceof FileOpPathEscapeError) {
+        lines.push(`   ${task.id}: ✗ ${e.message}`);
+        continue;
+      }
+      throw e;
+    }
+
+    const sum = summarizePlan(result);
+    totals.create += sum.create;
+    totals.delete += sum.delete;
+    totals.rename += sum.rename;
+    totals.modify += sum.modify;
+    totals.noop += sum.noop;
+    for (const w of result.warnings) allWarnings.push(w);
+
+    const parts = [
+      sum.create && `create=${sum.create}`,
+      sum.delete && `delete=${sum.delete}`,
+      sum.rename && `rename=${sum.rename}`,
+      sum.modify && `modify=${sum.modify}`,
+      sum.noop && `noop=${sum.noop}`,
+    ].filter(Boolean);
+    lines.push(
+      `   ${task.id} [${task.workspace}]: ${parts.length ? parts.join(' ') : '(no files)'}`,
+    );
+  }
+
+  lines.push(
+    `   totals: create=${totals.create} delete=${totals.delete} rename=${totals.rename} modify=${totals.modify} noop=${totals.noop}`,
+  );
+
+  if (allWarnings.length > 0) {
+    lines.push('');
+    lines.push(`⚠️  File Plan warnings (${allWarnings.length}):`);
+    for (const w of allWarnings) lines.push(`   - ${w}`);
+  }
 }
 
 async function main(argv: string[]): Promise<number> {
