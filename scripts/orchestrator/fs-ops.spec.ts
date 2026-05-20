@@ -112,7 +112,7 @@ describe('planFileOps', () => {
     expect(r.warnings[0]).toMatch(/op=modify but file missing/);
   });
 
-  it('throws FileOpPathEscapeError when path escapes workspace cwd', () => {
+  it('throws FileOpPathEscapeError when path escapes base dir', () => {
     const cwd = makeCwd();
     const files: TaskFileOp[] = [
       { path: '../outside.ts', op: 'create' },
@@ -120,6 +120,23 @@ describe('planFileOps', () => {
     expect(() => planFileOps(cwd, files, 'T009')).toThrow(
       FileOpPathEscapeError,
     );
+  });
+
+  it('resolves repo-root-relative task paths inside nested workspace dirs', () => {
+    // Mirrors the canonical convention: baseDir is repoRoot and
+    // task.files[].path is e.g. "apps/server/src/x.ts".
+    const repoRoot = makeCwd({
+      'apps/server/src/existing.ts': 'pre',
+    });
+    const files: TaskFileOp[] = [
+      { path: 'apps/server/src/new.ts', op: 'create' },
+      { path: 'apps/server/src/existing.ts', op: 'modify' },
+    ];
+    const r = planFileOps(repoRoot, files, 'T020');
+    expect(r.entries[0].action).toBe('create');
+    expect(r.entries[0].path).toBe(path.join(repoRoot, 'apps/server/src/new.ts'));
+    expect(r.entries[1].action).toBe('modify');
+    expect(r.warnings).toEqual([]);
   });
 
   it('throws FileOpPathEscapeError when rename_to escapes workspace cwd', () => {
