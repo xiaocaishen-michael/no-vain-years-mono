@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import type { LlmInvokeResult } from './llm-client.js';
+import type { ClaudeUsage, LlmInvokeResult } from './llm-client.js';
 
 /**
  * Per-task on-disk archive. Streams the LLM stdout/stderr to per-attempt
@@ -18,6 +18,11 @@ export type AttemptPhase = 'initial' | 'verify-ralph' | 'hook-ralph';
 export interface LlmSummary {
   exit_code: number;
   duration_ms: number;
+  /** Populated when llmResult.metrics is set (claude-cli JSON payload). */
+  cost_usd?: number;
+  num_turns?: number;
+  permission_denials?: number;
+  usage?: ClaudeUsage;
 }
 
 export interface ActionSummary {
@@ -280,10 +285,7 @@ export class AttemptHandle {
       phase: this.phase,
       elapsed_ms: Date.now() - this.startedAt,
       llm: input.llmResult
-        ? {
-            exit_code: input.llmResult.exitCode,
-            duration_ms: input.llmResult.durationMs,
-          }
+        ? buildLlmSummary(input.llmResult)
         : undefined,
       llm_error: input.llmError?.message,
       action:
@@ -293,6 +295,23 @@ export class AttemptHandle {
       ok: input.ok,
     });
   }
+}
+
+function buildLlmSummary(r: LlmInvokeResult): LlmSummary {
+  const s: LlmSummary = {
+    exit_code: r.exitCode,
+    duration_ms: r.durationMs,
+  };
+  const m = r.metrics;
+  if (m) {
+    if (m.cost_usd !== undefined) s.cost_usd = m.cost_usd;
+    if (m.num_turns !== undefined) s.num_turns = m.num_turns;
+    if (m.permission_denials !== undefined) {
+      s.permission_denials = m.permission_denials;
+    }
+    if (m.usage) s.usage = m.usage;
+  }
+  return s;
 }
 
 function closeStream(s: fs.WriteStream): Promise<void> {

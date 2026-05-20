@@ -4,6 +4,7 @@ import {
   buildSpawnEnv,
   ClaudeCliClient,
   describeClaudeError,
+  extractClaudeMetrics,
   FakeLlmClient,
   isClaudeJsonError,
   LlmInvokeError,
@@ -178,6 +179,63 @@ describe('describeClaudeError', () => {
   it('falls back when no result text', () => {
     const msg = describeClaudeError({ is_error: true });
     expect(msg).toMatch(/no result/);
+  });
+});
+
+describe('extractClaudeMetrics', () => {
+  // Realistic shape captured from a live A-002 T003 run, 2026-05-20.
+  const FULL_PAYLOAD = {
+    type: 'result',
+    subtype: 'success',
+    is_error: false,
+    duration_ms: 172695,
+    num_turns: 28,
+    total_cost_usd: 0.9607915,
+    usage: {
+      input_tokens: 89,
+      output_tokens: 10824,
+      cache_read_input_tokens: 717343,
+      cache_creation_input_tokens: 52972,
+      server_tool_use: { web_search_requests: 0 },
+    },
+    permission_denials: [
+      { tool_name: 'Bash', tool_use_id: 'toolu_x', tool_input: {} },
+    ],
+  };
+
+  it('extracts cost / num_turns / denials count / usage', () => {
+    const m = extractClaudeMetrics(FULL_PAYLOAD);
+    expect(m).toBeDefined();
+    expect(m?.cost_usd).toBeCloseTo(0.9607915, 6);
+    expect(m?.num_turns).toBe(28);
+    expect(m?.permission_denials).toBe(1);
+    expect(m?.usage).toEqual({
+      input_tokens: 89,
+      output_tokens: 10824,
+      cache_read_input_tokens: 717343,
+      cache_creation_input_tokens: 52972,
+    });
+  });
+
+  it('returns undefined for non-claude payloads', () => {
+    expect(extractClaudeMetrics(undefined)).toBeUndefined();
+    expect(extractClaudeMetrics(null)).toBeUndefined();
+    expect(extractClaudeMetrics(42)).toBeUndefined();
+    expect(extractClaudeMetrics('string')).toBeUndefined();
+    expect(extractClaudeMetrics({ unrelated: true })).toBeUndefined();
+  });
+
+  it('tolerates partial payloads — only populates known fields', () => {
+    const m = extractClaudeMetrics({ total_cost_usd: 0.5 });
+    expect(m?.cost_usd).toBe(0.5);
+    expect(m?.num_turns).toBeUndefined();
+    expect(m?.usage).toBeUndefined();
+    expect(m?.permission_denials).toBeUndefined();
+  });
+
+  it('handles empty permission_denials array as 0, not undefined', () => {
+    const m = extractClaudeMetrics({ permission_denials: [] });
+    expect(m?.permission_denials).toBe(0);
   });
 });
 

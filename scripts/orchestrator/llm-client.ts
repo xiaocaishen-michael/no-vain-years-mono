@@ -41,6 +41,29 @@ export interface LlmInvokeResult {
   parsed?: unknown;
   /** Wall-clock duration in ms. */
   durationMs: number;
+  /**
+   * Best-effort claude-cli telemetry extracted from `parsed`. Lets the
+   * archive layer persist cost / token usage / denial counts without
+   * grepping llm-stdout.log post-hoc. Undefined when `parsed` doesn't
+   * look like a claude-cli result payload.
+   */
+  metrics?: ClaudeMetrics;
+}
+
+/** Subset of claude-cli `usage` we care about for archive summaries. */
+export interface ClaudeUsage {
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_input_tokens: number;
+  cache_creation_input_tokens: number;
+}
+
+export interface ClaudeMetrics {
+  cost_usd?: number;
+  num_turns?: number;
+  /** Count of `permission_denials[]` entries (0 if empty array). */
+  permission_denials?: number;
+  usage?: ClaudeUsage;
 }
 
 export class LlmInvokeError extends Error {
@@ -139,6 +162,53 @@ export function isClaudeJsonError(parsed: unknown): boolean {
   );
 }
 
+/**
+ * Best-effort extraction of cost / usage / denials count from the
+ * claude-cli result JSON. Returns undefined when `parsed` doesn't look
+ * like a claude payload at all (no known fields). Caller can treat the
+ * result as opaque telemetry — every field is optional and partial
+ * payloads are tolerated.
+ */
+export function extractClaudeMetrics(parsed: unknown): ClaudeMetrics | undefined {
+  if (typeof parsed !== 'object' || parsed === null) return undefined;
+  const p = parsed as Record<string, unknown>;
+
+  const metrics: ClaudeMetrics = {};
+  let touched = false;
+
+  if (typeof p.total_cost_usd === 'number') {
+    metrics.cost_usd = p.total_cost_usd;
+    touched = true;
+  }
+  if (typeof p.num_turns === 'number') {
+    metrics.num_turns = p.num_turns;
+    touched = true;
+  }
+  if (Array.isArray(p.permission_denials)) {
+    metrics.permission_denials = p.permission_denials.length;
+    touched = true;
+  }
+  if (typeof p.usage === 'object' && p.usage !== null) {
+    const u = p.usage as Record<string, unknown>;
+    if (
+      typeof u.input_tokens === 'number' &&
+      typeof u.output_tokens === 'number' &&
+      typeof u.cache_read_input_tokens === 'number' &&
+      typeof u.cache_creation_input_tokens === 'number'
+    ) {
+      metrics.usage = {
+        input_tokens: u.input_tokens,
+        output_tokens: u.output_tokens,
+        cache_read_input_tokens: u.cache_read_input_tokens,
+        cache_creation_input_tokens: u.cache_creation_input_tokens,
+      };
+      touched = true;
+    }
+  }
+
+  return touched ? metrics : undefined;
+}
+
 /** Best-effort one-line description of a claude JSON error payload. */
 export function describeClaudeError(parsed: unknown): string {
   if (typeof parsed !== 'object' || parsed === null) return '(unknown shape)';
@@ -229,6 +299,7 @@ export class ClaudeCliClient implements LlmClient {
           stderr,
           parsed,
           durationMs: Date.now() - start,
+          metrics: extractClaudeMetrics(parsed),
         });
       });
     });

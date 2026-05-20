@@ -21,8 +21,17 @@ export interface Git {
    * Returns a unified diff of the working tree (staged + unstaged) vs HEAD.
    * Best-effort: empty string on git error so archive capture never derails
    * the orchestrator pipeline.
+   *
+   * `intentToAddPaths` (per PoC blind spot #10): bare `git diff HEAD` misses
+   * untracked files. Pass new-file paths here and the impl will
+   * `git add --intent-to-add` them before diff (so they show as "new file
+   * mode" patches), then `git reset HEAD --` to undo so the index isn't
+   * left polluted for the subsequent commitTask `git add -A`.
    */
-  diffWorkingTree(opts: { cwd: string }): Promise<string>;
+  diffWorkingTree(opts: {
+    cwd: string;
+    intentToAddPaths?: readonly string[];
+  }): Promise<string>;
 }
 
 export class GitCommitError extends Error {
@@ -83,12 +92,27 @@ export class GitCli implements Git {
     return r.stdout.trim();
   }
 
-  async diffWorkingTree(opts: { cwd: string }): Promise<string> {
-    const r = await this.shell.run('git diff HEAD', { cwd: opts.cwd });
-    // Best-effort: return whatever stdout was produced. Git typically exits 0
-    // even when the diff is empty; non-zero (e.g. broken repo) → empty string
-    // so archive capture never derails the orchestrator pipeline.
-    return r.exitCode === 0 ? r.stdout : '';
+  async diffWorkingTree(opts: {
+    cwd: string;
+    intentToAddPaths?: readonly string[];
+  }): Promise<string> {
+    const paths = opts.intentToAddPaths ?? [];
+    if (paths.length > 0) {
+      const addCmd = `git add --intent-to-add -- ${paths.map(quote).join(' ')}`;
+      await this.shell.run(addCmd, { cwd: opts.cwd });
+    }
+    try {
+      const r = await this.shell.run('git diff HEAD', { cwd: opts.cwd });
+      // Best-effort: return whatever stdout was produced. Git typically exits 0
+      // even when the diff is empty; non-zero (e.g. broken repo) → empty string
+      // so archive capture never derails the orchestrator pipeline.
+      return r.exitCode === 0 ? r.stdout : '';
+    } finally {
+      if (paths.length > 0) {
+        const resetCmd = `git reset HEAD -- ${paths.map(quote).join(' ')}`;
+        await this.shell.run(resetCmd, { cwd: opts.cwd });
+      }
+    }
   }
 }
 
@@ -172,7 +196,10 @@ export class FakeGit implements Git {
     return this.shaQueue.shift() ?? FAKE_DEFAULT_HEAD;
   }
 
-  async diffWorkingTree(opts: { cwd: string }): Promise<string> {
+  async diffWorkingTree(opts: {
+    cwd: string;
+    intentToAddPaths?: readonly string[];
+  }): Promise<string> {
     this.calls.push({ method: 'diffWorkingTree', args: [opts] });
     return this.diffQueue.shift() ?? '';
   }

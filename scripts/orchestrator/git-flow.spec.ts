@@ -12,6 +12,7 @@ import {
   GitCli,
   GitCommitError,
   type CommitTaskInput,
+  type Git,
 } from './git-flow.js';
 import {
   FakeLlmClient,
@@ -154,6 +155,71 @@ describe('GitCli', () => {
     await expect(git.revParseHead({ cwd: '/repo' })).rejects.toThrow(
       /git rev-parse HEAD failed/,
     );
+  });
+
+  describe('diffWorkingTree', () => {
+    it('runs `git diff HEAD` and returns stdout when no intent-to-add paths', async () => {
+      const sh = new FakeShell([shellOk('diff content')]);
+      const git: Git = new GitCli(sh);
+      const r = await git.diffWorkingTree({ cwd: '/r' });
+      expect(r).toBe('diff content');
+      expect(sh.calls).toHaveLength(1);
+      expect(sh.calls[0].command).toBe('git diff HEAD');
+    });
+
+    it('returns empty string when git diff exits non-zero (best-effort)', async () => {
+      const sh = new FakeShell([shellFail('broken repo', 128)]);
+      const git: Git = new GitCli(sh);
+      const r = await git.diffWorkingTree({ cwd: '/r' });
+      expect(r).toBe('');
+    });
+
+    it('intent-to-adds new file paths before diff, resets after (capture untracked)', async () => {
+      // PoC blind spot #10: bare `git diff HEAD` misses untracked files.
+      // intent-to-add registers them in the index as "new file mode" so
+      // the diff captures full content; reset undoes the intent so the
+      // index isn't left polluted for the subsequent commitTask.
+      const sh = new FakeShell([
+        shellOk(''),               // git add --intent-to-add
+        shellOk('+new file diff'), // git diff HEAD
+        shellOk(''),               // git reset HEAD
+      ]);
+      const git: Git = new GitCli(sh);
+      const r = await git.diffWorkingTree({
+        cwd: '/r',
+        intentToAddPaths: ['packages/x/index.ts', 'apps/y/main.ts'],
+      });
+      expect(r).toBe('+new file diff');
+      expect(sh.calls.map((c) => c.command)).toEqual([
+        'git add --intent-to-add -- "packages/x/index.ts" "apps/y/main.ts"',
+        'git diff HEAD',
+        'git reset HEAD -- "packages/x/index.ts" "apps/y/main.ts"',
+      ]);
+    });
+
+    it('still resets intent-to-add when diff fails (try/finally)', async () => {
+      const sh = new FakeShell([
+        shellOk(''),
+        shellFail('boom', 1),
+        shellOk(''),
+      ]);
+      const git: Git = new GitCli(sh);
+      const r = await git.diffWorkingTree({ cwd: '/r', intentToAddPaths: ['a.ts'] });
+      expect(r).toBe('');
+      expect(sh.calls.map((c) => c.command)).toEqual([
+        'git add --intent-to-add -- "a.ts"',
+        'git diff HEAD',
+        'git reset HEAD -- "a.ts"',
+      ]);
+    });
+
+    it('skips intent-to-add stage when paths empty', async () => {
+      const sh = new FakeShell([shellOk('plain diff')]);
+      const git: Git = new GitCli(sh);
+      const r = await git.diffWorkingTree({ cwd: '/r', intentToAddPaths: [] });
+      expect(r).toBe('plain diff');
+      expect(sh.calls).toHaveLength(1);
+    });
   });
 });
 
