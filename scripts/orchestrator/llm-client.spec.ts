@@ -25,7 +25,7 @@ describe('buildClaudeArgs', () => {
       '--output-format',
       'json',
       '--max-turns',
-      '5',
+      '30',
       'hello',
     ]);
   });

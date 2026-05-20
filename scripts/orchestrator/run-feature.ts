@@ -50,6 +50,7 @@ export interface RunFeatureOptions {
 
 export type TaskRunReason =
   | 'success'
+  | 'llm-self-committed'
   | 'verify-ralph-failed'
   | 'hook-ralph-failed'
   | 'llm-error'
@@ -241,6 +242,9 @@ async function runTaskInner(
     cwd: repoRoot,
     ...deps.llmInvokeOpts,
   };
+  // PoC blind spot 9: capture HEAD before LLM runs so commitTask can detect
+  // a self-commit by the subprocess (despite prompt instruction not to).
+  const headBefore = await deps.git.revParseHead({ cwd: repoRoot });
   const llmStartedAt = Date.now();
   let llmResult: LlmInvokeResult;
   try {
@@ -323,12 +327,19 @@ async function runTaskInner(
     llm: deps.llm,
     llmInvokeOpts,
     maxHookRetries: options.maxHookRetries,
+    headBefore,
   });
+
+  const reason: TaskRunReason = commit.ok
+    ? commit.reason === 'llm-self-committed'
+      ? 'llm-self-committed'
+      : 'success'
+    : 'hook-ralph-failed';
 
   return {
     taskId: task.id,
     ok: commit.ok,
-    reason: commit.ok ? 'success' : 'hook-ralph-failed',
+    reason,
     verifyRalph,
     commit,
     llmResult,
