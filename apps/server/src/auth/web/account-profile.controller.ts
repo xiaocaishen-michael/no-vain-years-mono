@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Req, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -6,9 +6,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { GetAccountProfileUseCase } from '../application/get-account-profile.usecase';
+import { UpdateDisplayNameUseCase } from '../application/update-display-name.usecase';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard';
 import { AccountProfileResponse } from './dto/account-profile.response';
 import { ProblemDetailResponse } from './dto/problem-detail.response';
+import { UpdateDisplayNameRequest } from './dto/update-display-name.request';
 
 /**
  * GET /api/v1/accounts/me
@@ -22,7 +24,10 @@ import { ProblemDetailResponse } from './dto/problem-detail.response';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AccountProfileController {
-  constructor(private readonly useCase: GetAccountProfileUseCase) {}
+  constructor(
+    private readonly useCase: GetAccountProfileUseCase,
+    private readonly updateDisplayNameUseCase: UpdateDisplayNameUseCase,
+  ) {}
 
   @Get('me')
   @HttpCode(200)
@@ -46,6 +51,46 @@ export class AccountProfileController {
     @Req() req: { user: AuthenticatedUser },
   ): Promise<AccountProfileResponse> {
     const result = await this.useCase.execute(req.user.accountId);
+    return {
+      accountId: result.accountId.toString(),
+      phone: result.phone,
+      displayName: result.displayName,
+      status: result.status,
+      createdAt: result.createdAt,
+    };
+  }
+
+  @Patch('me')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Update authenticated account display name',
+    description:
+      'Sets a new display name for the bearer-authenticated user. Validates FR-005 rules (1-32 Unicode code points, no forbidden chars). Returns updated profile.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Display name updated successfully',
+    type: AccountProfileResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid display name (violates FR-005 rules)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'Missing / invalid / expired token, or account not ACTIVE (FR-004, FR-009) — reason not disclosed (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  async updateDisplayName(
+    @Req() req: { user: AuthenticatedUser },
+    @Body() body: UpdateDisplayNameRequest,
+  ): Promise<AccountProfileResponse> {
+    const result = await this.updateDisplayNameUseCase.execute(
+      req.user.accountId,
+      body.displayName,
+    );
     return {
       accountId: result.accountId.toString(),
       phone: result.phone,
