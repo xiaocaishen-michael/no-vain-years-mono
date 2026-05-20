@@ -47,7 +47,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T009 DisplayName VO unit test — covers FR-005 + Edge Cases (ships RED first)
   <!-- task-meta: {"id":"T009","workspace":"server-app","deps":["T008"],"trace_us":["US2"],"trace_fr":["FR-005"],"trace_sc":["SC-006"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/domain/display-name.vo.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
 
-- [ ] T010 Extend Account aggregate — add displayName field + changeDisplayName(DisplayName, Instant) method
+- [X] T010 Extend Account aggregate — add displayName field + changeDisplayName(DisplayName, Instant) method
   <!-- task-meta: {"id":"T010","workspace":"server-app","deps":["T008"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/domain/account.aggregate.ts","op":"modify"}],"parallel":false} -->
 
 - [ ] T011 Account aggregate changeDisplayName unit test (ships RED first)
