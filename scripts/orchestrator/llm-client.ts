@@ -59,7 +59,12 @@ const DEFAULT_ALLOWED_TOOLS = [
   'Grep',
 ];
 
-const DEFAULT_MAX_TURNS = 5;
+// 2026-05-20 A-002 PoC surfaced: 5 was too tight — non-trivial config / impl
+// tasks (Expo init = 6 files + research SDK 54 patterns; Prisma migration;
+// multi-file controllers) hit max_turns before completing. Bumped to 30
+// covering 1-file simple write/typecheck (~3 turns) up to multi-file config
+// (~15-25 turns including research). Future: per-task override via tasks-meta.
+const DEFAULT_MAX_TURNS = 30;
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 
 /**
