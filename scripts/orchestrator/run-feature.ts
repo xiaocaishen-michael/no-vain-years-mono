@@ -18,6 +18,7 @@ import {
   type CodeContext,
 } from './graphify-client.js';
 import {
+  isClaudeMaxTurnsError,
   LlmInvokeError,
   type LlmClient,
   type LlmInvokeOptions,
@@ -306,30 +307,75 @@ async function runTaskInner(
   const headBefore = await deps.git.revParseHead({ cwd: repoRoot });
   archive.setHeadBefore(headBefore);
 
-  const att0 = archive.reserveAttempt('initial');
-  const { stdout: llmStdoutSink, stderr: llmStderrSink } =
-    att0.openLlmStreams();
+  // PoC blind spot #18: Sonnet hits max_turns on research-heavy tasks
+  // (T006 ESLint boundaries). Escalate to Opus once before giving up.
+  // The loop runs at most twice: initial (Sonnet/default) then Opus retry.
+  let attempt = archive.reserveAttempt('initial');
+  let { stdout: llmStdoutSink, stderr: llmStderrSink } = attempt.openLlmStreams();
   const llmStartedAt = Date.now();
-  const stopLlmTimer = startElapsedTimer(progress, '🧠 Claude');
-  let llmResult: LlmInvokeResult;
-  try {
-    llmResult = await deps.llm.invoke(prompt, {
-      ...llmInvokeOpts,
-      streamStdout: llmStdoutSink,
-      streamStderr: llmStderrSink,
-    });
-  } catch (e) {
-    stopLlmTimer();
-    const err = e instanceof Error ? e : new Error(String(e));
-    // PoC blind spot #15: capture diff + recover metrics from LlmInvokeError
-    // so summary.json records cost/usage/turns and any partial work
-    // (e.g. half-written file when claude hit error_max_turns).
+  let stopLlmTimer = startElapsedTimer(progress, '🧠 Claude');
+  let llmResult: LlmInvokeResult | undefined;
+  let llmFinalError: Error | undefined;
+
+  const baseModel =
+    llmInvokeOpts.model ?? process.env.ORCHESTRATOR_MODEL ?? 'sonnet';
+  const canEscalateModel = baseModel.toLowerCase() !== 'opus';
+
+  for (let pass = 0; pass < 2; pass++) {
+    const passModel = pass === 1 ? 'opus' : undefined;
+    try {
+      llmResult = await deps.llm.invoke(prompt, {
+        ...llmInvokeOpts,
+        ...(passModel ? { model: passModel } : {}),
+        streamStdout: llmStdoutSink,
+        streamStderr: llmStderrSink,
+      });
+      stopLlmTimer();
+      llmFinalError = undefined;
+      break;
+    } catch (e) {
+      stopLlmTimer();
+      const err = e instanceof Error ? e : new Error(String(e));
+      const shouldEscalate =
+        pass === 0 &&
+        canEscalateModel &&
+        isClaudeMaxTurnsError(err);
+      if (!shouldEscalate) {
+        llmFinalError = err;
+        break;
+      }
+      // Close out the failed attempt (Sonnet), open a fresh one for Opus.
+      const failureDiff = await safeDiff(deps.git, repoRoot, task.files);
+      const llmMetrics =
+        err instanceof LlmInvokeError ? err.metrics : undefined;
+      await attempt.finish({
+        prompt,
+        llmError: err,
+        llmMetrics,
+        diff: failureDiff,
+        ok: false,
+      });
+      archive.pushError(
+        `${baseModel} hit max_turns; escalating to Opus retry`,
+      );
+      attempt = archive.reserveAttempt('initial');
+      const newStreams = attempt.openLlmStreams();
+      llmStdoutSink = newStreams.stdout;
+      llmStderrSink = newStreams.stderr;
+      stopLlmTimer = startElapsedTimer(progress, '🧠 Claude (opus retry)');
+    }
+  }
+
+  if (llmFinalError) {
+    // PoC blind spot #15: capture diff + recover metrics from LlmInvokeError.
     const failureDiff = await safeDiff(deps.git, repoRoot, task.files);
     const llmMetrics =
-      err instanceof LlmInvokeError ? err.metrics : undefined;
-    await att0.finish({
+      llmFinalError instanceof LlmInvokeError
+        ? llmFinalError.metrics
+        : undefined;
+    await attempt.finish({
       prompt,
-      llmError: err,
+      llmError: llmFinalError,
       llmMetrics,
       diff: failureDiff,
       ok: false,
@@ -338,10 +384,10 @@ async function runTaskInner(
       taskId: task.id,
       ok: false,
       reason: 'llm-error',
-      message: err.message,
+      message: llmFinalError.message,
     };
   }
-  stopLlmTimer();
+  // llmResult is defined here (loop set it on success path).
 
   // 5b. Post-LLM check: assert declared task.files were actually filled.
   // Catches silent no-ops that verify_kind=typecheck would mask (an empty
@@ -349,7 +395,7 @@ async function runTaskInner(
   const noOpError = await detectLlmNoOp(task, repoRoot, llmStartedAt);
   if (noOpError) {
     const diff = await safeDiff(deps.git, repoRoot, task.files);
-    await att0.finish({
+    await attempt.finish({
       prompt,
       llmResult,
       actionStderr: noOpError,
@@ -369,7 +415,7 @@ async function runTaskInner(
   // 6. Verify command (in workspace.cwd, NOT sandbox)
   const verifyCmd = workspace.verify_commands[task.verify_kind];
   if (!verifyCmd) {
-    await att0.finish({ prompt, llmResult, ok: false });
+    await attempt.finish({ prompt, llmResult, ok: false });
     return {
       taskId: task.id,
       ok: false,
@@ -381,7 +427,7 @@ async function runTaskInner(
   progress?.update('🧪 verify command');
   const verifyResult = await deps.shell.run(verifyCmd, { cwd: workspaceCwd });
   const initialDiff = await safeDiff(deps.git, repoRoot, task.files);
-  await att0.finish({
+  await attempt.finish({
     prompt,
     llmResult,
     actionStdout: verifyResult.stdout,

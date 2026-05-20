@@ -27,6 +27,8 @@ describe('buildClaudeArgs', () => {
       'json',
       '--max-turns',
       '30',
+      '--model',
+      'sonnet',
       'hello',
     ]);
   });
@@ -50,6 +52,30 @@ describe('buildClaudeArgs', () => {
     expect(args.indexOf('--max-turns')).toBeGreaterThan(-1);
     expect(args[args.indexOf('--max-turns') + 1]).toBe('8');
     expect(args[args.indexOf('--output-format') + 1]).toBe('text');
+  });
+
+  it('emits --model sonnet by default (PoC blind spot #17)', () => {
+    const args = buildClaudeArgs('hi', BASE_OPTS);
+    const ix = args.indexOf('--model');
+    expect(ix).toBeGreaterThan(-1);
+    expect(args[ix + 1]).toBe('sonnet');
+  });
+
+  it('honors explicit opts.model over default', () => {
+    const args = buildClaudeArgs('hi', { ...BASE_OPTS, model: 'opus' });
+    expect(args[args.indexOf('--model') + 1]).toBe('opus');
+  });
+
+  it('respects ORCHESTRATOR_MODEL env var when opts.model not set', () => {
+    const old = process.env.ORCHESTRATOR_MODEL;
+    try {
+      process.env.ORCHESTRATOR_MODEL = 'opus';
+      const args = buildClaudeArgs('hi', BASE_OPTS);
+      expect(args[args.indexOf('--model') + 1]).toBe('opus');
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_MODEL = old;
+      else delete process.env.ORCHESTRATOR_MODEL;
+    }
   });
 
   it('respects ORCHESTRATOR_MAX_TURNS env var when --max-turns not in opts', () => {
