@@ -18,6 +18,7 @@ import {
   type CodeContext,
 } from './graphify-client.js';
 import {
+  LlmInvokeError,
   type LlmClient,
   type LlmInvokeOptions,
   type LlmInvokeResult,
@@ -320,7 +321,19 @@ async function runTaskInner(
   } catch (e) {
     stopLlmTimer();
     const err = e instanceof Error ? e : new Error(String(e));
-    await att0.finish({ prompt, llmError: err, ok: false });
+    // PoC blind spot #15: capture diff + recover metrics from LlmInvokeError
+    // so summary.json records cost/usage/turns and any partial work
+    // (e.g. half-written file when claude hit error_max_turns).
+    const failureDiff = await safeDiff(deps.git, repoRoot, task.files);
+    const llmMetrics =
+      err instanceof LlmInvokeError ? err.metrics : undefined;
+    await att0.finish({
+      prompt,
+      llmError: err,
+      llmMetrics,
+      diff: failureDiff,
+      ok: false,
+    });
     return {
       taskId: task.id,
       ok: false,

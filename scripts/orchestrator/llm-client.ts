@@ -70,6 +70,15 @@ export class LlmInvokeError extends Error {
   constructor(
     message: string,
     public readonly cause?: unknown,
+    /**
+     * claude-cli telemetry recovered from the parsed JSON before reject().
+     * Populated when the failure was a semantic error (is_error=true) and
+     * the payload could still be parsed — lets the archive layer persist
+     * cost / token usage / turn count on the failure path.
+     */
+    public readonly metrics?: ClaudeMetrics,
+    /** Raw parsed JSON payload, for callers that want full fidelity. */
+    public readonly parsed?: unknown,
   ) {
     super(message);
     this.name = 'LlmInvokeError';
@@ -90,8 +99,21 @@ const DEFAULT_ALLOWED_TOOLS = [
 // tasks (Expo init = 6 files + research SDK 54 patterns; Prisma migration;
 // multi-file controllers) hit max_turns before completing. Bumped to 30
 // covering 1-file simple write/typecheck (~3 turns) up to multi-file config
-// (~15-25 turns including research). Future: per-task override via tasks-meta.
-const DEFAULT_MAX_TURNS = 30;
+// (~15-25 turns including research). T006 (ESLint boundaries for 6 packages)
+// hit 30-turn ceiling at $2.25 burn, so 30 is still too tight for some
+// research-heavy config tasks. Per-task override via tasks-meta is the
+// long-term fix; ORCHESTRATOR_MAX_TURNS env var is the short-term escape
+// hatch (set ORCHESTRATOR_MAX_TURNS=50 for one-off retries).
+const DEFAULT_MAX_TURNS_FALLBACK = 30;
+
+function getDefaultMaxTurns(): number {
+  const env = process.env.ORCHESTRATOR_MAX_TURNS;
+  if (env) {
+    const n = parseInt(env, 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return DEFAULT_MAX_TURNS_FALLBACK;
+}
 // 2026-05-20 A-002 PoC surfaced blind spot 7: 5min wall-clock is too tight
 // when max_turns=30 and each turn takes 10-30s. T001 (Expo workspace bootstrap)
 // timed out mid-stream after burning research turns + file writes. Bumped to
@@ -122,7 +144,7 @@ export function buildClaudeArgs(
     '--output-format',
     opts.outputFormat ?? 'json',
     '--max-turns',
-    String(opts.maxTurns ?? DEFAULT_MAX_TURNS),
+    String(opts.maxTurns ?? getDefaultMaxTurns()),
   ];
   if (opts.extraArgs && opts.extraArgs.length > 0) {
     args.push(...opts.extraArgs);
@@ -286,9 +308,16 @@ export class ClaudeCliClient implements LlmClient {
         // is_error=true inside the JSON payload while still exiting 0.
         // Surface those as LlmInvokeError so callers don't see false-green.
         if (isClaudeJsonError(parsed)) {
+          // PoC blind spot #15: even on semantic error claude-cli emits
+          // total_cost_usd / num_turns / usage in the final JSON. Attach
+          // them to the error so the archive layer can persist them on
+          // the failure path instead of having to grep llm-stdout.log.
           reject(
             new LlmInvokeError(
               `claude -p returned semantic error: ${describeClaudeError(parsed)}`,
+              undefined,
+              extractClaudeMetrics(parsed),
+              parsed,
             ),
           );
           return;

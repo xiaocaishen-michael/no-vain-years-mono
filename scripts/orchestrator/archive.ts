@@ -1,7 +1,11 @@
 import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import type { ClaudeUsage, LlmInvokeResult } from './llm-client.js';
+import type {
+  ClaudeMetrics,
+  ClaudeUsage,
+  LlmInvokeResult,
+} from './llm-client.js';
 
 /**
  * Per-task on-disk archive. Streams the LLM stdout/stderr to per-attempt
@@ -16,9 +20,13 @@ import type { ClaudeUsage, LlmInvokeResult } from './llm-client.js';
 export type AttemptPhase = 'initial' | 'verify-ralph' | 'hook-ralph';
 
 export interface LlmSummary {
-  exit_code: number;
-  duration_ms: number;
-  /** Populated when llmResult.metrics is set (claude-cli JSON payload). */
+  /** Set only when the LLM subprocess returned a full LlmInvokeResult
+   *  (i.e. success path). Absent on the LlmInvokeError fallback path
+   *  where we recover metrics from err.metrics but never reached resolve(). */
+  exit_code?: number;
+  duration_ms?: number;
+  /** Populated when llmResult.metrics is set (claude-cli JSON payload)
+   *  OR llmMetrics fallback (failure path). */
   cost_usd?: number;
   num_turns?: number;
   permission_denials?: number;
@@ -72,6 +80,13 @@ export interface AttemptFinishInput {
   prompt: string;
   llmResult?: LlmInvokeResult;
   llmError?: Error;
+  /**
+   * Fallback claude-cli metrics when llmResult is absent. Used on the
+   * failure path where ClaudeCliClient rejected with LlmInvokeError;
+   * caller extracts err.metrics and passes them here so summary.json
+   * still records cost/usage/turns. Ignored when llmResult is provided.
+   */
+  llmMetrics?: ClaudeMetrics;
   actionStdout?: string;
   actionStderr?: string;
   actionExitCode?: number;
@@ -286,6 +301,8 @@ export class AttemptHandle {
       elapsed_ms: Date.now() - this.startedAt,
       llm: input.llmResult
         ? buildLlmSummary(input.llmResult)
+        : input.llmMetrics
+        ? buildPartialLlmSummary(input.llmMetrics)
         : undefined,
       llm_error: input.llmError?.message,
       action:
@@ -302,16 +319,23 @@ function buildLlmSummary(r: LlmInvokeResult): LlmSummary {
     exit_code: r.exitCode,
     duration_ms: r.durationMs,
   };
-  const m = r.metrics;
-  if (m) {
-    if (m.cost_usd !== undefined) s.cost_usd = m.cost_usd;
-    if (m.num_turns !== undefined) s.num_turns = m.num_turns;
-    if (m.permission_denials !== undefined) {
-      s.permission_denials = m.permission_denials;
-    }
-    if (m.usage) s.usage = m.usage;
-  }
+  if (r.metrics) copyMetrics(r.metrics, s);
   return s;
+}
+
+function buildPartialLlmSummary(m: ClaudeMetrics): LlmSummary {
+  const s: LlmSummary = {};
+  copyMetrics(m, s);
+  return s;
+}
+
+function copyMetrics(m: ClaudeMetrics, s: LlmSummary): void {
+  if (m.cost_usd !== undefined) s.cost_usd = m.cost_usd;
+  if (m.num_turns !== undefined) s.num_turns = m.num_turns;
+  if (m.permission_denials !== undefined) {
+    s.permission_denials = m.permission_denials;
+  }
+  if (m.usage) s.usage = m.usage;
 }
 
 function closeStream(s: fs.WriteStream): Promise<void> {
