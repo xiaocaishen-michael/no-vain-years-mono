@@ -81,7 +81,7 @@ orchestrator_compat: ">=0.1.0"
 - [ ] T019 Implement PATCH /api/v1/accounts/me endpoint + Request DTO + validation
   <!-- task-meta: {"id":"T019","workspace":"server-app","deps":["T016","T018"],"trace_us":["US2"],"trace_fr":["FR-003","FR-004","FR-010"],"trace_ep":["EP2"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/web/account-profile.controller.ts","op":"modify"},{"path":"apps/server/src/auth/web/dto/update-display-name.request.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T020 Create JwtAuthGuard — JWT validation + FR-009 ACTIVE status check (non-ACTIVE returns 401); used by /me endpoints
+- [X] T020 Create JwtAuthGuard — JWT validation + FR-009 ACTIVE status check (non-ACTIVE returns 401); used by /me endpoints
   <!-- task-meta: {"id":"T020","workspace":"server-app","deps":["T013"],"trace_us":["US4"],"trace_fr":["FR-002","FR-009","FR-028"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/web/jwt-auth.guard.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T021 Implement rate limit for /me endpoints (FR-008 — me-get 60s 60, me-patch 60s 10)
