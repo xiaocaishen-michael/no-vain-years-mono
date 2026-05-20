@@ -66,6 +66,10 @@ export interface TaskRunResult {
   llmResult?: LlmInvokeResult;
   verifyExitCode?: number;
   message?: string;
+  /** Where the task's sandbox lived. Set whenever the sandbox was created. */
+  sandboxCwd?: string;
+  /** True iff the sandbox was removed by the cleanup policy. */
+  sandboxCleaned?: boolean;
 }
 
 export interface RunFeatureResult {
@@ -124,7 +128,14 @@ export async function runFeature(
   return { ok: true, results };
 }
 
-/** Run a single task end-to-end (per plan § 5.3.15.8.6 steps 3.1-3.10). */
+/**
+ * Run a single task end-to-end (per plan § 5.3.15.8.6 steps 3.1-3.10).
+ *
+ * Sandbox lifecycle is owned here via try/finally: the inner pipeline
+ * runs in `runTaskInner`; on the way out, `maybeCleanupSandbox` applies
+ * `plan.config.sandbox.cleanup_on_{success,failure}`. The result always
+ * carries `sandboxCwd` + `sandboxCleaned` for downstream logging.
+ */
 export async function runTask(
   task: ParsedTask,
   state: FeatureState,
@@ -144,10 +155,48 @@ export async function runTask(
     };
   }
 
-  const workspaceCwd = path.resolve(repoRoot, workspace.cwd);
   const sandboxCwd = resolveSandboxCwd(state, task);
   await fs.mkdir(sandboxCwd, { recursive: true });
   await fs.mkdir(path.join(sandboxCwd, '.spec-kit'), { recursive: true });
+
+  let result: TaskRunResult;
+  try {
+    result = await runTaskInner(
+      task,
+      state,
+      workspace,
+      sandboxCwd,
+      repoRoot,
+      deps,
+      options,
+    );
+  } catch (e) {
+    result = {
+      taskId: task.id,
+      ok: false,
+      reason: 'llm-error',
+      message: e instanceof Error ? e.message : String(e),
+    };
+  }
+
+  const sandboxCleaned = await maybeCleanupSandbox(
+    sandboxCwd,
+    state.plan.config.sandbox,
+    result.ok,
+  );
+  return { ...result, sandboxCwd, sandboxCleaned };
+}
+
+async function runTaskInner(
+  task: ParsedTask,
+  state: FeatureState,
+  workspace: Workspace,
+  sandboxCwd: string,
+  repoRoot: string,
+  deps: RunFeatureDeps,
+  options: RunFeatureOptions,
+): Promise<TaskRunResult> {
+  const workspaceCwd = path.resolve(repoRoot, workspace.cwd);
 
   // 1. graphify code context
   const graphJsonPath =
@@ -266,6 +315,26 @@ export async function runTask(
     llmResult,
     verifyExitCode: verifyResult.exitCode,
   };
+}
+
+/**
+ * Apply the configured cleanup policy. Returns true if the sandbox was
+ * removed; false if preserved (whether by policy or by an underlying rm error).
+ */
+export async function maybeCleanupSandbox(
+  sandboxCwd: string,
+  cfg: { cleanup_on_success: boolean; cleanup_on_failure: boolean },
+  taskOk: boolean,
+): Promise<boolean> {
+  const shouldClean = taskOk ? cfg.cleanup_on_success : cfg.cleanup_on_failure;
+  if (!shouldClean) return false;
+  try {
+    await fs.rm(sandboxCwd, { recursive: true, force: true });
+    return true;
+  } catch {
+    // best-effort: if we can't rm, leave it for the operator
+    return false;
+  }
 }
 
 export function resolveSandboxCwd(
