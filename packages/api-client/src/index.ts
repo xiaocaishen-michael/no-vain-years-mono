@@ -7,4 +7,4 @@
  * run `pnpm api:gen:dev`. See W4 V8 acceptance in
  * docs/plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md.
  */
-export * from './generated/index.js';
+export * from './gen/index.js';
