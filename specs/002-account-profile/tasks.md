@@ -92,7 +92,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T022 US1 e2e — 新用户首登 GET /me 返 displayName=null
   <!-- task-meta: {"id":"T022","workspace":"server-app","deps":["T018","T020","T021"],"trace_us":["US1"],"trace_fr":["FR-001","FR-002","FR-007"],"trace_ep":["EP1"],"trace_sc":["SC-001","SC-003"],"kind":"test-e2e","verify_kind":"test","files":[{"path":"apps/server/test/integration/accounts.us1-002.e2e.spec.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T023 US2 e2e — PATCH displayName 成功路径 + Edge Cases 全部覆盖
+- [X] T023 US2 e2e — PATCH displayName 成功路径 + Edge Cases 全部覆盖
   <!-- task-meta: {"id":"T023","workspace":"server-app","deps":["T019","T021"],"trace_us":["US2"],"trace_fr":["FR-003","FR-005","FR-008"],"trace_ep":["EP2"],"trace_sc":["SC-002","SC-006"],"kind":"test-e2e","verify_kind":"test","files":[{"path":"apps/server/test/integration/accounts.us2-002.e2e.spec.ts","op":"create"}],"parallel":false} -->
 
 - [X] T024 US3 e2e — 老用户回访 GET /me 返已存 displayName
