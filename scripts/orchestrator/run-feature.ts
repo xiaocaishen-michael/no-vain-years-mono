@@ -232,11 +232,16 @@ async function runTaskInner(
   const promptFile = path.join(sandboxCwd, '.spec-kit', 'temp-prompt.md');
   await fs.writeFile(promptFile, prompt);
 
-  // 5. Invoke LLM
+  // 5. Invoke LLM. cwd MUST be repoRoot — prompt file paths are
+  // repo-root-relative (see schemas/tasks.ts + prompt-assembler
+  // fileOpsSection), so LLM Write/Edit must resolve them against the
+  // real repo, not the sandbox (or output is lost on cleanup). Sandbox
+  // remains the scratch home for temp-prompt.md paper trail.
   const llmInvokeOpts: LlmInvokeOptions = {
-    cwd: sandboxCwd,
+    cwd: repoRoot,
     ...deps.llmInvokeOpts,
   };
+  const llmStartedAt = Date.now();
   let llmResult: LlmInvokeResult;
   try {
     llmResult = await deps.llm.invoke(prompt, llmInvokeOpts);
@@ -246,6 +251,20 @@ async function runTaskInner(
       ok: false,
       reason: 'llm-error',
       message: e instanceof Error ? e.message : String(e),
+    };
+  }
+
+  // 5b. Post-LLM check: assert declared task.files were actually filled.
+  // Catches silent no-ops that verify_kind=typecheck would mask (an empty
+  // .ts file is valid TS).
+  const noOpError = await detectLlmNoOp(task, repoRoot, llmStartedAt);
+  if (noOpError) {
+    return {
+      taskId: task.id,
+      ok: false,
+      reason: 'llm-error',
+      message: noOpError,
+      llmResult,
     };
   }
 
@@ -345,6 +364,51 @@ export function resolveSandboxCwd(
   return tmpl
     .replace('{feature_id}', state.plan.frontmatter.feature_id)
     .replace('{task_id}', task.id);
+}
+
+/**
+ * Returns an error message if the LLM didn't fulfill any declared
+ * task.files write (op=create/modify untouched after llmStartedAt).
+ * Returns null on success. Files with op=delete/rename are skipped
+ * (their state is owned by pre-emptive fs-ops, not the LLM).
+ *
+ * Catches the silent no-op class of LLM failures that verify commands
+ * like typecheck can't see (an empty .ts file is valid TS).
+ */
+export async function detectLlmNoOp(
+  task: ParsedTask,
+  repoRoot: string,
+  llmStartedAt: number,
+): Promise<string | null> {
+  const targets = task.files.filter(
+    (f) => f.op === 'create' || f.op === 'modify',
+  );
+  if (targets.length === 0) return null;
+
+  const offenders: string[] = [];
+  for (const f of targets) {
+    const abs = path.resolve(repoRoot, f.path);
+    let stat;
+    try {
+      stat = await fs.stat(abs);
+    } catch {
+      offenders.push(`${f.path} (missing)`);
+      continue;
+    }
+    if (f.op === 'create' && stat.size === 0) {
+      offenders.push(`${f.path} (empty after LLM)`);
+      continue;
+    }
+    if (stat.mtimeMs < llmStartedAt) {
+      offenders.push(`${f.path} (untouched after LLM)`);
+    }
+  }
+  if (offenders.length === 0) return null;
+  return [
+    `LLM no-op detected for task ${task.id}: ${offenders.length} of ${targets.length} declared file(s) were not written.`,
+    `Offending files: ${offenders.join(', ')}`,
+    `(Verify commands like typecheck cannot catch empty/unfilled files, so the orchestrator checks file mtime/size post-LLM.)`,
+  ].join('\n');
 }
 
 export function buildVerifyRetryPrompt(

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildClaudeArgs,
   ClaudeCliClient,
+  describeClaudeError,
   FakeLlmClient,
+  isClaudeJsonError,
   LlmInvokeError,
   type LlmInvokeOptions,
   type LlmInvokeResult,
@@ -102,6 +104,45 @@ describe('FakeLlmClient', () => {
     await expect(fake.invoke('p2', BASE_OPTS)).rejects.toBeInstanceOf(
       LlmInvokeError,
     );
+  });
+});
+
+describe('isClaudeJsonError', () => {
+  it('returns true for {is_error: true} payloads', () => {
+    expect(isClaudeJsonError({ is_error: true, result: 'Not logged in' })).toBe(
+      true,
+    );
+  });
+
+  it('returns false for success payloads', () => {
+    expect(
+      isClaudeJsonError({ is_error: false, subtype: 'success', result: 'ok' }),
+    ).toBe(false);
+  });
+
+  it('returns false when parsed is missing / not an object', () => {
+    expect(isClaudeJsonError(undefined)).toBe(false);
+    expect(isClaudeJsonError(null)).toBe(false);
+    expect(isClaudeJsonError('a string')).toBe(false);
+    expect(isClaudeJsonError(42)).toBe(false);
+  });
+});
+
+describe('describeClaudeError', () => {
+  it('extracts result + subtype + stop_reason', () => {
+    const msg = describeClaudeError({
+      is_error: true,
+      subtype: 'success',
+      result: 'Not logged in · Please run /login',
+      stop_reason: 'stop_sequence',
+    });
+    expect(msg).toContain('Not logged in');
+    expect(msg).toContain('stop=stop_sequence');
+  });
+
+  it('falls back when no result text', () => {
+    const msg = describeClaudeError({ is_error: true });
+    expect(msg).toMatch(/no result/);
   });
 });
 
