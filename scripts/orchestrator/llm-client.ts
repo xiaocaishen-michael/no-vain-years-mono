@@ -19,6 +19,15 @@ export interface LlmInvokeOptions {
   allowedTools?: string[];
   /** Cap LLM turns; matches plan recommendation of 5. */
   maxTurns?: number;
+  /**
+   * claude-cli `--model` value (e.g. 'sonnet' / 'opus' / 'haiku' / full model
+   * ID). When omitted: `ORCHESTRATOR_MODEL` env var if set, else 'sonnet'.
+   * PoC blind spot #17: prior to this orchestrator emitted no --model and
+   * defaulted to whatever claude-cli's system-level default was (Opus on
+   * Max plan with `/model sonnet` interactive switch — that switch only
+   * affects the parent session, not nested subprocesses).
+   */
+  model?: string;
   /** Output format flag. Defaults to 'json'. */
   outputFormat?: 'json' | 'text';
   /** Hard timeout for the subprocess (ms). */
@@ -114,6 +123,19 @@ function getDefaultMaxTurns(): number {
   }
   return DEFAULT_MAX_TURNS_FALLBACK;
 }
+
+// 2026-05-20 PoC blind spot #17: orchestrator subprocess was inheriting
+// the system-level claude-cli default (Opus 4.7 on Max plan) because no
+// --model arg was passed. Plan said implementation should run on Sonnet
+// but the user's interactive `/model sonnet` switch only affects their
+// own session, not nested subprocesses. Default sonnet here so a plain
+// invocation matches plan intent; ORCHESTRATOR_MODEL=opus opts back into
+// Opus for one-off escalation runs.
+const DEFAULT_MODEL_FALLBACK = 'sonnet';
+
+function getDefaultModel(): string {
+  return process.env.ORCHESTRATOR_MODEL || DEFAULT_MODEL_FALLBACK;
+}
 // 2026-05-20 A-002 PoC surfaced blind spot 7: 5min wall-clock is too tight
 // when max_turns=30 and each turn takes 10-30s. T001 (Expo workspace bootstrap)
 // timed out mid-stream after burning research turns + file writes. Bumped to
@@ -145,6 +167,8 @@ export function buildClaudeArgs(
     opts.outputFormat ?? 'json',
     '--max-turns',
     String(opts.maxTurns ?? getDefaultMaxTurns()),
+    '--model',
+    opts.model ?? getDefaultModel(),
   ];
   if (opts.extraArgs && opts.extraArgs.length > 0) {
     args.push(...opts.extraArgs);
@@ -229,6 +253,18 @@ export function extractClaudeMetrics(parsed: unknown): ClaudeMetrics | undefined
   }
 
   return touched ? metrics : undefined;
+}
+
+/**
+ * True when `err` is an LlmInvokeError carrying a parsed claude JSON
+ * with `subtype: 'error_max_turns'`. Used by run-feature to decide
+ * whether to escalate to Opus (PoC blind spot #18).
+ */
+export function isClaudeMaxTurnsError(err: unknown): err is LlmInvokeError {
+  if (!(err instanceof LlmInvokeError)) return false;
+  const p = err.parsed;
+  if (typeof p !== 'object' || p === null) return false;
+  return (p as { subtype?: unknown }).subtype === 'error_max_turns';
 }
 
 /** Best-effort one-line description of a claude JSON error payload. */

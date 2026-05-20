@@ -247,6 +247,21 @@ describe('TaskArchive.finalize', () => {
     });
   });
 
+  it('TaskArchive.create wipes existing dir contents (PoC blind spot #16)', async () => {
+    const dir = makeDir();
+    // Pre-populate with stale residue from a hypothetical prior run.
+    fs.writeFileSync(path.join(dir, 'attempt-0-prompt.md'), 'OLD PROMPT');
+    fs.writeFileSync(path.join(dir, 'summary.json'), '{"old":"summary"}');
+    fs.writeFileSync(path.join(dir, 'attempt-0-llm-stdout.log'), 'old stdout');
+
+    await TaskArchive.create(dir, { featureId: 'f', taskId: 'T01' });
+
+    // After create, the dir exists but is empty — no stale files masquerade
+    // as current data when re-running the same task.
+    expect(fs.existsSync(dir)).toBe(true);
+    expect(fs.readdirSync(dir)).toEqual([]);
+  });
+
   it('uses llmMetrics fallback when llmResult absent (failure path)', async () => {
     // PoC blind spot #15: claude-cli emits cost/usage even on semantic
     // error (error_max_turns / refusal). LlmInvokeError carries them;
