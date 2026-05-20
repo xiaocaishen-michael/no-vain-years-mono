@@ -1,3 +1,4 @@
+import { PassThrough } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import { FakeShell, RealShell, shellOk, shellFail } from './shell.js';
 
@@ -67,5 +68,24 @@ describe('RealShell', () => {
     // macOS symlinks /tmp → /private/tmp; pwd -P resolves the physical path.
     const r = await sh.run('pwd -P', { cwd: '/tmp' });
     expect(r.stdout.trim()).toMatch(/(^|\/)tmp$/);
+  });
+
+  it('tees stdout/stderr to streamStdout/streamStderr sinks in real-time', async () => {
+    const sh = new RealShell();
+    const outSink = new PassThrough();
+    const errSink = new PassThrough();
+    const outChunks: Buffer[] = [];
+    const errChunks: Buffer[] = [];
+    outSink.on('data', (b: Buffer) => outChunks.push(b));
+    errSink.on('data', (b: Buffer) => errChunks.push(b));
+
+    const r = await sh.run('echo OUT; echo ERR >&2', {
+      cwd: process.cwd(),
+      streamStdout: outSink,
+      streamStderr: errSink,
+    });
+    expect(r.exitCode).toBe(0);
+    expect(Buffer.concat(outChunks).toString('utf-8').trim()).toBe('OUT');
+    expect(Buffer.concat(errChunks).toString('utf-8').trim()).toBe('ERR');
   });
 });

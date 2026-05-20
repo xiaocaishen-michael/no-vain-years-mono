@@ -1,11 +1,13 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { TaskArchive } from './archive.js';
 import {
   applyFileOpPlan,
   FileOpApplyError,
   planFileOps,
 } from './fs-ops.js';
 import {
+  buildCommitMsg,
   commitTask,
   type CommitTaskResult,
   type Git,
@@ -22,7 +24,7 @@ import {
 } from './llm-client.js';
 import { buildPrompt } from './prompt-assembler.js';
 import { ralphLoop, type RalphLoopResult } from './ralph-loop.js';
-import type { Shell } from './shell.js';
+import type { Shell, ShellRunResult } from './shell.js';
 import type { FeatureState } from './state.js';
 import type { Workspace } from './schemas/plan.js';
 import type { ParsedTask } from './schemas/tasks.js';
@@ -160,6 +162,18 @@ export async function runTask(
   await fs.mkdir(sandboxCwd, { recursive: true });
   await fs.mkdir(path.join(sandboxCwd, '.spec-kit'), { recursive: true });
 
+  const archiveDir = path.join(
+    repoRoot,
+    '.spec-kit',
+    'runs',
+    state.featureId,
+    task.id,
+  );
+  const archive = await TaskArchive.create(archiveDir, {
+    featureId: state.featureId,
+    taskId: task.id,
+  });
+
   let result: TaskRunResult;
   try {
     result = await runTaskInner(
@@ -170,13 +184,16 @@ export async function runTask(
       repoRoot,
       deps,
       options,
+      archive,
     );
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    archive.pushError(msg);
     result = {
       taskId: task.id,
       ok: false,
       reason: 'llm-error',
-      message: e instanceof Error ? e.message : String(e),
+      message: msg,
     };
   }
 
@@ -185,6 +202,14 @@ export async function runTask(
     state.plan.config.sandbox,
     result.ok,
   );
+  archive.setSandbox(sandboxCwd, sandboxCleaned);
+  try {
+    archive.setHeadAfter(await deps.git.revParseHead({ cwd: repoRoot }));
+  } catch {
+    // best-effort: leave head_after unset
+  }
+  await archive.finalize({ ok: result.ok, reason: result.reason });
+
   return { ...result, sandboxCwd, sandboxCleaned };
 }
 
@@ -196,6 +221,7 @@ async function runTaskInner(
   repoRoot: string,
   deps: RunFeatureDeps,
   options: RunFeatureOptions,
+  archive: TaskArchive,
 ): Promise<TaskRunResult> {
   const workspaceCwd = path.resolve(repoRoot, workspace.cwd);
 
@@ -227,6 +253,7 @@ async function runTaskInner(
       message: e instanceof FileOpApplyError ? e.message : String(e),
     };
   }
+  archive.recordFileOps(task.files);
 
   // 4. Write temp-prompt.md (informational; LLM invocation passes prompt
   // inline per Q-O2, but the file gives the operator a paper trail)
@@ -245,16 +272,27 @@ async function runTaskInner(
   // PoC blind spot 9: capture HEAD before LLM runs so commitTask can detect
   // a self-commit by the subprocess (despite prompt instruction not to).
   const headBefore = await deps.git.revParseHead({ cwd: repoRoot });
+  archive.setHeadBefore(headBefore);
+
+  const att0 = archive.reserveAttempt('initial');
+  const { stdout: llmStdoutSink, stderr: llmStderrSink } =
+    att0.openLlmStreams();
   const llmStartedAt = Date.now();
   let llmResult: LlmInvokeResult;
   try {
-    llmResult = await deps.llm.invoke(prompt, llmInvokeOpts);
+    llmResult = await deps.llm.invoke(prompt, {
+      ...llmInvokeOpts,
+      streamStdout: llmStdoutSink,
+      streamStderr: llmStderrSink,
+    });
   } catch (e) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    await att0.finish({ prompt, llmError: err, ok: false });
     return {
       taskId: task.id,
       ok: false,
       reason: 'llm-error',
-      message: e instanceof Error ? e.message : String(e),
+      message: err.message,
     };
   }
 
@@ -263,6 +301,15 @@ async function runTaskInner(
   // .ts file is valid TS).
   const noOpError = await detectLlmNoOp(task, repoRoot, llmStartedAt);
   if (noOpError) {
+    const diff = await safeDiff(deps.git, repoRoot);
+    await att0.finish({
+      prompt,
+      llmResult,
+      actionStderr: noOpError,
+      actionExitCode: -1,
+      diff,
+      ok: false,
+    });
     return {
       taskId: task.id,
       ok: false,
@@ -275,6 +322,7 @@ async function runTaskInner(
   // 6. Verify command (in workspace.cwd, NOT sandbox)
   const verifyCmd = workspace.verify_commands[task.verify_kind];
   if (!verifyCmd) {
+    await att0.finish({ prompt, llmResult, ok: false });
     return {
       taskId: task.id,
       ok: false,
@@ -284,10 +332,21 @@ async function runTaskInner(
     };
   }
   const verifyResult = await deps.shell.run(verifyCmd, { cwd: workspaceCwd });
+  const initialDiff = await safeDiff(deps.git, repoRoot);
+  await att0.finish({
+    prompt,
+    llmResult,
+    actionStdout: verifyResult.stdout,
+    actionStderr: verifyResult.stderr,
+    actionExitCode: verifyResult.exitCode,
+    diff: initialDiff,
+    ok: verifyResult.exitCode === 0,
+  });
 
   // 7. Ralph-loop on verify failure (verify-command phase, default max 3)
   let verifyRalph: RalphLoopResult | undefined;
   if (verifyResult.exitCode !== 0) {
+    let lastVerify: ShellRunResult | undefined;
     verifyRalph = await ralphLoop({
       phase: 'verify-command',
       maxRetries: options.maxVerifyRetries,
@@ -296,6 +355,7 @@ async function runTaskInner(
         buildVerifyRetryPrompt(task, feedback, n),
       attempt: async () => {
         const r = await deps.shell.run(verifyCmd, { cwd: workspaceCwd });
+        lastVerify = r;
         return {
           ok: r.exitCode === 0,
           feedback: r.exitCode === 0 ? undefined : r.stderr || r.stdout,
@@ -303,6 +363,20 @@ async function runTaskInner(
       },
       llm: deps.llm,
       llmInvokeOpts,
+      onRound: async (round) => {
+        const attN = archive.reserveAttempt('verify-ralph');
+        const diff = await safeDiff(deps.git, repoRoot);
+        await attN.finish({
+          prompt: round.retryPrompt,
+          llmResult: round.llmResult,
+          llmError: round.llmError,
+          actionStdout: lastVerify?.stdout,
+          actionStderr: lastVerify?.stderr,
+          actionExitCode: lastVerify?.exitCode,
+          diff,
+          ok: round.outcome?.ok ?? false,
+        });
+      },
     });
     if (!verifyRalph.ok) {
       return {
@@ -328,6 +402,7 @@ async function runTaskInner(
     llmInvokeOpts,
     maxHookRetries: options.maxHookRetries,
     headBefore,
+    archive,
   });
 
   const reason: TaskRunReason = commit.ok
@@ -335,6 +410,13 @@ async function runTaskInner(
       ? 'llm-self-committed'
       : 'success'
     : 'hook-ralph-failed';
+
+  if (commit.ok) {
+    archive.setCommit({
+      message: buildCommitMsg(task, state.plan, workspace),
+      ralph_attempts: commit.ralph?.attempts ?? 0,
+    });
+  }
 
   return {
     taskId: task.id,
@@ -345,6 +427,14 @@ async function runTaskInner(
     llmResult,
     verifyExitCode: verifyResult.exitCode,
   };
+}
+
+async function safeDiff(git: Git, repoRoot: string): Promise<string> {
+  try {
+    return await git.diffWorkingTree({ cwd: repoRoot });
+  } catch {
+    return '';
+  }
 }
 
 /**

@@ -266,6 +266,85 @@ describe('runFeature (integration with fakes)', () => {
     expect(shell.calls).toHaveLength(0);
   });
 
+  it('writes archive files to .spec-kit/runs/<feature>/<task>/ on happy path', async () => {
+    const { featureDir, repoRoot } = setupFeature();
+    const state = loadFeature(featureDir);
+
+    const result = await runFeature(state, defaultDeps(state), {
+      onlyTaskId: 'T001',
+    });
+    expect(result.ok).toBe(true);
+
+    const archiveDir = path.join(
+      repoRoot,
+      '.spec-kit',
+      'runs',
+      state.featureId,
+      'T001',
+    );
+    expect(fs.existsSync(path.join(archiveDir, 'summary.json'))).toBe(true);
+    expect(fs.existsSync(path.join(archiveDir, 'attempt-0-prompt.md'))).toBe(true);
+    expect(fs.existsSync(path.join(archiveDir, 'attempt-0-llm-stdout.log'))).toBe(true);
+    expect(fs.existsSync(path.join(archiveDir, 'attempt-0-action-stdout.log'))).toBe(true);
+
+    const summary = JSON.parse(
+      fs.readFileSync(path.join(archiveDir, 'summary.json'), 'utf-8'),
+    );
+    expect(summary.feature_id).toBe(state.featureId);
+    expect(summary.task_id).toBe('T001');
+    expect(summary.ok).toBe(true);
+    expect(summary.reason).toBe('success');
+    expect(summary.attempts).toHaveLength(1);
+    expect(summary.attempts[0]).toMatchObject({
+      n: 0,
+      phase: 'initial',
+      ok: true,
+      action: { exit_code: 0 },
+    });
+    expect(summary.file_ops.create + summary.file_ops.modify).toBeGreaterThan(0);
+    expect(summary.commit).toBeDefined();
+    expect(summary.commit.message).toMatch(/T001/);
+  });
+
+  it('archives verify-ralph rounds as attempt-1, attempt-2 entries', async () => {
+    const { featureDir, repoRoot } = setupFeature();
+    const state = loadFeature(featureDir);
+
+    const t001 = state.tasks.tasks.find((t) => t.id === 'T001')!;
+    const llm = new FakeLlmClient([
+      llmFills(t001), // initial — fills declared files
+      llmOk(),        // verify-ralph round 1
+    ]);
+    const git = new FakeGit([{ ok: true }]);
+    const shell = new FakeShell([
+      shellFail('verify red'), // initial verify fails
+      shellOk('green now'),    // ralph round 1 verify passes
+    ]);
+
+    const result = await runFeature(state, { llm, git, shell }, {
+      onlyTaskId: 'T001',
+    });
+    expect(result.ok).toBe(true);
+
+    const archiveDir = path.join(
+      repoRoot,
+      '.spec-kit',
+      'runs',
+      state.featureId,
+      'T001',
+    );
+    expect(fs.existsSync(path.join(archiveDir, 'attempt-0-prompt.md'))).toBe(true);
+    expect(fs.existsSync(path.join(archiveDir, 'attempt-1-prompt.md'))).toBe(true);
+    const summary = JSON.parse(
+      fs.readFileSync(path.join(archiveDir, 'summary.json'), 'utf-8'),
+    );
+    expect(summary.attempts).toHaveLength(2);
+    expect(summary.attempts[0].phase).toBe('initial');
+    expect(summary.attempts[0].ok).toBe(false);
+    expect(summary.attempts[1].phase).toBe('verify-ralph');
+    expect(summary.attempts[1].ok).toBe(true);
+  });
+
   it('attaches sandboxCwd + sandboxCleaned to each task result', async () => {
     const { featureDir } = setupFeature();
     const state = loadFeature(featureDir);

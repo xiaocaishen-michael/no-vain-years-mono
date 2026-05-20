@@ -27,6 +27,18 @@ export interface RalphAttemptOutcome {
   feedback?: string;
 }
 
+export interface RalphRoundEvent {
+  phase: RalphPhase;
+  attemptNumber: number;
+  retryPrompt: string;
+  /** Set when the LLM call succeeded. */
+  llmResult?: LlmInvokeResult;
+  /** Set when the LLM call threw (loop will short-circuit with reason='llm-error'). */
+  llmError?: Error;
+  /** Set after the action re-ran; undefined when the loop short-circuited on llm-error. */
+  outcome?: RalphAttemptOutcome;
+}
+
 export interface RalphLoopParams {
   phase: RalphPhase;
   /** Override RALPH_DEFAULT_MAX_RETRIES[phase] if set. */
@@ -42,6 +54,13 @@ export interface RalphLoopParams {
   attempt: () => Promise<RalphAttemptOutcome>;
   llm: LlmClient;
   llmInvokeOpts: LlmInvokeOptions;
+  /**
+   * Fires exactly once per round, after both the LLM call AND the action
+   * have completed (or after the LLM call short-circuits the loop on
+   * error). Lets callers archive each round without ralph-loop knowing
+   * the archive type. Awaited — failures propagate.
+   */
+  onRound?: (round: RalphRoundEvent) => Promise<void>;
 }
 
 /** A single entry in the retry timeline; useful for diagnostics + tests. */
@@ -97,13 +116,22 @@ export async function ralphLoop(
     try {
       llmResult = await params.llm.invoke(retryPrompt, params.llmInvokeOpts);
     } catch (e) {
+      const llmError = e instanceof Error ? e : new Error(String(e));
+      if (params.onRound) {
+        await params.onRound({
+          phase: params.phase,
+          attemptNumber: i,
+          retryPrompt,
+          llmError,
+        });
+      }
       return {
         ok: false,
         phase: params.phase,
         attempts,
         reason: 'llm-error',
         history,
-        llmError: e instanceof Error ? e : new Error(String(e)),
+        llmError,
         finalFeedback: feedback,
       };
     }
@@ -125,6 +153,16 @@ export async function ralphLoop(
       ok: outcome.ok,
       feedback: outcome.feedback,
     });
+
+    if (params.onRound) {
+      await params.onRound({
+        phase: params.phase,
+        attemptNumber: i,
+        retryPrompt,
+        llmResult,
+        outcome,
+      });
+    }
 
     if (outcome.ok) {
       return {
