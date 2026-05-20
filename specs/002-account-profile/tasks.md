@@ -84,7 +84,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T020 Create JwtAuthGuard — JWT validation + FR-009 ACTIVE status check (non-ACTIVE returns 401); used by /me endpoints
   <!-- task-meta: {"id":"T020","workspace":"server-app","deps":["T013"],"trace_us":["US4"],"trace_fr":["FR-002","FR-009","FR-028"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/web/jwt-auth.guard.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T021 Implement rate limit for /me endpoints (FR-008 — me-get 60s 60, me-patch 60s 10)
+- [X] T021 Implement rate limit for /me endpoints (FR-008 — me-get 60s 60, me-patch 60s 10)
   <!-- task-meta: {"id":"T021","workspace":"server-app","deps":["T018","T019"],"trace_us":["US1","US2","US3"],"trace_fr":["FR-008"],"trace_sc":["SC-004"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/web/account-profile.controller.ts","op":"modify"}],"parallel":false} -->
 
 ## Server — E2E (Vitest + Testcontainers)

@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Patch, Req, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -21,7 +22,7 @@ import { UpdateDisplayNameRequest } from './dto/update-display-name.request';
  */
 @ApiTags('accounts')
 @Controller('v1/accounts')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ThrottlerGuard)
 @ApiBearerAuth()
 export class AccountProfileController {
   constructor(
@@ -31,6 +32,7 @@ export class AccountProfileController {
 
   @Get('me')
   @HttpCode(200)
+  @Throttle({ 'me-get': { limit: 60, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Get authenticated account profile',
     description:
@@ -45,6 +47,11 @@ export class AccountProfileController {
     status: 401,
     description:
       'Missing / invalid / expired token, or account not ACTIVE (FR-002, FR-009) — reason not disclosed (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (FR-008: 60 requests per 60s per account)',
     type: ProblemDetailResponse,
   })
   async getProfile(
@@ -62,6 +69,7 @@ export class AccountProfileController {
 
   @Patch('me')
   @HttpCode(200)
+  @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Update authenticated account display name',
     description:
@@ -81,6 +89,11 @@ export class AccountProfileController {
     status: 401,
     description:
       'Missing / invalid / expired token, or account not ACTIVE (FR-004, FR-009) — reason not disclosed (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (FR-008: 10 requests per 60s per account)',
     type: ProblemDetailResponse,
   })
   async updateDisplayName(
