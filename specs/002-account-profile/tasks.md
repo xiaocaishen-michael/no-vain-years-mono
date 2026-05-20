@@ -64,7 +64,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T014 Implement GetAccountProfileUseCase
   <!-- task-meta: {"id":"T014","workspace":"server-app","deps":["T013"],"trace_us":["US1","US3"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/application/get-account-profile.usecase.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T015 GetAccountProfileUseCase unit test (ships RED first)
+- [X] T015 GetAccountProfileUseCase unit test (ships RED first)
   <!-- task-meta: {"id":"T015","workspace":"server-app","deps":["T014"],"trace_us":["US1","US3"],"trace_fr":["FR-001"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/application/get-account-profile.usecase.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
 
 - [X] T016 Implement UpdateDisplayNameUseCase
