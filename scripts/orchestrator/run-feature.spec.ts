@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { FakeGit } from './git-flow.js';
 import {
   FakeLlmClient,
+  LlmInvokeError,
   type FakeResponse,
   type LlmInvokeResult,
 } from './llm-client.js';
@@ -415,6 +416,118 @@ describe('runFeature (integration with fakes)', () => {
     expect(summary.attempts[0].ok).toBe(false);
     expect(summary.attempts[1].phase).toBe('verify-ralph');
     expect(summary.attempts[1].ok).toBe(true);
+  });
+
+  describe('Opus escalation on error_max_turns (PoC blind spot #18)', () => {
+    function maxTurnsError(): LlmInvokeError {
+      return new LlmInvokeError(
+        'claude -p returned semantic error: subtype=error_max_turns',
+        undefined,
+        { cost_usd: 1.5, num_turns: 30 },
+        { is_error: true, subtype: 'error_max_turns', total_cost_usd: 1.5, num_turns: 30 },
+      );
+    }
+
+    it('retries with model=opus when Sonnet hits error_max_turns', async () => {
+      const { featureDir, repoRoot } = setupFeature();
+      const state = loadFeature(featureDir);
+      const t001 = state.tasks.tasks.find((t) => t.id === 'T001')!;
+
+      const llm = new FakeLlmClient([
+        () => { throw maxTurnsError(); }, // Sonnet attempt
+        llmFills(t001),                    // Opus retry — fills files
+      ]);
+      const git = new FakeGit([{ ok: true }]);
+      const shell = new FakeShell([shellOk('verify green')]);
+
+      const result = await runFeature(state, { llm, git, shell }, {
+        onlyTaskId: 'T001',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(llm.calls).toHaveLength(2);
+      // First call uses default (sonnet via env / hardcoded), no explicit model
+      expect(llm.calls[0].opts.model).toBeUndefined();
+      // Second call explicitly sets opus
+      expect(llm.calls[1].opts.model).toBe('opus');
+
+      // Archive records two attempts (Sonnet failure + Opus success)
+      const archiveDir = path.join(
+        repoRoot, '.spec-kit', 'runs', state.featureId, 'T001',
+      );
+      const summary = JSON.parse(
+        fs.readFileSync(path.join(archiveDir, 'summary.json'), 'utf-8'),
+      );
+      expect(summary.attempts).toHaveLength(2);
+      expect(summary.attempts[0].ok).toBe(false);
+      expect(summary.attempts[0].llm_error).toMatch(/error_max_turns/);
+      expect(summary.attempts[1].ok).toBe(true);
+    });
+
+    it('does NOT escalate when the error is not max_turns', async () => {
+      const { featureDir } = setupFeature();
+      const state = loadFeature(featureDir);
+
+      const llm = new FakeLlmClient([
+        () => { throw new LlmInvokeError('some other error'); },
+      ]);
+      const git = new FakeGit([{ ok: true }]);
+      const shell = new FakeShell([]);
+
+      const result = await runFeature(state, { llm, git, shell }, {
+        onlyTaskId: 'T001',
+      });
+
+      expect(result.ok).toBe(false);
+      expect(llm.calls).toHaveLength(1); // no retry
+    });
+
+    it('does NOT escalate when already on opus (avoid recursion)', async () => {
+      const { featureDir } = setupFeature();
+      const state = loadFeature(featureDir);
+
+      const llm = new FakeLlmClient([
+        () => { throw maxTurnsError(); },
+      ]);
+      const git = new FakeGit([{ ok: true }]);
+      const shell = new FakeShell([]);
+
+      const result = await runFeature(
+        state,
+        { llm, git, shell, llmInvokeOpts: { model: 'opus' } },
+        { onlyTaskId: 'T001' },
+      );
+
+      expect(result.ok).toBe(false);
+      expect(llm.calls).toHaveLength(1);
+    });
+
+    it('records both attempts even when Opus retry also fails', async () => {
+      const { featureDir, repoRoot } = setupFeature();
+      const state = loadFeature(featureDir);
+
+      const llm = new FakeLlmClient([
+        () => { throw maxTurnsError(); },                             // Sonnet
+        () => { throw new LlmInvokeError('Opus also broke'); },        // Opus
+      ]);
+      const git = new FakeGit([{ ok: true }]);
+      const shell = new FakeShell([]);
+
+      const result = await runFeature(state, { llm, git, shell }, {
+        onlyTaskId: 'T001',
+      });
+
+      expect(result.ok).toBe(false);
+      expect(llm.calls).toHaveLength(2);
+      const summary = JSON.parse(
+        fs.readFileSync(
+          path.join(repoRoot, '.spec-kit', 'runs', state.featureId, 'T001', 'summary.json'),
+          'utf-8',
+        ),
+      );
+      expect(summary.attempts).toHaveLength(2);
+      expect(summary.attempts.every((a: { ok: boolean }) => !a.ok)).toBe(true);
+    });
   });
 
   it('attaches sandboxCwd + sandboxCleaned to each task result', async () => {

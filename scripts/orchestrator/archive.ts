@@ -116,6 +116,12 @@ export class TaskArchive {
     dir: string,
     opts: TaskArchiveCreateOptions,
   ): Promise<TaskArchive> {
+    // PoC blind spot #16: re-running the same task left stale prompt.md /
+    // summary.json / diff.patch from a prior failed run co-existing with
+    // the new run's streamed log files — visually confusing mid-run state
+    // ("archive shows old summary but new streams are empty"). Wipe before
+    // mkdir so each TaskArchive.create starts clean.
+    await fsp.rm(dir, { recursive: true, force: true });
     await fsp.mkdir(dir, { recursive: true });
     return new TaskArchive(dir, opts.featureId, opts.taskId);
   }
