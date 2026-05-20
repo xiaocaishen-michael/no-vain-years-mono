@@ -16,6 +16,7 @@ import { ClaudeCliClient } from './llm-client.js';
 import { ConstitutionViolationError } from './parsers/plan.js';
 import { ListrProgressSink } from './progress.js';
 import { buildPrompt, PromptAssemblyError } from './prompt-assembler.js';
+import { printRunReport } from './run-report.js';
 import { runFeature, type TaskRunResult } from './run-feature.js';
 import { RealShell } from './shell.js';
 import {
@@ -339,6 +340,7 @@ async function main(argv: string[]): Promise<number> {
   );
 
   const sink = new ListrProgressSink(pending);
+  const runStartedAt = new Date();
 
   // Drive listr UI + runFeature in parallel. Listr's run() resolves after
   // every row finishes (success / skipped / failed via thrown error in
@@ -363,6 +365,30 @@ async function main(argv: string[]): Promise<number> {
   ]);
 
   printLiveSummary(result.results);
+
+  // End-of-run report: per-task table + totals → stdout + archive file.
+  // Best-effort: never fail the orchestrator if report writing has issues.
+  try {
+    const repoRoot = path.resolve(state.featureDir, '..', '..');
+    const archiveBase = path.join(
+      repoRoot,
+      '.spec-kit',
+      'runs',
+      state.featureId,
+    );
+    await printRunReport({
+      state,
+      results: result.results,
+      archiveBase,
+      runStartedAt,
+      runFinishedAt: new Date(),
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `(run-report failed: ${e instanceof Error ? e.message : String(e)})`,
+    );
+  }
 
   if (!result.ok) {
     // eslint-disable-next-line no-console
