@@ -106,7 +106,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T026 Add server:export-openapi nx target — produce apps/server/openapi.json
   <!-- task-meta: {"id":"T026","workspace":"server-app","deps":["T018","T019"],"trace_us":["GLOBAL"],"trace_fr":["FR-012"],"trace_ep":["EP1","EP2"],"kind":"gen","verify_kind":"build","files":[{"path":"apps/server/project.json","op":"modify"},{"path":"apps/server/openapi.json","op":"modify"}],"parallel":false} -->
 
-- [ ] T027 Regenerate packages/api-client (@hey-api/openapi-ts from openapi.json)
+- [X] T027 Regenerate packages/api-client (@hey-api/openapi-ts from openapi.json)
   <!-- task-meta: {"id":"T027","workspace":"pkg-api-client","deps":["T026"],"trace_us":["GLOBAL"],"trace_fr":["FR-012"],"trace_ep":["EP1","EP2"],"kind":"gen","verify_kind":"generate","files":[{"path":"packages/api-client/src/gen/index.ts","op":"create"}],"parallel":false} -->
 
 ## Mobile — packages content
