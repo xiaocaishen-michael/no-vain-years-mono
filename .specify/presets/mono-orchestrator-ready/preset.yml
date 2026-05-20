@@ -1,0 +1,34 @@
+id: mono-orchestrator-ready
+version: 0.1.0
+description: |
+  mono-repo spec-kit 自动编排 + 执行支持。把 spec / plan / tasks 三大 template
+  升级到 orchestrator-friendly 形态:
+
+    - YAML frontmatter (跨文档级元数据)
+    - JSON fenced block (宏观架构 / 沙盒配置 / API contracts)
+    - HTML 注释内塞 JSON marker (微观 DAG / per-task meta)
+    - Zod schema 校验契约 (scripts/orchestrator/schemas/*.ts)
+
+  配合 scripts/orchestrator/*.ts 使用。仅适用于 monorepo (nx workspaces),
+  因为 orchestrator 需要在单仓内同时调度 server / api-client / mobile 多 workspace。
+
+  NOT a SKILL fork — `.claude/skills/speckit-*/SKILL.md` 保持 vanilla;
+  采用 spec-kit 0.8.7+ 原生 template `replace` 策略。
+applies_to: [mono]
+spec_kit_compat: ">=0.8.5,<0.10.0"
+priority: 4
+
+provides:
+  templates:
+    - name: spec-template
+      type: template
+      strategy: replace
+      file: templates/spec-template.md
+    - name: plan-template
+      type: template
+      strategy: replace
+      file: templates/plan-template.md
+    - name: tasks-template
+      type: template
+      strategy: replace
+      file: templates/tasks-template.md

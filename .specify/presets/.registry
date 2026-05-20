@@ -4,6 +4,10 @@
       "enabled": true,
       "priority": 5
     },
+    "mono-orchestrator-ready": {
+      "enabled": true,
+      "priority": 4
+    },
     "task-closure": {
       "enabled": true,
       "priority": 10
