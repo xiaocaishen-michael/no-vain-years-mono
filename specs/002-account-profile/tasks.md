@@ -38,7 +38,7 @@ orchestrator_compat: ">=0.1.0"
 
 ## Server — Prisma + Domain layer
 
-- [ ] T007 Prisma migration `add_display_name_nullable` — add nullable display_name column to account table
+- [X] T007 Prisma migration `add_display_name_nullable` — add nullable display_name column to account table
   <!-- task-meta: {"id":"T007","workspace":"server-app","deps":[],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"migration","verify_kind":"build","files":[{"path":"apps/server/prisma/schema.prisma","op":"modify"}],"parallel":false} -->
 
 - [ ] T008 Implement DisplayName VO (domain layer, FR-005 validation rules)
