@@ -27,7 +27,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T003 Bootstrap packages/design-tokens — workspace shell (D4 v2 forbid claude-design redesign)
   <!-- task-meta: {"id":"T003","workspace":"pkg-design-tokens","deps":[],"trace_us":["US5"],"trace_fr":["FR-018"],"kind":"config","verify_kind":"typecheck","files":[{"path":"packages/design-tokens/package.json","op":"create"},{"path":"packages/design-tokens/project.json","op":"create"},{"path":"packages/design-tokens/tsconfig.json","op":"create"},{"path":"packages/design-tokens/src/index.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T004 Bootstrap packages/ui — workspace shell (D4 v2 reuse legacy)
+- [X] T004 Bootstrap packages/ui — workspace shell (D4 v2 reuse legacy)
   <!-- task-meta: {"id":"T004","workspace":"pkg-ui","deps":["T003"],"trace_us":["US5"],"trace_fr":["FR-018"],"kind":"config","verify_kind":"typecheck","files":[{"path":"packages/ui/package.json","op":"create"},{"path":"packages/ui/project.json","op":"create"},{"path":"packages/ui/tsconfig.json","op":"create"},{"path":"packages/ui/src/index.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T005 Bootstrap packages/auth — workspace shell + dependencies (zustand v5 + expo-secure-store)
