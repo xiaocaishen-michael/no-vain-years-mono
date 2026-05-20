@@ -8,5 +8,13 @@
     "lib": ["es2022"],
     "types": []
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "references": [
+    {
+      "path": "../api-client"
+    }
+  ]
 }

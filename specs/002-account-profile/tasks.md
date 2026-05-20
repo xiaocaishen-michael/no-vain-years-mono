@@ -41,7 +41,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T007 Prisma migration `add_display_name_nullable` — add nullable display_name column to account table
   <!-- task-meta: {"id":"T007","workspace":"server-app","deps":[],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"migration","verify_kind":"build","files":[{"path":"apps/server/prisma/schema.prisma","op":"modify"}],"parallel":false} -->
 
-- [ ] T008 Implement DisplayName VO (domain layer, FR-005 validation rules)
+- [X] T008 Implement DisplayName VO (domain layer, FR-005 validation rules)
   <!-- task-meta: {"id":"T008","workspace":"server-app","deps":[],"trace_us":["US2"],"trace_fr":["FR-005"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/domain/display-name.vo.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T009 DisplayName VO unit test — covers FR-005 + Edge Cases (ships RED first)

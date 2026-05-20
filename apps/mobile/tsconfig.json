@@ -31,5 +31,16 @@
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "**/*.js", "nativewind-env.d.ts"],
-  "exclude": ["node_modules", "dist", ".expo", "e2e", "playwright-report"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".expo",
+    "e2e",
+    "playwright-report"
+  ],
+  "references": [
+    {
+      "path": "../../packages/api-client"
+    }
+  ]
 }
