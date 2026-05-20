@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import type { TaskArchive } from './archive.js';
 import type { LlmClient, LlmInvokeOptions } from './llm-client.js';
 import type { ParsedPlan } from './parsers/plan.js';
 import { ralphLoop, type RalphLoopResult } from './ralph-loop.js';
@@ -14,6 +15,14 @@ export interface Git {
   /** Throws GitCommitError on non-zero exit. */
   commit(message: string, opts: { cwd: string }): Promise<void>;
   restoreStaged(files: string[], opts: { cwd: string }): Promise<void>;
+  /** Returns the current HEAD SHA (trimmed). Used to detect LLM self-commit. */
+  revParseHead(opts: { cwd: string }): Promise<string>;
+  /**
+   * Returns a unified diff of the working tree (staged + unstaged) vs HEAD.
+   * Best-effort: empty string on git error so archive capture never derails
+   * the orchestrator pipeline.
+   */
+  diffWorkingTree(opts: { cwd: string }): Promise<string>;
 }
 
 export class GitCommitError extends Error {
@@ -65,6 +74,22 @@ export class GitCli implements Git {
       );
     }
   }
+
+  async revParseHead(opts: { cwd: string }): Promise<string> {
+    const r = await this.shell.run('git rev-parse HEAD', { cwd: opts.cwd });
+    if (r.exitCode !== 0) {
+      throw new Error(`git rev-parse HEAD failed (exit ${r.exitCode}): ${r.stderr}`);
+    }
+    return r.stdout.trim();
+  }
+
+  async diffWorkingTree(opts: { cwd: string }): Promise<string> {
+    const r = await this.shell.run('git diff HEAD', { cwd: opts.cwd });
+    // Best-effort: return whatever stdout was produced. Git typically exits 0
+    // even when the diff is empty; non-zero (e.g. broken repo) → empty string
+    // so archive capture never derails the orchestrator pipeline.
+    return r.exitCode === 0 ? r.stdout : '';
+  }
 }
 
 function quote(s: string): string {
@@ -74,19 +99,31 @@ function quote(s: string): string {
 }
 
 export interface FakeGitCallLog {
-  method: 'add' | 'commit' | 'restoreStaged';
+  method:
+    | 'add'
+    | 'commit'
+    | 'restoreStaged'
+    | 'revParseHead'
+    | 'diffWorkingTree';
   args: unknown[];
 }
 
 export type FakeCommitResponse = { ok: true } | { ok: false; stderr: string };
 
+/** Default SHA when no script is enqueued — keeps headBefore == headAfter (no shift). */
+const FAKE_DEFAULT_HEAD = 'fakehead00000000000000000000000000000000';
+
 /**
  * Scripted git for tests. add/restoreStaged always succeed and are logged.
  * commit consumes one entry from `commitResponses`; ok=false throws GitCommitError.
+ * revParseHead consumes one entry from `shaQueue`, falling back to a fixed
+ * default so existing tests don't need updating.
  */
 export class FakeGit implements Git {
   public readonly calls: FakeGitCallLog[] = [];
   private commitQueue: FakeCommitResponse[];
+  private shaQueue: string[] = [];
+  private diffQueue: string[] = [];
 
   constructor(commitResponses: FakeCommitResponse[] = [{ ok: true }]) {
     this.commitQueue = [...commitResponses];
@@ -94,6 +131,16 @@ export class FakeGit implements Git {
 
   enqueueCommit(r: FakeCommitResponse): void {
     this.commitQueue.push(r);
+  }
+
+  /** Queue the next return value(s) for revParseHead. */
+  enqueueHeadSha(...shas: string[]): void {
+    this.shaQueue.push(...shas);
+  }
+
+  /** Queue the next return value(s) for diffWorkingTree. */
+  enqueueDiff(...patches: string[]): void {
+    this.diffQueue.push(...patches);
   }
 
   async add(files: string[], opts: { cwd: string }): Promise<void> {
@@ -118,6 +165,16 @@ export class FakeGit implements Git {
     opts: { cwd: string },
   ): Promise<void> {
     this.calls.push({ method: 'restoreStaged', args: [files, opts] });
+  }
+
+  async revParseHead(opts: { cwd: string }): Promise<string> {
+    this.calls.push({ method: 'revParseHead', args: [opts] });
+    return this.shaQueue.shift() ?? FAKE_DEFAULT_HEAD;
+  }
+
+  async diffWorkingTree(opts: { cwd: string }): Promise<string> {
+    this.calls.push({ method: 'diffWorkingTree', args: [opts] });
+    return this.diffQueue.shift() ?? '';
   }
 }
 
@@ -169,10 +226,23 @@ export interface CommitTaskInput {
   llmInvokeOpts: LlmInvokeOptions;
   /** Override default max retries (2) for git-hook ralph-loop. */
   maxHookRetries?: number;
+  /**
+   * HEAD SHA captured before the LLM was invoked. If HEAD has moved by the
+   * time commitTask runs, the LLM committed mid-run (PoC blind spot 9) —
+   * skip the orchestrator's own commit and report success.
+   */
+  headBefore: string;
+  /**
+   * Optional per-task archive sink. When provided, hook-ralph rounds are
+   * recorded as attempt-N entries with prompt + LLM stdout/stderr + commit
+   * hook stderr captured for later cat-based debugging.
+   */
+  archive?: TaskArchive;
 }
 
 export type CommitTaskTerminalReason =
   | 'success'
+  | 'llm-self-committed'
   | 'hook-ralph-failed'
   | 'rollback-error';
 
@@ -202,7 +272,17 @@ export async function commitTask(
     git,
     llm,
     llmInvokeOpts,
+    headBefore,
   } = input;
+
+  // PoC blind spot 9 structural defense: if HEAD moved during the LLM run,
+  // the subprocess self-committed (despite the prompt telling it not to).
+  // The verify command already passed, so the work is on disk and the
+  // history advanced — skip our own flip+stage+commit and report success.
+  const headNow = await git.revParseHead({ cwd: repoRoot });
+  if (headNow !== headBefore) {
+    return { ok: true, reason: 'llm-self-committed' };
+  }
 
   const stageFiles = filesToStage(task);
   const allStaged = [...stageFiles, path.relative(repoRoot, tasksMdPath)];
@@ -245,15 +325,37 @@ export async function commitTask(
   }
 
   // Hook failure → ralph-loop with phase=git-hook (default maxRetries=2).
+  // The archive (if provided) records each round's prompt + LLM I/O + hook
+  // stderr as attempt-N-* files. lastAttempt tracks the most recent
+  // performCommit() outcome so onRound can surface its full feedback.
+  let lastFeedback: string | undefined = first.feedback;
+  const archive = input.archive;
   const ralph = await ralphLoop({
     phase: 'git-hook',
     maxRetries: input.maxHookRetries,
     initialFailure: first.feedback ?? '',
     buildRetryPrompt: (feedback) =>
       buildHookRetryPrompt(task, allStaged, feedback),
-    attempt: async () => performCommit(),
+    attempt: async () => {
+      const r = await performCommit();
+      lastFeedback = r.feedback;
+      return r;
+    },
     llm,
     llmInvokeOpts,
+    onRound: archive
+      ? async (round) => {
+          const attN = archive.reserveAttempt('hook-ralph');
+          await attN.finish({
+            prompt: round.retryPrompt,
+            llmResult: round.llmResult,
+            llmError: round.llmError,
+            actionStderr: lastFeedback,
+            actionExitCode: round.outcome?.ok ? 0 : 1,
+            ok: round.outcome?.ok ?? false,
+          });
+        }
+      : undefined,
   });
 
   return {

@@ -27,6 +27,10 @@ export interface LlmInvokeOptions {
   permissionMode?: 'dontAsk' | 'plan' | 'default';
   /** Extra args passed verbatim before the prompt argument. Escape hatch. */
   extraArgs?: string[];
+  /** Tee stdout to this sink in real-time (used for archive log streaming). */
+  streamStdout?: NodeJS.WritableStream;
+  /** Tee stderr to this sink in real-time. */
+  streamStderr?: NodeJS.WritableStream;
 }
 
 export interface LlmInvokeResult {
@@ -59,8 +63,17 @@ const DEFAULT_ALLOWED_TOOLS = [
   'Grep',
 ];
 
-const DEFAULT_MAX_TURNS = 5;
-const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
+// 2026-05-20 A-002 PoC surfaced: 5 was too tight — non-trivial config / impl
+// tasks (Expo init = 6 files + research SDK 54 patterns; Prisma migration;
+// multi-file controllers) hit max_turns before completing. Bumped to 30
+// covering 1-file simple write/typecheck (~3 turns) up to multi-file config
+// (~15-25 turns including research). Future: per-task override via tasks-meta.
+const DEFAULT_MAX_TURNS = 30;
+// 2026-05-20 A-002 PoC surfaced blind spot 7: 5min wall-clock is too tight
+// when max_turns=30 and each turn takes 10-30s. T001 (Expo workspace bootstrap)
+// timed out mid-stream after burning research turns + file writes. Bumped to
+// 20min. Future: per-task timeout override via tasks-meta + env var.
+const DEFAULT_TIMEOUT_MS = 20 * 60 * 1000;
 
 /**
  * Build the argv vector for the live `claude -p` invocation. Exported
@@ -165,8 +178,14 @@ export class ClaudeCliClient implements LlmClient {
 
       let stdout = '';
       let stderr = '';
-      child.stdout.on('data', (b: Buffer) => (stdout += b.toString('utf-8')));
-      child.stderr.on('data', (b: Buffer) => (stderr += b.toString('utf-8')));
+      child.stdout.on('data', (b: Buffer) => {
+        stdout += b.toString('utf-8');
+        if (opts.streamStdout) opts.streamStdout.write(b);
+      });
+      child.stderr.on('data', (b: Buffer) => {
+        stderr += b.toString('utf-8');
+        if (opts.streamStderr) opts.streamStderr.write(b);
+      });
 
       const timer = setTimeout(() => {
         child.kill('SIGKILL');

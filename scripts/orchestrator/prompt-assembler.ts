@@ -222,6 +222,10 @@ function fileOpsSection(task: ParsedTask): string {
     `Files in this task are pre-staged by the orchestrator. Do NOT \`mkdir\`, \`touch\`, or \`mv\` them yourself — use the Write/Edit tools to fill content.`,
   );
   lines.push('');
+  lines.push(
+    `**DO NOT call \`git add\` or \`git commit\` yourself.** The orchestrator owns the commit step — it stages your files + flips tasks.md \`[X]\` + commits atomically after the verify_command above passes. If you commit yourself, the orchestrator's subsequent commit attempt will find an empty stage and falsely report a lefthook rejection. \`git log\` / \`git diff\` / \`git status\` for context-gathering are fine; just don't mutate.`,
+  );
+  lines.push('');
   for (const f of task.files) {
     switch (f.op) {
       case 'create':

@@ -137,6 +137,24 @@ describe('GitCli', () => {
     await git.add([], { cwd: '/repo' });
     expect(sh.calls).toHaveLength(0);
   });
+
+  it('revParseHead returns trimmed stdout SHA', async () => {
+    const sh = new FakeShell([
+      shellOk('deadbeefcafef00d1234567890abcdef12345678\n'),
+    ]);
+    const git = new GitCli(sh);
+    const sha = await git.revParseHead({ cwd: '/repo' });
+    expect(sh.calls[0].command).toBe('git rev-parse HEAD');
+    expect(sha).toBe('deadbeefcafef00d1234567890abcdef12345678');
+  });
+
+  it('revParseHead throws on non-zero exit', async () => {
+    const sh = new FakeShell([shellFail('not a git repo', 128)]);
+    const git = new GitCli(sh);
+    await expect(git.revParseHead({ cwd: '/repo' })).rejects.toThrow(
+      /git rev-parse HEAD failed/,
+    );
+  });
 });
 
 describe('FakeGit', () => {
@@ -145,10 +163,12 @@ describe('FakeGit', () => {
     await git.add(['a'], { cwd: '/r' });
     await git.commit('msg', { cwd: '/r' });
     await git.restoreStaged(['a'], { cwd: '/r' });
+    await git.revParseHead({ cwd: '/r' });
     expect(git.calls.map((c) => c.method)).toEqual([
       'add',
       'commit',
       'restoreStaged',
+      'revParseHead',
     ]);
   });
 
@@ -157,6 +177,15 @@ describe('FakeGit', () => {
     await expect(git.commit('msg', { cwd: '/r' })).rejects.toBeInstanceOf(
       GitCommitError,
     );
+  });
+
+  it('revParseHead returns enqueued SHAs in order then falls back to default', async () => {
+    const git = new FakeGit();
+    git.enqueueHeadSha('sha-a', 'sha-b');
+    expect(await git.revParseHead({ cwd: '/r' })).toBe('sha-a');
+    expect(await git.revParseHead({ cwd: '/r' })).toBe('sha-b');
+    // Default is a non-empty deterministic SHA so tests don't see empty strings.
+    expect(await git.revParseHead({ cwd: '/r' })).toMatch(/^fakehead/);
   });
 });
 
@@ -206,6 +235,7 @@ describe('commitTask', () => {
       git,
       llm,
       llmInvokeOpts: INVOKE_OPTS,
+      headBefore: 'fakehead00000000000000000000000000000000',
       ...overrides,
     };
   }
@@ -220,8 +250,12 @@ describe('commitTask', () => {
     expect(r.ok).toBe(true);
     expect(r.reason).toBe('success');
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
-    expect(git.calls.map((c) => c.method)).toEqual(['add', 'commit']);
-    expect(git.calls[1].args[0]).toMatch(/^feat\(account\): .* \(T001\)$/);
+    expect(git.calls.map((c) => c.method)).toEqual([
+      'revParseHead',
+      'add',
+      'commit',
+    ]);
+    expect(git.calls[2].args[0]).toMatch(/^feat\(account\): .* \(T001\)$/);
     expect(llm.calls).toHaveLength(0); // ralph-loop not engaged
   });
 
@@ -240,8 +274,9 @@ describe('commitTask', () => {
     expect(r.ralph?.attempts).toBe(1);
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
 
-    // Sequence: add, commit (fail), restoreStaged, [LLM retry], add, commit (ok)
+    // Sequence: revParseHead, add, commit (fail), restoreStaged, [LLM retry], add, commit (ok)
     expect(git.calls.map((c) => c.method)).toEqual([
+      'revParseHead',
       'add',
       'commit',
       'restoreStaged',
@@ -268,6 +303,47 @@ describe('commitTask', () => {
     expect(r.ralph?.attempts).toBe(2); // git-hook default max
     expect(r.lastStderr).toBe('err 3');
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe(initial);
+  });
+
+  it('HEAD shift (LLM self-commit) short-circuits: no add/commit, tasks.md untouched, ok=true', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([]); // no commit responses scripted — must not be called
+    git.enqueueHeadSha('sha-after-llm-commit'); // headBefore != headNow → shift
+    const llm = new FakeLlmClient();
+    const r = await commitTask(
+      makeInput(git, llm, tasksMdPath, repoRoot, {
+        headBefore: 'sha-before-llm',
+      }),
+    );
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('llm-self-committed');
+    // tasks.md unchanged: orchestrator does NOT flip when LLM owns the commit.
+    expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe(initial);
+    // Only revParseHead was called; no add/commit/restoreStaged.
+    expect(git.calls.map((c) => c.method)).toEqual(['revParseHead']);
+    expect(llm.calls).toHaveLength(0);
+  });
+
+  it('HEAD unchanged → normal flip+add+commit path runs', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([{ ok: true }]);
+    git.enqueueHeadSha('same-sha');
+    const llm = new FakeLlmClient();
+    const r = await commitTask(
+      makeInput(git, llm, tasksMdPath, repoRoot, { headBefore: 'same-sha' }),
+    );
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('success');
+    expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
+    expect(git.calls.map((c) => c.method)).toEqual([
+      'revParseHead',
+      'add',
+      'commit',
+    ]);
   });
 
   it('non-hook git error (e.g. add fail) reverts tasks.md and rethrows', async () => {
