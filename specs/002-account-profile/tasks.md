@@ -111,7 +111,7 @@ orchestrator_compat: ">=0.1.0"
 
 ## Mobile — packages content
 
-- [ ] T028 packages/types — populate Account / DisplayName / account_status_enum re-exports
+- [X] T028 packages/types — populate Account / DisplayName / account_status_enum re-exports
   <!-- task-meta: {"id":"T028","workspace":"pkg-types","deps":["T002","T007"],"trace_us":["GLOBAL"],"trace_fr":["FR-001"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"packages/types/src/index.ts","op":"modify"}],"parallel":false} -->
 
 - [X] T029 packages/design-tokens — direct copy tokens from ~/Documents/projects/no-vain-years/no-vain-years-app/packages/design-tokens/ (NO redesign, per memory)
