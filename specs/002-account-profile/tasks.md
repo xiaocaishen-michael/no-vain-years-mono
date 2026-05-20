@@ -33,7 +33,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T005 Bootstrap packages/auth — workspace shell + dependencies (zustand v5 + expo-secure-store)
   <!-- task-meta: {"id":"T005","workspace":"pkg-auth","deps":["T002"],"trace_us":["US5","US12"],"trace_fr":["FR-002","FR-004"],"kind":"config","verify_kind":"typecheck","files":[{"path":"packages/auth/package.json","op":"create"},{"path":"packages/auth/project.json","op":"create"},{"path":"packages/auth/tsconfig.json","op":"create"},{"path":"packages/auth/src/index.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T006 Update ESLint config — register module boundaries for 5 new packages + mobile-app (per plan.module_boundaries); map business module "account" → src/auth/ filesystem path
+- [X] T006 Update ESLint config — register module boundaries for 5 new packages + mobile-app (per plan.module_boundaries); map business module "account" → src/auth/ filesystem path
   <!-- task-meta: {"id":"T006","workspace":"server-app","deps":["T001","T002","T003","T004","T005"],"trace_us":["GLOBAL"],"trace_fr":["FR-001"],"trace_sc":["SC-007"],"kind":"config","verify_kind":"lint","files":[{"path":"eslint.config.mjs","op":"modify"}],"parallel":false} -->
 
 ## Server — Prisma + Domain layer
