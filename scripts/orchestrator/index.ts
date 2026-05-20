@@ -6,7 +6,13 @@ import {
   summarizePlan,
   type FileOpPlanResult,
 } from './fs-ops.js';
+import {
+  queryGraph,
+  resolveDefaultGraphPath,
+  type CodeContext,
+} from './graphify-client.js';
 import { ConstitutionViolationError } from './parsers/plan.js';
+import { buildPrompt, PromptAssemblyError } from './prompt-assembler.js';
 import {
   FeatureFileMissingError,
   FeatureRefMismatchError,
@@ -14,6 +20,8 @@ import {
   summarize,
   type FeatureState,
 } from './state.js';
+
+const PROMPT_PREVIEW_LINES = 30;
 
 interface CliArgs {
   featurePath: string;
@@ -119,6 +127,8 @@ function printDryRunReport(state: FeatureState): void {
   }
   lines.push('');
   appendFilePlanReport(state, lines);
+  lines.push('');
+  appendPromptPreviewReport(state, lines);
   // eslint-disable-next-line no-console
   console.log(lines.join('\n'));
 }
@@ -190,6 +200,76 @@ function appendFilePlanReport(state: FeatureState, lines: string[]): void {
     lines.push('');
     lines.push(`⚠️  File Plan warnings (${allWarnings.length}):`);
     for (const w of allWarnings) lines.push(`   - ${w}`);
+  }
+}
+
+function appendPromptPreviewReport(state: FeatureState, lines: string[]): void {
+  const repoRoot = path.resolve(state.featureDir, '..', '..');
+  const graphPath = resolveDefaultGraphPath(repoRoot);
+  const workspaceById = new Map(
+    state.plan.config.workspaces.map((w) => [w.id, w]),
+  );
+
+  const pending = state.tasks.tasks.filter((t) => t.status === 'pending');
+  if (pending.length === 0) {
+    lines.push(`✅ Prompt Preview`);
+    lines.push(`   (no pending tasks)`);
+    return;
+  }
+
+  lines.push(
+    `✅ Prompt Preview (first ${PROMPT_PREVIEW_LINES} lines per task; dry-run only)`,
+  );
+  lines.push(`   graphify: ${graphPath}`);
+
+  for (const task of pending) {
+    const workspace = workspaceById.get(task.workspace);
+    if (!workspace) {
+      lines.push('');
+      lines.push(
+        `── ${task.id} [${task.workspace}]: ✗ workspace not declared in plan.config.workspaces`,
+      );
+      continue;
+    }
+
+    const scope = task.graphify_scope_override ?? workspace.graphify_scope;
+    let codeCtx: CodeContext;
+    try {
+      codeCtx = queryGraph(graphPath, scope);
+    } catch (e) {
+      lines.push('');
+      lines.push(`── ${task.id}: graphify query failed: ${(e as Error).message}`);
+      continue;
+    }
+
+    let prompt: string;
+    try {
+      prompt = buildPrompt({
+        task,
+        spec: state.spec,
+        plan: state.plan,
+        workspace,
+        codeCtx,
+      });
+    } catch (e) {
+      if (e instanceof PromptAssemblyError) {
+        lines.push('');
+        lines.push(`── ${task.id}: ✗ ${e.message}`);
+        continue;
+      }
+      throw e;
+    }
+
+    const promptLines = prompt.split('\n');
+    const total = promptLines.length;
+    const preview = promptLines.slice(0, PROMPT_PREVIEW_LINES);
+
+    lines.push('');
+    lines.push(`── ${task.id} [${task.workspace}] (${total} lines)`);
+    for (const pl of preview) lines.push(`   │ ${pl}`);
+    if (total > PROMPT_PREVIEW_LINES) {
+      lines.push(`   │ … (${total - PROMPT_PREVIEW_LINES} more lines suppressed)`);
+    }
   }
 }
 

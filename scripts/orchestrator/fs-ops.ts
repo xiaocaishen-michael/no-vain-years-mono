@@ -135,6 +135,83 @@ export function planFileOps(
   return { entries, warnings };
 }
 
+export class FileOpApplyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FileOpApplyError';
+  }
+}
+
+export interface ApplyFileOpPlanOptions {
+  // When true, modify+missing is a fatal error (matches the live-orchestrator
+  // contract in plan § 5.3.15.2). When false, it's a no-op with a warning.
+  // Default: true.
+  strictModifyMissing?: boolean;
+}
+
+export interface ApplyResult {
+  applied: FilePlanEntry[];
+  warnings: string[];
+}
+
+export function applyFileOpPlan(
+  result: FileOpPlanResult,
+  options: ApplyFileOpPlanOptions = {},
+): ApplyResult {
+  const strict = options.strictModifyMissing ?? true;
+  const applied: FilePlanEntry[] = [];
+  const warnings: string[] = [...result.warnings];
+
+  for (const entry of result.entries) {
+    switch (entry.action) {
+      case 'create':
+        fs.mkdirSync(path.dirname(entry.path), { recursive: true });
+        if (!fs.existsSync(entry.path)) {
+          fs.writeFileSync(entry.path, '');
+        }
+        applied.push(entry);
+        break;
+
+      case 'delete':
+        fs.rmSync(entry.path, { force: true });
+        applied.push(entry);
+        break;
+
+      case 'rename':
+        if (!entry.renameTo) {
+          throw new FileOpApplyError(
+            `entry op=rename for ${entry.path} missing renameTo (planner bug)`,
+          );
+        }
+        fs.mkdirSync(path.dirname(entry.renameTo), { recursive: true });
+        fs.renameSync(entry.path, entry.renameTo);
+        applied.push(entry);
+        break;
+
+      case 'modify':
+        // op=modify requires the file to exist; planner already verified.
+        // Apply phase is a no-op (LLM writes content via Write tool).
+        applied.push(entry);
+        break;
+
+      case 'noop':
+        if (entry.op === 'modify' && entry.reason === 'file missing') {
+          if (strict) {
+            throw new FileOpApplyError(
+              `task ${entry.taskId ?? '?'} file ${entry.path} op=modify but file missing`,
+            );
+          }
+          // strict=false: surface as warning, skip
+        }
+        // Other noops (create/already exists, delete/already absent,
+        // rename/source-missing) are skipped without error.
+        break;
+    }
+  }
+
+  return { applied, warnings };
+}
+
 export function summarizePlan(result: FileOpPlanResult): {
   create: number;
   delete: number;

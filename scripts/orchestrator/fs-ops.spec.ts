@@ -3,6 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  applyFileOpPlan,
+  FileOpApplyError,
   FileOpPathEscapeError,
   planFileOps,
   summarizePlan,
@@ -178,5 +180,106 @@ describe('summarizePlan', () => {
       noop: 0,
       warnings: 0,
     });
+  });
+});
+
+describe('applyFileOpPlan', () => {
+  const dirs: string[] = [];
+
+  afterEach(() => {
+    for (const d of dirs.splice(0)) {
+      fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  function makeCwd(seed: Record<string, string> = {}): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'orchestrator-fsops-apply-'));
+    dirs.push(dir);
+    for (const [rel, content] of Object.entries(seed)) {
+      const abs = path.join(dir, rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, content);
+    }
+    return dir;
+  }
+
+  it('create: creates empty file + intermediate dirs', () => {
+    const cwd = makeCwd();
+    const plan = planFileOps(cwd, [{ path: 'a/b/c.ts', op: 'create' }], 'T100');
+    const r = applyFileOpPlan(plan);
+    expect(r.applied).toHaveLength(1);
+    expect(fs.existsSync(path.join(cwd, 'a/b/c.ts'))).toBe(true);
+    expect(fs.readFileSync(path.join(cwd, 'a/b/c.ts'), 'utf-8')).toBe('');
+  });
+
+  it('create: skips when file already exists (no truncation)', () => {
+    const cwd = makeCwd({ 'keep.ts': 'precious' });
+    const plan = planFileOps(cwd, [{ path: 'keep.ts', op: 'create' }], 'T101');
+    applyFileOpPlan(plan);
+    expect(fs.readFileSync(path.join(cwd, 'keep.ts'), 'utf-8')).toBe('precious');
+  });
+
+  it('delete: removes existing file', () => {
+    const cwd = makeCwd({ 'gone.ts': 'bye' });
+    const plan = planFileOps(cwd, [{ path: 'gone.ts', op: 'delete' }], 'T102');
+    applyFileOpPlan(plan);
+    expect(fs.existsSync(path.join(cwd, 'gone.ts'))).toBe(false);
+  });
+
+  it('delete: no-op when already absent', () => {
+    const cwd = makeCwd();
+    const plan = planFileOps(cwd, [{ path: 'never.ts', op: 'delete' }], 'T103');
+    expect(() => applyFileOpPlan(plan)).not.toThrow();
+  });
+
+  it('rename: moves file + creates target dir', () => {
+    const cwd = makeCwd({ 'src/a.ts': 'x' });
+    const plan = planFileOps(
+      cwd,
+      [{ path: 'src/a.ts', op: 'rename', rename_to: 'dest/b.ts' }],
+      'T104',
+    );
+    applyFileOpPlan(plan);
+    expect(fs.existsSync(path.join(cwd, 'src/a.ts'))).toBe(false);
+    expect(fs.readFileSync(path.join(cwd, 'dest/b.ts'), 'utf-8')).toBe('x');
+  });
+
+  it('modify: succeeds on existing file (no-op write)', () => {
+    const cwd = makeCwd({ 'here.ts': 'before' });
+    const plan = planFileOps(cwd, [{ path: 'here.ts', op: 'modify' }], 'T105');
+    applyFileOpPlan(plan);
+    expect(fs.readFileSync(path.join(cwd, 'here.ts'), 'utf-8')).toBe('before');
+  });
+
+  it('modify-missing: throws FileOpApplyError in strict mode (default)', () => {
+    const cwd = makeCwd();
+    const plan = planFileOps(cwd, [{ path: 'absent.ts', op: 'modify' }], 'T106');
+    expect(() => applyFileOpPlan(plan)).toThrow(FileOpApplyError);
+  });
+
+  it('modify-missing: skips silently when strict=false', () => {
+    const cwd = makeCwd();
+    const plan = planFileOps(cwd, [{ path: 'absent.ts', op: 'modify' }], 'T107');
+    expect(() =>
+      applyFileOpPlan(plan, { strictModifyMissing: false }),
+    ).not.toThrow();
+  });
+
+  it('mixed plan applies in order', () => {
+    const cwd = makeCwd({ 'old.ts': 'v1', 'tomove.ts': 'mover' });
+    const plan = planFileOps(
+      cwd,
+      [
+        { path: 'old.ts', op: 'delete' },
+        { path: 'new.ts', op: 'create' },
+        { path: 'tomove.ts', op: 'rename', rename_to: 'moved.ts' },
+      ],
+      'T108',
+    );
+    applyFileOpPlan(plan);
+    expect(fs.existsSync(path.join(cwd, 'old.ts'))).toBe(false);
+    expect(fs.existsSync(path.join(cwd, 'new.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, 'moved.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, 'tomove.ts'))).toBe(false);
   });
 });
