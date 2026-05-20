@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Patch, Req, UseGuards } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AccountIdThrottlerGuard } from './account-id-throttler.guard';
 import {
   ApiBearerAuth,
@@ -33,6 +33,7 @@ export class AccountProfileController {
 
   @Get('me')
   @HttpCode(200)
+  @SkipThrottle({ default: true, 'sms-phone-24h': true, 'sms-ip-24h': true, 'me-patch': true })
   @Throttle({ 'me-get': { limit: 60, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Get authenticated account profile',
@@ -70,6 +71,7 @@ export class AccountProfileController {
 
   @Patch('me')
   @HttpCode(200)
+  @SkipThrottle({ default: true, 'sms-phone-24h': true, 'sms-ip-24h': true, 'me-get': true })
   @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Update authenticated account display name',

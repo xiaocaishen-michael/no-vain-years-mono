@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleDestroy } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
@@ -36,6 +36,18 @@ import { JwtAuthGuard } from './web/jwt-auth.guard';
 import { AccountIdThrottlerGuard } from './web/account-id-throttler.guard';
 import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
 
+const REDIS_LIFECYCLE = Symbol('REDIS_LIFECYCLE');
+
+class RedisLifecycle implements OnModuleDestroy {
+  readonly client: Redis;
+  constructor(url: string) {
+    this.client = new Redis(url);
+  }
+  onModuleDestroy(): void {
+    this.client.disconnect();
+  }
+}
+
 /**
  * NestJS Module: auth use case (phone-sms-auth).
  *
@@ -63,7 +75,6 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const redis = new Redis(config.getOrThrow<string>('REDIS_URL'));
         return {
           throttlers: [
             // FR-S07 第 1 条: sms:<phone> 60s 1 次 (default → 标准 Retry-After)
@@ -103,7 +114,7 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
               },
             },
           ],
-          storage: new ThrottlerStorageRedisService(redis),
+          storage: new ThrottlerStorageRedisService(config.getOrThrow<string>('REDIS_URL')),
         };
       },
     }),
@@ -117,10 +128,15 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
       inject: [ConfigService],
     },
     {
-      provide: REDIS_CLIENT,
+      provide: REDIS_LIFECYCLE,
       useFactory: (config: ConfigService) =>
-        new Redis(config.getOrThrow<string>('REDIS_URL')),
+        new RedisLifecycle(config.getOrThrow<string>('REDIS_URL')),
       inject: [ConfigService],
+    },
+    {
+      provide: REDIS_CLIENT,
+      useFactory: (lifecycle: RedisLifecycle) => lifecycle.client,
+      inject: [REDIS_LIFECYCLE],
     },
     { provide: ACCOUNT_REPOSITORY, useClass: AccountPrismaRepository },
     {
