@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Patch, Req, UseGuards } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
+import { AccountIdThrottlerGuard } from './account-id-throttler.guard';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -22,7 +23,7 @@ import { UpdateDisplayNameRequest } from './dto/update-display-name.request';
  */
 @ApiTags('accounts')
 @Controller('v1/accounts')
-@UseGuards(JwtAuthGuard, ThrottlerGuard)
+@UseGuards(JwtAuthGuard, AccountIdThrottlerGuard)
 @ApiBearerAuth()
 export class AccountProfileController {
   constructor(

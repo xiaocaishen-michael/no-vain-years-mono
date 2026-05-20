@@ -33,6 +33,7 @@ import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.cont
 import { AccountProfileController } from './web/account-profile.controller';
 import { AccountSmsCodeController } from './web/account-sms-code.controller';
 import { JwtAuthGuard } from './web/jwt-auth.guard';
+import { AccountIdThrottlerGuard } from './web/account-id-throttler.guard';
 import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
 
 /**
@@ -180,6 +181,7 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
     JwtAuthGuard,
     OutboxEventCronPublisher,
     SmsPhoneThrottlerGuard,
+    AccountIdThrottlerGuard,
     { provide: APP_FILTER, useClass: ProblemDetailFilter },
   ],
   exports: [],

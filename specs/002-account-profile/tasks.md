@@ -89,7 +89,7 @@ orchestrator_compat: ">=0.1.0"
 
 ## Server — E2E (Vitest + Testcontainers)
 
-- [ ] T022 US1 e2e — 新用户首登 GET /me 返 displayName=null
+- [X] T022 US1 e2e — 新用户首登 GET /me 返 displayName=null
   <!-- task-meta: {"id":"T022","workspace":"server-app","deps":["T018","T020","T021"],"trace_us":["US1"],"trace_fr":["FR-001","FR-002","FR-007"],"trace_ep":["EP1"],"trace_sc":["SC-001","SC-003"],"kind":"test-e2e","verify_kind":"test","files":[{"path":"apps/server/test/integration/accounts.us1-002.e2e.spec.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T023 US2 e2e — PATCH displayName 成功路径 + Edge Cases 全部覆盖
