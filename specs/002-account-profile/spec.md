@@ -91,13 +91,13 @@ orchestrator_compat: ">=0.1.0"
 
 ### User Story 4 — [Server] 异常账号：FROZEN / ANONYMIZED 鉴权（Priority: P2）
 
-<!-- us-meta: {"id": "US4", "priority": "P2", "independent_test": "给 FROZEN / ANONYMIZED 账号签 token (手工调 JwtTokenIssuer) → GET /me → 断言 401 (per FR-009 决策)", "trace_fr": ["FR-002", "FR-009"]} -->
+<!-- us-meta: {"id": "US4", "priority": "P2", "independent_test": "给 FROZEN / ANONYMIZED 账号签 token (手工调 JwtTokenService) → GET /me → 断言 401 (per FR-009 决策)", "trace_fr": ["FR-002", "FR-009"]} -->
 
 冻结期 / 已匿名化账号即使持有未过期 access token，调 `/me` 也应被拒（status 检查兜底）。
 
 **Why this priority**：合规边界；access token TTL 15min 可能跨越账号注销窗口。
 
-**Independent Test**: 给 FROZEN / ANONYMIZED 账号签 token（手工调 `JwtTokenIssuer`）→ GET `/me` → 断言 401 或 403（per FR-009 决策）。
+**Independent Test**: 给 FROZEN / ANONYMIZED 账号签 token（手工调 `JwtTokenService`）→ GET `/me` → 断言 401 或 403（per FR-009 决策）。
 
 **Acceptance Scenarios**:
 
@@ -256,7 +256,7 @@ orchestrator_compat: ">=0.1.0"
 - **DisplayName 含 CJK 字符**：按 Unicode 码点计数（不按字节），如 `"小明"` 长度 2 (covers FR-005)
 - **PATCH body 缺 displayName 字段**：返回 `VALIDATION_FAILED` 400（必填字段缺失校验拒绝）(covers FR-003, FR-005)
 - **PATCH body 含未知字段**：忽略（未知字段策略 = 忽略而非拒绝，与既有约定一致）(covers FR-003)
-- **同一 access token 高频调 PATCH**：复用 `RateLimitService` `me-patch:<accountId>` 60s 10 次 (covers FR-008)
+- **同一 access token 高频调 PATCH**：复用既有 `@nestjs/throttler` 配置（throttler name `me-patch`，60s 10 次，tracker = `<accountId>` from JWT sub） (covers FR-008)
 
 #### Client Edge Cases
 
@@ -294,7 +294,7 @@ orchestrator_compat: ">=0.1.0"
 - **FR-007**: auto-create 默认值 — phoneSmsAuth 自动注册路径 `account.display_name = NULL`；本 spec 不修改 phoneSmsAuth 行为，仅声明该不变性约束（实际由 V6 migration 默认 NULL + Account 聚合构造路径不写值保证）
   <!-- fr-meta: {"id": "FR-007", "priority": "must", "needs_clarification": false, "questions": [], "trace_us": ["US1"], "trace_sc": []} -->
 
-- **FR-008**: 限流 — 复用既有 `RateLimitService`：`me-get:<accountId>` 60s 60 次（防爆刷读）/ `me-patch:<accountId>` 60s 10 次（防爆刷写）；超限 → 429 + `Retry-After`
+- **FR-008**: 限流 — 复用既有 `@nestjs/throttler` 模块（001 `auth.module.ts` 已配 `ThrottlerModule.forRootAsync` + Redis storage）：新增 `me-get` (60s 60 次，防爆刷读) / `me-patch` (60s 10 次，防爆刷写) 两条 named throttler 配置，tracker = `<accountId>` (JWT sub claim)；超限 → 429 + `Retry-After`
   <!-- fr-meta: {"id": "FR-008", "priority": "must", "needs_clarification": false, "questions": [], "trace_us": ["US1", "US2"], "trace_sc": ["SC-004"]} -->
 
 - **FR-009**: FROZEN / ANONYMIZED 拒接 token — JwtAuthFilter 验签后必须查 DB 验 `Account.status == ACTIVE`；非 ACTIVE → 401 ProblemDetail（与 token 过期一致路径）
@@ -369,10 +369,10 @@ orchestrator_compat: ">=0.1.0"
 
 - **Account（聚合根）**：扩展既有 Account
   - **新增字段** `displayName: DisplayName | null`，nullable，无 unique 约束
-  - 新增行为 `changeDisplayName(DisplayName, Instant updatedAt)`（package-private，经 `AccountStateMachine.changeDisplayName(Account, DisplayName, Instant)` 调用，与既有 `markActive` / `markLoggedIn` pattern 一致）
-  - **2026-05-07 修订**：`phone: PhoneNumber`（既有字段，注册即必填）现 mirror 进 `/me` read 路径 — 不新增 domain 字段，仅 `AccountProfileResult` / `AccountProfileResponse` 两层 record 加 phone component；DB schema 零改动
+  - 新增行为 `changeDisplayName(DisplayName, Instant updatedAt)`（package-private，经 `AccountStateMachine.changeDisplayName(Account, DisplayName, Instant)` 调用，与既有 `markLoggedIn` aggregate-method pattern 一致）
+  - **2026-05-07 修订**：`phone: Phone`（既有字段，注册即必填；code-level class 名 `Phone` 见 `phone.vo.ts`）现 mirror 进 `/me` read 路径 — 不新增 domain 字段，仅 `AccountProfileResult` / `AccountProfileResponse` 两层 record 加 phone component；DB schema 零改动
 - **新增**：`DisplayName` 值对象（domain 层）
-  - record-style，mirror `PhoneNumber`
+  - record-style，mirror 既有 `Phone` VO (`phone.vo.ts`，private constructor + static factory)
   - 构造校验 FR-005 全部规则
   - 抛 `IllegalArgumentException("INVALID_DISPLAY_NAME: ...")`，由全局异常 filter 映射 400
 - **删除**：无
@@ -589,11 +589,11 @@ flowchart TD
 
 ### Server Assumptions
 
-- **A-001**：复用既有 `RateLimitService`（per ADR-0011） / `JwtTokenIssuer`（M1.1 引入） / `AccountRepository` interface（per ADR-0008）
-- **A-002**：`access token` JWT 的 `sub` claim = `accountId`（既有 `JwtTokenIssuer` 实现）；filter 验签后取 sub 即可定位 Account
+- **A-001**：复用既有 `@nestjs/throttler` `ThrottlerModule` 配置（per `auth.module.ts`，扩 throttler 不新建 service 类）/ `JwtTokenService` (`jwt-token.service.ts`，001 实装) / `AccountRepository` interface (`application/ports/account.repository.port.ts`)
+- **A-002**：`access token` JWT 的 `sub` claim = `accountId`（既有 `JwtTokenService` 实现）；filter 验签后取 sub 即可定位 Account
 - **A-003**：M1.X 阶段无真实用户，DB 加 nullable 列 + 默认 NULL 是 expand 步骤，可单 PR 落
 - **A-004**：phoneSmsAuth use case 不感知 displayName；新建 Account 时 `display_name` 字段由 DB 默认 NULL 兜底，Account 聚合构造路径无需修改
-- **A-005**：`AccountStateMachine` 现有 `markActive` / `markLoggedIn` pattern 是 status / 时间戳类调用；新增 `changeDisplayName` 沿用同一 facade，保 status 验证一致
+- **A-005**：T012 引入 `AccountStateMachine` facade（**新建**，先前不存在）；新增 `changeDisplayName` 沿用既有 `markLoggedIn` aggregate-method 模式（时间戳更新 + 状态校验），保 status 验证一致
 
 ### Client Assumptions & Dependencies
 

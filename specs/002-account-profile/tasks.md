@@ -53,7 +53,7 @@ orchestrator_compat: ">=0.1.0"
 - [ ] T011 Account aggregate changeDisplayName unit test (ships RED first)
   <!-- task-meta: {"id":"T011","workspace":"server-app","deps":["T010"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/domain/account.aggregate.spec.ts","op":"modify"}],"parallel":false,"tdd_red_expected":true} -->
 
-- [ ] T012 Create AccountStateMachine facade — changeDisplayName method (new file, mirrors markActive/markLoggedIn pattern)
+- [ ] T012 Create AccountStateMachine facade — changeDisplayName method (new file, mirrors existing markLoggedIn aggregate-method pattern)
   <!-- task-meta: {"id":"T012","workspace":"server-app","deps":["T010"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/domain/account-state-machine.ts","op":"create"}],"parallel":false} -->
 
 ## Server — Application + Infrastructure
@@ -104,7 +104,7 @@ orchestrator_compat: ">=0.1.0"
 ## API Client — server openapi.json → api-client regenerate
 
 - [ ] T026 Add server:export-openapi nx target — produce apps/server/openapi.json
-  <!-- task-meta: {"id":"T026","workspace":"server-app","deps":["T018","T019"],"trace_us":["GLOBAL"],"trace_fr":["FR-012"],"trace_ep":["EP1","EP2"],"kind":"gen","verify_kind":"build","files":[{"path":"apps/server/project.json","op":"modify"},{"path":"apps/server/openapi.json","op":"create"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T026","workspace":"server-app","deps":["T018","T019"],"trace_us":["GLOBAL"],"trace_fr":["FR-012"],"trace_ep":["EP1","EP2"],"kind":"gen","verify_kind":"build","files":[{"path":"apps/server/project.json","op":"modify"},{"path":"apps/server/openapi.json","op":"modify"}],"parallel":false} -->
 
 - [ ] T027 Regenerate packages/api-client (@hey-api/openapi-ts from openapi.json)
   <!-- task-meta: {"id":"T027","workspace":"pkg-api-client","deps":["T026"],"trace_us":["GLOBAL"],"trace_fr":["FR-012"],"trace_ep":["EP1","EP2"],"kind":"gen","verify_kind":"generate","files":[{"path":"packages/api-client/src/gen/index.ts","op":"create"}],"parallel":false} -->
