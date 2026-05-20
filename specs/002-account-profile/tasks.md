@@ -21,7 +21,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T001 Initialize apps/mobile Expo workspace (package.json + app.json + metro.config + babel.config + tsconfig + project.json)
   <!-- task-meta: {"id":"T001","workspace":"mobile-app","deps":[],"trace_us":["US5"],"trace_fr":["FR-013"],"kind":"config","verify_kind":"typecheck","files":[{"path":"apps/mobile/package.json","op":"create"},{"path":"apps/mobile/app.json","op":"create"},{"path":"apps/mobile/metro.config.js","op":"create"},{"path":"apps/mobile/babel.config.js","op":"create"},{"path":"apps/mobile/tsconfig.json","op":"create"},{"path":"apps/mobile/project.json","op":"create"}],"parallel":false} -->
 
-- [ ] T002 Bootstrap packages/types — @prisma/client re-export skeleton (per D11)
+- [X] T002 Bootstrap packages/types — @prisma/client re-export skeleton (per D11)
   <!-- task-meta: {"id":"T002","workspace":"pkg-types","deps":[],"trace_us":["GLOBAL"],"trace_fr":["FR-001"],"kind":"config","verify_kind":"typecheck","files":[{"path":"packages/types/package.json","op":"create"},{"path":"packages/types/project.json","op":"create"},{"path":"packages/types/tsconfig.json","op":"create"},{"path":"packages/types/src/index.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T003 Bootstrap packages/design-tokens — workspace shell (D4 v2 forbid claude-design redesign)
