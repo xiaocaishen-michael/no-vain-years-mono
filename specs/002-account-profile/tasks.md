@@ -95,7 +95,7 @@ orchestrator_compat: ">=0.1.0"
 - [ ] T023 US2 e2e — PATCH displayName 成功路径 + Edge Cases 全部覆盖
   <!-- task-meta: {"id":"T023","workspace":"server-app","deps":["T019","T021"],"trace_us":["US2"],"trace_fr":["FR-003","FR-005","FR-008"],"trace_ep":["EP2"],"trace_sc":["SC-002","SC-006"],"kind":"test-e2e","verify_kind":"test","files":[{"path":"apps/server/test/integration/accounts.us2-002.e2e.spec.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T024 US3 e2e — 老用户回访 GET /me 返已存 displayName
+- [X] T024 US3 e2e — 老用户回访 GET /me 返已存 displayName
   <!-- task-meta: {"id":"T024","workspace":"server-app","deps":["T018"],"trace_us":["US3"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"test-e2e","verify_kind":"test","files":[{"path":"apps/server/test/integration/accounts.us3-002.e2e.spec.ts","op":"create"}],"parallel":false} -->
 
 - [X] T025 US4 e2e — FROZEN / ANONYMIZED 账号持有 token → 401 (反枚举吞)
