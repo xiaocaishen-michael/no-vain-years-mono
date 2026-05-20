@@ -6,7 +6,7 @@ description: |
   library choice (name + version); /speckit.implement grounds the API usage
   (exact method signature / config key) because impl-time API mistakes from
   stale training data hit hardest.
-applies_to: [server, app]
+applies_to: [mono]
 spec_kit_compat: ">=0.8.5,<0.10.0"
 requires_mcp: [context7]
 priority: 5

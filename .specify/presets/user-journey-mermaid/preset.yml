@@ -5,7 +5,7 @@ description: |
   spec-template. The AI fills the placeholder block when authoring spec.md,
   rendering the primary user scenario as a sequence diagram alongside the
   textual User Scenarios & Testing section.
-applies_to: [meta, mono]
+applies_to: [mono]
 spec_kit_compat: ">=0.8.5,<0.10.0"
 priority: 6
 
