@@ -67,7 +67,7 @@ orchestrator_compat: ">=0.1.0"
 - [ ] T015 GetAccountProfileUseCase unit test (ships RED first)
   <!-- task-meta: {"id":"T015","workspace":"server-app","deps":["T014"],"trace_us":["US1","US3"],"trace_fr":["FR-001"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/application/get-account-profile.usecase.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
 
-- [ ] T016 Implement UpdateDisplayNameUseCase
+- [X] T016 Implement UpdateDisplayNameUseCase
   <!-- task-meta: {"id":"T016","workspace":"server-app","deps":["T012","T013"],"trace_us":["US2"],"trace_fr":["FR-003","FR-005"],"trace_ep":["EP2"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/application/update-display-name.usecase.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T017 UpdateDisplayNameUseCase unit test (ships RED first)
