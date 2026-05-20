@@ -75,7 +75,7 @@ orchestrator_compat: ">=0.1.0"
 
 ## Server — Web layer
 
-- [ ] T018 Implement GET /api/v1/accounts/me Controller + Response DTO + OpenAPI decorators
+- [X] T018 Implement GET /api/v1/accounts/me Controller + Response DTO + OpenAPI decorators
   <!-- task-meta: {"id":"T018","workspace":"server-app","deps":["T014"],"trace_us":["US1","US3"],"trace_fr":["FR-001","FR-002","FR-010","FR-012"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/web/account-profile.controller.ts","op":"create"},{"path":"apps/server/src/auth/web/dto/account-profile.response.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T019 Implement PATCH /api/v1/accounts/me endpoint + Request DTO + validation
