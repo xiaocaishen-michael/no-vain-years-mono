@@ -13,6 +13,12 @@ import {
 
 const INVOKE_OPTS: LlmInvokeOptions = { cwd: '/tmp/sandbox' };
 
+interface RalphRoundCapture {
+  n: number;
+  hasError: boolean;
+  hasOutcome: boolean;
+}
+
 function llmOk(stdout = 'patched'): LlmInvokeResult {
   return { exitCode: 0, stdout, stderr: '', durationMs: 1 };
 }
@@ -166,6 +172,58 @@ describe('ralphLoop', () => {
     expect(r.history[0]).toMatchObject({ kind: 'retry-prompt', attemptNumber: 1, prompt: 'please: oops' });
     expect(r.history[1]).toMatchObject({ kind: 'llm-output', attemptNumber: 1, stdout: 'stdout-A' });
     expect(r.history[2]).toMatchObject({ kind: 'attempt', attemptNumber: 1, ok: true });
+  });
+
+  it('fires onRound once per round with llmResult + outcome (success path)', async () => {
+    const llm = new FakeLlmClient([llmOk('a'), llmOk('b')]);
+    const attempt = makeAttempts([
+      { ok: false, feedback: 'err A' },
+      { ok: true },
+    ]);
+    const rounds: Array<{ n: number; ok: boolean | undefined; stdout: string | undefined; hasError: boolean }> = [];
+    await ralphLoop({
+      phase: 'verify-command',
+      initialFailure: 'INIT',
+      buildRetryPrompt: (fb, n) => `r${n}:${fb}`,
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+      onRound: async (r) => {
+        rounds.push({
+          n: r.attemptNumber,
+          ok: r.outcome?.ok,
+          stdout: r.llmResult?.stdout,
+          hasError: r.llmError !== undefined,
+        });
+      },
+    });
+    expect(rounds).toEqual([
+      { n: 1, ok: false, stdout: 'a', hasError: false },
+      { n: 2, ok: true, stdout: 'b', hasError: false },
+    ]);
+  });
+
+  it('fires onRound on llm-error short-circuit with llmError set', async () => {
+    const llm = new FakeLlmClient(); // empty queue → throws on first invoke
+    const attempt = makeAttempts([]);
+    const rounds: RalphRoundCapture[] = [];
+    const r = await ralphLoop({
+      phase: 'verify-command',
+      initialFailure: 'INIT',
+      buildRetryPrompt: (fb) => fb,
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+      onRound: async (round) => {
+        rounds.push({
+          n: round.attemptNumber,
+          hasError: round.llmError !== undefined,
+          hasOutcome: round.outcome !== undefined,
+        });
+      },
+    });
+    expect(r.reason).toBe('llm-error');
+    expect(rounds).toEqual([{ n: 1, hasError: true, hasOutcome: false }]);
   });
 
   it('keeps last non-empty feedback when attempt omits feedback', async () => {

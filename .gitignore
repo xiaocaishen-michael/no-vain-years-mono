@@ -38,3 +38,6 @@ pnpm-debug.log*
 
 # graphify code knowledge graph
 graphify-out/
+
+# orchestrator per-task run archive (P1 debug sink; volatile per run)
+.spec-kit/runs/

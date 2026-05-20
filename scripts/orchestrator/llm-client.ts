@@ -27,6 +27,10 @@ export interface LlmInvokeOptions {
   permissionMode?: 'dontAsk' | 'plan' | 'default';
   /** Extra args passed verbatim before the prompt argument. Escape hatch. */
   extraArgs?: string[];
+  /** Tee stdout to this sink in real-time (used for archive log streaming). */
+  streamStdout?: NodeJS.WritableStream;
+  /** Tee stderr to this sink in real-time. */
+  streamStderr?: NodeJS.WritableStream;
 }
 
 export interface LlmInvokeResult {
@@ -174,8 +178,14 @@ export class ClaudeCliClient implements LlmClient {
 
       let stdout = '';
       let stderr = '';
-      child.stdout.on('data', (b: Buffer) => (stdout += b.toString('utf-8')));
-      child.stderr.on('data', (b: Buffer) => (stderr += b.toString('utf-8')));
+      child.stdout.on('data', (b: Buffer) => {
+        stdout += b.toString('utf-8');
+        if (opts.streamStdout) opts.streamStdout.write(b);
+      });
+      child.stderr.on('data', (b: Buffer) => {
+        stderr += b.toString('utf-8');
+        if (opts.streamStderr) opts.streamStderr.write(b);
+      });
 
       const timer = setTimeout(() => {
         child.kill('SIGKILL');
