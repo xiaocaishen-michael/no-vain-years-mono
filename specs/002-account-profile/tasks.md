@@ -24,7 +24,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T002 Bootstrap packages/types — @prisma/client re-export skeleton (per D11)
   <!-- task-meta: {"id":"T002","workspace":"pkg-types","deps":[],"trace_us":["GLOBAL"],"trace_fr":["FR-001"],"kind":"config","verify_kind":"typecheck","files":[{"path":"packages/types/package.json","op":"create"},{"path":"packages/types/project.json","op":"create"},{"path":"packages/types/tsconfig.json","op":"create"},{"path":"packages/types/src/index.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T003 Bootstrap packages/design-tokens — workspace shell (D4 v2 forbid claude-design redesign)
+- [X] T003 Bootstrap packages/design-tokens — workspace shell (D4 v2 forbid claude-design redesign)
   <!-- task-meta: {"id":"T003","workspace":"pkg-design-tokens","deps":[],"trace_us":["US5"],"trace_fr":["FR-018"],"kind":"config","verify_kind":"typecheck","files":[{"path":"packages/design-tokens/package.json","op":"create"},{"path":"packages/design-tokens/project.json","op":"create"},{"path":"packages/design-tokens/tsconfig.json","op":"create"},{"path":"packages/design-tokens/src/index.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T004 Bootstrap packages/ui — workspace shell (D4 v2 reuse legacy)
