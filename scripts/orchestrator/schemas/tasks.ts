@@ -60,5 +60,6 @@ export const ParsedTaskSchema = TaskMetaSchema.extend({
 });
 
 export type TasksFrontmatter = z.infer<typeof TasksFrontmatterSchema>;
+export type TaskFileOp = z.infer<typeof TaskFileOpSchema>;
 export type TaskMeta = z.infer<typeof TaskMetaSchema>;
 export type ParsedTask = z.infer<typeof ParsedTaskSchema>;
