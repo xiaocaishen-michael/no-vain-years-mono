@@ -247,6 +247,77 @@ describe('TaskArchive.finalize', () => {
     });
   });
 
+  it('uses llmMetrics fallback when llmResult absent (failure path)', async () => {
+    // PoC blind spot #15: claude-cli emits cost/usage even on semantic
+    // error (error_max_turns / refusal). LlmInvokeError carries them;
+    // archive picks them up from input.llmMetrics so summary.json still
+    // records the burn on the failure path.
+    const dir = makeDir();
+    const a = await TaskArchive.create(dir, { featureId: 'f', taskId: 'T01' });
+    const att = a.reserveAttempt('initial');
+    await att.finish({
+      prompt: 'p',
+      llmError: new Error('error_max_turns'),
+      llmMetrics: {
+        cost_usd: 2.25,
+        num_turns: 30,
+        permission_denials: 0,
+        usage: {
+          input_tokens: 44,
+          output_tokens: 27599,
+          cache_read_input_tokens: 2098455,
+          cache_creation_input_tokens: 81392,
+        },
+      },
+      diff: '+ partial work',
+      ok: false,
+    });
+    await a.finalize({ ok: false, reason: 'llm-error' });
+    const s = JSON.parse(
+      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
+    );
+    expect(s.attempts[0].llm).toEqual({
+      cost_usd: 2.25,
+      num_turns: 30,
+      permission_denials: 0,
+      usage: {
+        input_tokens: 44,
+        output_tokens: 27599,
+        cache_read_input_tokens: 2098455,
+        cache_creation_input_tokens: 81392,
+      },
+    });
+    // diff was captured even on failure path
+    const diffContent = fs.readFileSync(
+      path.join(dir, 'attempt-0-diff.patch'),
+      'utf-8',
+    );
+    expect(diffContent).toBe('+ partial work');
+  });
+
+  it('llmResult.metrics wins when both llmResult and llmMetrics provided', async () => {
+    const dir = makeDir();
+    const a = await TaskArchive.create(dir, { featureId: 'f', taskId: 'T02' });
+    const att = a.reserveAttempt('initial');
+    await att.finish({
+      prompt: 'p',
+      llmResult: {
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        durationMs: 100,
+        metrics: { cost_usd: 1.0 },
+      },
+      llmMetrics: { cost_usd: 999 }, // should be ignored
+      ok: true,
+    });
+    await a.finalize({ ok: true, reason: 'success' });
+    const s = JSON.parse(
+      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
+    );
+    expect(s.attempts[0].llm.cost_usd).toBe(1.0);
+  });
+
   it('leaves attempt.llm.cost_usd/usage absent when metrics undefined', async () => {
     const dir = makeDir();
     const a = await TaskArchive.create(dir, { featureId: 'f', taskId: 'T02' });

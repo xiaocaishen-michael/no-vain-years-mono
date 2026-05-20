@@ -52,6 +52,42 @@ describe('buildClaudeArgs', () => {
     expect(args[args.indexOf('--output-format') + 1]).toBe('text');
   });
 
+  it('respects ORCHESTRATOR_MAX_TURNS env var when --max-turns not in opts', () => {
+    const old = process.env.ORCHESTRATOR_MAX_TURNS;
+    try {
+      process.env.ORCHESTRATOR_MAX_TURNS = '50';
+      const args = buildClaudeArgs('hi', BASE_OPTS);
+      expect(args[args.indexOf('--max-turns') + 1]).toBe('50');
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_MAX_TURNS = old;
+      else delete process.env.ORCHESTRATOR_MAX_TURNS;
+    }
+  });
+
+  it('explicit opts.maxTurns wins over env var', () => {
+    const old = process.env.ORCHESTRATOR_MAX_TURNS;
+    try {
+      process.env.ORCHESTRATOR_MAX_TURNS = '50';
+      const args = buildClaudeArgs('hi', { ...BASE_OPTS, maxTurns: 7 });
+      expect(args[args.indexOf('--max-turns') + 1]).toBe('7');
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_MAX_TURNS = old;
+      else delete process.env.ORCHESTRATOR_MAX_TURNS;
+    }
+  });
+
+  it('ignores malformed ORCHESTRATOR_MAX_TURNS (falls back to default 30)', () => {
+    const old = process.env.ORCHESTRATOR_MAX_TURNS;
+    try {
+      process.env.ORCHESTRATOR_MAX_TURNS = 'nope';
+      const args = buildClaudeArgs('hi', BASE_OPTS);
+      expect(args[args.indexOf('--max-turns') + 1]).toBe('30');
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_MAX_TURNS = old;
+      else delete process.env.ORCHESTRATOR_MAX_TURNS;
+    }
+  });
+
   it('places extraArgs before the prompt and prompt is last', () => {
     const args = buildClaudeArgs('the prompt', {
       ...BASE_OPTS,
@@ -179,6 +215,23 @@ describe('describeClaudeError', () => {
   it('falls back when no result text', () => {
     const msg = describeClaudeError({ is_error: true });
     expect(msg).toMatch(/no result/);
+  });
+});
+
+describe('LlmInvokeError', () => {
+  it('preserves optional metrics + parsed payload', () => {
+    const metrics = { cost_usd: 1.5, num_turns: 30 };
+    const parsed = { is_error: true, subtype: 'error_max_turns' };
+    const err = new LlmInvokeError('boom', undefined, metrics, parsed);
+    expect(err.metrics).toEqual(metrics);
+    expect(err.parsed).toEqual(parsed);
+    expect(err.message).toBe('boom');
+  });
+
+  it('still works without metrics (back-compat)', () => {
+    const err = new LlmInvokeError('plain');
+    expect(err.metrics).toBeUndefined();
+    expect(err.parsed).toBeUndefined();
   });
 });
 
