@@ -1,0 +1,193 @@
+import { describe, expect, it } from 'vitest';
+import {
+  FakeLlmClient,
+  LlmInvokeError,
+  type LlmInvokeOptions,
+  type LlmInvokeResult,
+} from './llm-client.js';
+import {
+  ralphLoop,
+  RALPH_DEFAULT_MAX_RETRIES,
+  type RalphAttemptOutcome,
+} from './ralph-loop.js';
+
+const INVOKE_OPTS: LlmInvokeOptions = { cwd: '/tmp/sandbox' };
+
+function llmOk(stdout = 'patched'): LlmInvokeResult {
+  return { exitCode: 0, stdout, stderr: '', durationMs: 1 };
+}
+
+function makeAttempts(
+  outcomes: RalphAttemptOutcome[],
+): () => Promise<RalphAttemptOutcome> {
+  let i = 0;
+  return async () => {
+    const next = outcomes[i++];
+    if (!next) throw new Error(`attempt called ${i} times, only ${outcomes.length} outcomes scripted`);
+    return next;
+  };
+}
+
+describe('ralphLoop', () => {
+  it('default max retries: verify-command=3, git-hook=2', () => {
+    expect(RALPH_DEFAULT_MAX_RETRIES['verify-command']).toBe(3);
+    expect(RALPH_DEFAULT_MAX_RETRIES['git-hook']).toBe(2);
+  });
+
+  it('returns ok=true on first successful attempt', async () => {
+    const llm = new FakeLlmClient([llmOk()]);
+    const attempt = makeAttempts([{ ok: true }]);
+    const r = await ralphLoop({
+      phase: 'verify-command',
+      initialFailure: 'first failure',
+      buildRetryPrompt: (fb, n) => `retry ${n}: ${fb}`,
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.attempts).toBe(1);
+    expect(r.reason).toBe('success');
+    expect(llm.calls).toHaveLength(1);
+    expect(llm.calls[0].prompt).toBe('retry 1: first failure');
+  });
+
+  it('threads each attempt\'s feedback into the next retry prompt', async () => {
+    const llm = new FakeLlmClient([llmOk('fix-1'), llmOk('fix-2'), llmOk('fix-3')]);
+    const attempt = makeAttempts([
+      { ok: false, feedback: 'err A' },
+      { ok: false, feedback: 'err B' },
+      { ok: true },
+    ]);
+    const prompts: string[] = [];
+    const r = await ralphLoop({
+      phase: 'verify-command',
+      initialFailure: 'INIT',
+      buildRetryPrompt: (fb, n) => {
+        const p = `[#${n}] ${fb}`;
+        prompts.push(p);
+        return p;
+      },
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.attempts).toBe(3);
+    expect(prompts).toEqual(['[#1] INIT', '[#2] err A', '[#3] err B']);
+  });
+
+  it('stops at default maxRetries when attempts keep failing (verify-command=3)', async () => {
+    const llm = new FakeLlmClient([llmOk(), llmOk(), llmOk()]);
+    const attempt = makeAttempts([
+      { ok: false, feedback: 'a' },
+      { ok: false, feedback: 'b' },
+      { ok: false, feedback: 'c' },
+    ]);
+    const r = await ralphLoop({
+      phase: 'verify-command',
+      initialFailure: 'INIT',
+      buildRetryPrompt: (fb) => fb,
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.attempts).toBe(3);
+    expect(r.reason).toBe('max-retries-exceeded');
+    expect(r.finalFeedback).toBe('c');
+  });
+
+  it('stops at git-hook default maxRetries=2', async () => {
+    const llm = new FakeLlmClient([llmOk(), llmOk()]);
+    const attempt = makeAttempts([
+      { ok: false, feedback: 'lint err' },
+      { ok: false, feedback: 'still lint err' },
+    ]);
+    const r = await ralphLoop({
+      phase: 'git-hook',
+      initialFailure: 'hook stderr',
+      buildRetryPrompt: (fb) => `fix only lint: ${fb}`,
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.attempts).toBe(2);
+    expect(r.reason).toBe('max-retries-exceeded');
+  });
+
+  it('honors maxRetries override', async () => {
+    const llm = new FakeLlmClient([llmOk()]);
+    const attempt = makeAttempts([{ ok: false, feedback: 'still bad' }]);
+    const r = await ralphLoop({
+      phase: 'verify-command',
+      maxRetries: 1,
+      initialFailure: 'INIT',
+      buildRetryPrompt: (fb) => fb,
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.attempts).toBe(1);
+  });
+
+  it('returns reason=llm-error when LLM throws', async () => {
+    const llm = new FakeLlmClient(); // empty queue → throws LlmInvokeError
+    const attempt = makeAttempts([]); // should not be called
+    const r = await ralphLoop({
+      phase: 'verify-command',
+      initialFailure: 'INIT',
+      buildRetryPrompt: (fb) => fb,
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('llm-error');
+    expect(r.llmError).toBeInstanceOf(LlmInvokeError);
+    expect(r.finalFeedback).toBe('INIT');
+    expect(r.attempts).toBe(0);
+  });
+
+  it('history records prompt → llm-output → attempt for each round', async () => {
+    const llm = new FakeLlmClient([llmOk('stdout-A')]);
+    const attempt = makeAttempts([{ ok: true }]);
+    const r = await ralphLoop({
+      phase: 'verify-command',
+      initialFailure: 'oops',
+      buildRetryPrompt: (fb) => `please: ${fb}`,
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+    });
+    expect(r.history).toHaveLength(3);
+    expect(r.history[0]).toMatchObject({ kind: 'retry-prompt', attemptNumber: 1, prompt: 'please: oops' });
+    expect(r.history[1]).toMatchObject({ kind: 'llm-output', attemptNumber: 1, stdout: 'stdout-A' });
+    expect(r.history[2]).toMatchObject({ kind: 'attempt', attemptNumber: 1, ok: true });
+  });
+
+  it('keeps last non-empty feedback when attempt omits feedback', async () => {
+    const llm = new FakeLlmClient([llmOk(), llmOk()]);
+    const attempt = makeAttempts([
+      { ok: false, feedback: 'first err' },
+      { ok: false }, // no feedback → ralph keeps "first err"
+    ]);
+    const prompts: string[] = [];
+    await ralphLoop({
+      phase: 'verify-command',
+      maxRetries: 2,
+      initialFailure: 'INIT',
+      buildRetryPrompt: (fb, n) => {
+        const p = `${n}:${fb}`;
+        prompts.push(p);
+        return p;
+      },
+      attempt,
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+    });
+    expect(prompts).toEqual(['1:INIT', '2:first err']);
+  });
+});
