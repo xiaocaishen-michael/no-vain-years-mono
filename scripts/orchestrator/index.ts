@@ -6,13 +6,17 @@ import {
   summarizePlan,
   type FileOpPlanResult,
 } from './fs-ops.js';
+import { GitCli } from './git-flow.js';
 import {
   queryGraph,
   resolveDefaultGraphPath,
   type CodeContext,
 } from './graphify-client.js';
+import { ClaudeCliClient } from './llm-client.js';
 import { ConstitutionViolationError } from './parsers/plan.js';
 import { buildPrompt, PromptAssemblyError } from './prompt-assembler.js';
+import { runFeature, type TaskRunResult } from './run-feature.js';
+import { RealShell } from './shell.js';
 import {
   FeatureFileMissingError,
   FeatureRefMismatchError,
@@ -26,6 +30,7 @@ const PROMPT_PREVIEW_LINES = 30;
 interface CliArgs {
   featurePath: string;
   dryRun: boolean;
+  live: boolean;
   only: string | null;
   parallel: boolean;
 }
@@ -33,6 +38,7 @@ interface CliArgs {
 function parseArgs(argv: string[]): CliArgs {
   const positional: string[] = [];
   let dryRun = false;
+  let live = false;
   let parallel = false;
   let only: string | null = null;
 
@@ -40,6 +46,8 @@ function parseArgs(argv: string[]): CliArgs {
     const a = argv[i];
     if (a === '--dry-run') {
       dryRun = true;
+    } else if (a === '--live') {
+      live = true;
     } else if (a === '--parallel') {
       parallel = true;
     } else if (a === '--only') {
@@ -71,8 +79,14 @@ function parseArgs(argv: string[]): CliArgs {
       `--only value must match /^T\\d{3}$/ (got "${only}")`,
     );
   }
+  if (dryRun && live) {
+    throw new CliUsageError('cannot pass both --dry-run and --live');
+  }
+  if (!dryRun && !live) {
+    throw new CliUsageError('must pass either --dry-run or --live');
+  }
 
-  return { featurePath: positional[0], dryRun, only, parallel };
+  return { featurePath: positional[0], dryRun, live, only, parallel };
 }
 
 class CliUsageError extends Error {
@@ -86,15 +100,18 @@ function printUsage(): void {
   // eslint-disable-next-line no-console
   console.error(
     [
-      'Usage: orchestrate <feature-path> [options]',
+      'Usage: orchestrate <feature-path> (--dry-run | --live) [options]',
       '',
       'Arguments:',
       '  <feature-path>     path to feature dir containing spec.md, plan.md, tasks.md',
       '',
+      'Mode (exactly one required):',
+      '  --dry-run          parse + DAG print + prompt preview, no LLM / no commit',
+      '  --live             execute tasks: LLM + verify + commit (mutates repo)',
+      '',
       'Options:',
-      '  --dry-run          parse + DAG print, no LLM / no commit (PR-A scope)',
-      '  --only T<NNN>      run a single task by id (not yet implemented)',
-      '  --parallel         enable parallel batch execution (not yet implemented)',
+      '  --only T<NNN>      run a single task by id',
+      '  --parallel         honor task.parallel within batches (default all serial)',
       '  -h, --help         print this help',
     ].join('\n'),
   );
@@ -308,15 +325,46 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
+  // Live execution. Wire real subprocess-backed dependencies and run.
+  const shell = new RealShell();
+  const llm = new ClaudeCliClient();
+  const git = new GitCli(shell);
+
   // eslint-disable-next-line no-console
   console.error(
-    [
-      `✗ orchestrator main loop is not yet implemented (PR-A scope is --dry-run only).`,
-      `  Use \`--dry-run\` to parse + print DAG.`,
-      `  Subsequent PRs will add fs-ops / prompt-assembler / llm-client / git-flow / ralph-loop.`,
-    ].join('\n'),
+    `▶ orchestrator --live: ${state.tasks.tasks.filter((t) => t.status === 'pending').length} pending task(s) for ${state.featureId}`,
   );
-  return 1;
+
+  const result = await runFeature(state, { llm, git, shell }, {
+    onlyTaskId: args.only ?? undefined,
+    parallel: args.parallel,
+  });
+
+  printLiveSummary(result.results);
+
+  if (!result.ok) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `✗ orchestrator failed at task ${result.failedAt ?? '?'} — sandbox cwd preserved for inspection`,
+    );
+    return 1;
+  }
+  // eslint-disable-next-line no-console
+  console.error(`✅ orchestrator finished: all tasks committed`);
+  return 0;
+}
+
+function printLiveSummary(results: TaskRunResult[]): void {
+  const lines: string[] = ['', '── Task results ──'];
+  for (const r of results) {
+    const tag = r.ok ? '✅' : '✗';
+    const detail = r.ok
+      ? ''
+      : ` (${r.reason}${r.message ? ': ' + r.message : ''})`;
+    lines.push(`${tag} ${r.taskId}${detail}`);
+  }
+  // eslint-disable-next-line no-console
+  console.error(lines.join('\n'));
 }
 
 const isCli =
