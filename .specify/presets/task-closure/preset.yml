@@ -8,7 +8,7 @@ description: |
   whose [X] flip didn't ship in the same commit as the implementation.
 
   NOT a SKILL fork — `.claude/skills/speckit-implement/SKILL.md` stays vanilla.
-applies_to: [server, app]
+applies_to: [mono]
 spec_kit_compat: ">=0.8.5,<0.10.0"
 priority: 10
 
