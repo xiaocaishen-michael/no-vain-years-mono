@@ -91,6 +91,36 @@ export function buildClaudeArgs(
 }
 
 /**
+ * True when `claude -p --output-format json` returned a payload whose
+ * `is_error` field is true (auth failure, quota, refusal, etc.). The
+ * process still exits 0 in these cases, so callers can't rely on
+ * exit code alone.
+ */
+export function isClaudeJsonError(parsed: unknown): boolean {
+  return (
+    typeof parsed === 'object' &&
+    parsed !== null &&
+    'is_error' in parsed &&
+    (parsed as { is_error?: unknown }).is_error === true
+  );
+}
+
+/** Best-effort one-line description of a claude JSON error payload. */
+export function describeClaudeError(parsed: unknown): string {
+  if (typeof parsed !== 'object' || parsed === null) return '(unknown shape)';
+  const p = parsed as Record<string, unknown>;
+  const parts: string[] = [];
+  if (typeof p.result === 'string') parts.push(p.result);
+  if (typeof p.subtype === 'string' && p.subtype !== 'success') {
+    parts.push(`subtype=${p.subtype}`);
+  }
+  if (typeof p.stop_reason === 'string') {
+    parts.push(`stop=${p.stop_reason}`);
+  }
+  return parts.length > 0 ? parts.join(' | ') : '(no result text)';
+}
+
+/**
  * Live impl that spawns `claude -p`. Untestable without a real Claude
  * binary + auth; covered by an env-gated `LIVE_LLM=1` smoke test only.
  */
@@ -141,6 +171,17 @@ export class ClaudeCliClient implements LlmClient {
           } catch {
             // leave parsed undefined; caller can decide whether that's fatal
           }
+        }
+        // claude -p signals semantic errors (auth, quota, refusals) via
+        // is_error=true inside the JSON payload while still exiting 0.
+        // Surface those as LlmInvokeError so callers don't see false-green.
+        if (isClaudeJsonError(parsed)) {
+          reject(
+            new LlmInvokeError(
+              `claude -p returned semantic error: ${describeClaudeError(parsed)}`,
+            ),
+          );
+          return;
         }
         resolve({
           exitCode,

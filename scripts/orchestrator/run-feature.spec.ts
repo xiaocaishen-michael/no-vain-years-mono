@@ -3,15 +3,47 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FakeGit } from './git-flow.js';
-import { FakeLlmClient, type LlmInvokeResult } from './llm-client.js';
-import { maybeCleanupSandbox, runFeature } from './run-feature.js';
+import {
+  FakeLlmClient,
+  type FakeResponse,
+  type LlmInvokeResult,
+} from './llm-client.js';
+import {
+  detectLlmNoOp,
+  maybeCleanupSandbox,
+  runFeature,
+} from './run-feature.js';
 import { FakeShell, shellOk, shellFail, type ShellRunResult } from './shell.js';
-import { loadFeature } from './state.js';
+import { loadFeature, type FeatureState } from './state.js';
+import type { ParsedTask } from './schemas/tasks.js';
 
 const FIXTURES_DIR = path.resolve(__dirname, '__fixtures__');
 
 function llmOk(stdout = 'patched'): LlmInvokeResult {
   return { exitCode: 0, stdout, stderr: '', durationMs: 1 };
+}
+
+/**
+ * Fake-LLM response that mirrors a real LLM Write side effect: touches
+ * each declared `op=create|modify` file at `opts.cwd` (the repoRoot),
+ * so the post-LLM no-op detector (`detectLlmNoOp`) sees a non-zero size.
+ */
+function llmFills(task: ParsedTask, content = '// patched by fake LLM\n'): FakeResponse {
+  return (_prompt, opts) => {
+    for (const f of task.files) {
+      if (f.op !== 'create' && f.op !== 'modify') continue;
+      const abs = path.resolve(opts.cwd, f.path);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, content);
+    }
+    return llmOk();
+  };
+}
+
+function fillingResponses(state: FeatureState): FakeResponse[] {
+  return state.tasks.tasks
+    .filter((t) => t.status === 'pending')
+    .map((t) => llmFills(t));
 }
 
 describe('runFeature (integration with fakes)', () => {
@@ -49,16 +81,19 @@ describe('runFeature (integration with fakes)', () => {
     return { featureDir, repoRoot };
   }
 
-  function defaultDeps() {
-    // Provide enough responses for all 8 tasks: each needs 1 LLM call (initial)
-    // + 1 verify shell call (success path). 8 each.
-    const llmResponses = Array.from({ length: 8 }, () => llmOk());
-    const shellResponses: ShellRunResult[] = Array.from({ length: 8 }, () =>
-      shellOk('verify ok'),
+  function defaultDeps(state: FeatureState) {
+    // Each pending task: 1 LLM call (initial, which mirrors a Write side
+    // effect to satisfy the post-LLM no-op detector) + 1 verify shell call.
+    const llmResponses: FakeResponse[] = fillingResponses(state);
+    const shellResponses: ShellRunResult[] = Array.from(
+      { length: llmResponses.length },
+      () => shellOk('verify ok'),
     );
     return {
       llm: new FakeLlmClient(llmResponses),
-      git: new FakeGit(Array.from({ length: 8 }, () => ({ ok: true as const }))),
+      git: new FakeGit(
+        Array.from({ length: llmResponses.length }, () => ({ ok: true as const })),
+      ),
       shell: new FakeShell(shellResponses),
     };
   }
@@ -68,7 +103,7 @@ describe('runFeature (integration with fakes)', () => {
     void repoRoot;
     const state = loadFeature(featureDir);
 
-    const result = await runFeature(state, defaultDeps());
+    const result = await runFeature(state, defaultDeps(state));
 
     expect(result.ok).toBe(true);
     expect(result.results).toHaveLength(8);
@@ -89,9 +124,10 @@ describe('runFeature (integration with fakes)', () => {
     const { featureDir } = setupFeature();
     const state = loadFeature(featureDir);
 
+    const t001 = state.tasks.tasks.find((t) => t.id === 'T001')!;
     const deps = {
       llm: new FakeLlmClient([
-        llmOk(), // T001 initial
+        llmFills(t001), // T001 initial — fills declared files
         llmOk(), // T001 verify retry #1
         llmOk(), // T001 verify retry #2
         llmOk(), // T001 verify retry #3
@@ -118,7 +154,7 @@ describe('runFeature (integration with fakes)', () => {
     const { featureDir } = setupFeature();
     const state = loadFeature(featureDir);
 
-    const result = await runFeature(state, defaultDeps(), {
+    const result = await runFeature(state, defaultDeps(state), {
       onlyTaskId: 'T001',
     });
 
@@ -131,8 +167,9 @@ describe('runFeature (integration with fakes)', () => {
     const { featureDir } = setupFeature();
     const state = loadFeature(featureDir);
 
+    const t001 = state.tasks.tasks.find((t) => t.id === 'T001')!;
     const llm = new FakeLlmClient([
-      llmOk(), // T001 initial
+      llmFills(t001), // T001 initial — fills declared files
       llmOk(), // T001 retry — LLM "fixes" the bug
     ]);
     const git = new FakeGit([{ ok: true }]);
@@ -154,8 +191,9 @@ describe('runFeature (integration with fakes)', () => {
     const { featureDir } = setupFeature();
     const state = loadFeature(featureDir);
 
+    const t001 = state.tasks.tasks.find((t) => t.id === 'T001')!;
     const llm = new FakeLlmClient([
-      llmOk(), // T001 initial
+      llmFills(t001), // T001 initial — fills declared files
       llmOk(), // T001 git-hook retry — fixes lint
     ]);
     const git = new FakeGit([
@@ -182,12 +220,50 @@ describe('runFeature (integration with fakes)', () => {
       (w) => w.id !== 'server-app',
     );
 
-    const result = await runFeature(state, defaultDeps(), {
+    const result = await runFeature(state, defaultDeps(state), {
       onlyTaskId: 'T001',
     });
 
     expect(result.ok).toBe(false);
     expect(result.results[0].reason).toBe('workspace-missing');
+  });
+
+  it('LLM is invoked with cwd=repoRoot (not sandboxCwd)', async () => {
+    // Regression guard: 2026-05-20 live smoke caught LLM cwd=sandbox,
+    // which made repo-root-relative file paths resolve into the sandbox
+    // and get wiped on cleanup. See feedback memory + PR for context.
+    const { featureDir, repoRoot } = setupFeature();
+    const state = loadFeature(featureDir);
+    const deps = defaultDeps(state);
+
+    await runFeature(state, deps, { onlyTaskId: 'T001' });
+
+    expect(deps.llm.calls.length).toBeGreaterThan(0);
+    expect(deps.llm.calls[0].opts.cwd).toBe(repoRoot);
+  });
+
+  it('detects LLM no-op (empty op=create file) and reports llm-error', async () => {
+    const { featureDir } = setupFeature();
+    const state = loadFeature(featureDir);
+    const t001 = state.tasks.tasks.find((t) => t.id === 'T001')!;
+
+    // Fake LLM that returns success but writes nothing.
+    const llm = new FakeLlmClient([llmOk()]);
+    const git = new FakeGit([{ ok: true }]);
+    const shell = new FakeShell([shellOk('verify green')]);
+
+    const result = await runFeature(state, { llm, git, shell }, {
+      onlyTaskId: 'T001',
+    });
+
+    expect(result.ok).toBe(false);
+    const tr = result.results[0];
+    expect(tr.taskId).toBe(t001.id);
+    expect(tr.reason).toBe('llm-error');
+    expect(tr.message).toMatch(/no-op detected/);
+    expect(tr.message).toMatch(/empty after LLM/);
+    // verify should NOT have been called — we bail before step 6.
+    expect(shell.calls).toHaveLength(0);
   });
 
   it('attaches sandboxCwd + sandboxCleaned to each task result', async () => {
@@ -202,7 +278,7 @@ describe('runFeature (integration with fakes)', () => {
     // cleanup_on_success=true is already the fixture default; assert.
     expect(state.plan.config.sandbox.cleanup_on_success).toBe(true);
 
-    const result = await runFeature(state, defaultDeps(), {
+    const result = await runFeature(state, defaultDeps(state), {
       onlyTaskId: 'T001',
     });
 

@@ -215,6 +215,10 @@ function fileOpsSection(task: ParsedTask): string {
   const lines: string[] = ['## File operations'];
   lines.push('');
   lines.push(
+    `Your working directory is the **monorepo root**. The paths below are relative to it — when you call Write/Edit, pass these paths verbatim (do NOT prepend or strip any prefix).`,
+  );
+  lines.push('');
+  lines.push(
     `Files in this task are pre-staged by the orchestrator. Do NOT \`mkdir\`, \`touch\`, or \`mv\` them yourself — use the Write/Edit tools to fill content.`,
   );
   lines.push('');
