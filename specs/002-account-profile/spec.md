@@ -28,7 +28,7 @@ orchestrator_compat: ">=0.1.0"
 > **决策约束（client）**：
 >
 > - **per ADR-0017 类 1 流程**：本 spec 阶段产出业务流 + 占位 UI；视觉决策（精确 px / hex / 阴影 / 自定义动画 / photo blur 沉浸式背景）**不进 spec / plan**，留 PHASE 2 mockup 落地后回填 plan.md UI 段
-> - server 端 0 工作量：`/me` / `logout-all` / `delete-account` / `cancel-deletion` 全部已落地；本 spec 仅读现有 store 的 displayName（由 onboarding 既有 `loadProfile()` 写入）
+> - server 端 0 工作量：`/me` / `logout-all` / `delete-account` / `cancel-deletion` 全部已落地；本 spec 仅读 store 的 displayName（由 T031 packages/auth store 的 `loadProfile()` 写入；onboarding 流入口由后续 spec 引入）
 > - 路由 `apps/mobile/app/(app)/(tabs)/profile.tsx` — 在 `(app)/(tabs)` 路由组内，受 AuthGate 第一层（`!authed → /(auth)/login`）保护；profile screen 自身无 auth 逻辑
 > - **占位 UI 阶段不引入 packages/ui 新组件**（per FR-022）；现有共享组件（Button / Spinner 等）可复用，新组件等 PHASE 2 mockup 评估
 > - 本 spec 是 SDD 拆分链 A → B → C 的 A；A → B 入口为「我的 → ⚙️ → 设置」，A → C 入口经 B 中转（账号与安全 → 注销账号）；本 spec 仅声明 `router.push('/(app)/settings')`，目标实现是 spec B 范围

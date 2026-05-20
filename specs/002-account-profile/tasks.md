@@ -120,7 +120,7 @@ orchestrator_compat: ">=0.1.0"
 - [ ] T030 packages/ui — migrate components from legacy app (Button / Spinner / SafeAreaView etc, reuse not rewrite)
   <!-- task-meta: {"id":"T030","workspace":"pkg-ui","deps":["T004","T029"],"trace_us":["US5","US7","US9"],"trace_fr":["FR-018","FR-020","FR-027"],"kind":"impl","verify_kind":"build","files":[{"path":"packages/ui/src/Button.tsx","op":"create"},{"path":"packages/ui/src/Spinner.tsx","op":"create"},{"path":"packages/ui/src/SafeAreaView.tsx","op":"create"}],"parallel":false} -->
 
-- [ ] T031 packages/auth — zustand v5 store + secure-store persistence + token refresh middleware (business flow rewrite per D4 v2)
+- [ ] T031 packages/auth — zustand v5 store + secure-store persistence + token refresh middleware + `loadProfile()` action (business flow rewrite per D4 v2)
   <!-- task-meta: {"id":"T031","workspace":"pkg-auth","deps":["T005","T027","T028"],"trace_us":["US5","US12"],"trace_fr":["FR-014","FR-016"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"packages/auth/src/store.ts","op":"create"},{"path":"packages/auth/src/token-refresh.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T032 packages/auth unit tests — store + token refresh (Vitest, ships RED first)

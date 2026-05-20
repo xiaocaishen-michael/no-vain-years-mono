@@ -241,7 +241,7 @@ A-002 = 2 endpoints (`GET /api/v1/accounts/me` returning profile + `PATCH /api/v
 - **Prisma migration**：加 `display_name VARCHAR NULL` column 到 `account` table（expand-only，FR-007 auto-create 默认 null，无 backfill）；migration name `add_display_name_nullable`，落 `apps/server/prisma/migrations/`。
 - **JwtAuthFilter status check** (FR-009)：验签后查 DB 验 `Account.status == ACTIVE`；非 ACTIVE → 401 ProblemDetail（与 token 过期一致路径，反枚举吞）。复用 001 既有 filter pattern。
 - **限流配置**（FR-008）：`me-get` 60s 60 次 / `me-patch` 60s 10 次；超限 → 429 + Retry-After。**实现路径**：复用 001 既有 `@nestjs/throttler` `ThrottlerModule.forRootAsync` 配置（见 `auth.module.ts` line ~57，Redis storage via `ThrottlerStorageRedisService`），在 `throttlers: []` 数组内**新增** `me-get` / `me-patch` 两条 named throttler 配置；controller 用 `@Throttle({ 'me-get': { ... } })` 装饰器绑定；getTracker 用 `<accountId>` (来自 JWT claim)。**不**新建独立 `RateLimitService` 类。
-- **ProblemDetail filter** (FR-010)：所有错误响应走 RFC 9457，复用 `apps/server/src/shared/web/problem-detail.filter.ts` from 001。
+- **ProblemDetail filter** (FR-010)：所有错误响应走 RFC 9457，复用 `apps/server/src/auth/infrastructure/problem-detail.filter.ts` from 001。
 - **OpenAPI exposure** (FR-012)：controller + DTO 装饰器自动派生；`nx run server:export-openapi` 产 `apps/server/openapi.json`，供下游 api-client regenerate。
 - **Server e2e**（D3 ②）：`apps/server/test/integration/accounts.us1-002.e2e.spec.ts` + `us2-002.e2e.spec.ts`，复用 001 Vitest + Testcontainers pattern，覆盖 US1-4 (server)。
 
