@@ -33,8 +33,8 @@ orchestrator_compat: ">=0.1.0"
 - [ ] T005 Bootstrap packages/auth — workspace shell + dependencies (zustand v5 + expo-secure-store)
   <!-- task-meta: {"id":"T005","workspace":"pkg-auth","deps":["T002"],"trace_us":["US5","US12"],"trace_fr":["FR-002","FR-004"],"kind":"config","verify_kind":"typecheck","files":[{"path":"packages/auth/package.json","op":"create"},{"path":"packages/auth/project.json","op":"create"},{"path":"packages/auth/tsconfig.json","op":"create"},{"path":"packages/auth/src/index.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T006 Update ESLint config — register module boundaries for 5 new packages + mobile-app (per plan.module_boundaries)
-  <!-- task-meta: {"id":"T006","workspace":"server-app","deps":["T001","T002","T003","T004","T005"],"trace_us":["GLOBAL"],"trace_fr":["FR-001"],"kind":"config","verify_kind":"lint","files":[{"path":"eslint.config.js","op":"modify"}],"parallel":false} -->
+- [ ] T006 Update ESLint config — register module boundaries for 5 new packages + mobile-app (per plan.module_boundaries); map business module "account" → src/auth/ filesystem path
+  <!-- task-meta: {"id":"T006","workspace":"server-app","deps":["T001","T002","T003","T004","T005"],"trace_us":["GLOBAL"],"trace_fr":["FR-001"],"trace_sc":["SC-007"],"kind":"config","verify_kind":"lint","files":[{"path":"eslint.config.mjs","op":"modify"}],"parallel":false} -->
 
 ## Server — Prisma + Domain layer
 
@@ -42,50 +42,50 @@ orchestrator_compat: ">=0.1.0"
   <!-- task-meta: {"id":"T007","workspace":"server-app","deps":[],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"migration","verify_kind":"build","files":[{"path":"apps/server/prisma/schema.prisma","op":"modify"}],"parallel":false} -->
 
 - [ ] T008 Implement DisplayName VO (domain layer, FR-005 validation rules)
-  <!-- task-meta: {"id":"T008","workspace":"server-app","deps":[],"trace_us":["US2"],"trace_fr":["FR-005"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/domain/display-name.vo.ts","op":"create"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T008","workspace":"server-app","deps":[],"trace_us":["US2"],"trace_fr":["FR-005"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/domain/display-name.vo.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T009 DisplayName VO unit test — covers FR-005 + Edge Cases (ships RED first)
-  <!-- task-meta: {"id":"T009","workspace":"server-app","deps":["T008"],"trace_us":["US2"],"trace_fr":["FR-005"],"trace_sc":["SC-006"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/modules/account/domain/display-name.vo.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
+  <!-- task-meta: {"id":"T009","workspace":"server-app","deps":["T008"],"trace_us":["US2"],"trace_fr":["FR-005"],"trace_sc":["SC-006"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/domain/display-name.vo.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
 
 - [ ] T010 Extend Account aggregate — add displayName field + changeDisplayName(DisplayName, Instant) method
-  <!-- task-meta: {"id":"T010","workspace":"server-app","deps":["T008"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/domain/account.aggregate.ts","op":"modify"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T010","workspace":"server-app","deps":["T008"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/domain/account.aggregate.ts","op":"modify"}],"parallel":false} -->
 
 - [ ] T011 Account aggregate changeDisplayName unit test (ships RED first)
-  <!-- task-meta: {"id":"T011","workspace":"server-app","deps":["T010"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/modules/account/domain/account.aggregate.spec.ts","op":"modify"}],"parallel":false,"tdd_red_expected":true} -->
+  <!-- task-meta: {"id":"T011","workspace":"server-app","deps":["T010"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/domain/account.aggregate.spec.ts","op":"modify"}],"parallel":false,"tdd_red_expected":true} -->
 
-- [ ] T012 Extend AccountStateMachine — add changeDisplayName facade
-  <!-- task-meta: {"id":"T012","workspace":"server-app","deps":["T010"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/domain/account-state-machine.ts","op":"modify"}],"parallel":false} -->
+- [ ] T012 Create AccountStateMachine facade — changeDisplayName method (new file, mirrors markActive/markLoggedIn pattern)
+  <!-- task-meta: {"id":"T012","workspace":"server-app","deps":["T010"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/domain/account-state-machine.ts","op":"create"}],"parallel":false} -->
 
 ## Server — Application + Infrastructure
 
 - [ ] T013 Extend Account repository — read/write displayName field
-  <!-- task-meta: {"id":"T013","workspace":"server-app","deps":["T007","T010"],"trace_us":["US1","US2","US3"],"trace_fr":["FR-001","FR-003"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/infrastructure/account.prisma.repository.ts","op":"modify"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T013","workspace":"server-app","deps":["T007","T010"],"trace_us":["US1","US2","US3"],"trace_fr":["FR-001","FR-003"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/infrastructure/account.prisma.repository.ts","op":"modify"}],"parallel":false} -->
 
 - [ ] T014 Implement GetAccountProfileUseCase
-  <!-- task-meta: {"id":"T014","workspace":"server-app","deps":["T013"],"trace_us":["US1","US3"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/application/get-account-profile.usecase.ts","op":"create"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T014","workspace":"server-app","deps":["T013"],"trace_us":["US1","US3"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/application/get-account-profile.usecase.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T015 GetAccountProfileUseCase unit test (ships RED first)
-  <!-- task-meta: {"id":"T015","workspace":"server-app","deps":["T014"],"trace_us":["US1","US3"],"trace_fr":["FR-001"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/modules/account/application/get-account-profile.usecase.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
+  <!-- task-meta: {"id":"T015","workspace":"server-app","deps":["T014"],"trace_us":["US1","US3"],"trace_fr":["FR-001"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/application/get-account-profile.usecase.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
 
 - [ ] T016 Implement UpdateDisplayNameUseCase
-  <!-- task-meta: {"id":"T016","workspace":"server-app","deps":["T012","T013"],"trace_us":["US2"],"trace_fr":["FR-003","FR-005"],"trace_ep":["EP2"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/application/update-display-name.usecase.ts","op":"create"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T016","workspace":"server-app","deps":["T012","T013"],"trace_us":["US2"],"trace_fr":["FR-003","FR-005"],"trace_ep":["EP2"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/application/update-display-name.usecase.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T017 UpdateDisplayNameUseCase unit test (ships RED first)
-  <!-- task-meta: {"id":"T017","workspace":"server-app","deps":["T016"],"trace_us":["US2"],"trace_fr":["FR-003","FR-005"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/modules/account/application/update-display-name.usecase.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
+  <!-- task-meta: {"id":"T017","workspace":"server-app","deps":["T016"],"trace_us":["US2"],"trace_fr":["FR-003","FR-005"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/application/update-display-name.usecase.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
 
 ## Server — Web layer
 
 - [ ] T018 Implement GET /api/v1/accounts/me Controller + Response DTO + OpenAPI decorators
-  <!-- task-meta: {"id":"T018","workspace":"server-app","deps":["T014"],"trace_us":["US1","US3"],"trace_fr":["FR-001","FR-002","FR-010","FR-012"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/web/account-profile.controller.ts","op":"create"},{"path":"apps/server/src/modules/account/web/dto/account-profile.response.ts","op":"create"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T018","workspace":"server-app","deps":["T014"],"trace_us":["US1","US3"],"trace_fr":["FR-001","FR-002","FR-010","FR-012"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/web/account-profile.controller.ts","op":"create"},{"path":"apps/server/src/auth/web/dto/account-profile.response.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T019 Implement PATCH /api/v1/accounts/me endpoint + Request DTO + validation
-  <!-- task-meta: {"id":"T019","workspace":"server-app","deps":["T016","T018"],"trace_us":["US2"],"trace_fr":["FR-003","FR-004","FR-010"],"trace_ep":["EP2"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/web/account-profile.controller.ts","op":"modify"},{"path":"apps/server/src/modules/account/web/dto/update-display-name.request.ts","op":"create"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T019","workspace":"server-app","deps":["T016","T018"],"trace_us":["US2"],"trace_fr":["FR-003","FR-004","FR-010"],"trace_ep":["EP2"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/web/account-profile.controller.ts","op":"modify"},{"path":"apps/server/src/auth/web/dto/update-display-name.request.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T020 Extend JwtAuthFilter — FR-009 ACTIVE status check (non-ACTIVE returns 401)
-  <!-- task-meta: {"id":"T020","workspace":"server-app","deps":["T013"],"trace_us":["US4"],"trace_fr":["FR-002","FR-009"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/web/jwt-auth.filter.ts","op":"modify"}],"parallel":false} -->
+- [ ] T020 Create JwtAuthGuard — JWT validation + FR-009 ACTIVE status check (non-ACTIVE returns 401); used by /me endpoints
+  <!-- task-meta: {"id":"T020","workspace":"server-app","deps":["T013"],"trace_us":["US4"],"trace_fr":["FR-002","FR-009","FR-028"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/web/jwt-auth.guard.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T021 Implement rate limit for /me endpoints (FR-008 — me-get 60s 60, me-patch 60s 10)
-  <!-- task-meta: {"id":"T021","workspace":"server-app","deps":["T018","T019"],"trace_us":["US1","US2","US3"],"trace_fr":["FR-008"],"trace_sc":["SC-004"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/web/account-profile.controller.ts","op":"modify"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T021","workspace":"server-app","deps":["T018","T019"],"trace_us":["US1","US2","US3"],"trace_fr":["FR-008"],"trace_sc":["SC-004"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/web/account-profile.controller.ts","op":"modify"}],"parallel":false} -->
 
 ## Server — E2E (Vitest + Testcontainers)
 

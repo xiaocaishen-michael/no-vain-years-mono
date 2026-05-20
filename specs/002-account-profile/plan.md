@@ -27,14 +27,14 @@ A-002 = 2 endpoints (`GET /api/v1/accounts/me` returning profile + `PATCH /api/v
       "nx_project": "server",
       "cwd": "apps/server",
       "lang": "typescript",
-      "module_path": "src/modules/account",
+      "module_path": "src/auth",
       "verify_commands": {
         "build": "pnpm nx build server",
         "test": "pnpm nx test server --watch=false",
         "lint": "pnpm nx lint server",
         "typecheck": "pnpm nx run server:typecheck"
       },
-      "graphify_scope": "apps/server/src/modules/account/**/*"
+      "graphify_scope": "apps/server/src/auth/**/*"
     },
     {
       "id": "mobile-app",
@@ -235,8 +235,8 @@ A-002 = 2 endpoints (`GET /api/v1/accounts/me` returning profile + `PATCH /api/v
 
 **Server side**:
 
-- 复用 `apps/server/src/modules/account/` 从 001-phone-sms-auth；新增 use case 与既有 `phone-sms-auth` 平级：`use-cases/get-account-profile/` + `use-cases/update-display-name/`，每个含 `*.usecase.ts` + `ports/` (若需) + `web/*.controller.ts` + `web/dto/*` + unit + integration test。
-- **DisplayName VO** at `apps/server/src/modules/account/domain/display-name.vo.ts`，mirror 既有 PhoneNumber VO pattern：constructor validate FR-005 全规则（长度 [1, 32] Unicode 码点 / 字符集 / 禁字符）；违反抛 `IllegalArgumentException("INVALID_DISPLAY_NAME: ...")`，由 ProblemDetail filter 映射 400。
+- **Co-locate 在既有 `apps/server/src/auth/` 模块内**（per 2026-05-20 user 决策，dry-run 揭示 001 实际 ship at `src/auth/` flat 而非 `modules/account/`；A-002 与 001 reality 一致，PoC 阶段不 refactor）。新增 use case 与既有 `phone-sms-auth` 平级：`apps/server/src/auth/application/get-account-profile.usecase.ts` + `update-display-name.usecase.ts`；新增 controller `apps/server/src/auth/web/account-profile.controller.ts`；新增 JwtAuthGuard `apps/server/src/auth/web/jwt-auth.guard.ts`。Spec frontmatter `modules: ["account"]` 保留作 **business module 命名**，T006 ESLint boundary 把 "account" 业务概念 → `src/auth/` 文件系统路径映射。
+- **DisplayName VO** at `apps/server/src/auth/domain/display-name.vo.ts`，mirror 既有 PhoneNumber VO pattern：constructor validate FR-005 全规则（长度 [1, 32] Unicode 码点 / 字符集 / 禁字符）；违反抛 `IllegalArgumentException("INVALID_DISPLAY_NAME: ...")`，由 ProblemDetail filter 映射 400。
 - **Account aggregate** 扩展（既有 `account.aggregate.ts`）：加 `displayName: DisplayName | null` field + `changeDisplayName(DisplayName, Instant)` method，经 AccountStateMachine.changeDisplayName facade 调用（与既有 markActive / markLoggedIn pattern 一致）。
 - **Prisma migration**：加 `display_name VARCHAR NULL` column 到 `account` table（expand-only，FR-007 auto-create 默认 null，无 backfill）；migration name `add_display_name_nullable`，落 `apps/server/prisma/migrations/`。
 - **JwtAuthFilter status check** (FR-009)：验签后查 DB 验 `Account.status == ACTIVE`；非 ACTIVE → 401 ProblemDetail（与 token 过期一致路径，反枚举吞）。复用 001 既有 filter pattern。
