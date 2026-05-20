@@ -203,6 +203,66 @@ describe('TaskArchive.finalize', () => {
     expect(Date.parse(summary.finished_at) >= Date.parse(summary.started_at)).toBe(true);
   });
 
+  it('persists llmResult.metrics (cost/usage/denials/turns) into attempt.llm', async () => {
+    const dir = makeDir();
+    const a = await TaskArchive.create(dir, { featureId: 'f', taskId: 'T01' });
+    const att = a.reserveAttempt('initial');
+    await att.finish({
+      prompt: 'p',
+      llmResult: {
+        exitCode: 0,
+        stdout: 'o',
+        stderr: 'e',
+        durationMs: 100,
+        metrics: {
+          cost_usd: 0.96,
+          num_turns: 28,
+          permission_denials: 1,
+          usage: {
+            input_tokens: 89,
+            output_tokens: 10824,
+            cache_read_input_tokens: 717343,
+            cache_creation_input_tokens: 52972,
+          },
+        },
+      },
+      ok: true,
+    });
+    await a.finalize({ ok: true, reason: 'success' });
+    const s = JSON.parse(
+      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
+    );
+    expect(s.attempts[0].llm).toMatchObject({
+      exit_code: 0,
+      duration_ms: 100,
+      cost_usd: 0.96,
+      num_turns: 28,
+      permission_denials: 1,
+      usage: {
+        input_tokens: 89,
+        output_tokens: 10824,
+        cache_read_input_tokens: 717343,
+        cache_creation_input_tokens: 52972,
+      },
+    });
+  });
+
+  it('leaves attempt.llm.cost_usd/usage absent when metrics undefined', async () => {
+    const dir = makeDir();
+    const a = await TaskArchive.create(dir, { featureId: 'f', taskId: 'T02' });
+    const att = a.reserveAttempt('initial');
+    await att.finish({
+      prompt: 'p',
+      llmResult: { exitCode: 0, stdout: 'o', stderr: 'e', durationMs: 50 },
+      ok: true,
+    });
+    await a.finalize({ ok: true, reason: 'success' });
+    const s = JSON.parse(
+      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
+    );
+    expect(s.attempts[0].llm).toEqual({ exit_code: 0, duration_ms: 50 });
+  });
+
   it('summary.json finalizes with empty attempts when no work happened', async () => {
     const dir = makeDir();
     const a = await TaskArchive.create(dir, { featureId: 'f1', taskId: 'T001' });

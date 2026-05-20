@@ -335,7 +335,7 @@ async function runTaskInner(
   // .ts file is valid TS).
   const noOpError = await detectLlmNoOp(task, repoRoot, llmStartedAt);
   if (noOpError) {
-    const diff = await safeDiff(deps.git, repoRoot);
+    const diff = await safeDiff(deps.git, repoRoot, task.files);
     await att0.finish({
       prompt,
       llmResult,
@@ -367,7 +367,7 @@ async function runTaskInner(
   }
   progress?.update('🧪 verify command');
   const verifyResult = await deps.shell.run(verifyCmd, { cwd: workspaceCwd });
-  const initialDiff = await safeDiff(deps.git, repoRoot);
+  const initialDiff = await safeDiff(deps.git, repoRoot, task.files);
   await att0.finish({
     prompt,
     llmResult,
@@ -404,7 +404,7 @@ async function runTaskInner(
           `⚠️  verify-ralph #${round.attemptNumber} (${round.outcome?.ok ? 'fixed' : 'still red'})`,
         );
         const attN = archive.reserveAttempt('verify-ralph');
-        const diff = await safeDiff(deps.git, repoRoot);
+        const diff = await safeDiff(deps.git, repoRoot, task.files);
         await attN.finish({
           prompt: round.retryPrompt,
           llmResult: round.llmResult,
@@ -485,16 +485,30 @@ function startElapsedTimer(
   if (!progress) return () => undefined;
   const start = Date.now();
   progress.update(`${label} (0s)`);
+  // PoC blind spot #12: listr2 falls back to verbose (line-per-update)
+  // renderer when stdout isn't a TTY (e.g. orchestrator launched via
+  // CI / Claude Code Bash tool / `| tee`). A 1s tick floods the log
+  // with ~175 lines per task. In TTY the in-place spinner re-renders
+  // are cheap and useful; in non-TTY throttle to 15s so the log stays
+  // skimmable but still proves life.
+  const tickMs = process.stdout.isTTY ? 1000 : 15000;
   const handle = setInterval(() => {
     const s = Math.floor((Date.now() - start) / 1000);
     progress.update(`${label} (${s}s)`);
-  }, 1000);
+  }, tickMs);
   return () => clearInterval(handle);
 }
 
-async function safeDiff(git: Git, repoRoot: string): Promise<string> {
+async function safeDiff(
+  git: Git,
+  repoRoot: string,
+  files?: ReadonlyArray<{ op: string; path: string }>,
+): Promise<string> {
   try {
-    return await git.diffWorkingTree({ cwd: repoRoot });
+    const intentToAddPaths = files
+      ?.filter((f) => f.op === 'create')
+      .map((f) => f.path);
+    return await git.diffWorkingTree({ cwd: repoRoot, intentToAddPaths });
   } catch {
     return '';
   }
