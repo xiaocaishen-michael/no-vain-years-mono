@@ -12,12 +12,37 @@ import {
   detectLlmNoOp,
   maybeCleanupSandbox,
   runFeature,
+  type TaskProgressHandle,
+  type TaskProgressSink,
+  type TaskRunResult,
 } from './run-feature.js';
 import { FakeShell, shellOk, shellFail, type ShellRunResult } from './shell.js';
 import { loadFeature, type FeatureState } from './state.js';
 import type { ParsedTask } from './schemas/tasks.js';
 
 const FIXTURES_DIR = path.resolve(__dirname, '__fixtures__');
+
+interface ProgressEvent {
+  kind: 'start' | 'update' | 'finish';
+  taskId: string;
+  status?: string;
+  result?: TaskRunResult;
+}
+
+class FakeProgressSink implements TaskProgressSink {
+  public readonly events: ProgressEvent[] = [];
+  start(task: ParsedTask): TaskProgressHandle {
+    this.events.push({ kind: 'start', taskId: task.id });
+    return {
+      update: (status) => {
+        this.events.push({ kind: 'update', taskId: task.id, status });
+      },
+      finish: (result) => {
+        this.events.push({ kind: 'finish', taskId: task.id, result });
+      },
+    };
+  }
+}
 
 function llmOk(stdout = 'patched'): LlmInvokeResult {
   return { exitCode: 0, stdout, stderr: '', durationMs: 1 };
@@ -304,6 +329,53 @@ describe('runFeature (integration with fakes)', () => {
     expect(summary.file_ops.create + summary.file_ops.modify).toBeGreaterThan(0);
     expect(summary.commit).toBeDefined();
     expect(summary.commit.message).toMatch(/T001/);
+  });
+
+  it('fires progress sink start/update/finish for a happy-path task', async () => {
+    const { featureDir } = setupFeature();
+    const state = loadFeature(featureDir);
+    const sink = new FakeProgressSink();
+
+    const result = await runFeature(
+      state,
+      { ...defaultDeps(state), progress: sink },
+      { onlyTaskId: 'T001' },
+    );
+    expect(result.ok).toBe(true);
+
+    const t001Events = sink.events.filter((e) => e.taskId === 'T001');
+    // exactly one start + one finish, with updates in between
+    expect(t001Events[0].kind).toBe('start');
+    expect(t001Events[t001Events.length - 1].kind).toBe('finish');
+    expect(t001Events[t001Events.length - 1].result?.ok).toBe(true);
+
+    // expected status transitions appear in order
+    const updates = t001Events.filter((e) => e.kind === 'update').map((e) => e.status ?? '');
+    expect(updates.some((s) => s.includes('Loading code context'))).toBe(true);
+    expect(updates.some((s) => s.includes('Claude'))).toBe(true);
+    expect(updates.some((s) => s.includes('verify'))).toBe(true);
+    expect(updates.some((s) => s.includes('commit'))).toBe(true);
+  });
+
+  it('fires finish() with workspace-missing result before bailing', async () => {
+    const { featureDir } = setupFeature();
+    const state = loadFeature(featureDir);
+    state.plan.config.workspaces = state.plan.config.workspaces.filter(
+      (w) => w.id !== 'server-app',
+    );
+    const sink = new FakeProgressSink();
+
+    await runFeature(
+      state,
+      { ...defaultDeps(state), progress: sink },
+      { onlyTaskId: 'T001' },
+    );
+
+    const t001 = sink.events.filter((e) => e.taskId === 'T001');
+    expect(t001[0].kind).toBe('start');
+    const last = t001[t001.length - 1];
+    expect(last.kind).toBe('finish');
+    expect(last.result?.reason).toBe('workspace-missing');
   });
 
   it('archives verify-ralph rounds as attempt-1, attempt-2 entries', async () => {

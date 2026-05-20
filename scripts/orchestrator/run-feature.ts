@@ -37,6 +37,28 @@ export interface RunFeatureDeps {
   graphJsonPath?: string;
   /** Override default LLM invoke opts (e.g. timeoutMs in tests). */
   llmInvokeOpts?: Partial<LlmInvokeOptions>;
+  /**
+   * Optional progress sink used by the CLI to surface live status in a
+   * terminal UI (listr2). Tests can omit it; the orchestrator pipeline
+   * stays silent when undefined.
+   */
+  progress?: TaskProgressSink;
+}
+
+/**
+ * Sink for per-task progress events. The CLI wires a listr2-backed impl;
+ * tests inject a FakeTaskProgressSink that records events for assertions.
+ */
+export interface TaskProgressSink {
+  /** Called when runTask begins a task. Returns a handle for status updates. */
+  start(task: ParsedTask): TaskProgressHandle;
+}
+
+export interface TaskProgressHandle {
+  /** Update the human-readable status line for this task (e.g. "🧠 Claude (12s)"). */
+  update(status: string): void;
+  /** Called when runTask is done (success or fail). Idempotent. */
+  finish(result: TaskRunResult): void;
 }
 
 export interface RunFeatureOptions {
@@ -146,16 +168,20 @@ export async function runTask(
   repoRoot: string,
   options: RunFeatureOptions = {},
 ): Promise<TaskRunResult> {
+  const progressHandle = deps.progress?.start(task);
+
   const workspace = state.plan.config.workspaces.find(
     (w) => w.id === task.workspace,
   );
   if (!workspace) {
-    return {
+    const r: TaskRunResult = {
       taskId: task.id,
       ok: false,
       reason: 'workspace-missing',
       message: `workspace "${task.workspace}" not declared in plan.config.workspaces`,
     };
+    progressHandle?.finish(r);
+    return r;
   }
 
   const sandboxCwd = resolveSandboxCwd(state, task);
@@ -185,6 +211,7 @@ export async function runTask(
       deps,
       options,
       archive,
+      progressHandle,
     );
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -210,7 +237,9 @@ export async function runTask(
   }
   await archive.finalize({ ok: result.ok, reason: result.reason });
 
-  return { ...result, sandboxCwd, sandboxCleaned };
+  const finalResult = { ...result, sandboxCwd, sandboxCleaned };
+  progressHandle?.finish(finalResult);
+  return finalResult;
 }
 
 async function runTaskInner(
@@ -222,10 +251,12 @@ async function runTaskInner(
   deps: RunFeatureDeps,
   options: RunFeatureOptions,
   archive: TaskArchive,
+  progress: TaskProgressHandle | undefined,
 ): Promise<TaskRunResult> {
   const workspaceCwd = path.resolve(repoRoot, workspace.cwd);
 
   // 1. graphify code context
+  progress?.update('📦 Loading code context (graphify)');
   const graphJsonPath =
     deps.graphJsonPath ?? resolveDefaultGraphPath(repoRoot);
   const scope = task.graphify_scope_override ?? workspace.graphify_scope;
@@ -278,6 +309,7 @@ async function runTaskInner(
   const { stdout: llmStdoutSink, stderr: llmStderrSink } =
     att0.openLlmStreams();
   const llmStartedAt = Date.now();
+  const stopLlmTimer = startElapsedTimer(progress, '🧠 Claude');
   let llmResult: LlmInvokeResult;
   try {
     llmResult = await deps.llm.invoke(prompt, {
@@ -286,6 +318,7 @@ async function runTaskInner(
       streamStderr: llmStderrSink,
     });
   } catch (e) {
+    stopLlmTimer();
     const err = e instanceof Error ? e : new Error(String(e));
     await att0.finish({ prompt, llmError: err, ok: false });
     return {
@@ -295,6 +328,7 @@ async function runTaskInner(
       message: err.message,
     };
   }
+  stopLlmTimer();
 
   // 5b. Post-LLM check: assert declared task.files were actually filled.
   // Catches silent no-ops that verify_kind=typecheck would mask (an empty
@@ -331,6 +365,7 @@ async function runTaskInner(
       llmResult,
     };
   }
+  progress?.update('🧪 verify command');
   const verifyResult = await deps.shell.run(verifyCmd, { cwd: workspaceCwd });
   const initialDiff = await safeDiff(deps.git, repoRoot);
   await att0.finish({
@@ -354,6 +389,7 @@ async function runTaskInner(
       buildRetryPrompt: (feedback, n) =>
         buildVerifyRetryPrompt(task, feedback, n),
       attempt: async () => {
+        progress?.update('🧪 verify retry');
         const r = await deps.shell.run(verifyCmd, { cwd: workspaceCwd });
         lastVerify = r;
         return {
@@ -364,6 +400,9 @@ async function runTaskInner(
       llm: deps.llm,
       llmInvokeOpts,
       onRound: async (round) => {
+        progress?.update(
+          `⚠️  verify-ralph #${round.attemptNumber} (${round.outcome?.ok ? 'fixed' : 'still red'})`,
+        );
         const attN = archive.reserveAttempt('verify-ralph');
         const diff = await safeDiff(deps.git, repoRoot);
         await attN.finish({
@@ -391,6 +430,7 @@ async function runTaskInner(
   }
 
   // 8. Commit (with its own internal ralph-loop for git-hook phase)
+  progress?.update('📝 git commit');
   const commit = await commitTask({
     task,
     plan: state.plan,
@@ -427,6 +467,29 @@ async function runTaskInner(
     llmResult,
     verifyExitCode: verifyResult.exitCode,
   };
+}
+
+/**
+ * Tick a "<label> (Xs)" elapsed-time message into the progress sink every
+ * second while a long-running step is in flight. Returns a stop fn the
+ * caller MUST invoke when the step finishes (in both success and error
+ * paths) so the interval doesn't leak.
+ *
+ * Fires an immediate "(0s)" tick so the sink shows the label right away
+ * even if the step finishes before the first interval boundary.
+ */
+function startElapsedTimer(
+  progress: TaskProgressHandle | undefined,
+  label: string,
+): () => void {
+  if (!progress) return () => undefined;
+  const start = Date.now();
+  progress.update(`${label} (0s)`);
+  const handle = setInterval(() => {
+    const s = Math.floor((Date.now() - start) / 1000);
+    progress.update(`${label} (${s}s)`);
+  }, 1000);
+  return () => clearInterval(handle);
 }
 
 async function safeDiff(git: Git, repoRoot: string): Promise<string> {
