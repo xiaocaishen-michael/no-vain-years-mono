@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   ACCOUNT_REPOSITORY,
   type AccountRepository,
@@ -33,7 +33,15 @@ export class UpdateDisplayNameUseCase {
       throw new NotFoundException('ACCOUNT_NOT_FOUND');
     }
 
-    const displayName = DisplayName.create(rawDisplayName);
+    let displayName: DisplayName;
+    try {
+      displayName = DisplayName.create(rawDisplayName);
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('INVALID_DISPLAY_NAME')) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
     this.stateMachine.changeDisplayName(account, displayName, new Date());
     await this.accountRepo.updateDisplayName(accountId, account.displayName);
 
