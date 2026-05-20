@@ -30,7 +30,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T004 Bootstrap packages/ui — workspace shell (D4 v2 reuse legacy)
   <!-- task-meta: {"id":"T004","workspace":"pkg-ui","deps":["T003"],"trace_us":["US5"],"trace_fr":["FR-018"],"kind":"config","verify_kind":"typecheck","files":[{"path":"packages/ui/package.json","op":"create"},{"path":"packages/ui/project.json","op":"create"},{"path":"packages/ui/tsconfig.json","op":"create"},{"path":"packages/ui/src/index.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T005 Bootstrap packages/auth — workspace shell + dependencies (zustand v5 + expo-secure-store)
+- [X] T005 Bootstrap packages/auth — workspace shell + dependencies (zustand v5 + expo-secure-store)
   <!-- task-meta: {"id":"T005","workspace":"pkg-auth","deps":["T002"],"trace_us":["US5","US12"],"trace_fr":["FR-002","FR-004"],"kind":"config","verify_kind":"typecheck","files":[{"path":"packages/auth/package.json","op":"create"},{"path":"packages/auth/project.json","op":"create"},{"path":"packages/auth/tsconfig.json","op":"create"},{"path":"packages/auth/src/index.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T006 Update ESLint config — register module boundaries for 5 new packages + mobile-app (per plan.module_boundaries); map business module "account" → src/auth/ filesystem path

@@ -1,0 +1,15 @@
+{
+  "name": "auth",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/auth/src",
+  "projectType": "library",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/auth",
+        "command": "tsc --noEmit -p tsconfig.json"
+      }
+    }
+  }
+}
