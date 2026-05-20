@@ -9,7 +9,8 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
-    "postinstall": "lefthook install"
+    "postinstall": "lefthook install",
+    "orchestrate": "tsx scripts/orchestrator/index.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -48,6 +49,7 @@
     "lefthook": "^2.1.7",
     "nx": "22.7.2",
     "tslib": "^2.3.0",
+    "tsx": "^4.22.3",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.40.0",
     "unplugin-swc": "^1.5.9",
