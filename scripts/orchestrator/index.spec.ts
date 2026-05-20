@@ -7,45 +7,70 @@ describe('parseArgs', () => {
   });
 
   it('rejects multiple positional args', () => {
-    expect(() => parseArgs(['a', 'b'])).toThrowError(/exactly 1 feature path/);
+    expect(() => parseArgs(['a', 'b', '--dry-run'])).toThrowError(
+      /exactly 1 feature path/,
+    );
   });
 
   it('parses positional + --dry-run', () => {
     expect(parseArgs(['specs/002-foo', '--dry-run'])).toEqual({
       featurePath: 'specs/002-foo',
       dryRun: true,
+      live: false,
       only: null,
       parallel: false,
     });
   });
 
-  it('parses --only=T012', () => {
-    expect(parseArgs(['specs/002-foo', '--only=T012'])).toMatchObject({
-      only: 'T012',
+  it('parses positional + --live', () => {
+    expect(parseArgs(['specs/002-foo', '--live'])).toEqual({
+      featurePath: 'specs/002-foo',
+      dryRun: false,
+      live: true,
+      only: null,
+      parallel: false,
     });
+  });
+
+  it('rejects --dry-run + --live together', () => {
+    expect(() =>
+      parseArgs(['specs/002-foo', '--dry-run', '--live']),
+    ).toThrowError(/both --dry-run and --live/);
+  });
+
+  it('rejects neither --dry-run nor --live', () => {
+    expect(() => parseArgs(['specs/002-foo'])).toThrowError(
+      /must pass either --dry-run or --live/,
+    );
+  });
+
+  it('parses --only=T012', () => {
+    expect(
+      parseArgs(['specs/002-foo', '--dry-run', '--only=T012']),
+    ).toMatchObject({ only: 'T012' });
   });
 
   it('parses --only T012 (space form)', () => {
-    expect(parseArgs(['specs/002-foo', '--only', 'T012'])).toMatchObject({
-      only: 'T012',
-    });
+    expect(
+      parseArgs(['specs/002-foo', '--dry-run', '--only', 'T012']),
+    ).toMatchObject({ only: 'T012' });
   });
 
   it('rejects bad --only value', () => {
-    expect(() => parseArgs(['specs/002-foo', '--only=foo'])).toThrowError(
-      /T\\d/,
-    );
+    expect(() =>
+      parseArgs(['specs/002-foo', '--dry-run', '--only=foo']),
+    ).toThrowError(/T\\d/);
   });
 
   it('parses --parallel', () => {
-    expect(parseArgs(['specs/002-foo', '--parallel'])).toMatchObject({
-      parallel: true,
-    });
+    expect(
+      parseArgs(['specs/002-foo', '--live', '--parallel']),
+    ).toMatchObject({ parallel: true });
   });
 
   it('rejects unknown flag', () => {
-    expect(() => parseArgs(['specs/002-foo', '--nope'])).toThrowError(
-      /unknown flag/,
-    );
+    expect(() =>
+      parseArgs(['specs/002-foo', '--dry-run', '--nope']),
+    ).toThrowError(/unknown flag/);
   });
 });
