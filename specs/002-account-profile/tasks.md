@@ -61,7 +61,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T013 Extend Account repository — read/write displayName field
   <!-- task-meta: {"id":"T013","workspace":"server-app","deps":["T007","T010"],"trace_us":["US1","US2","US3"],"trace_fr":["FR-001","FR-003"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/infrastructure/account.prisma.repository.ts","op":"modify"}],"parallel":false} -->
 
-- [ ] T014 Implement GetAccountProfileUseCase
+- [X] T014 Implement GetAccountProfileUseCase
   <!-- task-meta: {"id":"T014","workspace":"server-app","deps":["T013"],"trace_us":["US1","US3"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/application/get-account-profile.usecase.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T015 GetAccountProfileUseCase unit test (ships RED first)
