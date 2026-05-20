@@ -26,8 +26,13 @@ import { PrismaService } from './infrastructure/prisma.service';
 import { ProblemDetailFilter } from './infrastructure/problem-detail.filter';
 import { REDIS_CLIENT } from './infrastructure/redis.token';
 import { SmsCodeRedisRepository } from './infrastructure/sms-code.redis.repository';
+import { GetAccountProfileUseCase } from './application/get-account-profile.usecase';
+import { UpdateDisplayNameUseCase } from './application/update-display-name.usecase';
+import { AccountStateMachine } from './domain/account-state-machine';
 import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller';
+import { AccountProfileController } from './web/account-profile.controller';
 import { AccountSmsCodeController } from './web/account-sms-code.controller';
+import { JwtAuthGuard } from './web/jwt-auth.guard';
 import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
 
 /**
@@ -76,13 +81,33 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
                 );
               },
             },
+            // FR-008: GET /me 60s 60 次, tracker = accountId (JwtAuthGuard 先行，req.user 已填)
+            {
+              name: 'me-get',
+              limit: 60,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const user = req['user'] as { accountId?: string } | undefined;
+                return Promise.resolve(`me:${user?.accountId ?? 'unauthenticated'}`);
+              },
+            },
+            // FR-008: PATCH /me 60s 10 次, tracker = accountId
+            {
+              name: 'me-patch',
+              limit: 10,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const user = req['user'] as { accountId?: string } | undefined;
+                return Promise.resolve(`me:${user?.accountId ?? 'unauthenticated'}`);
+              },
+            },
           ],
           storage: new ThrottlerStorageRedisService(redis),
         };
       },
     }),
   ],
-  controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController],
+  controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController, AccountProfileController],
   providers: [
     {
       provide: PrismaService,
@@ -149,6 +174,10 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
     AuthFailureLockService,
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
+    AccountStateMachine,
+    GetAccountProfileUseCase,
+    UpdateDisplayNameUseCase,
+    JwtAuthGuard,
     OutboxEventCronPublisher,
     SmsPhoneThrottlerGuard,
     { provide: APP_FILTER, useClass: ProblemDetailFilter },

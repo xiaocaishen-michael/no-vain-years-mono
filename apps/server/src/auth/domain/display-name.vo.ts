@@ -24,18 +24,21 @@ export class DisplayName {
   private constructor(public readonly value: string) {}
 
   static create(raw: string): DisplayName {
+    // Check forbidden chars on raw before trim: String.trim() strips U+FEFF (BOM is
+    // ECMAScript WhiteSpace), so checking only the trimmed value silently accepts BOM
+    // at leading/trailing position — contradicting FR-005 "禁字符 U+FEFF".
+    if (FORBIDDEN_CHARS.test(raw)) {
+      throw new Error(
+        'INVALID_DISPLAY_NAME: contains forbidden characters (control chars, zero-width chars, or line separators)',
+      );
+    }
+
     const trimmed = raw.trim();
     const cpCount = [...trimmed].length;
 
     if (cpCount < MIN_CP || cpCount > MAX_CP) {
       throw new Error(
         `INVALID_DISPLAY_NAME: length must be ${MIN_CP}-${MAX_CP} Unicode code points after trim, got ${cpCount}`,
-      );
-    }
-
-    if (FORBIDDEN_CHARS.test(trimmed)) {
-      throw new Error(
-        'INVALID_DISPLAY_NAME: contains forbidden characters (control chars, zero-width chars, or line separators)',
       );
     }
 

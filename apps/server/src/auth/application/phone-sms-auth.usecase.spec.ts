@@ -57,13 +57,16 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
     created_at: new Date('2026-01-01T00:00:00Z'),
     last_login_at: null,
     freeze_until: null,
+    display_name: null,
   };
 
   beforeEach(() => {
     accountRepo = {
+      findById: vi.fn(),
       findByPhone: vi.fn(),
       save: vi.fn().mockResolvedValue(undefined),
       updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+      updateDisplayName: vi.fn().mockResolvedValue(undefined),
     };
     smsCodeRepo = {
       store: vi.fn().mockResolvedValue(undefined),
@@ -166,9 +169,11 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
 
   beforeEach(() => {
     accountRepo = {
+      findById: vi.fn(),
       findByPhone: vi.fn().mockResolvedValue(null),
       save: vi.fn().mockResolvedValue(undefined),
       updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+      updateDisplayName: vi.fn().mockResolvedValue(undefined),
     };
     smsCodeRepo = {
       store: vi.fn().mockResolvedValue(undefined),
@@ -267,6 +272,7 @@ const baseAccountRow = {
   created_at: new Date('2026-01-01T00:00:00Z'),
   last_login_at: null,
   freeze_until: null as Date | null,
+  display_name: null,
 };
 
 function buildUseCaseHarness(): {
@@ -279,9 +285,11 @@ function buildUseCaseHarness(): {
   useCase: PhoneSmsAuthUseCase;
 } {
   const accountRepo: AccountRepository = {
+    findById: vi.fn(),
     findByPhone: vi.fn(),
     save: vi.fn().mockResolvedValue(undefined),
     updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+    updateDisplayName: vi.fn().mockResolvedValue(undefined),
   };
   const smsCodeRepo: SmsCodeRepository = {
     store: vi.fn().mockResolvedValue(undefined),

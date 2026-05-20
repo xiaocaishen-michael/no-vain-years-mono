@@ -82,6 +82,120 @@
         ]
       }
     },
+    "/api/v1/accounts/me": {
+      "get": {
+        "operationId": "AccountProfileController_getProfile",
+        "summary": "Get authenticated account profile",
+        "description": "Returns account profile for the bearer-authenticated user. Phone is E.164 raw string; displayName is null for new users (FR-007).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing / invalid / expired token, or account not ACTIVE (FR-002, FR-009) — reason not disclosed (anti-enumeration)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (FR-008: 60 requests per 60s per account)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "accounts"
+        ]
+      },
+      "patch": {
+        "operationId": "AccountProfileController_updateDisplayName",
+        "summary": "Update authenticated account display name",
+        "description": "Sets a new display name for the bearer-authenticated user. Validates FR-005 rules (1-32 Unicode code points, no forbidden chars). Returns updated profile.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDisplayNameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Display name updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid display name (violates FR-005 rules)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing / invalid / expired token, or account not ACTIVE (FR-004, FR-009) — reason not disclosed (anti-enumeration)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (FR-008: 10 requests per 60s per account)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
     "/api/v1/accounts/phone-sms-auth": {
       "post": {
         "description": "Verifies SMS code; auto-registers unregistered phones (US2); returns identical shape across all paths for byte-level anti-enumeration (US3).",
@@ -279,6 +393,66 @@
           "accessToken",
           "refreshToken"
         ]
+      },
+      "AccountProfileResponse": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "Account ID (serialized as string for JSON-safety vs BigInt; matches JWT sub claim)",
+            "example": "1234567890"
+          },
+          "phone": {
+            "type": "string",
+            "description": "E.164 phone number; mask handled by client (per apps/mobile/lib/format/phone.ts)",
+            "example": "+8613800138000"
+          },
+          "displayName": {
+            "type": ["string", "null"],
+            "description": "Display name; null for new users before first update (FR-007)",
+            "example": "Alice"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "FROZEN", "ANONYMIZED"],
+            "description": "Account status",
+            "example": "ACTIVE"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Account creation timestamp (ISO 8601)",
+            "example": "2026-01-01T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "accountId",
+          "phone",
+          "displayName",
+          "status",
+          "createdAt"
+        ]
+      },
+      "UpdateDisplayNameRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "New display name; 1-32 Unicode code points after trim (FR-005)",
+            "example": "Alice",
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "displayName"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   }
