@@ -50,7 +50,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T010 Extend Account aggregate — add displayName field + changeDisplayName(DisplayName, Instant) method
   <!-- task-meta: {"id":"T010","workspace":"server-app","deps":["T008"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/domain/account.aggregate.ts","op":"modify"}],"parallel":false} -->
 
-- [ ] T011 Account aggregate changeDisplayName unit test (ships RED first)
+- [X] T011 Account aggregate changeDisplayName unit test (ships RED first)
   <!-- task-meta: {"id":"T011","workspace":"server-app","deps":["T010"],"trace_us":["US2"],"trace_fr":["FR-007"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/domain/account.aggregate.spec.ts","op":"modify"}],"parallel":false,"tdd_red_expected":true} -->
 
 - [ ] T012 Create AccountStateMachine facade — changeDisplayName method (new file, mirrors existing markLoggedIn aggregate-method pattern)
