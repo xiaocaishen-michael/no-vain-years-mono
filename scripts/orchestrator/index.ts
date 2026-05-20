@@ -14,6 +14,7 @@ import {
 } from './graphify-client.js';
 import { ClaudeCliClient } from './llm-client.js';
 import { ConstitutionViolationError } from './parsers/plan.js';
+import { ListrProgressSink } from './progress.js';
 import { buildPrompt, PromptAssemblyError } from './prompt-assembler.js';
 import { runFeature, type TaskRunResult } from './run-feature.js';
 import { RealShell } from './shell.js';
@@ -326,15 +327,40 @@ async function main(argv: string[]): Promise<number> {
   const llm = new ClaudeCliClient();
   const git = new GitCli(shell);
 
+  // Build the listr2-backed UI sink for pending tasks. The filter mirrors
+  // runFeature's: pending status, honoring --only.
+  const pending = state.tasks.tasks
+    .filter((t) => t.status === 'pending')
+    .filter((t) => !args.only || t.id === args.only);
+
   // eslint-disable-next-line no-console
   console.error(
-    `▶ orchestrator --live: ${state.tasks.tasks.filter((t) => t.status === 'pending').length} pending task(s) for ${state.featureId}`,
+    `▶ orchestrator --live: ${pending.length} pending task(s) for ${state.featureId}`,
   );
 
-  const result = await runFeature(state, { llm, git, shell }, {
-    onlyTaskId: args.only ?? undefined,
-    parallel: args.parallel,
-  });
+  const sink = new ListrProgressSink(pending);
+
+  // Drive listr UI + runFeature in parallel. Listr's run() resolves after
+  // every row finishes (success / skipped / failed via thrown error in
+  // task body). exitOnError: false ensures it keeps painting other rows
+  // even on a failure. runFeature short-circuits on first failed task,
+  // so finalizeSkipped() unblocks remaining rows.
+  const [_, result] = await Promise.all([
+    sink.listr.run().catch(() => {
+      // listr re-throws aggregated failures; we surface those via result.ok
+      // below, so just swallow here.
+    }),
+    (async () => {
+      try {
+        return await runFeature(state, { llm, git, shell, progress: sink }, {
+          onlyTaskId: args.only ?? undefined,
+          parallel: args.parallel,
+        });
+      } finally {
+        sink.finalizeSkipped();
+      }
+    })(),
+  ]);
 
   printLiveSummary(result.results);
 
