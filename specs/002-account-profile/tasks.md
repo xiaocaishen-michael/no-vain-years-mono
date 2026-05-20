@@ -18,7 +18,7 @@ orchestrator_compat: ">=0.1.0"
 
 ## Setup — Mobile workspace + 5 packages bootstrap
 
-- [ ] T001 Initialize apps/mobile Expo workspace (package.json + app.json + metro.config + babel.config + tsconfig + project.json)
+- [X] T001 Initialize apps/mobile Expo workspace (package.json + app.json + metro.config + babel.config + tsconfig + project.json)
   <!-- task-meta: {"id":"T001","workspace":"mobile-app","deps":[],"trace_us":["US5"],"trace_fr":["FR-013"],"kind":"config","verify_kind":"typecheck","files":[{"path":"apps/mobile/package.json","op":"create"},{"path":"apps/mobile/app.json","op":"create"},{"path":"apps/mobile/metro.config.js","op":"create"},{"path":"apps/mobile/babel.config.js","op":"create"},{"path":"apps/mobile/tsconfig.json","op":"create"},{"path":"apps/mobile/project.json","op":"create"}],"parallel":false} -->
 
 - [ ] T002 Bootstrap packages/types — @prisma/client re-export skeleton (per D11)

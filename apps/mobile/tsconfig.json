@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "esModuleInterop": true,
+    "jsx": "react-native",
+    "jsxImportSource": "nativewind",
+    "lib": ["DOM", "ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "target": "ESNext",
+    "baseUrl": ".",
+    "paths": {
+      "@nvy/ui": ["../../packages/ui/src/index.ts"],
+      "@nvy/ui/*": ["../../packages/ui/src/*"],
+      "@nvy/api-client": ["../../packages/api-client/src/index.ts"],
+      "@nvy/api-client/*": ["../../packages/api-client/src/*"],
+      "@nvy/auth": ["../../packages/auth/src/index.ts"],
+      "@nvy/auth/*": ["../../packages/auth/src/*"],
+      "@nvy/types": ["../../packages/types/src/index.ts"],
+      "@nvy/types/*": ["../../packages/types/src/*"],
+      "@nvy/design-tokens": ["../../packages/design-tokens/src/index.ts"],
+      "@nvy/design-tokens/*": ["../../packages/design-tokens/src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "**/*.js", "nativewind-env.d.ts"],
+  "exclude": ["node_modules", "dist", ".expo", "e2e", "playwright-report"]
+}
