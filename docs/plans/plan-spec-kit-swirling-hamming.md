@@ -2938,6 +2938,45 @@ pnpm tsx scripts/orchestrator/index.ts specs/002-account-profile-base --only T00
 等 user 回答 § 11 的 2 个预备问题 → 进 § 5 #1 / #2 起点 template review。
 本 plan 在 review 过程中 v1 → v2 → ... 增量更新,每过完一个 template,把对应 patch 草案 + Zod schema 草案 + open question 解答 落进对应 §。
 
+### 10.1 Future maintenance — replace-strategy preset 的 upstream drift 机制
+
+> **Status**: action item,Plan 2 Phase 0 graduation 后纳入维护清单,本 plan 不立即实装
+> **Scope**: 任何 `strategy: replace` 的 preset(当前只有 `mono-orchestrator-ready`,未来如新增同样适用)
+
+**本质问题**:`replace` 策略让 preset 整片接管 vendored spec/plan/tasks template。spec-kit upstream 升级 vendored 时,我们手里的 replace template 跟 new vendored 之间静默 drift —— 看不见 upstream 引进的新字段 / 段落 / 约束(典型如 spec-kit 给 spec.md 加新 placeholder section 或改 task heading 约束语法)。`prepend` 策略叠在 new base 上自动跟,没这毛病。
+
+**4 步维护机制**:
+
+1. **Snapshot baseline**
+    - 把当前对齐的 spec-kit upstream vendored template (`spec-template.md` / `plan-template.md` / `tasks-template.md`) 原文 copy 到 preset 仓:`presets/mono-orchestrator-ready/upstream-baseline/{spec,plan,tasks}-template.md`
+    - 在 `preset.yml` 加字段 `baseline_spec_kit_version: <SemVer>`,值与 `spec_kit_compat` 区间下限一致
+    - 首次建立 baseline 的时机:Plan 2 起手 002 dry-run 通过、`spec_kit_compat: ">=0.8.5,<0.10.0"` firmed 后,把 0.8.5 (or 实际目标版) 的 vendored 三 template 灌进 `upstream-baseline/`
+2. **Drift 检测**
+    - 扩 `scripts/sync-upstream.sh` 增加子命令 `--check-replace-drift --spec-kit-version <vTAG>`
+    - 拉指定 spec-kit version 的新 vendored → diff vs `upstream-baseline/` → 按 section 切分输出 diff 清单(每段标注 added / removed / modified + 上下文 ≥ 3 行)
+3. **逐段 LLM 决策(4 选 1)**
+    - 每段 diff 让 LLM 判定:
+      | 决策 | 含义 | 触发条件 |
+      |---|---|---|
+      | (a) **直接 copy** | 把 upstream diff 原文照搬进 replace template 对应位置 | 纯增量(upstream 新增 section / placeholder / instruction)且不冲突现有三层语料 |
+      | (b) **思想加工后合入** | 用三层语料(YAML frontmatter / JSON fence / HTML marker)模式重写 upstream diff,再合入 replace template | upstream 用自然语言加了字段,我们要让 parser 友好 |
+      | (c) **忽略** | 不动 replace template | 纯文案 / 示例 / 注释变化,语义无影响 |
+      | (d) **flag 人决** | LLM 不确定,挂 review 标 | 语义不清 / 与现有三层语料冲突 / 牵动 Zod schema 改动 |
+    - LLM 输出格式:`{ section: "...", decision: "a/b/c/d", rationale: "...", patched_replace_template_segment: "..." (only for a/b) }`,orchestrator 端 review 收尾时聚合所有段决策
+4. **收尾**
+    - 更新 `presets/mono-orchestrator-ready/templates/{spec,plan,tasks}-template.md`(吸收 a/b 决策结果)
+    - 更新 `presets/mono-orchestrator-ready/upstream-baseline/`(新 vendored 全文覆盖,作下次升级的 baseline)
+    - bump `preset.yml`:`baseline_spec_kit_version` + `spec_kit_compat` 区间
+    - 若涉及新字段,同步 bump Zod schema(`scripts/orchestrator/schemas/{spec,plan,tasks}.ts`)+ parser
+    - 出一个 cross-repo PR 对:`michael-speckit-presets` 仓动 preset + baseline,`no-vain-years-mono` 仓装机 + 必要的 Zod schema/parser amend
+
+**触发节奏**:spec-kit minor / major bump 时手动跑一次(由 dependabot 之类抛 upstream version 升级 PR 触发,或维护者主动 sync)。
+
+**已知边界 / 待 close**:
+- LLM 决策框架细节(prompt 模板 / output schema / 聚合逻辑)推到本机制实装时再 firm
+- 是否把这个 drift 检测做成 GitHub Action 定期 cron(每周扫 upstream latest)?当前倾向不做 —— spec-kit 升级频率不高,人工触发足够;cron 噪声大
+- baseline snapshot 的 license / 归属(upstream 是 MIT)需在 baseline 目录加 ATTRIBUTION 文件,标注 source upstream commit
+
 ---
 
 ## 11. 预备问题答案(2026-05-20 user 确认)
