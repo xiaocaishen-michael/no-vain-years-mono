@@ -358,6 +358,9 @@ function printLiveSummary(results: TaskRunResult[]): void {
       ? ''
       : ` (${r.reason}${r.message ? ': ' + r.message : ''})`;
     lines.push(`${tag} ${r.taskId}${detail}`);
+    if (r.sandboxCwd && r.sandboxCleaned === false) {
+      lines.push(`   ↳ sandbox preserved: ${r.sandboxCwd}`);
+    }
   }
   // eslint-disable-next-line no-console
   console.error(lines.join('\n'));

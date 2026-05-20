@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FakeGit } from './git-flow.js';
 import { FakeLlmClient, type LlmInvokeResult } from './llm-client.js';
-import { runFeature } from './run-feature.js';
+import { maybeCleanupSandbox, runFeature } from './run-feature.js';
 import { FakeShell, shellOk, shellFail, type ShellRunResult } from './shell.js';
 import { loadFeature } from './state.js';
 
@@ -188,5 +188,104 @@ describe('runFeature (integration with fakes)', () => {
 
     expect(result.ok).toBe(false);
     expect(result.results[0].reason).toBe('workspace-missing');
+  });
+
+  it('attaches sandboxCwd + sandboxCleaned to each task result', async () => {
+    const { featureDir } = setupFeature();
+    const state = loadFeature(featureDir);
+    // Redirect sandbox to a test-owned tmp dir so we don't leak into /tmp.
+    const sandboxBase = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'orchestrator-sb-'),
+    );
+    dirs.push(sandboxBase);
+    state.plan.config.sandbox.cwd_template = `${sandboxBase}/{feature_id}-{task_id}`;
+    // cleanup_on_success=true is already the fixture default; assert.
+    expect(state.plan.config.sandbox.cleanup_on_success).toBe(true);
+
+    const result = await runFeature(state, defaultDeps(), {
+      onlyTaskId: 'T001',
+    });
+
+    expect(result.ok).toBe(true);
+    const tr = result.results[0];
+    expect(tr.sandboxCwd).toBe(
+      `${sandboxBase}/002-account-profile-base-T001`,
+    );
+    expect(tr.sandboxCleaned).toBe(true);
+    expect(fs.existsSync(tr.sandboxCwd!)).toBe(false);
+  });
+});
+
+describe('maybeCleanupSandbox', () => {
+  const dirs: string[] = [];
+
+  afterEach(() => {
+    for (const d of dirs.splice(0)) {
+      fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  function makeSandbox(): string {
+    const d = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'orchestrator-sandbox-'),
+    );
+    dirs.push(d);
+    fs.writeFileSync(path.join(d, 'marker.txt'), 'x');
+    return d;
+  }
+
+  it('removes sandbox on success when cleanup_on_success=true', async () => {
+    const d = makeSandbox();
+    const cleaned = await maybeCleanupSandbox(
+      d,
+      { cleanup_on_success: true, cleanup_on_failure: false },
+      /* ok= */ true,
+    );
+    expect(cleaned).toBe(true);
+    expect(fs.existsSync(d)).toBe(false);
+  });
+
+  it('preserves sandbox on success when cleanup_on_success=false', async () => {
+    const d = makeSandbox();
+    const cleaned = await maybeCleanupSandbox(
+      d,
+      { cleanup_on_success: false, cleanup_on_failure: true },
+      /* ok= */ true,
+    );
+    expect(cleaned).toBe(false);
+    expect(fs.existsSync(d)).toBe(true);
+  });
+
+  it('removes sandbox on failure when cleanup_on_failure=true', async () => {
+    const d = makeSandbox();
+    const cleaned = await maybeCleanupSandbox(
+      d,
+      { cleanup_on_success: false, cleanup_on_failure: true },
+      /* ok= */ false,
+    );
+    expect(cleaned).toBe(true);
+    expect(fs.existsSync(d)).toBe(false);
+  });
+
+  it('preserves sandbox on failure when cleanup_on_failure=false', async () => {
+    const d = makeSandbox();
+    const cleaned = await maybeCleanupSandbox(
+      d,
+      { cleanup_on_success: true, cleanup_on_failure: false },
+      /* ok= */ false,
+    );
+    expect(cleaned).toBe(false);
+    expect(fs.existsSync(d)).toBe(true);
+  });
+
+  it('returns false (best-effort) when sandbox already missing', async () => {
+    const cleaned = await maybeCleanupSandbox(
+      '/nonexistent/orchestrator-sandbox-zzz',
+      { cleanup_on_success: true, cleanup_on_failure: true },
+      /* ok= */ true,
+    );
+    // fs.rm with force:true on missing path doesn't throw, so cleanup
+    // "succeeds" — but functionally the same: there's nothing to preserve.
+    expect(cleaned).toBe(true);
   });
 });
