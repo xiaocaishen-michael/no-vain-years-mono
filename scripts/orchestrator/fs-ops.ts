@@ -25,26 +25,35 @@ export class FileOpPathEscapeError extends Error {
   }
 }
 
-function isInsideCwd(absPath: string, cwd: string): boolean {
-  const rel = path.relative(cwd, absPath);
+function isInsideBase(absPath: string, base: string): boolean {
+  const rel = path.relative(base, absPath);
   return rel.length > 0 && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
+/**
+ * Plan pre-emptive file ops without mutating the filesystem.
+ *
+ * `baseDir` is the root that `task.files[].path` is resolved against.
+ * Per the canonical convention (matching the tasks.md fixture + git-flow
+ * staging), callers pass **repoRoot** here; `task.files[].path` is
+ * repo-root-relative. `workspace.cwd` is informational (used only to
+ * locate the verify_command's working directory).
+ */
 export function planFileOps(
-  workspaceCwd: string,
+  baseDir: string,
   files: TaskFileOp[],
   taskId?: string,
 ): FileOpPlanResult {
   const entries: FilePlanEntry[] = [];
   const warnings: string[] = [];
-  const cwdAbs = path.resolve(workspaceCwd);
+  const baseAbs = path.resolve(baseDir);
   const tag = taskId ?? '?';
 
   for (const f of files) {
-    const absPath = path.resolve(cwdAbs, f.path);
-    if (!isInsideCwd(absPath, cwdAbs)) {
+    const absPath = path.resolve(baseAbs, f.path);
+    if (!isInsideBase(absPath, baseAbs)) {
       throw new FileOpPathEscapeError(
-        `task ${tag} file ${f.path} resolves outside workspace cwd (${cwdAbs})`,
+        `task ${tag} file ${f.path} resolves outside base dir (${baseAbs})`,
       );
     }
 
@@ -78,10 +87,10 @@ export function planFileOps(
             `task ${tag} file ${f.path} op=rename missing rename_to (schema bug)`,
           );
         }
-        const renameToAbs = path.resolve(cwdAbs, f.rename_to);
-        if (!isInsideCwd(renameToAbs, cwdAbs)) {
+        const renameToAbs = path.resolve(baseAbs, f.rename_to);
+        if (!isInsideBase(renameToAbs, baseAbs)) {
           throw new FileOpPathEscapeError(
-            `task ${tag} rename_to ${f.rename_to} resolves outside workspace cwd (${cwdAbs})`,
+            `task ${tag} rename_to ${f.rename_to} resolves outside base dir (${baseAbs})`,
           );
         }
         if (!exists) {

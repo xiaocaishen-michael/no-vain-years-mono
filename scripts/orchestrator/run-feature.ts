@@ -164,9 +164,10 @@ export async function runTask(
     codeCtx,
   });
 
-  // 3. Pre-emptive file ops (in workspace.cwd, per spec)
+  // 3. Pre-emptive file ops. task.files[].path is repo-root-relative
+  //    (see schemas/tasks.ts), so we resolve against repoRoot.
   try {
-    const filePlan = planFileOps(workspaceCwd, task.files, task.id);
+    const filePlan = planFileOps(repoRoot, task.files, task.id);
     applyFileOpPlan(filePlan);
   } catch (e) {
     return {

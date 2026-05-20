@@ -152,10 +152,7 @@ function printDryRunReport(state: FeatureState): void {
 
 function appendFilePlanReport(state: FeatureState, lines: string[]): void {
   const repoRoot = path.resolve(state.featureDir, '..', '..');
-  const workspaceCwdById = new Map<string, string>();
-  for (const w of state.plan.config.workspaces) {
-    workspaceCwdById.set(w.id, path.resolve(repoRoot, w.cwd));
-  }
+  const workspaceIds = new Set(state.plan.config.workspaces.map((w) => w.id));
 
   const pending = state.tasks.tasks.filter((t) => t.status === 'pending');
   if (pending.length === 0) {
@@ -170,8 +167,7 @@ function appendFilePlanReport(state: FeatureState, lines: string[]): void {
   const allWarnings: string[] = [];
 
   for (const task of pending) {
-    const cwd = workspaceCwdById.get(task.workspace);
-    if (!cwd) {
+    if (!workspaceIds.has(task.workspace)) {
       lines.push(
         `   ${task.id}: ✗ workspace "${task.workspace}" not declared in plan.config.workspaces`,
       );
@@ -180,7 +176,7 @@ function appendFilePlanReport(state: FeatureState, lines: string[]): void {
 
     let result: FileOpPlanResult;
     try {
-      result = planFileOps(cwd, task.files, task.id);
+      result = planFileOps(repoRoot, task.files, task.id);
     } catch (e) {
       if (e instanceof FileOpPathEscapeError) {
         lines.push(`   ${task.id}: ✗ ${e.message}`);
