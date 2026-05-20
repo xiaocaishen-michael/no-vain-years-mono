@@ -70,7 +70,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T016 Implement UpdateDisplayNameUseCase
   <!-- task-meta: {"id":"T016","workspace":"server-app","deps":["T012","T013"],"trace_us":["US2"],"trace_fr":["FR-003","FR-005"],"trace_ep":["EP2"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/auth/application/update-display-name.usecase.ts","op":"create"}],"parallel":false} -->
 
-- [ ] T017 UpdateDisplayNameUseCase unit test (ships RED first)
+- [X] T017 UpdateDisplayNameUseCase unit test (ships RED first)
   <!-- task-meta: {"id":"T017","workspace":"server-app","deps":["T016"],"trace_us":["US2"],"trace_fr":["FR-003","FR-005"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/auth/application/update-display-name.usecase.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
 
 ## Server — Web layer
