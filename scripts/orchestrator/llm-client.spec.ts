@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildClaudeArgs,
+  buildSpawnEnv,
   ClaudeCliClient,
   describeClaudeError,
   FakeLlmClient,
@@ -17,7 +18,6 @@ describe('buildClaudeArgs', () => {
     const args = buildClaudeArgs('hello', BASE_OPTS);
     expect(args).toEqual([
       '-p',
-      '--bare',
       '--permission-mode',
       'dontAsk',
       '--allowedTools',
@@ -28,6 +28,14 @@ describe('buildClaudeArgs', () => {
       '5',
       'hello',
     ]);
+  });
+
+  it('does NOT pass --bare (which would force ANTHROPIC_API_KEY-only auth)', () => {
+    // Regression guard: 2026-05-20 dropped --bare to let Max-subscription
+    // OAuth users run the orchestrator without an API key. See PR for
+    // tradeoff (subprocess now runs hooks / plugins / auto-memory).
+    const args = buildClaudeArgs('hello', BASE_OPTS);
+    expect(args).not.toContain('--bare');
   });
 
   it('honors custom allowedTools / maxTurns / outputFormat', () => {
@@ -104,6 +112,33 @@ describe('FakeLlmClient', () => {
     await expect(fake.invoke('p2', BASE_OPTS)).rejects.toBeInstanceOf(
       LlmInvokeError,
     );
+  });
+});
+
+describe('buildSpawnEnv', () => {
+  it('strips CLAUDECODE so the claude subprocess does not see the nested-session gate', () => {
+    const parent: NodeJS.ProcessEnv = {
+      CLAUDECODE: '1',
+      CLAUDE_CODE_SESSION_ID: 'abc',
+      PATH: '/usr/bin',
+    };
+    const env = buildSpawnEnv(parent);
+    expect(env.CLAUDECODE).toBeUndefined();
+    // Other CLAUDE_CODE_* vars are kept — they're not gates and may be
+    // useful telemetry for the subprocess.
+    expect(env.CLAUDE_CODE_SESSION_ID).toBe('abc');
+    expect(env.PATH).toBe('/usr/bin');
+  });
+
+  it('returns a copy — does not mutate the parent env', () => {
+    const parent: NodeJS.ProcessEnv = { CLAUDECODE: '1', FOO: 'bar' };
+    buildSpawnEnv(parent);
+    expect(parent.CLAUDECODE).toBe('1');
+  });
+
+  it('is a no-op when CLAUDECODE is already absent', () => {
+    const env = buildSpawnEnv({ FOO: 'bar' });
+    expect(env).toEqual({ FOO: 'bar' });
   });
 });
 

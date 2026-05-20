@@ -71,9 +71,14 @@ export function buildClaudeArgs(
   opts: LlmInvokeOptions,
 ): string[] {
   const allowed = (opts.allowedTools ?? DEFAULT_ALLOWED_TOOLS).join(',');
+  // NB: --bare was dropped 2026-05-20. It restricts auth to
+  // ANTHROPIC_API_KEY only (OAuth / keychain are never read), which
+  // broke Max-subscription users with no API key. Trade-off: each
+  // subprocess now runs hooks / LSP / plugin sync / auto-memory /
+  // CLAUDE.md auto-discovery. Future opt-in fast path: re-enable
+  // --bare when ANTHROPIC_API_KEY is set in the env.
   const args: string[] = [
     '-p',
-    '--bare',
     '--permission-mode',
     opts.permissionMode ?? 'dontAsk',
     '--allowedTools',
@@ -88,6 +93,22 @@ export function buildClaudeArgs(
   }
   args.push(prompt);
   return args;
+}
+
+/**
+ * Build the env passed to `claude -p`. Strips `CLAUDECODE` so the
+ * subprocess doesn't trigger the anti-reentrance gate that makes
+ * nested `claude` invocations return `{is_error: true, result: "Not
+ * logged in..."}`. Empirically verified 2026-05-20: only `CLAUDECODE`
+ * is the gate; sibling `CLAUDE_CODE_*` vars are not, so we leave them
+ * for the subprocess's own telemetry / call-source signal.
+ */
+export function buildSpawnEnv(
+  parentEnv: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...parentEnv };
+  delete env.CLAUDECODE;
+  return env;
 }
 
 /**
@@ -138,7 +159,7 @@ export class ClaudeCliClient implements LlmClient {
     return new Promise<LlmInvokeResult>((resolve, reject) => {
       const child = spawn(this.claudePath, args, {
         cwd: opts.cwd,
-        env: process.env,
+        env: buildSpawnEnv(process.env),
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
