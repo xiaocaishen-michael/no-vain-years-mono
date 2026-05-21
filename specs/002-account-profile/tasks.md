@@ -128,7 +128,7 @@ orchestrator_compat: ">=0.1.0"
 
 ## Mobile — apps/mobile screens & routes
 
-- [ ] T033 Clone Expo Router route structure from legacy app — (auth)/ + (app)/ + (app)/(tabs)/ + (app)/onboarding skeletons (occupant pages, no business logic)
+- [X] T033 Clone Expo Router route structure from legacy app — (auth)/ + (app)/ + (app)/(tabs)/ + (app)/onboarding skeletons (occupant pages, no business logic)
   <!-- task-meta: {"id":"T033","workspace":"mobile-app","deps":["T001","T030","T031"],"trace_us":["US5","US6","US7"],"trace_fr":["FR-013","FR-015","FR-024"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/mobile/app/_layout.tsx","op":"create"},{"path":"apps/mobile/app/index.tsx","op":"create"},{"path":"apps/mobile/app/(auth)/_layout.tsx","op":"create"},{"path":"apps/mobile/app/(auth)/login.tsx","op":"create"},{"path":"apps/mobile/app/(app)/_layout.tsx","op":"create"},{"path":"apps/mobile/app/(app)/onboarding.tsx","op":"create"},{"path":"apps/mobile/app/(app)/(tabs)/_layout.tsx","op":"create"},{"path":"apps/mobile/app/(app)/(tabs)/index.tsx","op":"create"},{"path":"apps/mobile/app/(app)/(tabs)/search.tsx","op":"create"},{"path":"apps/mobile/app/(app)/(tabs)/pkm.tsx","op":"create"}],"parallel":false} -->
 
 - [ ] T034 AuthGate decision update — 3rd state target /(app)/(tabs)/profile (FR-014)
