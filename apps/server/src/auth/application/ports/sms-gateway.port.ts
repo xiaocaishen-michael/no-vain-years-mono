@@ -1,4 +1,4 @@
-import { Phone } from '../../domain/phone.vo';
+import { Phone } from '../../../account/domain/phone.vo';
 import { SmsCode } from '../../domain/sms-code.vo';
 
 /**

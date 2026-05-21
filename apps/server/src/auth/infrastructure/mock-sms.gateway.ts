@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import type { SmsGateway } from '../application/ports/sms-gateway.port';
 

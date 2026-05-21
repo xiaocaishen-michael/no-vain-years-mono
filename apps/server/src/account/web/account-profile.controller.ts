@@ -11,7 +11,7 @@ import { GetAccountProfileUseCase } from '../application/get-account-profile.use
 import { UpdateDisplayNameUseCase } from '../application/update-display-name.usecase';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard';
 import { AccountProfileResponse } from './dto/account-profile.response';
-import { ProblemDetailResponse } from './dto/problem-detail.response';
+import { ProblemDetailResponse } from '../../security/dto/problem-detail.response';
 import { UpdateDisplayNameRequest } from './dto/update-display-name.request';
 
 /**

@@ -16,11 +16,11 @@ import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { AppModule } from '../../src/app/app.module';
-import { PrismaService } from '../../src/auth/infrastructure/prisma.service';
+import { PrismaService } from '../../src/security/prisma.service';
 import { SmsCodeRedisRepository } from '../../src/auth/infrastructure/sms-code.redis.repository';
 import { SMS_CODE_REPOSITORY } from '../../src/auth/application/ports/sms-code.repository.port';
-import { REDIS_CLIENT } from '../../src/auth/infrastructure/redis.token';
-import { Phone } from '../../src/auth/domain/phone.vo';
+import { REDIS_CLIENT } from '../../src/security/redis.token';
+import { Phone } from '../../src/account/domain/phone.vo';
 import { SmsCode } from '../../src/auth/domain/sms-code.vo';
 import type { Redis } from 'ioredis';
 

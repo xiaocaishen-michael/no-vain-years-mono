@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RequestSmsCodeUseCase } from './request-sms-code.usecase';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import type { SmsCodeRepository } from './ports/sms-code.repository.port';
 import type { SmsGateway } from './ports/sms-gateway.port';

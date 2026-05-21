@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import {
   SMS_CODE_REPOSITORY,

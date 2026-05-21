@@ -3,7 +3,7 @@ import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import { Redis } from 'ioredis';
 import { AuthFailureLockService } from './auth-failure-lock.service';
 import { AuthAttemptLockedException } from '../domain/auth-attempt-locked.exception';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 
 /**
  * T047 unit-with-real-Redis spec for AuthFailureLockService。

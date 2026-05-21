@@ -1,18 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UnauthorizedException } from '@nestjs/common';
 import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
-import { Account } from '../domain/account.aggregate';
-import { AccountInFreezePeriodException } from '../domain/account-in-freeze-period.exception';
-import type { AccountRepository } from './ports/account.repository.port';
+import { Account } from '../../account/domain/account.aggregate';
+import { AccountInFreezePeriodException } from '../../account/domain/account-in-freeze-period.exception';
+import type { AccountRepository } from '../../account/application/ports/account.repository.port';
 import type { SmsCodeRepository } from './ports/sms-code.repository.port';
 import type { OutboxPublisher } from './ports/outbox-publisher.port';
 import type { TimingDefenseExecutor } from './ports/timing-defense.port';
-import type { JwtTokenService } from '../infrastructure/jwt-token.service';
-import type { PrismaService } from '../infrastructure/prisma.service';
+import type { JwtTokenService } from '../../security/jwt-token.service';
+import type { PrismaService } from '../../security/prisma.service';
 import type { AuthFailureLockService } from '../infrastructure/auth-failure-lock.service';
-import { ACCOUNT_CREATED_EVENT_TYPE } from '../domain/events/account-created.event';
+import { ACCOUNT_CREATED_EVENT_TYPE } from '../../account/domain/events/account-created.event';
 
 // PhoneSmsAuthUseCase ctor 历史 amend 轨迹:
 // - T036/T037 (US3): +TimingDefenseExecutor → 6 args

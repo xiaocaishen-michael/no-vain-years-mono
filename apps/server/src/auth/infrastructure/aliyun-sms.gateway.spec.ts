@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type Dysmsapi from '@alicloud/dysmsapi20170525';
 import { AliyunSmsGateway } from './aliyun-sms.gateway';
 import type { RetryExecutor } from '../application/ports/retry-executor.port';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 
 /**

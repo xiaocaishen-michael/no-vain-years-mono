@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Dysmsapi, { SendSmsRequest } from '@alicloud/dysmsapi20170525';
 import { $OpenApiUtil } from '@alicloud/openapi-core';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import type { RetryExecutor } from '../application/ports/retry-executor.port';
 import type { SmsGateway } from '../application/ports/sms-gateway.port';

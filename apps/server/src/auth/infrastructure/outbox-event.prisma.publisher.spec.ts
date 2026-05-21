@@ -4,7 +4,7 @@ import {
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from '../../security/prisma.service';
 import { OutboxEventPrismaPublisher } from './outbox-event.prisma.publisher';
 
 const SERVER_DIR = process.cwd();
