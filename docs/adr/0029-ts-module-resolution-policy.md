@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0029
-status: Proposed
+status: Accepted
 applies_to: [mono-wide]
 sunset_trigger: |
   - NestJS 出 bundler-friendly build target (无需 nodenext + .js 后缀)
@@ -10,7 +10,7 @@ sunset_trigger: |
 
 # ADR-0029: TS Module Resolution Policy — base = `bundler`, apps/server override = `nodenext`
 
-* Status: Proposed
+* Status: Accepted (2026-05-21) — shipped via PR-2 (tsconfig swap)
 * Deciders: project owner
 * Tags: build / typescript / cross-cutting
 
