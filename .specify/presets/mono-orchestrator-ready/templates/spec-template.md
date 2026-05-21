@@ -28,6 +28,17 @@ agent_friction_observed: false
 #     timing_defense:       # 仅反枚举类 endpoint 填 (per ADR-0023 类场景)
 #       diff_p95_ms: 50
 
+# 状态机分支穷举 (per 测试基建 2.0 / ADR-0040 multi-layer test gate).
+# 用于强制 /speckit-tasks 生成 exhaustive integration test 任务 + 防 PR #79 类
+# "Auth/Guard/Filter 漏 cold-boot 分支" cascade bug。如当前 spec 含复杂
+# 状态流转 (Auth / Guard / Interceptor / 路由 / 权限),必须列出所有逻辑路径;
+# 不含 (e.g. 纯 CRUD 单实体 endpoint) 时可省。
+# 0.2.2 阶段 optional;0.3.0 起 required (per master plan P3 sub-plan).
+# state_branches:
+#   - "isAuth:true, onboarded:true -> allowed (200)"
+#   - "isAuth:true, onboarded:false -> redirect /onboarding (302)"
+#   - "isAuth:false -> throw UnauthorizedException (401)"
+
 # --- end v2 fields ---
 
 # contracts (optional — fill when API surface stabilizes; orchestrator uses

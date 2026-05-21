@@ -25,8 +25,8 @@ Task-meta marker contract (HTML comment immediately after each task heading):
   "trace_fr":                 ["FR-001"],              // required, ≥ 1 functional requirement
   "trace_ep":                 ["EP1"],                 // optional, ≥ 1 endpoint (impl/gen tasks)
   "trace_sc":                 ["SC-001"],              // optional, ≥ 1 success criterion (perf IT tasks)
-  "kind":                     "impl",                  // required: impl | gen | test-unit | test-integration | test-e2e
-  "verify_kind":              "test",                  // required, must be a key of plan.workspaces[ws].verify_commands
+  "kind":                     "impl",                  // required: impl | gen | test-unit | test-integration | test-e2e | verification
+  "verify_kind":              "test",                  // required, must be a key of plan.workspaces[ws].verify_commands (extended w/ "smoke" for runtime boot probes per ADR-0040)
   "files":                    [{"path":"...","op":"create"}],  // required, ops: create | modify | delete | rename
   "graphify_scope_override":  "...",                   // optional, narrows the workspace default AST scope
   "parallel":                 false,                   // optional default false (force serial during PoC for Ralph-loop traceability)
@@ -49,6 +49,17 @@ Status semantics (per task-closure preset):
 
 - [ ] T002 [task title — unit test, ships RED first then GREEN]
   <!-- task-meta: {"id":"T002","workspace":"server-app","deps":["T001"],"trace_us":["US1"],"trace_fr":["FR-001"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/modules/<module>/<file>.spec.ts","op":"create"}],"tdd_red_expected":true} -->
+
+- [ ] T003 Verify Backend Physics — Server Runtime Smoke Verification
+  <!-- task-meta: {"id":"T003","workspace":"server-app","deps":["T001","T002"],"trace_us":["US1"],"trace_fr":["FR-001"],"kind":"verification","verify_kind":"smoke","files":[]} -->
+  <!--
+  T003 is the gating runtime smoke per ADR-0040 multi-layer test gate. It
+  invokes scripts/ci/server-boot-smoke.ts which spins up Testcontainers PG +
+  Redis, boots the real Nest server, fires a real HTTP probe, and asserts
+  RFC 9457 ProblemDetail shape + traceId end-to-end. NO mocks. T003 RED
+  means the cascade (CLS / ValidationPipe / AuthGate / Filter) shipped
+  broken — Ralph-loop must roll back impl. Do not skip; do not split.
+  -->
 
 ## API Client
 

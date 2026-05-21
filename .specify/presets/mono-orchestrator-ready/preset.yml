@@ -1,5 +1,5 @@
 id: mono-orchestrator-ready
-version: 0.2.1
+version: 0.2.2
 description: |
   mono-repo spec-kit 自动编排 + 执行支持。把 spec / plan / tasks 三大 template
   升级到 orchestrator-friendly 形态:
@@ -26,6 +26,19 @@ description: |
       · Cross-stack Vendor Intersection 6Q Card (新 third-party 包决策)
       · Legacy → Mono Delta Sweep Checklist (meta-repo 迁入代码 stale ref grep)
       · ADR-deferred-mitigation Scan Step (Open Questions 分类 + 缓解)
+
+  0.2.2 增量 (PR-T1 / ADR-0040 multi-layer test gate strategy):
+    - spec-template: state_branches v2 字段 — 强制 spec 阶段穷举状态分支
+      (per PR #79 retro Pattern D 漏 cold-boot 状态实证)
+    - plan-template:
+      · orchestrator_config.verify_commands 加 "smoke" key (指向
+        scripts/ci/server-boot-smoke.ts)
+      · Architecture Notes 段加 🚨 Testing Invariants 3 禁令 (NO LIFECYCLE
+        MOCKING / MANDATORY INTEGRATION / EXHAUSTIVE BRANCHING),
+        orchestrator inject 进 LLM prompt 时硬性约束
+    - tasks-template: kind 枚举扩 "verification";verify_kind 扩 "smoke";
+      Server section 加 T003 Runtime Smoke 终极任务模板
+    - schemas/spec.zod.ts: state_branches optional 字段 (0.3.0 转 required)
 
   配合 scripts/orchestrator/*.ts 使用。仅适用于 monorepo (nx workspaces),
   因为 orchestrator 需要在单仓内同时调度 server / api-client / mobile 多 workspace。
