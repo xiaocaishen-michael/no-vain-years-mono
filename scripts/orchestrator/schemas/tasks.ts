@@ -49,6 +49,18 @@ export const TaskMetaSchema = z.object({
   kind: TaskKindSchema,
   verify_kind: z.string(),
   files: z.array(TaskFileOpSchema).min(1),
+  /**
+   * Optional explicit "bulk-output scope" for gen / migration tasks. When the
+   * LLM legitimately touches files outside `files` but inside one of these
+   * directory prefixes, the orchestrator silently expands the commit to include
+   * them (gen-fenced path, no ralph) — addresses the openapi-ts / Prisma
+   * migrate cases where the generator's output set is not statically knowable.
+   *
+   * Repo-root-relative directory prefixes (no leading slash; with or without
+   * trailing slash, both accepted; the classifier normalizes).
+   * Ignored when kind ∉ {gen, migration}.
+   */
+  gen_dirs: z.array(z.string()).optional(),
   graphify_scope_override: z.string().optional(),
   parallel: z.boolean(),
   tdd_red_expected: z.boolean().optional(),

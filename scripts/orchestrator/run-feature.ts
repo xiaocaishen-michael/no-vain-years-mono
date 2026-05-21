@@ -76,6 +76,10 @@ export interface RunFeatureOptions {
 
 export type TaskRunReason =
   | 'success'
+  | 'gen-fenced'
+  | 'orphan-resolved-expand'
+  | 'orphan-resolved-revert'
+  | 'orphan-stuck'
   | 'llm-self-committed'
   | 'verify-ralph-failed'
   | 'hook-ralph-failed'
@@ -143,17 +147,51 @@ export async function runFeature(
       );
       results.push(...parallelResults);
       const failed = parallelResults.find((r) => !r.ok);
-      if (failed) return { ok: false, results, failedAt: failed.taskId };
+      if (failed) {
+        if (failed.reason === 'orphan-stuck') warnOrphanStuck(failed);
+        return { ok: false, results, failedAt: failed.taskId };
+      }
     }
 
     for (const task of serialGroup) {
       const r = await runTask(task, state, deps, repoRoot, options);
       results.push(r);
-      if (!r.ok) return { ok: false, results, failedAt: r.taskId };
+      if (!r.ok) {
+        if (r.reason === 'orphan-stuck') warnOrphanStuck(r);
+        return { ok: false, results, failedAt: r.taskId };
+      }
     }
   }
 
   return { ok: true, results };
+}
+
+/**
+ * Surface an orphan-stuck halt to the operator. Per stop-signal #6: the
+ * worktree is dirty with files outside the declared task.files; downstream
+ * tasks would mistake them for their baseline. Print orphans + remediation
+ * to stderr so the operator can decide expand-or-revert manually.
+ */
+function warnOrphanStuck(r: TaskRunResult): void {
+  const orphans = r.commit?.drift?.orphans ?? [];
+  const lines = [
+    '',
+    `⛔ Task ${r.taskId} orphan-stuck — feature run halted (PoC #22 hard-stop).`,
+    '   The LLM touched files outside the declared task.files whitelist,',
+    '   the orphan self-justify ralph could not resolve, and the working tree is dirty.',
+  ];
+  if (orphans.length > 0) {
+    lines.push('   Orphans:');
+    for (const f of orphans) lines.push(`     - ${f}`);
+  }
+  lines.push(
+    '   Resolve manually: inspect the worktree, choose `git restore` (hallucination)',
+  );
+  lines.push(
+    '   or `git add` + edit tasks.md task.files (legitimate ripple), then re-run.',
+  );
+  // eslint-disable-next-line no-console
+  console.error(lines.join('\n'));
 }
 
 /**
@@ -243,6 +281,43 @@ export async function runTask(
   const finalResult = { ...result, sandboxCwd, sandboxCleaned };
   progressHandle?.finish(finalResult);
   return finalResult;
+}
+
+/**
+ * Map CommitTaskResult.{ok, reason} to TaskRunReason. Pulled out so the new
+ * PoC #22 gate reasons (gen-fenced / orphan-resolved-* / orphan-stuck) can
+ * round-trip into the run-report uniformly.
+ */
+function mapCommitReason(
+  ok: boolean,
+  reason: import('./git-flow.js').CommitTaskTerminalReason,
+): TaskRunReason {
+  if (ok) {
+    switch (reason) {
+      case 'success':
+        return 'success';
+      case 'gen-fenced':
+        return 'gen-fenced';
+      case 'orphan-resolved-expand':
+        return 'orphan-resolved-expand';
+      case 'orphan-resolved-revert':
+        return 'orphan-resolved-revert';
+      case 'llm-self-committed':
+        return 'llm-self-committed';
+      default:
+        return 'success';
+    }
+  }
+  switch (reason) {
+    case 'orphan-after-commit':
+      return 'orphan-after-commit';
+    case 'orphan-stuck':
+      return 'orphan-stuck';
+    case 'hook-ralph-failed':
+    case 'rollback-error':
+    default:
+      return 'hook-ralph-failed';
+  }
 }
 
 async function runTaskInner(
@@ -505,13 +580,7 @@ async function runTaskInner(
     archive,
   });
 
-  const reason: TaskRunReason = commit.ok
-    ? commit.reason === 'llm-self-committed'
-      ? 'llm-self-committed'
-      : 'success'
-    : commit.reason === 'orphan-after-commit'
-      ? 'orphan-after-commit'
-      : 'hook-ralph-failed';
+  const reason: TaskRunReason = mapCommitReason(commit.ok, commit.reason);
 
   if (commit.ok) {
     archive.setCommit({
