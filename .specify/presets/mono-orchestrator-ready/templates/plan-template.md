@@ -58,7 +58,8 @@ Single JSON block, language tag MUST be `json orchestrator_config`.
         "build": "pnpm nx build server",
         "test": "pnpm nx test server --watch=false",
         "lint": "pnpm nx lint server",
-        "typecheck": "pnpm nx run server:typecheck"
+        "typecheck": "pnpm nx run server:typecheck",
+        "smoke": "pnpm tsx scripts/ci/server-boot-smoke.ts"
       },
       "graphify_scope": "apps/server/src/modules/<module>/**/*"
     }
@@ -196,6 +197,23 @@ Natural-language bullets. Orchestrator injects this section verbatim into
 each task's temp-prompt.md during /speckit-implement, so keep each bullet
 focused on a decision that an LLM coding agent needs to honor.
 -->
+
+### 🚨 Testing Invariants (AI 绝对禁令 — 严禁违背)
+
+<!--
+Per ADR-0040 multi-layer test gate strategy. These three invariants are the
+hard rules for any NestJS lifecycle test (Guard / Interceptor / Filter /
+Pipe / Repository). 违背任一条 → P3 阶段 lefthook anti-mock 正则会拦 commit.
+These bullets are injected verbatim into the orchestrator LLM prompt; do
+not soften the language — the LLM defaults to mock everything if not
+explicitly forbidden.
+-->
+
+- **NO LIFECYCLE MOCKING**: 对 `Guard` / `Interceptor` / `Filter` / `Pipe` / `Repository` 子类，**绝对禁止** `new MyGuard()` / `jest.mock('./my.guard')` 这类隔离单元测试。这些组件依赖 NestJS DI lifecycle 顺序 (Guards→Interceptors→Pipes→Filters)，mock 隔离 = 抹掉 PR-79 类 cascade bug 的唯一信号。
+- **MANDATORY INTEGRATION**: 必须用 `Test.createTestingModule({ imports: [<TheModule>] }).compile()` 装一个微型 DI 容器，让被测组件在真实 lifecycle 中触发。`createTestingModule` 之外的"测试" 视同未测试。
+- **EXHAUSTIVE BRANCHING**: spec.md `state_branches` 列出的每条分支，**必须**在 integration test 文件中有对应 `it()` 块。100% 路径覆盖 — 不允许漏 cold-boot / 路由根 `/` 等非 happy-path 状态（PR #79 实证 4 层 cascade 始于一个未列状态分支）。
+
+### General Architecture Notes
 
 - [Key design decision 1 — e.g., "Reuse AccountModule, add ProfileController + ProfileService"]
 - [Key design decision 2 — e.g., "Prisma schema already has the field; no migration needed (per ADR-0019)"]
