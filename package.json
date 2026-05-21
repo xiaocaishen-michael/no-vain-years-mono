@@ -22,6 +22,16 @@
       "prisma",
       "@prisma/engines",
       "bcrypt"
+    ],
+    "publicHoistPattern": [
+      "*expo*",
+      "*react-native*",
+      "@react-navigation/*",
+      "@react-native/*",
+      "@babel/runtime",
+      "fbjs",
+      "nanoid",
+      "use-latest-callback"
     ]
   },
   "devDependencies": {
