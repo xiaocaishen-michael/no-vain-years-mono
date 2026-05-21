@@ -35,7 +35,7 @@ W3 阶段(2026-05-17 ~ 18) US1 A1/A2 task 实装 `/sms-codes` 限流:
 | 3 | `sms:<ip>` 24h 50 次 | ThrottlerModule named `sms-ip-24h` + per-throttler `getTracker`(req.ip) |
 | 4 | `auth:<phone>` 24h 5 次失败后锁 30min | **不**走 throttler(职责"重复失败" ≠ "请求频率");由 `AuthFailureLockService`(`apps/server/src/auth/infrastructure/auth-failure-lock.service.ts`)独立 Redis bucket 实现 |
 
-W3 ship 时直接落 code 未先立 ADR(deferred per [Plan 1](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md) § G.1 + ADR-0018 § 57 占位);Plan 2 Phase 0 § 2.2.2 task backfill。
+W3 ship 时直接落 code 未先立 ADR(deferred per [Plan 1](../plans/2026-05/05-18-plan1-backend-stack-poc.md) § G.1 + ADR-0018 § 57 占位);Plan 2 Phase 0 § 2.2.2 task backfill。
 
 ## Decision
 
@@ -88,11 +88,11 @@ mono 限流栈固化为:
 * **deferred 验证**:
   * FR-S07 #2 (phone 24h 10x) + #3 (ip 24h 50x) 完整 e2e IT — Plan 2 SC-S04 落
   * FR-S07 #4 (auth:<phone> 5x lock 30min) — 独立 `AuthFailureLockService`,不在本 ADR 范围,IT 由 `phone-sms-auth.usecase.spec.ts` 覆盖
-* **meta ADR-0011 supersede 标记**:[Plan 1 § G.1 ADR matrix](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md) line 385 已先标 superseded → ADR-0022(本文件);ADR-0018 § 57 reference 同步生效
+* **meta ADR-0011 supersede 标记**:[Plan 1 § G.1 ADR matrix](../plans/2026-05/05-18-plan1-backend-stack-poc.md) line 385 已先标 superseded → ADR-0022(本文件);ADR-0018 § 57 reference 同步生效
 
 ## References
 
-* [Plan 1 § G.1 ADR cross-ref 矩阵](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md) line 385
+* [Plan 1 § G.1 ADR cross-ref 矩阵](../plans/2026-05/05-18-plan1-backend-stack-poc.md) line 385
 * [ADR-0018 backend-language-pivot](0018-backend-language-pivot.md) § 57
 * [spec FR-S07](../../specs/001-phone-sms-auth/spec.md) line 154-158
 * [@nestjs/throttler v6 docs](https://docs.nestjs.com/security/rate-limiting) — module config / decorator / guard / storage adapter

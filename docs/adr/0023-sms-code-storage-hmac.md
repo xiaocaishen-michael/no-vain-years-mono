@@ -81,7 +81,7 @@ SMS code Redis 存储**从 bcrypt(cost=12) 改 HMAC-SHA256 + `crypto.timingSafeE
 
 ## References
 
-* [Plan 1 § B Security Posture](../plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
+* [Plan 1 § B Security Posture](../plans/2026-05/05-18-plan1-backend-stack-poc.md)
 * [`specs/001-phone-sms-auth/spec.md` FR-S06](../../specs/001-phone-sms-auth/spec.md)
 * [`apps/server/src/auth/infrastructure/sms-code.redis.repository.ts`](../../apps/server/src/auth/infrastructure/sms-code.redis.repository.ts)
 * [`apps/server/test/integration/timing-defense.p95.it.spec.ts`](../../apps/server/test/integration/timing-defense.p95.it.spec.ts)

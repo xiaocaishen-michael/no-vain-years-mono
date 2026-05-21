@@ -1,6 +1,6 @@
 # V10 验收 — Claude Code agent loop 体感主观记录
 
-* Plan: [Plan 1 § E.3 V10](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)
+* Plan: [Plan 1 § E.3 V10](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/2026-05/05-18-plan1-backend-stack-poc.md)
 * Verdict: **PASS**(≥ Java baseline,big margin)
 * 日期: 2026-05-18
 * PoC use case: `phone-sms-auth`(Plan 1 § E.1)

@@ -155,8 +155,8 @@ pnpm orchestrate <feature-NNN> [--max-retries 3] [--halt-on unrecoverable]
 ## Critical files
 
 ```
-docs/plans/plan2-plan3-clever-sutherland.md                              # Plan 主文件,本 plan ship 后 amend
-docs/plans/plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md   # 本 plan(archive)
+docs/plans/2026-05/05-19-plan2-plan3-migration-deploy.md                              # Plan 主文件,本 plan ship 后 amend
+docs/plans/2026-05/05-19-plan2-model-routing-ralph-loop.md   # 本 plan(archive)
 docs/plans/plan2-spec-kit-preset-customization-<slug>.md                 # § 0 前置,独立 plan,起草中
 .specify/implement-halts.log                                             # 2a baseline 起首次 halt 时新建(本 plan scope)
 scripts/orchestrator/run-implement.ts                                    # 2b 触发后新建,~150-250 LoC tsx(本 plan scope)
@@ -175,7 +175,7 @@ scripts/orchestrator/package.json                                        # 子 p
 ### Phase 0 收尾(本 plan ship)
 
 **PR 1: 本 plan 文件 ship**(独立 PR `docs/plan2-impl-arch-no-reinvent`)
-- 落 `docs/plans/plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md`(本文件)
+- 落 `docs/plans/2026-05/05-19-plan2-model-routing-ralph-loop.md`(本文件)
 - 在 commit message + PR description 明确 reference § 0 前置独立 plan(尚未起草)
 
 **PR 2: plan2 主文件 amend**(分独立 PR 或同 PR 都可)

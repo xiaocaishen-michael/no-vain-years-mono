@@ -1,8 +1,8 @@
 # Plan 2 + Plan 3: 业务迁移 + 部署上线（swap 后 outline）
 
 > **Status**: drafted 2026-05-19，等 ExitPlanMode 审批
-> **Supersedes scope**: [`Plan 1 § F + § G`](1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md)（原 Plan 2 = mobile 迁入 / 原 Plan 3 = server 业务 + 部署）
-> **存档参考**:[`plan3-pre-plan-inventory-2026-05-19.md`](plan3-pre-plan-inventory-2026-05-19.md)（16 use case 清单 + 6 ambiguous decision + drift 分析，全文设计输入）
+> **Supersedes scope**: [`Plan 1 § F + § G`](2026-05/05-18-plan1-backend-stack-poc.md)（原 Plan 2 = mobile 迁入 / 原 Plan 3 = server 业务 + 部署）
+> **存档参考**:[`2026-05/05-19-plan3-pre-plan-inventory.md`](2026-05/05-19-plan3-pre-plan-inventory.md)（16 use case 清单 + 6 ambiguous decision + drift 分析，全文设计输入）
 
 ## 1. Context
 
@@ -44,8 +44,8 @@ Plan 1（NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020 + ADR-0023/0024 + V1-V
 | **2.2.1 Schema 旧表清理** | `apps/server/prisma/schema.prisma` 删除 `event_publication`(Spring Modulith 老表)和其他 W1.4 `db pull` 反推进来的非业务表;`prisma migrate dev --create-only` 生成 drop migration | 一次性 destructive,user 已授权;`outbox_event` 保留 |
 | **2.2.2 ADR-0022 throttler backfill** | `docs/adr/0022-throttler-nestjs-redis.md` | mono 已实装 @nestjs/throttler + @nest-lab/throttler-storage-redis(W3 A1/A2 ship),ADR 追溯立 |
 | **2.2.3 conventions 按需迁入** | `docs/conventions/*.md` 按 Phase 0 实际需要逐项决定 | 候选 4 项(versioning / agent-view-usage / claude-config-layout / git-workflow-reference)+ worktree(默认不迁,单仓);**不强制全迁**,Phase 0 起手时按"撞到才迁"原则单项决断,记录在 Phase 0 实施日志 |
-| **2.2.4 claude-mem W1 + 2-day A/B** | `~/.claude-mem/` 全装 + .envrc + 2-day 验证报告 | 走 [`project-next-session-starter-claude-mem-eager-charm.md`](project-next-session-starter-claude-mem-eager-charm.md) § 5-6;PASS 则启用,FAIL 则关闭并 Plan 2 仅依赖原生 memory + project-next-session-starter |
-| **2.2.5 orchestrator(self-written,Stage 2 only)** | `scripts/orchestrator/run-implement.ts`(~150-250 LoC tsx) | **2026-05-19 amend v2**:Wiggum CLI 永久 drop;Bridge Adapter 改名 orchestrator,职责限定 Stage 2 halt-retry,**数据驱动后写**(002 跑完 2a baseline 看 `.specify/implement-halts.log` ≥ 3 同形态 OR ≥ 1 unrecoverable 触发)。详见 [`plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md`](plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md) § Stage 2 2b |
+| **2.2.4 claude-mem W1 + 2-day A/B** | `~/.claude-mem/` 全装 + .envrc + 2-day 验证报告 | 走 [`2026-05/05-19-claude-mem-w1-openrouter.md`](2026-05/05-19-claude-mem-w1-openrouter.md) § 5-6;PASS 则启用,FAIL 则关闭并 Plan 2 仅依赖原生 memory + project-next-session-starter |
+| **2.2.5 orchestrator(self-written,Stage 2 only)** | `scripts/orchestrator/run-implement.ts`(~150-250 LoC tsx) | **2026-05-19 amend v2**:Wiggum CLI 永久 drop;Bridge Adapter 改名 orchestrator,职责限定 Stage 2 halt-retry,**数据驱动后写**(002 跑完 2a baseline 看 `.specify/implement-halts.log` ≥ 3 同形态 OR ≥ 1 unrecoverable 触发)。详见 [`2026-05/05-19-plan2-model-routing-ralph-loop.md`](2026-05/05-19-plan2-model-routing-ralph-loop.md) § Stage 2 2b |
 | **2.2.6 ADR-0025 deployment 决策落** | `docs/adr/0025-frontend-cloudflare-pages-expo-web.md` | 锁定 plan 3 前端 = Expo Web export → CF Pages;mobile binary 不部署 |
 | **2.2.7 quota-discipline skill ack** | 不新写文档;plan 2 期间 session 纪律完全复用 `claude-quota-discipline` skill | per memory `claude-quota-discipline`,P0-1 v3 双阶段切分 + use case 粒度 /clear |
 
@@ -79,7 +79,7 @@ Plan 1（NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020 + ADR-0023/0024 + V1-V
 6. `/speckit-implement` → 代码 + 测试 + tasks.md `[X]` flip
    - **切到 Sonnet**:**user 在 prompt 框手敲 `/model sonnet`**(LLM 无法自切,per Phase 0 v2 fact-check)
    - **2a baseline**(默认,002 起步):手动 `/speckit-implement`,halt-on-fail 手修 + 重投(skip 已 [X] 自动续);每次 halt 手动 append 1 行到 `.specify/implement-halts.log`(`<ISO> <feature-NNN> <task-id> <halt-class>`)
-   - **2b 升级**(数据驱动):halt-log ≥ 3 同形态 OR ≥ 1 unrecoverable → 写 `scripts/orchestrator/run-implement.ts` 接管 halt-retry;详见 [`plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md`](plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md) § Stage 2 2b
+   - **2b 升级**(数据驱动):halt-log ≥ 3 同形态 OR ≥ 1 unrecoverable → 写 `scripts/orchestrator/run-implement.ts` 接管 halt-retry;详见 [`2026-05/05-19-plan2-model-routing-ralph-loop.md`](2026-05/05-19-plan2-model-routing-ralph-loop.md) § Stage 2 2b
    - 每 task 6 步闭环(per sdd.md § /implement 每 task 闭环):红 → 绿 → typecheck/lint → tasks.md [X] → git add → commit
 
 **Per-feature PR 边界**:Server impl + api-client regen + mobile 消费 + tasks.md `[X]` flip **同 1 PR**(per sdd.md "mono 单仓内可同 PR")。Auto-merge per `docs/conventions/git-workflow.md`(CI 全绿自动 squash merge)。
@@ -111,7 +111,7 @@ claude-mem(若 PASS): session 满时 auto-compact + 跨 session 召回
 原生 memory: project-next-session-starter 写最终 handoff
 ```
 
-**升级触发**(per § 2.4.1):002 跑完后 halt-log ≥ 3 同形态 OR ≥ 1 unrecoverable → 写 orchestrator。详见 [`plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md`](plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md)。
+**升级触发**(per § 2.4.1):002 跑完后 halt-log ≥ 3 同形态 OR ≥ 1 unrecoverable → 写 orchestrator。详见 [`2026-05/05-19-plan2-model-routing-ralph-loop.md`](2026-05/05-19-plan2-model-routing-ralph-loop.md)。
 
 **Session 纪律**:完全遵循 `claude-quota-discipline` skill 的 P0-1 v3(双阶段切分 + use case 粒度 /clear)。Plan 不重复发明。
 
@@ -133,7 +133,7 @@ claude-mem(若 PASS): session 满时 auto-compact + 跨 session 召回
 - ≥ 1 unrecoverable halt(spec gap / infra 红线 = orchestrator 早期 detect + halt 价值高)
 - user 主观体感差(无 quantitative,信任 user)
 
-**触发后 003+ feature 起步前**:写 `scripts/orchestrator/run-implement.ts`(详 [`plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md`](plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md) § Stage 2 2b 接口契约)。
+**触发后 003+ feature 起步前**:写 `scripts/orchestrator/run-implement.ts`(详 [`2026-05/05-19-plan2-model-routing-ralph-loop.md`](2026-05/05-19-plan2-model-routing-ralph-loop.md) § Stage 2 2b 接口契约)。
 
 ### 2.5 测试策略(per user 修正)
 
@@ -164,7 +164,7 @@ per user "mobile per-feature 同步"决策:
 
 | 风险 | 触发信号 | 应对 |
 |---|---|---|
-| ~~Wiggum CLI / Bridge Adapter 接口风险~~ → **永久 reject (2026-05-19 v2)** | — | 自写 orchestrator(数据驱动)取代;详 [`plan2-model-ralph-loop`](plan2-model-ralph-loop-impl-no-reinvent-valiant-squirrel.md) |
+| ~~Wiggum CLI / Bridge Adapter 接口风险~~ → **永久 reject (2026-05-19 v2)** | — | 自写 orchestrator(数据驱动)取代;详 [`plan2-model-ralph-loop`](2026-05/05-19-plan2-model-routing-ralph-loop.md) |
 | **`/model sonnet` user 漏切** | Stage 2 起跑前忘敲 → Opus 跑 implement(token 浪费) | user discipline + retrospective(per Phase 0 v2 fact-check,`/model` LLM 无法自切,CI 也无 hook 可验) |
 | **orchestrator 写完体感 worse 于 2a** | 003+ 跑 orchestrator vs 2a 收益 < 30% | 回滚 2a manual,orchestrator 半成品保留作 deprecated 候选 |
 | claude-mem 2-day A/B 红线触发 | OpenRouter > $1/day 或起手延迟 > 5s 或 observer error | `unset CLAUDE_MEM_ENABLE`,Plan 2 仅原生 memory |
@@ -280,9 +280,9 @@ curl -fsS https://<cf-pages-domain>/                   # Web 主入口 200
 ## 6. Critical files
 
 ```
-docs/plans/plan2-plan3-clever-sutherland.md             # 本文(决策源)
-docs/plans/plan3-pre-plan-inventory-2026-05-19.md       # 16 use case + 6 ambiguous decision 输入
-docs/plans/project-next-session-starter-claude-mem-eager-charm.md  # claude-mem W1
+docs/plans/2026-05/05-19-plan2-plan3-migration-deploy.md             # 本文(决策源)
+docs/plans/2026-05/05-19-plan3-pre-plan-inventory.md       # 16 use case + 6 ambiguous decision 输入
+docs/plans/2026-05/05-19-claude-mem-w1-openrouter.md  # claude-mem W1
 docs/adr/0022-throttler-nestjs-redis.md                 # Phase 0 新建
 docs/adr/0023-sms-code-storage-hmac.md                  # 已 ship,timing defense 范式
 docs/adr/0024-spec-feature-first-layout.md              # specs/NNN-<slug>/ 扁平布局

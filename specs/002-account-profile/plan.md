@@ -11,7 +11,7 @@ context7_verified: []
 
 # Implementation Plan: A-002 Account Profile (GetProfile + UpdateDisplayName + mobile bootstrap)
 
-**Spec**: [`spec.md`](./spec.md) | **Branch**: `002-account-profile` | **Sub-plan**: [`../../docs/plans/plan2-plan3-clever-sutherland-orchestra-zippy-goblet.md`](../../docs/plans/plan2-plan3-clever-sutherland-orchestra-zippy-goblet.md)
+**Spec**: [`spec.md`](./spec.md) | **Branch**: `002-account-profile` | **Sub-plan**: [`../../docs/plans/2026-05/05-21-orchestrator-poc-a002.md`](../../docs/plans/2026-05/05-21-orchestrator-poc-a002.md)
 
 ## Summary *(mandatory)*
 

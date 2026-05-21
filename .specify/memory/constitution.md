@@ -1,6 +1,6 @@
 # no-vain-years-mono Constitution
 
-> 「不虚此生」mono-repo PoC 项目级原则。每个业务模块、每个 use case、每个 PR review 必参考。基于 [Plan 1](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md) PoC 范围（W1-W5）锁定，Plan 2 / Plan 3 阶段视需要 amend。
+> 「不虚此生」mono-repo PoC 项目级原则。每个业务模块、每个 use case、每个 PR review 必参考。基于 [Plan 1](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) PoC 范围（W1-W5）锁定，Plan 2 / Plan 3 阶段视需要 amend。
 
 ## Core Principles
 
@@ -62,7 +62,7 @@ PoC 阶段（W1-W5）锁定栈：
 | OpenAPI | code-first `@nestjs/swagger` | § F |
 | 跨语言 contract | OpenAPI（Protobuf 未来评估） | § F |
 
-**禁锚定旧 ADR**（per [Plan 1](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md) E.4 / user 决策 2026-05-17）：mono 是从 Java meta-repo 推倒重来，旧 ADR-0001~ADR-0017（业务无关部分如 Lint / Format / 部署）不自动继承；ADR-0018（语言）/ ADR-0019（ORM）/ ADR-0020（module 边界）由 PoC 验证产出后落 W4-W5。
+**禁锚定旧 ADR**（per [Plan 1](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) E.4 / user 决策 2026-05-17）：mono 是从 Java meta-repo 推倒重来，旧 ADR-0001~ADR-0017（业务无关部分如 Lint / Format / 部署）不自动继承；ADR-0018（语言）/ ADR-0019（ORM）/ ADR-0020（module 边界）由 PoC 验证产出后落 W4-W5。
 
 ## Quality Gates
 

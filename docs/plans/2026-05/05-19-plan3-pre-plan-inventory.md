@@ -199,7 +199,7 @@ apps/server/src/
 
 ## 10. 引用
 
-- Plan 1 → [`1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md`](1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md) § F(Plan 2 接口契约)/ § G(Plan 3 接口契约)/ § H(风险)
+- Plan 1 → [`2026-05/05-18-plan1-backend-stack-poc.md`](2026-05/05-18-plan1-backend-stack-poc.md) § F(Plan 2 接口契约)/ § G(Plan 3 接口契约)/ § H(风险)
 - mono ADR-0018/0019/0020/0023
 - meta ADR 0001-0017
 - meta `specs/<auth | account>/<use case>/spec.md + user-journey.md` 共 12 use case
