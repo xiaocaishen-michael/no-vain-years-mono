@@ -13,12 +13,32 @@ import type { StateStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
 import { accountProfileControllerGetProfile } from '@nvy/api-client';
 
-// Platform-aware secure storage: native → Keychain/Keystore, web → localStorage fallback.
-const secureStorage: StateStorage = {
-  getItem: (key) => SecureStore.getItemAsync(key),
-  setItem: (key, value) => SecureStore.setItemAsync(key, value),
-  removeItem: (key) => SecureStore.deleteItemAsync(key),
-};
+// Platform-aware secure storage (per plan D12). On native we go through
+// expo-secure-store (Keychain on iOS, Keystore on Android). On web,
+// expo-secure-store ships an empty stub (ExpoSecureStore.web.ts = `export
+// default {}`) — fall back to window.localStorage directly so AuthGate /
+// persist rehydration work for Expo Web (Playwright T040).
+//
+// We probe via `typeof window` rather than `Platform.OS === 'web'` to avoid
+// pulling the react-native dep into @nvy/auth (it's UI-platform-neutral).
+const isWebEnv =
+  typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+const secureStorage: StateStorage = isWebEnv
+  ? {
+      getItem: async (key) => window.localStorage.getItem(key),
+      setItem: async (key, value) => {
+        window.localStorage.setItem(key, value);
+      },
+      removeItem: async (key) => {
+        window.localStorage.removeItem(key);
+      },
+    }
+  : {
+      getItem: (key) => SecureStore.getItemAsync(key),
+      setItem: (key, value) => SecureStore.setItemAsync(key, value),
+      removeItem: (key) => SecureStore.deleteItemAsync(key),
+    };
 
 export interface Session {
   accountId: string;

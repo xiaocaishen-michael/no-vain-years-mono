@@ -8,8 +8,8 @@
   "exports": {
     ".": {
       "no-vain-years-mono": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     }
   },
   "scripts": {

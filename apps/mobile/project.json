@@ -52,7 +52,10 @@
     },
     "e2e": {
       "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/playwright-report"],
+      "outputs": [
+        "{projectRoot}/playwright-report",
+        "{projectRoot}/playwright-test-results"
+      ],
       "options": {
         "command": "playwright test",
         "cwd": "apps/mobile"

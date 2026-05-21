@@ -9,7 +9,7 @@ const PORT = Number(process.env['EXPO_WEB_PORT'] ?? 4173);
 
 export default defineConfig({
   testDir: './e2e',
-  outputDir: './playwright-report/test-results',
+  outputDir: './playwright-test-results',
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
