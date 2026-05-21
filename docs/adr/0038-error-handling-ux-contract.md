@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0038
-status: Proposed
+status: Accepted
 applies_to: [apps/server, apps/mobile, packages/api-client]
 sunset_trigger: |
   - 切 gRPC / GraphQL 错误模型 (RFC 9457 不适用)
@@ -10,9 +10,11 @@ sunset_trigger: |
 
 # ADR-0038: Full-Stack Error Handling and UX Contract — RFC 9457 ProblemDetail + 业务扩展 + trace 串联
 
-* Status: Proposed
+* Status: Accepted (2026-05-21) — server contract + ProblemDetail filter shipped via PR-5a; client consumer (Orval typed error codes + form.setError + Error Boundary trace_id) shipped via PR-5b/c
 * Deciders: project owner
 * Tags: backend / mobile / error / ux / cross-cutting
+
+> **PR-5a 实装注**: ProblemDetailResponse 加 5 业务扩展字段 (code/traceId/freezeUntil/retryAfterSeconds/invalidAttributes)。FormValidationException 新建 (status 400, code FORM_VALIDATION, invalidAttributes 直通)。ProblemDetailFilter 重写为通用 HttpException dispatch (无 domain instanceof 反向 import) + 从 ClsService 注 traceId + log level 分流 (4xx warn / 5xx error+stack)。AccountInFreezePeriodException 重构 extends HttpException (原 extends Error) 让 filter 通用 dispatch 工作。ProblemDetailFilter 物理位置 auth/infrastructure → security/ (cross-context 概念归 platform infra 层)。
 
 ## Context
 

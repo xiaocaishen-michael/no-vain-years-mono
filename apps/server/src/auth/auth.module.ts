@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
@@ -21,7 +20,6 @@ import { CockatielRetryExecutor } from './infrastructure/cockatiel-retry.executo
 import { MockSmsGateway } from './infrastructure/mock-sms.gateway.js';
 import { OutboxEventCronPublisher } from './infrastructure/outbox-event-cron.publisher.js';
 import { OutboxEventPrismaPublisher } from './infrastructure/outbox-event.prisma.publisher.js';
-import { ProblemDetailFilter } from './infrastructure/problem-detail.filter.js';
 import { SmsCodeRedisRepository } from './infrastructure/sms-code.redis.repository.js';
 import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller.js';
 import { AccountSmsCodeController } from './web/account-sms-code.controller.js';
@@ -156,7 +154,8 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
     PhoneSmsAuthUseCase,
     OutboxEventCronPublisher,
     SmsPhoneThrottlerGuard,
-    { provide: APP_FILTER, useClass: ProblemDetailFilter },
+    // ProblemDetailFilter (APP_FILTER) moved to SecurityModule in PR-5a —
+    // it's a cross-context concern, owned by the platform infra layer.
   ],
 })
 export class AuthModule {}
