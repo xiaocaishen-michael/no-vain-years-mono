@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AuthState } from './store.js';
+import type { AuthState } from './store';
 
 // expo-secure-store and @nvy/api-client are pulled in transitively via store.ts;
 // mock them here so the store module initialises cleanly in a Node environment.
@@ -13,8 +13,8 @@ vi.mock('@nvy/api-client', () => ({
   accountProfileControllerGetProfile: vi.fn(),
 }));
 
-import { useAuthStore } from './store.js';
-import { rehydrateSession, refreshOnce, refreshTokenFlow } from './token-refresh.js';
+import { useAuthStore } from './store';
+import { rehydrateSession, refreshOnce, refreshTokenFlow } from './token-refresh';
 
 const CLEAN: Partial<AuthState> = {
   accountId: null,

@@ -8,7 +8,7 @@
 // server endpoint ships (US12 roadmap). All callers should use refreshOnce()
 // rather than refreshTokenFlow() directly.
 
-import { useAuthStore } from './store.js';
+import { useAuthStore } from './store';
 
 let inflightRefresh: Promise<void> | null = null;
 

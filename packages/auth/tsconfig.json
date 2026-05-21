@@ -6,7 +6,9 @@
     "emitDeclarationOnly": false,
     "declarationMap": false,
     "lib": ["es2022", "dom"],
-    "types": []
+    "types": [],
+    "module": "esnext",
+    "moduleResolution": "bundler"
   },
   "include": [
     "src/**/*.ts",
