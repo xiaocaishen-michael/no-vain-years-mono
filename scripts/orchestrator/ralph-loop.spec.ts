@@ -248,4 +248,68 @@ describe('ralphLoop', () => {
     });
     expect(prompts).toEqual(['1:INIT', '2:first err']);
   });
+
+  it('prepareRound fires once per round with (n, max) and merges opts', async () => {
+    const llm = new FakeLlmClient([llmOk('a'), llmOk('b'), llmOk('c')]);
+    const attempt = makeAttempts([
+      { ok: false, feedback: 'e1' },
+      { ok: false, feedback: 'e2' },
+      { ok: true },
+    ]);
+    const calls: Array<{ n: number; max: number }> = [];
+    const observedOpts: Array<LlmInvokeOptions> = [];
+    const spyLlm = {
+      invoke: async (prompt: string, opts: LlmInvokeOptions) => {
+        observedOpts.push(opts);
+        return llm.invoke(prompt, opts);
+      },
+    };
+    await ralphLoop({
+      phase: 'verify-command',
+      maxRetries: 3,
+      initialFailure: 'init',
+      buildRetryPrompt: (fb, n) => `r${n}:${fb}`,
+      attempt,
+      llm: spyLlm,
+      llmInvokeOpts: { cwd: '/base' },
+      prepareRound: (n, max) => {
+        calls.push({ n, max });
+        return { allowedTools: [`Round-${n}`] };
+      },
+    });
+    expect(calls).toEqual([
+      { n: 1, max: 3 },
+      { n: 2, max: 3 },
+      { n: 3, max: 3 },
+    ]);
+    // base opts.cwd preserved; per-round override merged on top.
+    expect(observedOpts.map((o) => o.cwd)).toEqual(['/base', '/base', '/base']);
+    expect(observedOpts.map((o) => o.allowedTools)).toEqual([
+      ['Round-1'],
+      ['Round-2'],
+      ['Round-3'],
+    ]);
+  });
+
+  it('prepareRound omitted: opts equal llmInvokeOpts verbatim', async () => {
+    const llm = new FakeLlmClient([llmOk()]);
+    const attempt = makeAttempts([{ ok: true }]);
+    let observed: LlmInvokeOptions | undefined;
+    const spyLlm = {
+      invoke: async (prompt: string, opts: LlmInvokeOptions) => {
+        observed = opts;
+        return llm.invoke(prompt, opts);
+      },
+    };
+    const baseOpts: LlmInvokeOptions = { cwd: '/x', maxTurns: 5 };
+    await ralphLoop({
+      phase: 'verify-command',
+      initialFailure: 'init',
+      buildRetryPrompt: () => 'p',
+      attempt,
+      llm: spyLlm,
+      llmInvokeOpts: baseOpts,
+    });
+    expect(observed).toEqual(baseOpts);
+  });
 });

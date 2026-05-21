@@ -494,4 +494,42 @@ describe('runOrphanRalph', () => {
     expect(llm.calls[0].opts.allowedTools).toEqual(['Read']);
     expect(llm.calls[0].opts.maxTurns).toBe(1);
   });
+
+  it('prepareRound fires per round with (n, max); allowedTools lockdown wins over override', async () => {
+    const task = makeTask({ files: ['a.ts'] });
+    const { tasksMdPath, root } = makeTasksMdFor(task);
+    const git = new FakeGit();
+    const llm = new FakeLlmClient([
+      llmJson({ action: 'parse-err' as never }), // forces another attempt
+      llmJson({ action: 'stuck', reason: 'done' }),
+    ]);
+    const captured: Array<{ n: number; max: number }> = [];
+
+    await runOrphanRalph({
+      task,
+      declared: ['a.ts'],
+      orphans: ['b.ts'],
+      headBefore: 'sha0',
+      llm,
+      llmInvokeOpts: INVOKE_OPTS,
+      git,
+      repoRoot: root,
+      tasksMdPath,
+      prepareRound: (n, max) => {
+        captured.push({ n, max });
+        // Caller tries to widen tool surface — runOrphanRalph must ignore it.
+        return { allowedTools: ['Read', 'Edit', 'Write'], maxTurns: 99 };
+      },
+    });
+
+    expect(captured).toEqual([
+      { n: 1, max: 2 },
+      { n: 2, max: 2 },
+    ]);
+    // Physical lockdown is enforced AFTER the merge — both rounds keep ['Read'] + maxTurns=1.
+    for (const c of llm.calls) {
+      expect(c.opts.allowedTools).toEqual(['Read']);
+      expect(c.opts.maxTurns).toBe(1);
+    }
+  });
 });

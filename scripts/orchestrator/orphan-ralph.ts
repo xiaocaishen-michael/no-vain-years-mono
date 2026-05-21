@@ -81,6 +81,16 @@ export interface RunOrphanRalphInput {
   tasksMdPath: string;
   /** Default 2. */
   maxRetries?: number;
+  /**
+   * Called just before each round's LLM invocation. The returned partial
+   * options are merged into `llmInvokeOpts` for that round only — used by
+   * callers to wire per-round live observability (`onEvent` / `streamStdout`)
+   * for UI narration. Mirrors the same hook in `ralph-loop.ts`.
+   */
+  prepareRound?: (
+    attemptNumber: number,
+    maxRetries: number,
+  ) => Partial<LlmInvokeOptions>;
 }
 
 export type OrphanRalphTerminalReason =
@@ -150,11 +160,16 @@ export async function runOrphanRalph(
     history.push(entry);
 
     let llmResult: LlmInvokeResult;
+    const extraOpts = input.prepareRound
+      ? input.prepareRound(attempt, max)
+      : {};
     try {
       llmResult = await input.llm.invoke(prompt, {
         ...input.llmInvokeOpts,
+        ...extraOpts,
         // Physical lockdown: the LLM cannot touch files in this loop —
-        // intent is consumed by the orchestrator only.
+        // intent is consumed by the orchestrator only. Forced AFTER spread
+        // so callers cannot accidentally widen the tool surface.
         allowedTools: ['Read'],
         maxTurns: 1,
       });
