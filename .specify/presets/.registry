@@ -1,5 +1,9 @@
 {
   "presets": {
+    "adr-governance": {
+      "enabled": true,
+      "priority": 7
+    },
     "context7-injection": {
       "enabled": true,
       "priority": 5

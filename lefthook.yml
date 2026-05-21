@@ -1,3 +1,7 @@
+extends:
+  - ./lefthook.preset-mono-orchestrator-ready.yml
+  - ./lefthook.preset-adr-governance.yml
+
 # Lefthook config — mono single-source (per docs/conventions/sdd.md).
 # 强制层 commit-time 硬拦:`tasks-md-drift` 拒"commit 含 impl 代码但 tasks.md 未 staged"。
 # `--no-verify` 仅限格式化 / typo / 紧急 hotfix 出口。

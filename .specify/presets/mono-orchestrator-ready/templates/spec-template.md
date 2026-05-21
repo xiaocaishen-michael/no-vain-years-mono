@@ -6,7 +6,30 @@ status: draft
 created_at: [YYYY-MM-DD]
 updated_at: [YYYY-MM-DD]
 spec_kit_version: ">=0.8.5,<0.10.0"
-orchestrator_compat: ">=0.1.0"
+orchestrator_compat: ">=0.2.0"
+
+# --- v2 fields (mono-orchestrator-ready 0.2.0, post-A-002 retro) ---
+
+# 前端 Web 兼容性 (per ADR-0027). 值域: full | stub | untested | na.
+# 当 stub | untested 时 web_compat_notes 必填,说明缺什么 / 哪条路径未测.
+web_compat: na
+# web_compat_notes: "Expo Web export 仅冒烟 login flow,onboarding+我的页未测"
+
+# AI agent 协作摩擦观察 (per ADR-0024 amend + docs/conventions/ai-friction-catalog.md).
+# 当 true 时 agent_friction_notes 必填,引 catalog 模式 ID + 一句话现象.
+agent_friction_observed: false
+# agent_friction_notes: "TS-Bundler-Mismatch — .js 后缀强加在 packages/auth 反 Metro"
+
+# 性能预算 (per ADR-0039 SSOT). 实测靠 nightly perf IT;每个 user-facing endpoint 1 条.
+# perf_budgets:
+#   - endpoint: "POST /api/v1/phone-sms-auth"
+#     p95_ms: 200
+#     p99_ms: 500
+#     timing_defense:       # 仅反枚举类 endpoint 填 (per ADR-0023 类场景)
+#       diff_p95_ms: 50
+
+# --- end v2 fields ---
+
 # contracts (optional — fill when API surface stabilizes; orchestrator uses
 # the sha256 checksum to detect server ↔ api-client ↔ mobile drift):
 # contracts:

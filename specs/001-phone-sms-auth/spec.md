@@ -1,7 +1,27 @@
 ---
-modules: [auth]
+feature_id: 001-phone-sms-auth
+modules: [auth, security, account]
 owners: ["@xiaocaishen-michael"]
 status: implemented
+created_at: "2026-05-04"
+updated_at: "2026-05-17"
+spec_kit_version: ">=0.8.5,<0.10.0"
+orchestrator_compat: ">=0.2.0"
+
+# v2 frontmatter fields (per mono-orchestrator-ready 0.2.0 + ADR-0024 amend + ADR-0039)
+web_compat: untested
+web_compat_notes: "phone-sms-auth use case 仅 server impl,mobile/Web 客户端落地 Plan 2 Phase 2 W4+;Expo Web export 路径未走过"
+agent_friction_observed: true
+agent_friction_notes: "F-002 Typecheck-Boot-Gap (nx run server:test pass 但 boot 需 Prisma+Redis Testcontainers); F-006 Indirect-Spec-Module-Mapping (本 spec 实证横跨 auth/security/account 3 context,modules 字段必显式 list, per ADR-0032 物理拆 + ADR-0034 operation catalog 缓解)"
+perf_budgets:
+  - endpoint: "POST /api/v1/phone-sms-auth"
+    p95_ms: 200
+    p99_ms: 500
+    timing_defense:
+      diff_p95_ms: 50
+  - endpoint: "POST /api/v1/sms-codes"
+    p95_ms: 150
+    p99_ms: 400
 ---
 
 # Feature Specification: Phone SMS Auth (unified login/register)

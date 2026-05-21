@@ -1,3 +1,13 @@
+---
+adr_id: ADR-0025
+status: Accepted
+applies_to: [apps/mobile]
+sunset_trigger: |
+  - CF Pages 撤免费 tier / 改用付费 plan 不划算
+  - Plan 4 引入 mobile binary 分发 (Expo EAS / TestFlight / Play Store)
+  - Expo SDK EOL 或 Web export 兼容性大幅退化
+---
+
 # ADR-0025: 前端部署 — Expo Web export → Cloudflare Pages (mobile binary 不在 Plan 3 scope)
 
 * Status: Accepted (2026-05-19) — Plan 2 Phase 0 § 2.2.6

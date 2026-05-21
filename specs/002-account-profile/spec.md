@@ -1,12 +1,25 @@
 ---
 feature_id: 002-account-profile
-modules: ["account"]
+modules: [account]
 owners: ["@xiaocaishen-michael"]
-status: clarified
+status: implemented
 created_at: "2026-05-04"
-updated_at: "2026-05-20"
+updated_at: "2026-05-21"
 spec_kit_version: ">=0.8.5,<0.10.0"
-orchestrator_compat: ">=0.1.0"
+orchestrator_compat: ">=0.2.0"
+
+# v2 frontmatter fields (per mono-orchestrator-ready 0.2.0 + ADR-0024 amend + ADR-0039)
+web_compat: stub
+web_compat_notes: "A-002 ship 时 mobile 占位 UI 跑通;Expo Web export 路径未冒烟;onboarding 重定向行为未在 Web 验证;packages/auth Web localStorage fallback 缺 (PR #67 部分修)"
+agent_friction_observed: true
+agent_friction_notes: "F-001 TS-Bundler-Mismatch (@hey-api/openapi-ts .js 后缀,Issue #68 — ADR-0027 切 Orval 解); F-003 Pnpm-Strict-vs-Expo-Hoist (PR #66 publicHoistPattern 半解 / PR #67 shamefully-hoist 全解,ADR-0028 缓解); F-006 Indirect-Spec-Module-Mapping (ADR-0018 SWC 被误读 mono-wide,ADR-0031 governance + applies_to programmatic filter 缓解)"
+perf_budgets:
+  - endpoint: "GET /api/v1/accounts/me"
+    p95_ms: 50
+    p99_ms: 100
+  - endpoint: "PATCH /api/v1/accounts/me"
+    p95_ms: 100
+    p99_ms: 200
 ---
 
 # Feature Specification: Account Profile（onboarding 信号 + displayName 维护 + 我的页骨架）

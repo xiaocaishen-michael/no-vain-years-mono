@@ -1,3 +1,13 @@
+---
+adr_id: ADR-0024
+status: Accepted
+applies_to: [mono-wide]
+sunset_trigger: |
+  - spec-kit EOL / 切其他 SDD 工具
+  - 多产品线需 layer 命名 (specs/<product>/<feature>/)
+  - frontmatter modules 反查在 specs > 500 个时性能瓶颈
+---
+
 # ADR-0024: Specs 目录采用 feature-first 扁平布局（`specs/NNN-<slug>/`）+ frontmatter `modules:` 反查
 
 * Status: Accepted (2026-05-19)

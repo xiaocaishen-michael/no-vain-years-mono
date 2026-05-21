@@ -1,3 +1,13 @@
+---
+adr_id: ADR-0019
+status: Accepted
+applies_to: [apps/server, packages/types]
+sunset_trigger: |
+  - Prisma v8+ break change 难以接受
+  - 复杂 query 占 backend > 30% (Prisma 表达力不够)
+  - Drizzle / Kysely 等在 LLM 命中率显著超越
+---
+
 # ADR-0019: ORM — Prisma v7+ with `@nestjs/prisma`
 
 * Status: Accepted (2026-05-18)

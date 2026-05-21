@@ -1,3 +1,13 @@
+---
+adr_id: ADR-0023
+status: Accepted
+applies_to: [apps/server]
+sunset_trigger: |
+  - SMS code 升 6→8+ 位且要求加密存储 (HMAC 单向不可逆 → 需 reversible 加密)
+  - 引入 TOTP / WebAuthn 取代 SMS 一次性码
+  - 监管要求短信内容加密存储 (cn 等保 / 个保法 update)
+---
+
 # ADR-0023: SMS code 存储 — HMAC-SHA256 + constant-time compare（替换 bcrypt cost=12）
 
 * Status: Accepted (2026-05-18)
