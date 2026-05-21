@@ -141,18 +141,9 @@ importers:
       '@nvy/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@nvy/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@nvy/design-tokens':
-        specifier: workspace:*
-        version: link:../../packages/design-tokens
       '@nvy/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@nvy/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@react-native/assets-registry':
         specifier: ^0.85.3
         version: 0.85.3
@@ -403,30 +394,11 @@ importers:
         specifier: ^8.11.0
         version: 8.11.0(typescript@5.9.3)
 
-  packages/auth:
-    dependencies:
-      '@nvy/api-client':
-        specifier: workspace:*
-        version: link:../api-client
-      '@nvy/types':
-        specifier: workspace:*
-        version: link:../types
-      expo-secure-store:
-        specifier: ~15.0.8
-        version: 15.0.8(expo@54.0.34)
-      zustand:
-        specifier: ^5.0.13
-        version: 5.0.13(@types/react@19.2.14)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
-
-  packages/design-tokens: {}
-
   packages/types:
     dependencies:
       '@prisma/client':
         specifier: ^7.8.0
         version: 7.8.0(prisma@7.8.0(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3)
-
-  packages/ui: {}
 
   scripts/orchestrator:
     dependencies:

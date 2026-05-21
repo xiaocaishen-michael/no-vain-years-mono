@@ -1,7 +1,7 @@
 // @nvy/types — cross-package shared type re-exports for the no-vain-years mono.
 //
 // Per spec 002-account-profile plan D11, these types mirror the Prisma `account`
-// schema so mobile / packages/auth can import them without reaching into apps/server.
+// schema so mobile (apps/mobile/src/auth) can import them without reaching into apps/server.
 //
 // Note: @prisma/client in this Prisma 7 custom-output setup does not publish
 // schema-specific types via the package entry — types are defined standalone here.

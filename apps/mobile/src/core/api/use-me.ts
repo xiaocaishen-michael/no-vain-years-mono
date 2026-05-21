@@ -9,7 +9,7 @@
  *   - Disabled until isAuthenticated (avoids 401-storm pre-login)
  *   - On success syncs accountId / displayName / phone back into
  *     useAuthStore so AuthGate's persist-driven cold-start path
- *     (apps/mobile/lib/auth-gate-decision.ts) still works without
+ *     (apps/mobile/src/core/auth-gate-decision.ts) still works without
  *     a network round-trip
  *   - Errors surface to React Query consumer (handled via the
  *     formatErrorMessage / extractProblemDetail chain in ./errors.ts)
@@ -24,7 +24,7 @@ import {
   useAccountProfileControllerGetProfile,
   type AccountProfileResponse,
 } from '@nvy/api-client';
-import { useAuthStore } from '@nvy/auth';
+import { useAuthStore } from '~/auth';
 
 export function useMe() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);

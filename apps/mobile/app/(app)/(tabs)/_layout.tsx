@@ -5,7 +5,7 @@
 
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { tokens } from '@nvy/design-tokens';
+import { tokens } from '~/theme';
 
 const TAB_LABELS = {
   home: '首页',
