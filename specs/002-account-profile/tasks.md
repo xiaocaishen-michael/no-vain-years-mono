@@ -140,7 +140,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T036 Implement sticky slide tabs state machine + scroll behavior (FR-020 + FR-030 + CL-005 sticky tabs)
   <!-- task-meta: {"id":"T036","workspace":"mobile-app","deps":["T035"],"trace_us":["US5","US8","US9"],"trace_fr":["FR-017","FR-020","FR-021","FR-030"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/mobile/app/(app)/(tabs)/profile.tsx","op":"modify"}],"parallel":false} -->
 
-- [ ] T037 Implement bottom tab bar 4-item (首页/搜索/外脑/我的) — Expo Router Tabs default options
+- [X] T037 Implement bottom tab bar 4-item (首页/搜索/外脑/我的) — Expo Router Tabs default options
   <!-- task-meta: {"id":"T037","workspace":"mobile-app","deps":["T033","T030"],"trace_us":["US7"],"trace_fr":["FR-013","FR-024"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/mobile/app/(app)/(tabs)/_layout.tsx","op":"modify"}],"parallel":false} -->
 
 - [ ] T038 Vitest + RTL unit tests — profile screen / auth gate / sticky tabs / bottom tab bar (ships RED first)
