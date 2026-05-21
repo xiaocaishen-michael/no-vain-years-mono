@@ -22,6 +22,13 @@ perf_budgets:
   - endpoint: "POST /api/v1/sms-codes"
     p95_ms: 150
     p99_ms: 400
+
+state_branches:
+  - "registered user: correct SMS code → token issued, last_login_at updated"
+  - "unregistered user: correct SMS code → account auto-created ACTIVE, token issued"
+  - "FROZEN/ANONYMIZED account with correct code → 401 INVALID_CREDENTIALS, byte-identical to code-error"
+  - "any user: SMS code expired (>5min) → 401 INVALID_CREDENTIALS"
+  - "concurrent phone-sms-auth requests same unregistered number → single Account created (idempotent)"
 ---
 
 # Feature Specification: Phone SMS Auth (unified login/register)

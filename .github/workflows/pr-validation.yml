@@ -1,0 +1,76 @@
+name: PR Validation
+
+# Per ADR-0040 multi-layer test gate (PR-T3 / 门禁层 / 云端主防线).
+# Single mega-job 'validate-and-test' that:
+#   1. Enforces 3 hard checkboxes in PR body (`### 🚨 部署与存活前置确认`
+#      section parsed via actions/github-script — any `- [ ]` left → fail).
+#   2. Runs `nx affected -t lint typecheck test build runtime-smoke`
+#      with `--base=origin/main` for incremental cascade detection.
+#      `fetch-depth: 0` ensures nx can compute affected vs base.
+# This job replaces the previous server-only Build/Test/Lint jobs in ci.yml.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-test:
+    name: validate-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Enforce PR Checkboxes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body;
+            if (!body) {
+              core.setFailed('🚨 PR body empty — must contain `### 🚨 部署与存活前置确认` checklist (see .github/pull_request_template.md).');
+              return;
+            }
+            // Strict section extraction — match `### 🚨 部署与存活前置确认` header
+            // and consume until next `##` or `###` header or EOF. Other sections
+            // (Test plan / unrelated checklists) are NOT scanned.
+            const checklistRegex = /### 🚨 部署与存活前置确认[\s\S]*?(?=\n###?\s|$)/;
+            const match = body.match(checklistRegex);
+            if (!match) {
+              core.setFailed('🚨 PR body missing `### 🚨 部署与存活前置确认` section. Re-add via .github/pull_request_template.md.');
+              return;
+            }
+            if (match[0].includes('- [ ]')) {
+              core.setFailed('🚨 拦截成功：`### 🚨 部署与存活前置确认` 区域含未勾选项,请本地验证通过后勾选全部 checkbox 再触发 CI。');
+              return;
+            }
+            core.info('✅ All deployment & smoke gate checkboxes ticked.');
+
+      - name: Generate Prisma client
+        working-directory: apps/server
+        run: npx prisma generate
+
+      - name: Run Nx Affected Pipeline
+        # base=origin/main for PR diff; nx affected computes which projects'
+        # cache hashes change, triggers lint/typecheck/test/build/runtime-smoke
+        # only for affected. cross-package wiring (api-client implicitDeps,
+        # mobile static dep) makes single server-file change cascade to
+        # api-client + mobile per ADR-0040 P2 design.
+        run: pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main

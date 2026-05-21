@@ -1,5 +1,5 @@
 id: mono-orchestrator-ready
-version: 0.2.2
+version: 0.3.0
 description: |
   mono-repo spec-kit 自动编排 + 执行支持。把 spec / plan / tasks 三大 template
   升级到 orchestrator-friendly 形态:
@@ -39,6 +39,14 @@ description: |
     - tasks-template: kind 枚举扩 "verification";verify_kind 扩 "smoke";
       Server section 加 T003 Runtime Smoke 终极任务模板
     - schemas/spec.zod.ts: state_branches optional 字段 (0.3.0 转 required)
+
+  0.3.0 增量 (PR-T3 / ADR-0040 门禁层):
+    - schemas/spec.zod.ts: state_branches optional → required (.min(1))
+    - specs/001-phone-sms-auth/spec.md + specs/002-account-profile/spec.md
+      同 PR backfill state_branches 字段 (per master plan Risk row)
+    - 配合 PR template (.github/pull_request_template.md) + lefthook
+      no-bad-mocks + .github/workflows/pr-validation.yml + nightly-sweep.yml
+      形成完整 L3 门禁体系
 
   配合 scripts/orchestrator/*.ts 使用。仅适用于 monorepo (nx workspaces),
   因为 orchestrator 需要在单仓内同时调度 server / api-client / mobile 多 workspace。
