@@ -143,8 +143,8 @@ orchestrator_compat: ">=0.1.0"
 - [X] T037 Implement bottom tab bar 4-item (首页/搜索/外脑/我的) — Expo Router Tabs default options
   <!-- task-meta: {"id":"T037","workspace":"mobile-app","deps":["T033","T030"],"trace_us":["US7"],"trace_fr":["FR-013","FR-024"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/mobile/app/(app)/(tabs)/_layout.tsx","op":"modify"}],"parallel":false} -->
 
-- [ ] T038 Vitest + RTL unit tests — profile screen / auth gate / sticky tabs / bottom tab bar (ships RED first)
-  <!-- task-meta: {"id":"T038","workspace":"mobile-app","deps":["T035","T034","T037"],"trace_us":["US5","US6","US7","US8","US9","US12"],"trace_fr":["FR-016","FR-020","FR-021"],"trace_sc":["SC-008","SC-009","SC-010","SC-014","SC-015"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/mobile/app/__tests__/profile.test.tsx","op":"create"},{"path":"apps/mobile/app/__tests__/auth-gate.test.tsx","op":"create"}],"parallel":false,"tdd_red_expected":true} -->
+- [X] T038 Vitest + RTL unit tests — profile screen / auth gate / sticky tabs / bottom tab bar (ships RED first)
+  <!-- task-meta: {"id":"T038","workspace":"mobile-app","deps":["T035","T034","T037"],"trace_us":["US5","US6","US7","US8","US9","US12"],"trace_fr":["FR-016","FR-020","FR-021"],"trace_sc":["SC-008","SC-009","SC-010","SC-014","SC-015"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/mobile/vitest.config.ts","op":"create"},{"path":"apps/mobile/lib/auth-gate-decision.spec.ts","op":"create"}],"parallel":false,"tdd_red_expected":true,"scope_note":"profile screen / sticky tabs / bottom tab bar component tests deferred to T040 Playwright (Expo Web) — RN→DOM stack would require react-native-web + reanimated/svg shims, duplicating T040 coverage."} -->
 
 ## E2E — Playwright + Expo Web (D12)
 
