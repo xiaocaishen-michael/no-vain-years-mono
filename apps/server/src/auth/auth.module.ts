@@ -1,77 +1,59 @@
-import { Module, OnModuleDestroy } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { Redis } from 'ioredis';
-import { ACCOUNT_REPOSITORY } from './application/ports/account.repository.port';
-import { OUTBOX_PUBLISHER } from './application/ports/outbox-publisher.port';
-import { RETRY_EXECUTOR, type RetryExecutor } from './application/ports/retry-executor.port';
-import { SMS_CODE_REPOSITORY } from './application/ports/sms-code.repository.port';
-import { SMS_GATEWAY } from './application/ports/sms-gateway.port';
-import { TIMING_DEFENSE_EXECUTOR } from './application/ports/timing-defense.port';
-import { PhoneSmsAuthUseCase } from './application/phone-sms-auth.usecase';
-import { RequestSmsCodeUseCase } from './application/request-sms-code.usecase';
-import { AccountPrismaRepository } from './infrastructure/account.prisma.repository';
-import { AliyunSmsGateway } from './infrastructure/aliyun-sms.gateway';
-import { AuthFailureLockService } from './infrastructure/auth-failure-lock.service';
-import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor';
-import { CockatielRetryExecutor } from './infrastructure/cockatiel-retry.executor';
-import { JwtTokenService } from './infrastructure/jwt-token.service';
-import { MockSmsGateway } from './infrastructure/mock-sms.gateway';
-import { OutboxEventCronPublisher } from './infrastructure/outbox-event-cron.publisher';
-import { OutboxEventPrismaPublisher } from './infrastructure/outbox-event.prisma.publisher';
-import { PrismaService } from './infrastructure/prisma.service';
-import { ProblemDetailFilter } from './infrastructure/problem-detail.filter';
-import { REDIS_CLIENT } from './infrastructure/redis.token';
-import { SmsCodeRedisRepository } from './infrastructure/sms-code.redis.repository';
-import { GetAccountProfileUseCase } from './application/get-account-profile.usecase';
-import { UpdateDisplayNameUseCase } from './application/update-display-name.usecase';
-import { AccountStateMachine } from './domain/account-state-machine';
-import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller';
-import { AccountProfileController } from './web/account-profile.controller';
-import { AccountSmsCodeController } from './web/account-sms-code.controller';
-import { JwtAuthGuard } from './web/jwt-auth.guard';
-import { AccountIdThrottlerGuard } from './web/account-id-throttler.guard';
-import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard';
-
-const REDIS_LIFECYCLE = Symbol('REDIS_LIFECYCLE');
-
-class RedisLifecycle implements OnModuleDestroy {
-  readonly client: Redis;
-  constructor(url: string) {
-    this.client = new Redis(url);
-  }
-  onModuleDestroy(): void {
-    this.client.disconnect();
-  }
-}
+import { SecurityModule } from '../security/security.module.js';
+import { AccountModule } from '../account/account.module.js';
+import { REDIS_CLIENT } from '../security/redis.token.js';
+import { OUTBOX_PUBLISHER } from './application/ports/outbox-publisher.port.js';
+import { RETRY_EXECUTOR, type RetryExecutor } from './application/ports/retry-executor.port.js';
+import { SMS_CODE_REPOSITORY } from './application/ports/sms-code.repository.port.js';
+import { SMS_GATEWAY } from './application/ports/sms-gateway.port.js';
+import { TIMING_DEFENSE_EXECUTOR } from './application/ports/timing-defense.port.js';
+import { PhoneSmsAuthUseCase } from './application/phone-sms-auth.usecase.js';
+import { RequestSmsCodeUseCase } from './application/request-sms-code.usecase.js';
+import { AliyunSmsGateway } from './infrastructure/aliyun-sms.gateway.js';
+import { AuthFailureLockService } from './infrastructure/auth-failure-lock.service.js';
+import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor.js';
+import { CockatielRetryExecutor } from './infrastructure/cockatiel-retry.executor.js';
+import { MockSmsGateway } from './infrastructure/mock-sms.gateway.js';
+import { OutboxEventCronPublisher } from './infrastructure/outbox-event-cron.publisher.js';
+import { OutboxEventPrismaPublisher } from './infrastructure/outbox-event.prisma.publisher.js';
+import { ProblemDetailFilter } from './infrastructure/problem-detail.filter.js';
+import { SmsCodeRedisRepository } from './infrastructure/sms-code.redis.repository.js';
+import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller.js';
+import { AccountSmsCodeController } from './web/account-sms-code.controller.js';
+import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
 
 /**
- * NestJS Module: auth use case (phone-sms-auth).
+ * Auth bounded context (per ADR-0032 + post-A-002 retro).
  *
- * Per Constitution Principle IV — exports 显式声明 (跨 module 消费时只通过此 export，
- * 不直接 import internal service/repository).
+ * The编排 layer — composes SecurityModule (token + DB + Redis) + AccountModule
+ * (account aggregate + JwtAuthGuard) to implement the phone-sms-auth use case
+ * (login = register, SMS-code based, anti-enumeration timing defense).
  *
- * W2.4 implement 渐进填充:
- * - Phase 2 Foundational: VOs / ports / JwtTokenService / AccountCreatedEvent
- * - Phase 3 US1: AccountPrismaRepository + SmsCodeRedisRepository + MockSmsGateway +
- *   RequestSmsCodeUseCase + PhoneSmsAuthUseCase ACTIVE 路径 + 2 controllers
- * - Phase 4 US2: OutboxEventPrismaPublisher + 未注册路径 amend
- * - Phase 5 US3: BcryptTimingDefenseExecutor + AccountInFreezePeriodException
- *   filter + 反枚举 / FROZEN disclosure (CL-006)
+ * Owns:
+ *   - SMS code domain (sms-code.vo) + ports + infra (Redis-backed repository,
+ *     Aliyun/mock gateway, bcrypt-timing-defense)
+ *   - Cross-context Outbox publisher (FR-S05/CL-008 — eventual account
+ *     auto-create propagation)
+ *   - phone-sms-auth + request-sms-code use cases (编排 — calls
+ *     AccountRepository (via DI from AccountModule) + JwtTokenService
+ *     (via SecurityModule))
+ *   - phone/sms throttler guards (FR-S07)
+ *   - ProblemDetailFilter (global APP_FILTER; PR-5 will refactor with
+ *     traceId / invalidAttributes per ADR-0038)
+ *   - Global ThrottlerModule with 5 throttlers (sms-* + me-* mixed —
+ *     me-* registration stays here because the storage layer is shared
+ *     across all controllers; AccountModule consumes via @Throttle()
+ *     decorators from the global instance)
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.getOrThrow<string>('AUTH_JWT_SECRET'),
-        signOptions: { expiresIn: '15m' },
-      }),
-    }),
+    SecurityModule,
+    AccountModule,
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
@@ -119,26 +101,8 @@ class RedisLifecycle implements OnModuleDestroy {
       },
     }),
   ],
-  controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController, AccountProfileController],
+  controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController],
   providers: [
-    {
-      provide: PrismaService,
-      useFactory: (config: ConfigService) =>
-        new PrismaService(config.getOrThrow<string>('DATABASE_URL')),
-      inject: [ConfigService],
-    },
-    {
-      provide: REDIS_LIFECYCLE,
-      useFactory: (config: ConfigService) =>
-        new RedisLifecycle(config.getOrThrow<string>('REDIS_URL')),
-      inject: [ConfigService],
-    },
-    {
-      provide: REDIS_CLIENT,
-      useFactory: (lifecycle: RedisLifecycle) => lifecycle.client,
-      inject: [REDIS_LIFECYCLE],
-    },
-    { provide: ACCOUNT_REPOSITORY, useClass: AccountPrismaRepository },
     {
       // Per ADR-0023: HMAC-SHA256 + timingSafeEqual 替换 bcrypt cost=12.
       // SMS_CODE_HMAC_SECRET fail-fast,与 AUTH_JWT_SECRET 同管理面.
@@ -187,19 +151,12 @@ class RedisLifecycle implements OnModuleDestroy {
     { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
     { provide: TIMING_DEFENSE_EXECUTOR, useClass: BcryptTimingDefenseExecutor },
     { provide: RETRY_EXECUTOR, useClass: CockatielRetryExecutor },
-    JwtTokenService,
     AuthFailureLockService,
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
-    AccountStateMachine,
-    GetAccountProfileUseCase,
-    UpdateDisplayNameUseCase,
-    JwtAuthGuard,
     OutboxEventCronPublisher,
     SmsPhoneThrottlerGuard,
-    AccountIdThrottlerGuard,
     { provide: APP_FILTER, useClass: ProblemDetailFilter },
   ],
-  exports: [],
 })
 export class AuthModule {}

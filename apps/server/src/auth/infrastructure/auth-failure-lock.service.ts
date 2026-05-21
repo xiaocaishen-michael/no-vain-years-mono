@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 import { AuthAttemptLockedException } from '../domain/auth-attempt-locked.exception';
-import { Phone } from '../domain/phone.vo';
-import { REDIS_CLIENT } from './redis.token';
+import { Phone } from '../../account/domain/phone.vo';
+import { REDIS_CLIENT } from '../../security/redis.token';
 
 const FAIL_KEY = (phone: string): string => `auth-fail:${phone}`;
 const LOCK_KEY = (phone: string): string => `auth-lock:${phone}`;

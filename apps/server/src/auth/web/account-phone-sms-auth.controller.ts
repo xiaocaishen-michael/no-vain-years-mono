@@ -1,11 +1,11 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import { PhoneSmsAuthUseCase } from '../application/phone-sms-auth.usecase';
 import { PhoneSmsAuthRequest } from './dto/phone-sms-auth.request';
 import { PhoneSmsAuthResponse } from './dto/phone-sms-auth.response';
-import { ProblemDetailResponse } from './dto/problem-detail.response';
+import { ProblemDetailResponse } from '../../security/dto/problem-detail.response';
 
 /**
  * POST /api/v1/accounts/phone-sms-auth

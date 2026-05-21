@@ -1,10 +1,10 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import {
   ACCOUNT_REPOSITORY,
   type AccountRepository,
-} from './ports/account.repository.port';
+} from '../../account/application/ports/account.repository.port';
 import {
   SMS_CODE_REPOSITORY,
   type SmsCodeRepository,
@@ -18,13 +18,13 @@ import {
   type TimingDefenseExecutor,
 } from './ports/timing-defense.port';
 import { AuthFailureLockService } from '../infrastructure/auth-failure-lock.service';
-import { JwtTokenService } from '../infrastructure/jwt-token.service';
-import { PrismaService } from '../infrastructure/prisma.service';
+import { JwtTokenService } from '../../security/jwt-token.service';
+import { PrismaService } from '../../security/prisma.service';
 import {
   ACCOUNT_CREATED_EVENT_TYPE,
   AccountCreatedEvent,
-} from '../domain/events/account-created.event';
-import { AccountInFreezePeriodException } from '../domain/account-in-freeze-period.exception';
+} from '../../account/domain/events/account-created.event';
+import { AccountInFreezePeriodException } from '../../account/domain/account-in-freeze-period.exception';
 
 export interface PhoneSmsAuthResult {
   accountId: bigint;

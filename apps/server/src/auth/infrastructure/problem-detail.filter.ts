@@ -1,6 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { AccountInFreezePeriodException } from '../domain/account-in-freeze-period.exception';
+import { AccountInFreezePeriodException } from '../../account/domain/account-in-freeze-period.exception';
 import { AuthAttemptLockedException } from '../domain/auth-attempt-locked.exception';
 
 /**

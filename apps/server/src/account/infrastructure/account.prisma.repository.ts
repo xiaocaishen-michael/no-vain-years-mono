@@ -3,7 +3,7 @@ import { Account, AccountStatus } from '../domain/account.aggregate';
 import { DisplayName } from '../domain/display-name.vo';
 import { Phone } from '../domain/phone.vo';
 import type { AccountRepository } from '../application/ports/account.repository.port';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from '../../security/prisma.service';
 
 @Injectable()
 export class AccountPrismaRepository implements AccountRepository {

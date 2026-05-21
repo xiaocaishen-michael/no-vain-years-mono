@@ -1,10 +1,10 @@
 import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { RequestSmsCodeUseCase } from '../application/request-sms-code.usecase';
 import { RequestSmsCodeRequest } from './dto/request-sms-code.request';
 import { RequestSmsCodeResponse } from './dto/request-sms-code.response';
-import { ProblemDetailResponse } from './dto/problem-detail.response';
+import { ProblemDetailResponse } from '../../security/dto/problem-detail.response';
 import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard';
 
 /**

@@ -4,7 +4,7 @@ import {
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from '../../security/prisma.service';
 import { AccountPrismaRepository } from './account.prisma.repository';
 import { Phone } from '../domain/phone.vo';
 import { AccountStatus } from '../domain/account.aggregate';

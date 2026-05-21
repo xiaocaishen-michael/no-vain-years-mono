@@ -5,7 +5,7 @@ import {
 } from '@testcontainers/redis';
 import { Redis } from 'ioredis';
 import { SmsCodeRedisRepository } from './sms-code.redis.repository';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 
 const HMAC_SECRET = 'spec-hmac-secret-min-32-bytes-padding-zzzz';

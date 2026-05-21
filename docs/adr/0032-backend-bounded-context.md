@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0032
-status: Proposed
+status: Accepted
 applies_to: [apps/server]
 sunset_trigger: |
   - 业务模块 > 30 引入更细 DDD 分层 (sub-bounded context / aggregate root 显式化)
@@ -10,9 +10,11 @@ sunset_trigger: |
 
 # ADR-0032: Backend Bounded Context Split — security + account + auth
 
-* Status: Proposed
+* Status: Accepted (2026-05-21) — shipped via PR-4 (server bounded context split)
 * Deciders: project owner
 * Tags: backend / architecture / ddd / cross-cutting
+
+> **PR-4 实装注**: `security` 收纳范围扩展为 platform infra base layer (JWT + PrismaService + Redis client + 通用 error DTO),不只 JWT。`JwtAuthGuard` 实际验 token + Account.isActive() (hybrid),物理位置归 `account/web/` 而非 `security/`(per implementation discovery during PR-4)。Hexagonal layer (domain/application/infrastructure/web) ESLint rules 暂退,PR-7 doc 收口时按 module × layer = 12 elements 重写; PR-4 期 boundaries 仅 module-level (security ← account ← auth 单向)。
 
 ## Context
 

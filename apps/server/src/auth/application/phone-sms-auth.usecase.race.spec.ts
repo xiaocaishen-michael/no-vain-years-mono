@@ -4,15 +4,15 @@ import {
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
-import { PrismaService } from '../infrastructure/prisma.service';
-import { AccountPrismaRepository } from '../infrastructure/account.prisma.repository';
+import { PrismaService } from '../../security/prisma.service';
+import { AccountPrismaRepository } from '../../account/infrastructure/account.prisma.repository';
 import { OutboxEventPrismaPublisher } from '../infrastructure/outbox-event.prisma.publisher';
 import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase';
-import { Phone } from '../domain/phone.vo';
+import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 import type { SmsCodeRepository } from './ports/sms-code.repository.port';
 import type { TimingDefenseExecutor } from './ports/timing-defense.port';
-import type { JwtTokenService } from '../infrastructure/jwt-token.service';
+import type { JwtTokenService } from '../../security/jwt-token.service';
 import type { AuthFailureLockService } from '../infrastructure/auth-failure-lock.service';
 
 // Ctor amend 轨迹: T036/T037 +TimingDefenseExecutor=6 / T047 +AuthFailureLockService=7

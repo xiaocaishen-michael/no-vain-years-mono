@@ -15,11 +15,11 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
 import { AppModule } from '../../src/app/app.module';
-import { PrismaService } from '../../src/auth/infrastructure/prisma.service';
+import { PrismaService } from '../../src/security/prisma.service';
 import { MockSmsGateway } from '../../src/auth/infrastructure/mock-sms.gateway';
-import { Phone } from '../../src/auth/domain/phone.vo';
+import { Phone } from '../../src/account/domain/phone.vo';
 import { SMS_GATEWAY } from '../../src/auth/application/ports/sms-gateway.port';
-import { ACCOUNT_IN_FREEZE_PERIOD_CODE } from '../../src/auth/domain/account-in-freeze-period.exception';
+import { ACCOUNT_IN_FREEZE_PERIOD_CODE } from '../../src/account/domain/account-in-freeze-period.exception';
 
 const SERVER_DIR = process.cwd();
 
