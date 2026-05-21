@@ -58,13 +58,20 @@ class RedisLifecycle implements OnModuleDestroy {
     }),
     ClsModule.forRoot({
       global: true,
-      interceptor: {
+      // middleware mode (per nestjs-cls docs) covers full request lifecycle —
+      // Guards / Interceptors / Pipes / Controller / Filters all see the
+      // same CLS context. Interceptor mode (prior) ran its run() wrapper
+      // around only the controller phase, so JwtAuthGuard rejections and
+      // ProblemDetailFilter both saw `cls.getId() === undefined`.
+      // useEnterWith is required for Fastify because Fastify's request
+      // lifecycle drops AsyncLocalStorage context across hooks otherwise.
+      middleware: {
         mount: true,
         generateId: true,
-        idGenerator: (ctx) => {
-          const req = ctx.switchToHttp().getRequest<{
-            headers?: Record<string, string | string[] | undefined>;
-          }>();
+        useEnterWith: true,
+        idGenerator: (req: {
+          headers?: Record<string, string | string[] | undefined>;
+        }) => {
           const headerValue = req?.headers?.['x-trace-id'];
           const inbound = Array.isArray(headerValue)
             ? headerValue[0]

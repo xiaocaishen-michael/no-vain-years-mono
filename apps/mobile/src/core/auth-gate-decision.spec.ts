@@ -7,6 +7,7 @@ const base: AuthGateInput = {
   displayName: null,
   inAuthGroup: false,
   inOnboarding: false,
+  inTabs: false,
 };
 
 describe('decideAuthRoute — A-002 FR-014 / CL-009 三态决策', () => {
@@ -65,10 +66,23 @@ describe('decideAuthRoute — A-002 FR-014 / CL-009 三态决策', () => {
     ).toEqual({ kind: 'replace', target: '/(app)/(tabs)/profile' });
   });
 
-  it('auth + displayName set + already in (tabs) area (no group flag) → noop', () => {
-    expect(decideAuthRoute({ ...base, isAuthenticated: true, displayName: '小明' })).toEqual({
-      kind: 'noop',
-    });
+  it('auth + displayName set + already inTabs → noop', () => {
+    expect(
+      decideAuthRoute({
+        ...base,
+        isAuthenticated: true,
+        displayName: '小明',
+        inTabs: true,
+      }),
+    ).toEqual({ kind: 'noop' });
+  });
+
+  it('auth + displayName set + at root `/` (no group, !inTabs) → replace /(app)/(tabs)/profile', () => {
+    // Pre-PR-5-tail bug: cold-boot from seeded persist landed on `/` (index.tsx
+    // returns null), AuthGate returned noop → blank screen + e2e suite failed.
+    expect(
+      decideAuthRoute({ ...base, isAuthenticated: true, displayName: '小明' }),
+    ).toEqual({ kind: 'replace', target: '/(app)/(tabs)/profile' });
   });
 
   it('auth + displayName set + inOnboarding → replace /(app)/(tabs)/profile (no holding on gate)', () => {
@@ -87,8 +101,13 @@ describe('decideAuthRoute — A-002 FR-014 / CL-009 三态决策', () => {
   it('auth + displayName empty string (defensive: empty != null, treated as set)', () => {
     // Server FR-005 trims; empty string never reaches the client. But if it
     // does (mid-write race), treat it as set so we don't deadlock the user.
-    expect(decideAuthRoute({ ...base, isAuthenticated: true, displayName: '' })).toEqual({
-      kind: 'noop',
-    });
+    expect(
+      decideAuthRoute({
+        ...base,
+        isAuthenticated: true,
+        displayName: '',
+        inTabs: true,
+      }),
+    ).toEqual({ kind: 'noop' });
   });
 });

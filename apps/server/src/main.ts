@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationError, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
@@ -8,6 +8,29 @@ import { SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app/app.module';
 import { buildOpenApiConfig } from './openapi.config';
+import {
+  FormValidationException,
+  type InvalidAttribute,
+} from './security/form-validation.exception';
+
+// Flatten class-validator ValidationError[] into ProblemDetail
+// invalidAttributes shape (per ADR-0038). Nested object errors use
+// dot-notation: e.g. `address.city` for { address: { city: ... } }.
+function flattenValidationErrors(
+  errors: ValidationError[],
+  parentPath = '',
+): InvalidAttribute[] {
+  return errors.flatMap((err) => {
+    const field = parentPath ? `${parentPath}.${err.property}` : err.property;
+    const own: InvalidAttribute[] = err.constraints
+      ? [{ field, messages: Object.values(err.constraints) }]
+      : [];
+    const nested = err.children?.length
+      ? flattenValidationErrors(err.children, field)
+      : [];
+    return [...own, ...nested];
+  });
+}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -17,7 +40,15 @@ async function bootstrap() {
   );
   app.useLogger(app.get(Logger));
   app.useGlobalPipes(
-    new ValidationPipe({ transform: true, whitelist: true }),
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      // Map class-validator errors into FormValidationException so
+      // ProblemDetailFilter passes `code: "FORM_VALIDATION"` +
+      // `invalidAttributes[]` through to the client (per ADR-0038).
+      exceptionFactory: (errors: ValidationError[]) =>
+        new FormValidationException(flattenValidationErrors(errors)),
+    }),
   );
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
