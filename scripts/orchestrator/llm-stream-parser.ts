@@ -30,11 +30,19 @@ export interface SystemEvent {
   type: 'system';
   subtype: 'init' | 'status' | 'hook_started' | 'hook_response' | string;
   model?: string;
-  mcp_servers?: Array<{ name: string }>;
+  mcp_servers?: Array<{ name: string; status?: string }>;
   tools?: string[];
   permissionMode?: string;
   [k: string]: unknown;
 }
+
+/**
+ * Subset of system.init carried alongside result + per-turn metrics through
+ * the aggregator. Persisted to summary.json so an after-the-fact reader can
+ * answer "which MCP plugins were live in this subprocess" without re-parsing
+ * the raw NDJSON.
+ */
+export type McpServerInfo = { name: string; status?: string };
 
 export interface AssistantEvent {
   type: 'assistant';
@@ -193,6 +201,12 @@ export class StreamAggregator {
   private toolResultCount = 0;
   /** Flips true on the first feed() so we know to add 1 (initial prompt) to userTurns. */
   private sawAnyEvent = false;
+  /**
+   * MCP servers reported in the first `system.init` event. Captured once
+   * and frozen — `status` updates after init are not tracked (they'd need
+   * a richer surface than a single snapshot anyway).
+   */
+  private mcpServers: McpServerInfo[] | undefined;
 
   feed(e: StreamEvent): PhraseOutput | null {
     this.recordState(e);
@@ -204,12 +218,14 @@ export class StreamAggregator {
     turns: TurnMetric[];
     apiRounds: number;
     userTurns: number;
+    mcpServers?: McpServerInfo[];
   } {
     return {
       result: this.result,
       turns: this.turns,
       apiRounds: this.turns.length,
       userTurns: this.sawAnyEvent ? this.toolResultCount + 1 : 0,
+      mcpServers: this.mcpServers,
     };
   }
 
@@ -217,6 +233,21 @@ export class StreamAggregator {
     this.sawAnyEvent = true;
     if (e.type === 'result') {
       this.result = e as ResultEvent;
+      return;
+    }
+    if (e.type === 'system') {
+      const sys = e as SystemEvent;
+      if (
+        sys.subtype === 'init' &&
+        this.mcpServers === undefined &&
+        Array.isArray(sys.mcp_servers)
+      ) {
+        // Defensive copy — don't expose the parsed event's internal array.
+        this.mcpServers = sys.mcp_servers.map((m) => ({
+          name: m.name,
+          ...(m.status !== undefined ? { status: m.status } : {}),
+        }));
+      }
       return;
     }
     if (e.type === 'user') {

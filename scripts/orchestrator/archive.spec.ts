@@ -292,6 +292,50 @@ describe('TaskArchive.finalize', () => {
     expect(s.attempts[0].llm.user_turns).toBeUndefined();
   });
 
+  it('persists mcpServers into attempt.llm as mcp_servers', async () => {
+    const dir = makeDir();
+    const a = await TaskArchive.create(dir, { featureId: 'f', taskId: 'T03' });
+    const att = a.reserveAttempt('initial');
+    await att.finish({
+      prompt: 'p',
+      llmResult: {
+        exitCode: 0,
+        stdout: 'o',
+        stderr: 'e',
+        durationMs: 100,
+        mcpServers: [
+          { name: 'plugin:claude-mem:mcp-search', status: 'connected' },
+          { name: 'graphify', status: 'connected' },
+        ],
+      },
+      ok: true,
+    });
+    await a.finalize({ ok: true, reason: 'success' });
+    const s = JSON.parse(
+      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
+    );
+    expect(s.attempts[0].llm.mcp_servers).toEqual([
+      { name: 'plugin:claude-mem:mcp-search', status: 'connected' },
+      { name: 'graphify', status: 'connected' },
+    ]);
+  });
+
+  it('omits mcp_servers when llmResult.mcpServers absent or empty', async () => {
+    const dir = makeDir();
+    const a = await TaskArchive.create(dir, { featureId: 'f', taskId: 'T04' });
+    const att = a.reserveAttempt('initial');
+    await att.finish({
+      prompt: 'p',
+      llmResult: { exitCode: 0, stdout: '', stderr: '', durationMs: 50, mcpServers: [] },
+      ok: true,
+    });
+    await a.finalize({ ok: true, reason: 'success' });
+    const s = JSON.parse(
+      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
+    );
+    expect(s.attempts[0].llm.mcp_servers).toBeUndefined();
+  });
+
   it('TaskArchive.create wipes existing dir contents (PoC blind spot #16)', async () => {
     const dir = makeDir();
     // Pre-populate with stale residue from a hypothetical prior run.

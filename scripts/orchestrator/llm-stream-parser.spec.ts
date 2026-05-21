@@ -355,6 +355,69 @@ describe('StreamAggregator', () => {
     expect(apiRounds).toBe(0);
   });
 
+  it('captures mcp_servers from the first system.init event', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      model: 'sonnet',
+      mcp_servers: [
+        { name: 'plugin:claude-mem:mcp-search', status: 'connected' },
+        { name: 'context7', status: 'connected' },
+        { name: 'graphify', status: 'connected' },
+      ],
+    } as StreamEvent);
+    const { mcpServers } = agg.finalize();
+    expect(mcpServers).toEqual([
+      { name: 'plugin:claude-mem:mcp-search', status: 'connected' },
+      { name: 'context7', status: 'connected' },
+      { name: 'graphify', status: 'connected' },
+    ]);
+  });
+
+  it('ignores mcp_servers on non-init system events; init wins exactly once', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'system',
+      subtype: 'status',
+      mcp_servers: [{ name: 'should-not-capture' }],
+    } as StreamEvent);
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      mcp_servers: [{ name: 'first-init', status: 'connected' }],
+    } as StreamEvent);
+    // Second init (defensive — shouldn't happen in real streams) should NOT clobber.
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      mcp_servers: [{ name: 'second-init', status: 'error' }],
+    } as StreamEvent);
+    const { mcpServers } = agg.finalize();
+    expect(mcpServers).toEqual([
+      { name: 'first-init', status: 'connected' },
+    ]);
+  });
+
+  it('mcpServers is undefined when no system.init event seen', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'assistant',
+      message: { content: [{ type: 'text', text: 'hi' }] },
+    } as StreamEvent);
+    expect(agg.finalize().mcpServers).toBeUndefined();
+  });
+
+  it('omits status field when source event has no status', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      mcp_servers: [{ name: 'bare-name' }],
+    } as StreamEvent);
+    expect(agg.finalize().mcpServers).toEqual([{ name: 'bare-name' }]);
+  });
+
   it('ignores user events that are not tool_result (defensive)', () => {
     const agg = new StreamAggregator();
     agg.feed({

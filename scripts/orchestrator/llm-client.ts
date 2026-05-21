@@ -3,6 +3,7 @@ import * as readline from 'node:readline';
 import {
   parseEventLine,
   StreamAggregator,
+  type McpServerInfo,
   type StreamEvent,
   type TurnMetric,
 } from './llm-stream-parser.js';
@@ -100,6 +101,12 @@ export interface LlmInvokeResult {
    * for cross-validation when the two diverge.
    */
   userTurns?: number;
+  /**
+   * MCP servers reported in this subprocess's `system.init` event.
+   * Snapshot of `{name, status?}` per server. Undefined when the stream
+   * carried no system.init event (test fixtures / partial-message mode off).
+   */
+  mcpServers?: McpServerInfo[];
 }
 
 /** Subset of claude-cli `usage` we care about for archive summaries. */
@@ -413,7 +420,8 @@ export class ClaudeCliClient implements LlmClient {
         clearTimeout(timer);
         rl.close();
         const exitCode = code ?? 0;
-        const { result, turns, apiRounds, userTurns } = agg.finalize();
+        const { result, turns, apiRounds, userTurns, mcpServers } =
+          agg.finalize();
         const parsed: unknown = result;
         // claude -p signals semantic errors (auth, quota, refusals) via
         // is_error=true in the terminal `result` event while still exiting 0.
@@ -442,6 +450,7 @@ export class ClaudeCliClient implements LlmClient {
           turns,
           apiRounds: apiRounds > 0 ? apiRounds : undefined,
           userTurns: userTurns > 0 ? userTurns : undefined,
+          mcpServers,
         });
       });
     });
