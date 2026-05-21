@@ -1,5 +1,5 @@
 id: mono-orchestrator-ready
-version: 0.2.0
+version: 0.2.1
 description: |
   mono-repo spec-kit 自动编排 + 执行支持。把 spec / plan / tasks 三大 template
   升级到 orchestrator-friendly 形态:
@@ -19,6 +19,13 @@ description: |
       specs/*/spec.md, schema 不符 → exit 1)
     - lefthook.yml.fragment (spec-frontmatter-check hook, glob
       specs/*/spec.md)
+
+  0.2.1 增量 (post-A-002 PR-1 follow-up):
+    - plan-template 加 ## Phase 0 Research Gates 段 (4 gates):
+      · Integration Smoke Gate (server real-boot + mobile golden-path walked)
+      · Cross-stack Vendor Intersection 6Q Card (新 third-party 包决策)
+      · Legacy → Mono Delta Sweep Checklist (meta-repo 迁入代码 stale ref grep)
+      · ADR-deferred-mitigation Scan Step (Open Questions 分类 + 缓解)
 
   配合 scripts/orchestrator/*.ts 使用。仅适用于 monorepo (nx workspaces),
   因为 orchestrator 需要在单仓内同时调度 server / api-client / mobile 多 workspace。
