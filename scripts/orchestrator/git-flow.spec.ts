@@ -318,11 +318,12 @@ describe('commitTask', () => {
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
+      'diffNameOnly',
       'add',
       'commit',
       'statusPorcelain',
     ]);
-    expect(git.calls[2].args[0]).toMatch(/^feat\(account\): .* \(T001\)$/);
+    expect(git.calls[3].args[0]).toMatch(/^feat\(account\): .* \(T001\)$/);
     expect(llm.calls).toHaveLength(0); // ralph-loop not engaged
   });
 
@@ -341,9 +342,10 @@ describe('commitTask', () => {
     expect(r.ralph?.attempts).toBe(1);
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
 
-    // Sequence: revParseHead, add, commit (fail), restoreStaged, [LLM retry], add, commit (ok), statusPorcelain
+    // Sequence: revParseHead, diffNameOnly, add, commit (fail), restoreStaged, [LLM retry], add, commit (ok), statusPorcelain
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
+      'diffNameOnly',
       'add',
       'commit',
       'restoreStaged',
@@ -412,6 +414,7 @@ describe('commitTask', () => {
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
+      'diffNameOnly',
       'add',
       'commit',
       'statusPorcelain',
@@ -458,6 +461,7 @@ describe('commitTask', () => {
     // commit itself ran (the assert is post-commit, not pre-commit)
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
+      'diffNameOnly',
       'add',
       'commit',
       'statusPorcelain',
