@@ -49,6 +49,14 @@
         "command": "expo export -p web",
         "cwd": "apps/mobile"
       }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/playwright-report"],
+      "options": {
+        "command": "playwright test",
+        "cwd": "apps/mobile"
+      }
     }
   }
 }

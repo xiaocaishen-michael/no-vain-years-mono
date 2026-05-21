@@ -148,7 +148,7 @@ orchestrator_compat: ">=0.1.0"
 
 ## E2E — Playwright + Expo Web (D12)
 
-- [ ] T039 Set up Playwright config (apps/mobile/playwright.config.ts) + Expo Web export pipeline
+- [X] T039 Set up Playwright config (apps/mobile/playwright.config.ts) + Expo Web export pipeline
   <!-- task-meta: {"id":"T039","workspace":"mobile-app","deps":["T001","T035"],"trace_us":["GLOBAL"],"trace_fr":["FR-013"],"kind":"config","verify_kind":"typecheck","files":[{"path":"apps/mobile/playwright.config.ts","op":"create"},{"path":"apps/mobile/project.json","op":"modify"}],"parallel":false} -->
 
 - [ ] T040 Playwright e2e — GetProfile + UpdateDisplayName flow (Web target) + auto screenshots via page.screenshot()
