@@ -26,12 +26,22 @@ export interface Git {
    * untracked files. Pass new-file paths here and the impl will
    * `git add --intent-to-add` them before diff (so they show as "new file
    * mode" patches), then `git reset HEAD --` to undo so the index isn't
-   * left polluted for the subsequent commitTask `git add -A`.
+   * left polluted (commitTask's own staging is a strict whitelist of
+   * `task.files ∪ {tasks.md}`, not `git add -A`).
    */
   diffWorkingTree(opts: {
     cwd: string;
     intentToAddPaths?: readonly string[];
   }): Promise<string>;
+  /**
+   * Returns the parsed lines of `git status --porcelain` (empty array when the
+   * worktree is fully clean). Used by commitTask's post-commit orphan assert
+   * (PoC blind spot #22): the orchestrator only stages declared `task.files`,
+   * so any file the LLM touched outside its declaration is left in the
+   * worktree as an orphan after commit — silently polluting subsequent tasks'
+   * baseline. The assert turns that silent leak into a hard failure.
+   */
+  statusPorcelain(opts: { cwd: string }): Promise<string[]>;
 }
 
 export class GitCommitError extends Error {
@@ -42,6 +52,21 @@ export class GitCommitError extends Error {
   ) {
     super(`git commit failed (exit ${exitCode}): ${stderr || stdout}`);
     this.name = 'GitCommitError';
+  }
+}
+
+/**
+ * Thrown by commitTask when `git status --porcelain` is non-empty after a
+ * (otherwise successful) commit. Indicates the LLM modified files outside
+ * `task.files` and they were left orphaned in the working tree — would
+ * silently pollute the next task's baseline if allowed through.
+ */
+export class OrphanAfterCommitError extends Error {
+  constructor(public readonly orphans: string[]) {
+    super(
+      `Orphan files in worktree after commit (LLM touched files outside task.files declaration):\n${orphans.join('\n')}`,
+    );
+    this.name = 'OrphanAfterCommitError';
   }
 }
 
@@ -114,6 +139,16 @@ export class GitCli implements Git {
       }
     }
   }
+
+  async statusPorcelain(opts: { cwd: string }): Promise<string[]> {
+    const r = await this.shell.run('git status --porcelain', { cwd: opts.cwd });
+    if (r.exitCode !== 0) {
+      throw new Error(
+        `git status --porcelain failed (exit ${r.exitCode}): ${r.stderr}`,
+      );
+    }
+    return r.stdout.split('\n').filter((line) => line.length > 0);
+  }
 }
 
 function quote(s: string): string {
@@ -128,7 +163,8 @@ export interface FakeGitCallLog {
     | 'commit'
     | 'restoreStaged'
     | 'revParseHead'
-    | 'diffWorkingTree';
+    | 'diffWorkingTree'
+    | 'statusPorcelain';
   args: unknown[];
 }
 
@@ -148,6 +184,7 @@ export class FakeGit implements Git {
   private commitQueue: FakeCommitResponse[];
   private shaQueue: string[] = [];
   private diffQueue: string[] = [];
+  private statusQueue: string[][] = [];
 
   constructor(commitResponses: FakeCommitResponse[] = [{ ok: true }]) {
     this.commitQueue = [...commitResponses];
@@ -165,6 +202,16 @@ export class FakeGit implements Git {
   /** Queue the next return value(s) for diffWorkingTree. */
   enqueueDiff(...patches: string[]): void {
     this.diffQueue.push(...patches);
+  }
+
+  /**
+   * Queue the next return value(s) for statusPorcelain. Each element is the
+   * list of porcelain lines returned by one call; default (empty queue) is
+   * an empty array — i.e. a clean worktree — so existing tests don't need
+   * updating.
+   */
+  enqueueStatus(...statuses: string[][]): void {
+    this.statusQueue.push(...statuses);
   }
 
   async add(files: string[], opts: { cwd: string }): Promise<void> {
@@ -202,6 +249,11 @@ export class FakeGit implements Git {
   }): Promise<string> {
     this.calls.push({ method: 'diffWorkingTree', args: [opts] });
     return this.diffQueue.shift() ?? '';
+  }
+
+  async statusPorcelain(opts: { cwd: string }): Promise<string[]> {
+    this.calls.push({ method: 'statusPorcelain', args: [opts] });
+    return this.statusQueue.shift() ?? [];
   }
 }
 
@@ -271,6 +323,7 @@ export type CommitTaskTerminalReason =
   | 'success'
   | 'llm-self-committed'
   | 'hook-ralph-failed'
+  | 'orphan-after-commit'
   | 'rollback-error';
 
 export interface CommitTaskResult {
@@ -308,6 +361,8 @@ export async function commitTask(
   // history advanced — skip our own flip+stage+commit and report success.
   const headNow = await git.revParseHead({ cwd: repoRoot });
   if (headNow !== headBefore) {
+    const orphan = await checkOrphans(git, repoRoot);
+    if (orphan) return orphan;
     return { ok: true, reason: 'llm-self-committed' };
   }
 
@@ -348,6 +403,8 @@ export async function commitTask(
 
   const first = await performCommit();
   if (first.ok) {
+    const orphan = await checkOrphans(git, repoRoot);
+    if (orphan) return orphan;
     return { ok: true, reason: 'success' };
   }
 
@@ -385,11 +442,38 @@ export async function commitTask(
       : undefined,
   });
 
+  if (ralph.ok) {
+    const orphan = await checkOrphans(git, repoRoot);
+    if (orphan) return { ...orphan, ralph };
+    return { ok: true, reason: 'success', ralph };
+  }
   return {
-    ok: ralph.ok,
-    reason: ralph.ok ? 'success' : 'hook-ralph-failed',
+    ok: false,
+    reason: 'hook-ralph-failed',
     ralph,
-    lastStderr: ralph.ok ? undefined : ralph.finalFeedback,
+    lastStderr: ralph.finalFeedback,
+  };
+}
+
+/**
+ * Post-commit orphan assert (PoC blind spot #22): `git status --porcelain`
+ * must be empty after a successful commit. Non-empty → the LLM modified
+ * files outside the declared `task.files` whitelist that were skipped by
+ * staging; passing them silently into the next task would pollute its diff
+ * baseline (cf. T027 / T023 ralph runs). Returns the failure CommitTaskResult
+ * to use, or null when clean.
+ */
+async function checkOrphans(
+  git: Git,
+  repoRoot: string,
+): Promise<CommitTaskResult | null> {
+  const orphans = await git.statusPorcelain({ cwd: repoRoot });
+  if (orphans.length === 0) return null;
+  const err = new OrphanAfterCommitError(orphans);
+  return {
+    ok: false,
+    reason: 'orphan-after-commit',
+    lastStderr: err.message,
   };
 }
 

@@ -79,6 +79,7 @@ export type TaskRunReason =
   | 'llm-self-committed'
   | 'verify-ralph-failed'
   | 'hook-ralph-failed'
+  | 'orphan-after-commit'
   | 'llm-error'
   | 'fs-ops-error'
   | 'workspace-missing'
@@ -508,7 +509,9 @@ async function runTaskInner(
     ? commit.reason === 'llm-self-committed'
       ? 'llm-self-committed'
       : 'success'
-    : 'hook-ralph-failed';
+    : commit.reason === 'orphan-after-commit'
+      ? 'orphan-after-commit'
+      : 'hook-ralph-failed';
 
   if (commit.ok) {
     archive.setCommit({
