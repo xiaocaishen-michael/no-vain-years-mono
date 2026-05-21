@@ -1,3 +1,10 @@
+// Crypto polyfill — must be the very first import so any subsequent module
+// that touches globalThis.crypto.getRandomValues() sees the shim. Defensive:
+// expo-crypto.randomUUID() in current stack (SDK 54 / RN 0.81) does NOT need
+// this on iOS/Android/Web (uses native module + globalThis.crypto.randomUUID),
+// but pinning the polyfill guards against future libs (uuid v9+, nanoid 5,
+// etc.) that bypass expo-crypto and read getRandomValues directly.
+import 'react-native-get-random-values';
 import '../global.css';
 
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -68,6 +75,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       displayName,
       inAuthGroup: segments[0] === '(auth)',
       inOnboarding: segments.includes('onboarding'),
+      inTabs: segments.includes('(tabs)'),
     });
     if (decision.kind === 'replace') {
       router.replace(decision.target as Parameters<typeof router.replace>[0]);

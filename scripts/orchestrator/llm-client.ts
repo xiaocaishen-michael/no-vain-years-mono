@@ -352,7 +352,7 @@ export function describeClaudeError(parsed: unknown): string {
  * binary + auth; covered by an env-gated `LIVE_LLM=1` smoke test only.
  */
 export class ClaudeCliClient implements LlmClient {
-  constructor(private readonly claudePath: string = 'claude') {}
+  constructor(private readonly claudePath = 'claude') {}
 
   async invoke(
     prompt: string,

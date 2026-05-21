@@ -15,12 +15,13 @@ export interface AuthGateInput {
   displayName: string | null;
   inAuthGroup: boolean;
   inOnboarding: boolean;
+  inTabs: boolean;
 }
 
 export type AuthGateDecision = { kind: 'noop' } | { kind: 'replace'; target: string };
 
 export function decideAuthRoute(input: AuthGateInput): AuthGateDecision {
-  const { isAuthenticated, displayName, inAuthGroup, inOnboarding } = input;
+  const { isAuthenticated, displayName, inAuthGroup, inOnboarding, inTabs } = input;
 
   if (!isAuthenticated) {
     if (inAuthGroup) return { kind: 'noop' };
@@ -32,7 +33,9 @@ export function decideAuthRoute(input: AuthGateInput): AuthGateDecision {
     return { kind: 'replace', target: '/(app)/onboarding' };
   }
 
-  // isAuthenticated + displayName != null — user must NOT linger on (auth) or onboarding.
-  if (inAuthGroup || inOnboarding) return { kind: 'replace', target: '/(app)/(tabs)/profile' };
-  return { kind: 'noop' };
+  // isAuthenticated + displayName != null. The user must land inside (tabs);
+  // any other position — (auth) / onboarding / root `/` (which renders null) —
+  // is a transient state that AuthGate redirects out of.
+  if (inTabs) return { kind: 'noop' };
+  return { kind: 'replace', target: '/(app)/(tabs)/profile' };
 }

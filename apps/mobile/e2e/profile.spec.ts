@@ -56,8 +56,9 @@ async function waitForBootedRoot(page: import('@playwright/test').Page) {
 test('US5 — onboarded cold boot lands on (tabs)/profile with hero rendered', async ({ page }) => {
   await waitForBootedRoot(page);
   // AuthGate should replace into /(app)/(tabs)/profile once persist hydrates
-  // + nav container mounts.
-  await expect(page).toHaveURL(/\(tabs\)\/profile|\/$/);
+  // + nav container mounts. expo-router strips route groups from web URLs,
+  // so the visible path is `/profile` rather than `/(app)/(tabs)/profile`.
+  await expect(page).toHaveURL(/\/profile$|\(tabs\)\/profile/);
 
   await expect(page.getByText(SEED_DISPLAY_NAME)).toBeVisible();
   await expect(page.getByText('关注')).toBeVisible();
@@ -116,20 +117,19 @@ test('US11 — bottom tab bar switches across 4 tabs', async ({ page }) => {
   await waitForBootedRoot(page);
   await expect(page.getByText(SEED_DISPLAY_NAME)).toBeVisible();
 
-  // Expo Router Tabs uses @react-navigation bottom-tabs underneath; tabs are
-  // exposed as <button role="tab" name="<label>"> in the web build. The 我的
-  // tab is the landing — start by switching away then back so we exercise
-  // all four targets.
-  await page.getByRole('button', { name: '首页' }).tap();
+  // Expo Router Tabs uses @react-navigation bottom-tabs underneath; tabs
+  // expose ARIA role="tab" in the web build. The 我的 tab is the landing —
+  // start by switching away then back so we exercise all four targets.
+  await page.getByRole('tab', { name: '首页' }).tap();
   await expect(page.getByText('首页内容即将推出')).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOT_DIR}/us11-tab-home.png`, fullPage: true });
 
-  await page.getByRole('button', { name: '搜索' }).tap();
+  await page.getByRole('tab', { name: '搜索' }).tap();
   await expect(page.getByText('搜索内容即将推出')).toBeVisible();
 
-  await page.getByRole('button', { name: '外脑' }).tap();
+  await page.getByRole('tab', { name: '外脑' }).tap();
   await expect(page.getByText('外脑内容即将推出')).toBeVisible();
 
-  await page.getByRole('button', { name: '我的' }).tap();
+  await page.getByRole('tab', { name: '我的' }).tap();
   await expect(page.getByText(SEED_DISPLAY_NAME)).toBeVisible();
 });

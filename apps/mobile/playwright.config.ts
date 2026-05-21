@@ -21,7 +21,13 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      // hasTouch enables locator.tap() — RN-driven mobile UI uses Pressable
+      // which fires onPress via touchend; without this Playwright throws
+      // "page does not support tap". Mirrors the on-device user gesture.
+      use: { ...devices['Desktop Chrome'], hasTouch: true },
+    },
   ],
   webServer: {
     // Expo's web dev server warms Metro + bundles RN→DOM via react-native-web
