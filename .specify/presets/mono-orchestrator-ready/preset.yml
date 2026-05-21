@@ -1,5 +1,5 @@
 id: mono-orchestrator-ready
-version: 0.1.0
+version: 0.2.0
 description: |
   mono-repo spec-kit 自动编排 + 执行支持。把 spec / plan / tasks 三大 template
   升级到 orchestrator-friendly 形态:
@@ -7,7 +7,18 @@ description: |
     - YAML frontmatter (跨文档级元数据)
     - JSON fenced block (宏观架构 / 沙盒配置 / API contracts)
     - HTML 注释内塞 JSON marker (微观 DAG / per-task meta)
-    - Zod schema 校验契约 (scripts/orchestrator/schemas/*.ts)
+    - Zod schema 校验契约 (.specify/schemas/mono-orchestrator-ready/spec.zod.ts)
+
+  0.2.0 增量 (post-A-002 retro):
+    - spec frontmatter v2 字段: web_compat / agent_friction_observed
+      / agent_friction_notes / perf_budgets[] (per ADR-0027 / ADR-0024 amend
+      / ADR-0039)
+    - schemas/spec.zod.ts (Zod schema, 校验 frontmatter v2 含 web_compat
+      条件 required 等 invariant)
+    - scripts/check-spec-frontmatters.ts (gray-matter + zod, 扫 staged
+      specs/*/spec.md, schema 不符 → exit 1)
+    - lefthook.yml.fragment (spec-frontmatter-check hook, glob
+      specs/*/spec.md)
 
   配合 scripts/orchestrator/*.ts 使用。仅适用于 monorepo (nx workspaces),
   因为 orchestrator 需要在单仓内同时调度 server / api-client / mobile 多 workspace。
@@ -32,3 +43,17 @@ provides:
       type: template
       strategy: replace
       file: templates/tasks-template.md
+  schemas:
+    - file: schemas/spec.zod.ts
+      description: spec.md frontmatter Zod schema (v2 — conditional invariants)
+  scripts:
+    - file: scripts/check-spec-frontmatters.ts
+      description: scan staged spec.md, validate against spec.zod, exit 1 on fail
+  lefthook:
+    - file: lefthook.yml.fragment
+      hook: pre-commit/spec-frontmatter-check
+      target_glob: "specs/*/spec.md"
+
+# Target repo runtime requires:
+#   - Node 22+ (used by tsx / fs.readdirSync recursion)
+#   - pnpm-installed root devDeps: zod ^3, gray-matter ^4, tsx ^4

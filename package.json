@@ -46,6 +46,7 @@
     "eslint-config-prettier": "^10.0.0",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-boundaries": "^6.0.2",
+    "gray-matter": "^4.0.3",
     "lefthook": "^2.1.7",
     "nx": "22.7.2",
     "tslib": "^2.3.0",
@@ -53,7 +54,8 @@
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.40.0",
     "unplugin-swc": "^1.5.9",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "zod": "^4.4.3"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
