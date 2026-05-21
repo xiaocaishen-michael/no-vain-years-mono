@@ -1,13 +1,24 @@
-// US5 profile screen — static layout per spec FR-016 / FR-017 / FR-018 /
-// FR-019 / FR-027. ScrollView + sticky-header machinery deferred to T036
-// (FR-020 / FR-030 / CL-005 sticky tabs).
+// US5 profile screen — per spec FR-016 / FR-017 / FR-018 / FR-019 / FR-020 /
+// FR-027 / FR-030 + CL-005 sticky tabs.
 //
-// Hero / SlideTabs / TopNav nativewind classes mirror legacy treatment
-// (apps/native/app/(app)/(tabs)/profile.tsx in no-vain-years-app). FR-029:
-// no PNG/SVG image assets — avatar uses 👤 emoji fallback, background uses
-// SVG gradient stand-in for the blurred photo (M2 mockup swaps in real assets).
+// Sticky paradigm (T036, CL-005 (b)): single ScrollView + stickyHeaderIndices=[1].
+// Hero scrolls off; SlideTabs sticks under the absolute TopNav overlay; content
+// scrolls beneath. TopNav switches from transparent-over-Hero to opaque-surface
+// once scrollY crosses STICKY_THRESHOLD. Swipe gesture is NOT implemented this
+// batch (CL-005 fallback — tap-only); animated underline indicator omitted per
+// FR-022 / ADR-0017 (占位 UI 禁自定义动画).
+//
+// FR-029: no PNG/SVG image assets — avatar uses 👤 emoji fallback, background
+// uses SVG gradient stand-in for the blurred photo (M2 mockup swaps real).
 
-import { Pressable, Text, View } from 'react-native';
+import {
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -36,6 +47,11 @@ const TABS: { key: TabKey; label: string }[] = [
 
 const FOLLOWING_COUNT = 5;
 const FOLLOWERS_COUNT = 12;
+
+const HERO_HEIGHT = 280;
+// Trigger sticky-on-blur swap when Hero is mostly off-screen, leaving a
+// nav-height buffer (~56px) so the transition lines up with TopNav opacity.
+const STICKY_THRESHOLD = HERO_HEIGHT - 56;
 
 const stroke = (c: string, w = 2) =>
   ({
@@ -132,12 +148,19 @@ function AvatarPlaceholder({
   );
 }
 
-function TopNav({ onSettingsPress }: { onSettingsPress: () => void }) {
-  // T035 ships single static visual mode (opaque surface bar). T036 will
-  // introduce onBlur prop wired to scrollY-driven sticky state.
-  const iconColor = tokens.colors.ink.DEFAULT;
+function TopNav({ onBlur, onSettingsPress }: { onBlur: boolean; onSettingsPress: () => void }) {
+  // onBlur=true: transparent overlay above Hero (icons read as white for
+  // legibility against the SVG backdrop). onBlur=false: opaque surface bar
+  // with bottom border, dark icons — kicks in once SlideTabs becomes sticky.
+  const iconColor = onBlur ? tokens.colors.surface.DEFAULT : tokens.colors.ink.DEFAULT;
   return (
-    <View className="flex-row items-center justify-between h-12 px-md bg-surface border-b border-line-soft">
+    <View
+      className={
+        onBlur
+          ? 'flex-row items-center justify-between h-12 px-md bg-transparent'
+          : 'flex-row items-center justify-between h-12 px-md bg-surface border-b border-line-soft'
+      }
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={COPY.topNavMenuLabel}
@@ -170,9 +193,10 @@ function TopNav({ onSettingsPress }: { onSettingsPress: () => void }) {
 }
 
 function SlideTabs({ active, onChange }: { active: TabKey; onChange: (k: TabKey) => void }) {
-  // T035 ships tap-only state machine (CL-007 — 默认 'notes'，跨底 tab
-  // 切走再回保持). T036 will add the animated indicator + swipe gesture +
-  // sticky-on-scroll behavior (CL-005 + FR-020 + FR-030).
+  // Tap-only state machine (CL-005 fallback — swipe gesture deferred to a
+  // future spec batch once mockup decides indicator + gesture treatment).
+  // No animated indicator per FR-022 / ADR-0017 (占位 UI 禁自定义动画) —
+  // active state communicated through bold + ink color shift only.
   return (
     <View className="bg-surface border-b border-line-soft">
       <View className="flex-row self-center pt-2">
@@ -224,7 +248,7 @@ function Hero({
   onBackgroundPress: () => void;
 }) {
   return (
-    <View className="h-[280px] relative overflow-hidden">
+    <View style={{ height: HERO_HEIGHT }} className="relative overflow-hidden">
       <View className="absolute inset-0">
         <HeroBlurBackdrop />
       </View>
@@ -265,6 +289,8 @@ export default function ProfileScreen() {
   const router = useRouter();
   const displayName = useAuthStore((s) => s.displayName);
   const [activeTab, setActiveTab] = useState<TabKey>('notes');
+  const [scrollY, setScrollY] = useState(0);
+  const isSticky = scrollY >= STICKY_THRESHOLD;
 
   const noop = () => undefined;
   // FR-017: settings stack lives at /(app)/settings (spec B owns impl).
@@ -278,11 +304,21 @@ export default function ProfileScreen() {
       edges={['top']}
       style={{ flex: 1, backgroundColor: tokens.colors.surface.DEFAULT }}
     >
-      <TopNav onSettingsPress={pushSettings} />
-      <Hero displayName={displayName} onAvatarPress={noop} onBackgroundPress={noop} />
-      <SlideTabs active={activeTab} onChange={setActiveTab} />
-      <View className="bg-surface min-h-[260px]">
-        <TabPlaceholder tab={activeTab} />
+      <ScrollView
+        stickyHeaderIndices={[1]}
+        scrollEventThrottle={16}
+        onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) =>
+          setScrollY(e.nativeEvent.contentOffset.y)
+        }
+      >
+        <Hero displayName={displayName} onAvatarPress={noop} onBackgroundPress={noop} />
+        <SlideTabs active={activeTab} onChange={setActiveTab} />
+        <View className="bg-surface min-h-[260px]">
+          <TabPlaceholder tab={activeTab} />
+        </View>
+      </ScrollView>
+      <View className="absolute top-0 left-0 right-0">
+        <TopNav onBlur={!isSticky} onSettingsPress={pushSettings} />
       </View>
     </SafeAreaView>
   );
