@@ -6,7 +6,7 @@ import type {
   ClaudeUsage,
   LlmInvokeResult,
 } from './llm-client.js';
-import type { TurnMetric } from './llm-stream-parser.js';
+import type { McpServerInfo, TurnMetric } from './llm-stream-parser.js';
 
 /**
  * Per-task on-disk archive. Streams the LLM stdout/stderr to per-attempt
@@ -53,6 +53,13 @@ export interface LlmSummary {
    * Used for "why N turns / cache hit %" run-report diagnostics.
    */
   turns?: TurnMetric[];
+  /**
+   * MCP servers live in this subprocess's claude-cli (from `system.init`
+   * event). Persisted so an after-the-fact reader can answer "which MCP
+   * plugins did the LLM have during this task" without re-parsing the
+   * raw NDJSON. Absent when no system.init event was observed.
+   */
+  mcp_servers?: McpServerInfo[];
 }
 
 export interface ActionSummary {
@@ -351,6 +358,7 @@ function buildLlmSummary(r: LlmInvokeResult): LlmSummary {
   if (r.apiRounds !== undefined) s.api_rounds = r.apiRounds;
   if (r.userTurns !== undefined) s.user_turns = r.userTurns;
   if (r.turns && r.turns.length > 0) s.turns = r.turns;
+  if (r.mcpServers && r.mcpServers.length > 0) s.mcp_servers = r.mcpServers;
   return s;
 }
 
