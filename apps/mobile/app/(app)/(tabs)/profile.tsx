@@ -1,0 +1,289 @@
+// US5 profile screen — static layout per spec FR-016 / FR-017 / FR-018 /
+// FR-019 / FR-027. ScrollView + sticky-header machinery deferred to T036
+// (FR-020 / FR-030 / CL-005 sticky tabs).
+//
+// Hero / SlideTabs / TopNav nativewind classes mirror legacy treatment
+// (apps/native/app/(app)/(tabs)/profile.tsx in no-vain-years-app). FR-029:
+// no PNG/SVG image assets — avatar uses 👤 emoji fallback, background uses
+// SVG gradient stand-in for the blurred photo (M2 mockup swaps in real assets).
+
+import { Pressable, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import Svg, { Circle, Defs, G, LinearGradient, Line, Path, Rect, Stop } from 'react-native-svg';
+import { useAuthStore } from '@nvy/auth';
+import { tokens } from '@nvy/design-tokens';
+
+const COPY = {
+  unnamed: '未命名',
+  follow: '关注',
+  fans: '粉丝',
+  topNavMenuLabel: '菜单',
+  topNavSearchLabel: '搜索',
+  topNavSettingsLabel: '设置',
+  tabs: { notes: '笔记', graph: '图谱', kb: '知识库' },
+  tabPlaceholderSuffix: '内容即将推出',
+};
+
+type TabKey = 'notes' | 'graph' | 'kb';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'notes', label: COPY.tabs.notes },
+  { key: 'graph', label: COPY.tabs.graph },
+  { key: 'kb', label: COPY.tabs.kb },
+];
+
+const FOLLOWING_COUNT = 5;
+const FOLLOWERS_COUNT = 12;
+
+const stroke = (c: string, w = 2) =>
+  ({
+    stroke: c,
+    strokeWidth: w,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    fill: 'none',
+  }) as const;
+
+function IconMenu({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <G {...stroke(color, 2)}>
+        <Line x1={4} y1={7} x2={20} y2={7} />
+        <Line x1={4} y1={12} x2={20} y2={12} />
+        <Line x1={4} y1={17} x2={20} y2={17} />
+      </G>
+    </Svg>
+  );
+}
+
+function IconSearch({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <G {...stroke(color, 2)}>
+        <Circle cx={11} cy={11} r={7} />
+        <Path d="M20 20 L16 16" />
+      </G>
+    </Svg>
+  );
+}
+
+function IconGear({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <G {...stroke(color, 1.6)}>
+        <Circle cx={12} cy={12} r={3} />
+        <Path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </G>
+    </Svg>
+  );
+}
+
+// SVG gradient stand-in for blurred photo (FR-029 占位资源 — 不引图片）。
+// M2+ swap to <ImageBackground source={...} blurRadius={20}>.
+function HeroBlurBackdrop() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 360 320" preserveAspectRatio="xMidYMid slice">
+      <Defs>
+        <LinearGradient id="heroBg" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0%" stopColor="#3B5BD9" />
+          <Stop offset="55%" stopColor="#7B5BC9" />
+          <Stop offset="100%" stopColor="#D98A6B" />
+        </LinearGradient>
+        <LinearGradient id="heroBlobs" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.16" />
+          <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+        </LinearGradient>
+      </Defs>
+      <Rect width="360" height="320" fill="url(#heroBg)" />
+      <Circle cx="80" cy="60" r="90" fill="url(#heroBlobs)" />
+      <Circle cx="290" cy="40" r="70" fill="url(#heroBlobs)" />
+      <Circle cx="220" cy="160" r="120" fill="url(#heroBlobs)" />
+      <Circle cx="60" cy="220" r="80" fill="url(#heroBlobs)" />
+    </Svg>
+  );
+}
+
+function AvatarPlaceholder({
+  displayName,
+  onPress,
+}: {
+  displayName: string | null | undefined;
+  onPress: () => void;
+}) {
+  const initial = displayName ? [...displayName][0] : null;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="imagebutton"
+      accessibilityLabel="头像"
+      accessibilityHint="点击更换"
+      className="w-[72px] h-[72px] rounded-full bg-surface p-[3px] shadow-hero-ring"
+    >
+      <View className="flex-1 rounded-full bg-brand-500 items-center justify-center">
+        {initial ? (
+          <Text className="text-surface text-2xl font-semibold tracking-tight">{initial}</Text>
+        ) : (
+          <Text className="text-2xl">👤</Text>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+function TopNav({ onSettingsPress }: { onSettingsPress: () => void }) {
+  // T035 ships single static visual mode (opaque surface bar). T036 will
+  // introduce onBlur prop wired to scrollY-driven sticky state.
+  const iconColor = tokens.colors.ink.DEFAULT;
+  return (
+    <View className="flex-row items-center justify-between h-12 px-md bg-surface border-b border-line-soft">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={COPY.topNavMenuLabel}
+        accessibilityState={{ disabled: true }}
+        className="w-10 h-10 items-center justify-center"
+      >
+        <IconMenu color={iconColor} />
+      </Pressable>
+      <View className="flex-1" />
+      <View className="flex-row items-center gap-1">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={COPY.topNavSearchLabel}
+          accessibilityState={{ disabled: true }}
+          className="w-10 h-10 items-center justify-center"
+        >
+          <IconSearch color={iconColor} />
+        </Pressable>
+        <Pressable
+          onPress={onSettingsPress}
+          accessibilityRole="button"
+          accessibilityLabel={COPY.topNavSettingsLabel}
+          className="w-10 h-10 items-center justify-center"
+        >
+          <IconGear color={iconColor} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function SlideTabs({ active, onChange }: { active: TabKey; onChange: (k: TabKey) => void }) {
+  // T035 ships tap-only state machine (CL-007 — 默认 'notes'，跨底 tab
+  // 切走再回保持). T036 will add the animated indicator + swipe gesture +
+  // sticky-on-scroll behavior (CL-005 + FR-020 + FR-030).
+  return (
+    <View className="bg-surface border-b border-line-soft">
+      <View className="flex-row self-center pt-2">
+        {TABS.map((t) => {
+          const on = t.key === active;
+          return (
+            <Pressable
+              key={t.key}
+              onPress={() => onChange(t.key)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={t.label}
+              className="w-[88px] items-center pb-3"
+            >
+              <Text
+                className={
+                  on ? 'text-base font-semibold text-ink' : 'text-base font-medium text-ink-muted'
+                }
+              >
+                {t.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function TabPlaceholder({ tab }: { tab: TabKey }) {
+  const copy = `${COPY.tabs[tab]}${COPY.tabPlaceholderSuffix}`;
+  return (
+    <View className="flex-1 items-center justify-center py-2xl gap-3">
+      <View className="w-14 h-14 rounded-full bg-surface-sunken items-center justify-center">
+        <View className="w-6 h-6 rounded-full bg-line-strong" />
+      </View>
+      <Text className="text-sm text-ink-muted">{copy}</Text>
+    </View>
+  );
+}
+
+function Hero({
+  displayName,
+  onAvatarPress,
+  onBackgroundPress,
+}: {
+  displayName: string | null | undefined;
+  onAvatarPress: () => void;
+  onBackgroundPress: () => void;
+}) {
+  return (
+    <View className="h-[280px] relative overflow-hidden">
+      <View className="absolute inset-0">
+        <HeroBlurBackdrop />
+      </View>
+      <View className="absolute inset-0 bg-hero-overlay" />
+      <Pressable
+        onPress={onBackgroundPress}
+        accessibilityRole="imagebutton"
+        accessibilityLabel="背景图"
+        accessibilityHint="点击更换"
+        className="absolute inset-0"
+      />
+      <View className="flex-1 items-center justify-end pb-8 px-md">
+        <AvatarPlaceholder displayName={displayName} onPress={onAvatarPress} />
+        <Text
+          className="text-[22px] font-bold text-white-strong mt-3 tracking-tight"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {displayName ?? COPY.unnamed}
+        </Text>
+        <View className="flex-row items-center gap-md mt-2">
+          <View className="flex-row items-center gap-1">
+            <Text className="text-sm font-semibold text-white-strong">{FOLLOWING_COUNT}</Text>
+            <Text className="text-xs text-white-soft">{COPY.follow}</Text>
+          </View>
+          <View className="w-px h-3 bg-white-soft" />
+          <View className="flex-row items-center gap-1">
+            <Text className="text-sm font-semibold text-white-strong">{FOLLOWERS_COUNT}</Text>
+            <Text className="text-xs text-white-soft">{COPY.fans}</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export default function ProfileScreen() {
+  const router = useRouter();
+  const displayName = useAuthStore((s) => s.displayName);
+  const [activeTab, setActiveTab] = useState<TabKey>('notes');
+
+  const noop = () => undefined;
+  // FR-017: settings stack lives at /(app)/settings (spec B owns impl).
+  // Cast through router.push's parameter type since the route doesn't yet
+  // exist in app/ and Expo Router's generated Href type would reject the string.
+  const pushSettings = () =>
+    router.push('/(app)/settings' as Parameters<typeof router.push>[0]);
+
+  return (
+    <SafeAreaView
+      edges={['top']}
+      style={{ flex: 1, backgroundColor: tokens.colors.surface.DEFAULT }}
+    >
+      <TopNav onSettingsPress={pushSettings} />
+      <Hero displayName={displayName} onAvatarPress={noop} onBackgroundPress={noop} />
+      <SlideTabs active={activeTab} onChange={setActiveTab} />
+      <View className="bg-surface min-h-[260px]">
+        <TabPlaceholder tab={activeTab} />
+      </View>
+    </SafeAreaView>
+  );
+}

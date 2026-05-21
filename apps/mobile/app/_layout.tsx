@@ -1,3 +1,5 @@
+import '../global.css';
+
 import { useAuthStore } from '@nvy/auth';
 import { Stack, useNavigationContainerRef, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

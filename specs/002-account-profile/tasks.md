@@ -134,8 +134,8 @@ orchestrator_compat: ">=0.1.0"
 - [X] T034 AuthGate decision update — 3rd state target /(app)/(tabs)/profile (FR-014)
   <!-- task-meta: {"id":"T034","workspace":"mobile-app","deps":["T033"],"trace_us":["US5","US6","US12"],"trace_fr":["FR-014","FR-016"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/mobile/app/_layout.tsx","op":"modify"},{"path":"apps/mobile/lib/auth-gate-decision.ts","op":"create"},{"path":"packages/auth/src/index.ts","op":"modify"}],"parallel":false} -->
 
-- [ ] T035 Implement profile screen — hero (avatar + bg + username + follow placeholder) + 3 slide tabs + 顶 nav 3 entries
-  <!-- task-meta: {"id":"T035","workspace":"mobile-app","deps":["T033","T034"],"trace_us":["US5"],"trace_fr":["FR-016","FR-017","FR-018","FR-019","FR-027"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/mobile/app/(app)/(tabs)/profile.tsx","op":"create"}],"parallel":false} -->
+- [X] T035 Implement profile screen — hero (avatar + bg + username + follow placeholder) + 3 slide tabs + 顶 nav 3 entries
+  <!-- task-meta: {"id":"T035","workspace":"mobile-app","deps":["T033","T034"],"trace_us":["US5"],"trace_fr":["FR-016","FR-017","FR-018","FR-019","FR-027"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/mobile/app/(app)/(tabs)/profile.tsx","op":"create"},{"path":"apps/mobile/tailwind.config.ts","op":"create"},{"path":"apps/mobile/global.css","op":"create"},{"path":"apps/mobile/nativewind-env.d.ts","op":"create"},{"path":"apps/mobile/app/_layout.tsx","op":"modify"}],"parallel":false} -->
 
 - [ ] T036 Implement sticky slide tabs state machine + scroll behavior (FR-020 + FR-030 + CL-005 sticky tabs)
   <!-- task-meta: {"id":"T036","workspace":"mobile-app","deps":["T035"],"trace_us":["US5","US8","US9"],"trace_fr":["FR-017","FR-020","FR-021","FR-030"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/mobile/app/(app)/(tabs)/profile.tsx","op":"modify"}],"parallel":false} -->
