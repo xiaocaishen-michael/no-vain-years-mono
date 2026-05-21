@@ -14,11 +14,18 @@
 const MIN_CP = 1;
 const MAX_CP = 32;
 
-// Deny-list: control chars + zero-width chars + line/paragraph separators (FR-005)
-// Using RegExp constructor keeps all code points as readable \uXXXX escape sequences.
+// FR-005 deny-list: control chars (U+0000-U+001F + U+007F) + zero-width chars
+// (U+200B-U+200F, U+FEFF) + line/paragraph separators (U+2028, U+2029).
+// `new RegExp` with string literal escape preserves \xNN / \uXXXX as visible
+// source characters (no invisible code points pasted into the file).
+// `no-control-regex` is intentional — these code points are exactly what
+// FR-005 must reject from user input (raw control bytes corrupt downstream
+// rendering / logs).
+/* eslint-disable no-control-regex */
 const FORBIDDEN_CHARS = new RegExp(
   '[\\x00-\\x1F\\x7F\\u200B-\\u200F\\uFEFF\\u2028\\u2029]',
 );
+/* eslint-enable no-control-regex */
 
 export class DisplayName {
   private constructor(public readonly value: string) {}

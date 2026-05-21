@@ -60,6 +60,18 @@ export default [
           ],
         },
       ],
+      // Allow `_xxx` parameters / variables / caught errors as the conventional
+      // "intentionally unused" marker — keeps method signatures stable when the
+      // arg is part of a contract (e.g., timestamp threading) but the current
+      // body does not yet consume it.
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
     },
   },
   {
