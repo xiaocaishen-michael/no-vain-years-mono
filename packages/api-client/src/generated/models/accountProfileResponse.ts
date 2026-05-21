@@ -12,10 +12,7 @@ export interface AccountProfileResponse {
   accountId: string;
   /** E.164 phone number; mask handled by client (per apps/mobile/lib/format/phone.ts) */
   phone: string;
-  /**
-     * Display name; null for new users before first update (FR-007)
-     * @nullable
-     */
+  /** Display name; null for new users before first update (FR-007) */
   displayName: string | null;
   /** Account status */
   status: AccountProfileResponseStatus;

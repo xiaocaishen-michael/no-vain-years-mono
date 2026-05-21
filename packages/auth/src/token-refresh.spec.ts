@@ -1,16 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AuthState } from './store';
 
-// expo-secure-store and @nvy/api-client are pulled in transitively via store.ts;
-// mock them here so the store module initialises cleanly in a Node environment.
+// expo-secure-store is pulled in transitively via store.ts; mock it here so
+// the store module initialises cleanly in a Node environment.
+// (@nvy/api-client mock removed in PR-5c — store.ts no longer imports it.)
 vi.mock('expo-secure-store', () => ({
   getItemAsync: vi.fn().mockResolvedValue(null),
   setItemAsync: vi.fn().mockResolvedValue(undefined),
   deleteItemAsync: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock('@nvy/api-client', () => ({
-  accountProfileControllerGetProfile: vi.fn(),
 }));
 
 import { useAuthStore } from './store';
@@ -60,10 +57,10 @@ describe('refreshOnce — single-flight deduplication', () => {
   it('after settling, a subsequent call produces a new Promise', async () => {
     useAuthStore.setState({ refreshToken: 'rt' });
     const p1 = refreshOnce();
-    await p1.catch(() => {}); // inflightRefresh → null via finally
+    await p1.catch(() => undefined); // inflightRefresh → null via finally
     const p2 = refreshOnce();
     expect(p2).not.toBe(p1);
-    await p2.catch(() => {});
+    await p2.catch(() => undefined);
   });
 
   it('rejects with SESSION_EXPIRED (PoC stub behaviour)', async () => {

@@ -11,7 +11,11 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { StateStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
-import { accountProfileControllerGetProfile } from '@nvy/api-client';
+
+// Remote profile fetching moved to apps/mobile/lib/api/use-me.ts (React
+// Query hook) per PR-5c. The store no longer owns network I/O; it just
+// holds the auth tokens + the persisted denormalized profile snapshot
+// (displayName / phone / accountId) for AuthGate cold-start.
 
 // Platform-aware secure storage (per plan D12). On native we go through
 // expo-secure-store (Keychain on iOS, Keystore on Android). On web,
@@ -57,12 +61,11 @@ export interface AuthState {
   setAccessToken: (token: string) => void;
   setDisplayName: (name: string | null) => void;
   clearSession: () => void;
-  loadProfile: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       accountId: null,
       accessToken: null,
       refreshToken: null,
@@ -86,16 +89,6 @@ export const useAuthStore = create<AuthState>()(
           phone: null,
           isAuthenticated: false,
         }),
-
-      loadProfile: async () => {
-        const { accessToken } = get();
-        if (!accessToken) throw new Error('SESSION_EXPIRED');
-        const { data } = await accountProfileControllerGetProfile({
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (!data) throw new Error('PROFILE_LOAD_FAILED');
-        set({ accountId: data.accountId, displayName: data.displayName, phone: data.phone });
-      },
     }),
     {
       name: 'nvy-auth',

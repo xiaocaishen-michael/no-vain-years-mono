@@ -186,6 +186,9 @@ importers:
       expo-constants:
         specifier: ^18.0.13
         version: 18.0.13(expo@54.0.34)(react-native@0.81.6(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))
+      expo-crypto:
+        specifier: ^55.0.15
+        version: 55.0.15(expo@54.0.34)
       expo-device:
         specifier: ~8.0.10
         version: 8.0.10(expo@54.0.34)
@@ -5748,6 +5751,11 @@ packages:
     peerDependencies:
       expo: '*'
       react-native: '*'
+
+  expo-crypto@55.0.15:
+    resolution: {integrity: sha512-nlxLguQyJM4MhDDERL30WZkq68/BujOcAp4QdGk+1pZmUmG1p2M8cF7GeFwYvWwjH0DVsIRtRh4ukeTvOZVTPg==}
+    peerDependencies:
+      expo: '*'
 
   expo-device@8.0.10:
     resolution: {integrity: sha512-jd5BxjaF7382JkDMaC+P04aXXknB2UhWaVx5WiQKA05ugm/8GH5uaz9P9ckWdMKZGQVVEOC8MHaUADoT26KmFA==}
@@ -15002,7 +15010,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.16
       tinyrainbow: 3.1.0
-      vitest: 4.1.6(@types/node@22.19.19)(@vitest/ui@4.1.6)(happy-dom@20.9.0)(vite@8.0.13(@types/node@22.19.19)(esbuild@0.28.0)(jiti@2.7.0)(less@4.5.1)(sass-embedded@1.99.0)(sass@1.99.0)(terser@5.47.1)(tsx@4.22.3)(yaml@2.9.0))
+      vitest: 4.1.6(@types/node@22.19.19)(@vitest/ui@4.1.6)(happy-dom@20.9.0)(vite@8.0.13(@types/node@22.19.19)(esbuild@0.28.0)(jiti@1.21.7)(less@4.5.1)(sass-embedded@1.99.0)(sass@1.99.0)(terser@5.47.1)(tsx@4.22.3)(yaml@2.9.0))
 
   '@vitest/utils@4.1.6':
     dependencies:
@@ -16925,6 +16933,10 @@ snapshots:
       react-native: 0.81.6(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6)
     transitivePeerDependencies:
       - supports-color
+
+  expo-crypto@55.0.15(expo@54.0.34):
+    dependencies:
+      expo: 54.0.34(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(expo-router@6.0.23)(react-native@0.81.6(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)(typescript@5.9.3)
 
   expo-device@8.0.10(expo@54.0.34):
     dependencies:

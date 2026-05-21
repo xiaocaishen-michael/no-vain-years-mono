@@ -7,11 +7,6 @@ vi.mock('expo-secure-store', () => ({
   deleteItemAsync: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@nvy/api-client', () => ({
-  accountProfileControllerGetProfile: vi.fn(),
-}));
-
-import { accountProfileControllerGetProfile } from '@nvy/api-client';
 import { useAuthStore } from './store';
 
 const CLEAN: Partial<AuthState> = {
@@ -107,71 +102,10 @@ describe('clearSession', () => {
   });
 });
 
-describe('loadProfile', () => {
-  it('throws SESSION_EXPIRED when accessToken is null', async () => {
-    await expect(useAuthStore.getState().loadProfile()).rejects.toThrow('SESSION_EXPIRED');
-  });
-
-  it('throws PROFILE_LOAD_FAILED when API returns no data', async () => {
-    useAuthStore.setState({ accessToken: 'valid-at' });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(accountProfileControllerGetProfile).mockResolvedValue({ data: undefined } as any);
-    await expect(useAuthStore.getState().loadProfile()).rejects.toThrow('PROFILE_LOAD_FAILED');
-  });
-
-  it('updates accountId, displayName and phone on success', async () => {
-    useAuthStore.setState({ accessToken: 'valid-at' });
-    vi.mocked(accountProfileControllerGetProfile).mockResolvedValue({
-      data: {
-        accountId: 'acc-42',
-        displayName: 'Alice',
-        phone: '+8613800138001',
-        status: 'ACTIVE',
-        createdAt: '2026-01-01T00:00:00.000Z',
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
-    await useAuthStore.getState().loadProfile();
-    const s = useAuthStore.getState();
-    expect(s.accountId).toBe('acc-42');
-    expect(s.displayName).toBe('Alice');
-    expect(s.phone).toBe('+8613800138001');
-  });
-
-  it('preserves null displayName for new users (FR-007)', async () => {
-    useAuthStore.setState({ accessToken: 'valid-at' });
-    vi.mocked(accountProfileControllerGetProfile).mockResolvedValue({
-      data: {
-        accountId: 'acc-1',
-        displayName: null,
-        phone: '+8613800138001',
-        status: 'ACTIVE',
-        createdAt: '2026-01-01T00:00:00.000Z',
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
-    await useAuthStore.getState().loadProfile();
-    expect(useAuthStore.getState().displayName).toBeNull();
-  });
-
-  it('passes Bearer accessToken in Authorization header', async () => {
-    useAuthStore.setState({ accessToken: 'tok-abc' });
-    vi.mocked(accountProfileControllerGetProfile).mockResolvedValue({
-      data: {
-        accountId: 'acc-1',
-        displayName: null,
-        phone: '+8613800138001',
-        status: 'ACTIVE',
-        createdAt: '2026-01-01T00:00:00.000Z',
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
-    await useAuthStore.getState().loadProfile();
-    expect(accountProfileControllerGetProfile).toHaveBeenCalledWith(
-      expect.objectContaining({ headers: { Authorization: 'Bearer tok-abc' } }),
-    );
-  });
-});
+// `loadProfile` was deleted in PR-5c (per ADR-0027) — remote profile fetch
+// moved to apps/mobile/lib/api/use-me.ts (React Query hook). The store no
+// longer owns network I/O. The corresponding tests are removed here;
+// component-level tests of useMe live in apps/mobile.
 
 describe('persist partialize — accessToken is NOT persisted', () => {
   it('persisted slice excludes accessToken and isAuthenticated', () => {
