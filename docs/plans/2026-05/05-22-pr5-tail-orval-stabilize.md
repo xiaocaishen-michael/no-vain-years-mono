@@ -51,7 +51,7 @@ pnpm nx run server:serve
 # Terminal B: smoke
 TRACE_PROBE_PORT=<port>
 curl -i http://localhost:$TRACE_PROBE_PORT/api/v1/accounts/me \
-  -H "Authorization: Bearer expired.fake.token"
+  -H 'Authorization: <expired-or-invalid-bearer-token>'
 # 期望: 401 ProblemDetail + traceId + x-trace-id header
 
 # 触发 FORM_VALIDATION（missing field）
