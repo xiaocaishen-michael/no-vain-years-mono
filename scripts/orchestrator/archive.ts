@@ -29,7 +29,21 @@ export interface LlmSummary {
   /** Populated when llmResult.metrics is set (claude-cli JSON payload)
    *  OR llmMetrics fallback (failure path). */
   cost_usd?: number;
+  /** claude-cli's reported turn count (verbatim from the result event).
+   *  Semantically matches `user_turns` empirically — see archive note below. */
   num_turns?: number;
+  /**
+   * Count of Anthropic Messages API rounds (== `turns.length`). Independent
+   * of `num_turns` — one API round can batch multiple tool_use blocks, so
+   * api_rounds ≤ num_turns. T032 2026-05-21: 27 vs 40.
+   */
+  api_rounds?: number;
+  /**
+   * Derived agent-loop iteration count (= 1 initial prompt + N tool_result
+   * events). Cross-validates `num_turns`: when they disagree, the parser
+   * + CLI accounting diverged and the run is worth a closer look.
+   */
+  user_turns?: number;
   permission_denials?: number;
   usage?: ClaudeUsage;
   /**
@@ -334,6 +348,8 @@ function buildLlmSummary(r: LlmInvokeResult): LlmSummary {
     duration_ms: r.durationMs,
   };
   if (r.metrics) copyMetrics(r.metrics, s);
+  if (r.apiRounds !== undefined) s.api_rounds = r.apiRounds;
+  if (r.userTurns !== undefined) s.user_turns = r.userTurns;
   if (r.turns && r.turns.length > 0) s.turns = r.turns;
   return s;
 }

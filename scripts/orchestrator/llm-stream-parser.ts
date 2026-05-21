@@ -168,26 +168,60 @@ export function parseEventLine(line: string): StreamEvent | null {
  *  2. Cumulative state → final `result` event + per-turn metrics array
  *     (replaces the old `JSON.parse(stdout)` single-blob path).
  *
- * Time complexity per feed(): O(1). Memory: O(num_turns) for turns[].
+ * Time complexity per feed(): O(1). Memory: O(api_rounds) for turns[].
+ *
+ * Two distinct "turn" counts surface in finalize():
+ *
+ * - `apiRounds` = count of Anthropic Messages API rounds (== turns[].length;
+ *   one per `stream_event.message_stop`). An assistant message may batch
+ *   multiple `tool_use` blocks, so one API round can issue multiple tool calls.
+ *
+ * - `userTurns` = count of agent-loop iterations from the user-prompt side
+ *   (= 1 initial prompt + N `user.tool_result` events). Empirically matches
+ *   the result event's `num_turns` field on claude-cli 2.1.x (T032 2026-05-21:
+ *   39 tool_use blocks → 39 user tool_result echoes + 1 initial = 40 == num_turns).
+ *
+ * The two diverge when one assistant round emits multiple tool_use blocks:
+ * apiRounds counts the round once, userTurns counts each tool_result echo.
  */
 export class StreamAggregator {
   private result: ResultEvent | undefined;
   private turns: TurnMetric[] = [];
   /** Buffer for the currently-streaming turn; flushed on message_delta / message_stop. */
   private currentTurn: TurnMetric | null = null;
+  /** Count of `user` top-level events carrying a `tool_result` content block. */
+  private toolResultCount = 0;
+  /** Flips true on the first feed() so we know to add 1 (initial prompt) to userTurns. */
+  private sawAnyEvent = false;
 
   feed(e: StreamEvent): PhraseOutput | null {
     this.recordState(e);
     return phraseFor(e);
   }
 
-  finalize(): { result?: ResultEvent; turns: TurnMetric[] } {
-    return { result: this.result, turns: this.turns };
+  finalize(): {
+    result?: ResultEvent;
+    turns: TurnMetric[];
+    apiRounds: number;
+    userTurns: number;
+  } {
+    return {
+      result: this.result,
+      turns: this.turns,
+      apiRounds: this.turns.length,
+      userTurns: this.sawAnyEvent ? this.toolResultCount + 1 : 0,
+    };
   }
 
   private recordState(e: StreamEvent): void {
+    this.sawAnyEvent = true;
     if (e.type === 'result') {
       this.result = e as ResultEvent;
+      return;
+    }
+    if (e.type === 'user') {
+      const first = (e as UserEvent).message?.content?.[0];
+      if (first && first.type === 'tool_result') this.toolResultCount++;
       return;
     }
     if (e.type !== 'stream_event') return;
