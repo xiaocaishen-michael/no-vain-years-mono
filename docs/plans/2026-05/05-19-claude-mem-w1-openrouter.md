@@ -1,7 +1,7 @@
 # claude-mem W1 启动 plan（OpenRouter 路径）
 
 > **Status**: drafted 2026-05-18，等用户 ExitPlan 审批后启动 W1 实地执行
-> **Parent eval plan**: `docs/plans/https-github-com-thedotmack-claude-mem-m-harmonic-creek.md`（170 行 untracked 调研，Status / Killswitch / 4 维验收等仍 authoritative）
+> **Parent eval plan**: `docs/plans/2026-05/05-19-claude-mem-pilot-eval.md`（170 行 untracked 调研，Status / Killswitch / 4 维验收等仍 authoritative）
 > **本文档承载**：re-check delta + OpenRouter 路径补丁 + 与原生 memory 机制对比 + W1 step-by-step 可执行清单 + 2-day A/B 短期验证
 
 ---
@@ -327,8 +327,8 @@ echo "OK: all hooks env-gated"
 
 ## 8. 关键文件 / 路径
 
-- 评估 plan：`docs/plans/https-github-com-thedotmack-claude-mem-m-harmonic-creek.md`
-- 本 W1 plan：`docs/plans/project-next-session-starter-claude-mem-eager-charm.md`
+- 评估 plan：`docs/plans/2026-05/05-19-claude-mem-pilot-eval.md`
+- 本 W1 plan：`docs/plans/2026-05/05-19-claude-mem-w1-openrouter.md`
 - claude-mem 数据：`~/.claude-mem/`（不在仓内，自动 gitignore-外）
 - claude-mem 配置 env：`~/.claude-mem/.env`（W1 step 2 创建）
 - mono-repo env-gate：`/Users/butterfly/Documents/projects/no-vain-years-mono/.envrc`（gitignored）

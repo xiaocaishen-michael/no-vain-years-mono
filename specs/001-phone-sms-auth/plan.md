@@ -7,7 +7,7 @@
 
 mono PoC 首个业务 use case：1 个 endpoint（`POST /accounts/phone-sms-auth`）统一 register + login，server 自动判已注册路径 → login / 未注册 → 自动创建+login；配套 1 个 endpoint（`POST /accounts/sms-codes`）发码。FROZEN / ANONYMIZED 账号与码错共享反枚举字节级一致响应（HTTP 401 INVALID_CREDENTIALS，时延差 ≤ 50ms）。SMS Template A 真实验证码（不区分注册/登录），60s 冷却。
 
-**W2 焦点**：server `domain` + `application` + `infrastructure` 层在 NestJS Module `auth` 内实现，达成 [Plan 1 § E.3](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/1-claude-java-claude-ai-2-meta-repo-ai-breezy-quill.md) V1（LoC ≤ Java 等价 1.5x，`cloc` 对比）+ V2（NestJS Module boundary 对标 ArchUnit 4 类规则）验收。Aliyun SMS 真实集成 / E2E Testcontainers / @nestjs/throttler 限流属 W3+ 范围。
+**W2 焦点**：server `domain` + `application` + `infrastructure` 层在 NestJS Module `auth` 内实现，达成 [Plan 1 § E.3](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) V1（LoC ≤ Java 等价 1.5x，`cloc` 对比）+ V2（NestJS Module boundary 对标 ArchUnit 4 类规则）验收。Aliyun SMS 真实集成 / E2E Testcontainers / @nestjs/throttler 限流属 W3+ 范围。
 
 ## Technical Context
 

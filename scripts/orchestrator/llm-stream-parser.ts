@@ -2,7 +2,7 @@
  * Pure NDJSON parser + aggregator for `claude -p --output-format stream-json`.
  *
  * claude-cli emits one JSON event per line. Event shapes were spike-verified
- * 2026-05-21 against claude-cli 2.1.145. See docs/plans/jazzy-pondering-ripple.md.
+ * 2026-05-21 against claude-cli 2.1.145. See docs/plans/2026-05/05-21-orchestrator-ndjson-stream.md.
  *
  * The aggregator is the single source of truth for what callers used to read
  * from `JSON.parse(stdout)` (final `result` event) PLUS the new per-turn

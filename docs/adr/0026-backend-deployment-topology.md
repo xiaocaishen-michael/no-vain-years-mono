@@ -15,7 +15,7 @@ sunset_trigger: |
 
 ## Context
 
-[Plan 2/3](../plans/plan2-plan3-clever-sutherland.md) Phase 1 (后端首次部署) 决定后端物理部署形态。当前(2026-05-21)实际状态:
+[Plan 2/3](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md) Phase 1 (后端首次部署) 决定后端物理部署形态。当前(2026-05-21)实际状态:
 
 * 后端 `apps/server`(NestJS + Fastify + Prisma)只在本地 Docker Compose 跑过 W1.4 PoC
 * 数据库 Postgres + Redis 仍走本地 Testcontainers
@@ -48,7 +48,7 @@ sunset_trigger: |
 
 ## References
 
-* [Plan 2/3](../plans/plan2-plan3-clever-sutherland.md) Phase 1
+* [Plan 2/3](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md) Phase 1
 * memory `reference_aliyun_swas_ufw_incompat`
 * memory `reference_cf_workers_to_aliyun_ecs_525`
 * [ADR-0037](0037-security-credentials-governance.md) (secrets 注入路径)

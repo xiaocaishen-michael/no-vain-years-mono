@@ -2,7 +2,7 @@
 
 > **Status**: DRAFT v1(2026-05-20 重写,架构层对齐完成,等 user 进入逐 template review)
 > **v0 → v1 pivot**: v0 只盯"workflow.yml 缺 clarify/analyze";v1 真重心 = **template 产出的语料对下游 orchestrator 是否够用**
-> **Supersedes scope**:本 plan amend [Plan 2 § 2.2.5](plan2-plan3-clever-sutherland.md#22-起手准备phase-0约-1-周) — Wiggum CLI + Bridge Adapter 的 defer 被本 plan **激活并以自写 Node22+tsx orchestrator 替代**(per 2026-05-20 user Q3 答 "Phase 0 端到端激活")
+> **Supersedes scope**:本 plan amend [Plan 2 § 2.2.5](2026-05/05-19-plan2-plan3-migration-deploy.md#22-起手准备phase-0约-1-周) — Wiggum CLI + Bridge Adapter 的 defer 被本 plan **激活并以自写 Node22+tsx orchestrator 替代**(per 2026-05-20 user Q3 答 "Phase 0 端到端激活")
 
 ---
 
@@ -2151,7 +2151,7 @@ Constitution **已 seed**(Plan 1 PoC W1-W5 阶段 2026-05-17 ratify v1.0.0,`.spe
 
 **3 处可选 amend**:
 
-1. **Principle I 段末**加一行:`> orchestrator-driven implement 阶段允许 batch 执行 task(per plan-spec-kit-swirling-hamming.md v3.1.1),但 spec/clarify/plan/tasks/analyze 5 phase 间审批不可绕`
+1. **Principle I 段末**加一行:`> orchestrator-driven implement 阶段允许 batch 执行 task(per 2026-05/05-20-spec-kit-template-review.md v3.1.1),但 spec/clarify/plan/tasks/analyze 5 phase 间审批不可绕`
 2. **Principle II 段末**加一行:`> 工程强约束:tasks.md schema 校验 task.kind=test-unit + tdd_red_expected=true 时,对应 impl task 必 deps includes 它`(并在 § 5.3.8 TasksAnalyzer.validateTask 加 enforce)
 3. **新增 Cross-doc consistency section**:`plan.md tech_constraints.versions 字段 orchestrator 校验时必须与 Constitution 上方 Tech Stack 表一致;不一致 → soft warn(不 hard-stop,因 plan.md 可声明本 feature 临时升降)`
 
@@ -2720,8 +2720,8 @@ provides:
 
 ```text
 docs/plans/
-  plan-spec-kit-swirling-hamming.md            # 本文(plan 文档)
-  plan2-plan3-clever-sutherland.md             # § 2.2.5 amend(Wiggum/Bridge Adapter defer 激活)
+  2026-05/05-20-spec-kit-template-review.md            # 本文(plan 文档)
+  2026-05/05-19-plan2-plan3-migration-deploy.md             # § 2.2.5 amend(Wiggum/Bridge Adapter defer 激活)
 
 .specify/                                       # 装 michael-speckit-presets/mono-orchestrator-ready 后
   templates/
