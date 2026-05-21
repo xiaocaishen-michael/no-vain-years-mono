@@ -1,11 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
- * RFC 9457 ProblemDetail response shape (FR-S10).
+ * RFC 9457 ProblemDetail response shape (FR-S10 + ADR-0038 — full-stack
+ * error handling contract).
  *
- * 通用错误响应 schema,镜像 ProblemDetailFilter 输出.
- * 不映射 domain-specific 扩展字段 (freezeUntil / retryAfterSeconds / code) 到顶层,
- * 客户端按需读 — OpenAPI additionalProperties: true 让 generator 接受扩展.
+ * Top-level 5 fields are RFC 9457 mandatory (type/title/status) + recommended
+ * (detail/instance). Business extension 6 fields enable typed client-side
+ * error handling without parsing free-text `detail`:
+ *
+ *   code               machine-readable error code (UPPER_SNAKE_CASE)
+ *   traceId            request trace id (CLS-managed; mirrors x-trace-id
+ *                      response header for UI display + log correlation)
+ *   freezeUntil        ISO 8601 — for ACCOUNT_IN_FREEZE_PERIOD
+ *   retryAfterSeconds  for AUTH_ATTEMPT_LOCKED / RATE_LIMIT_EXCEEDED
+ *   invalidAttributes  for FORM_VALIDATION; [{ field, messages[] }]
+ *                      drives client form.setError() per ADR-0038 chain
+ *
+ * OpenAPI codegen (Orval per ADR-0027) emits typed unions for `code` per
+ * endpoint, enabling exhaustive switch in client. additionalProperties
+ * remains true on the response schema for forward-compat extension fields.
  */
 export class ProblemDetailResponse {
   @ApiProperty({
@@ -39,4 +52,52 @@ export class ProblemDetailResponse {
     example: '/api/v1/accounts/phone-sms-auth',
   })
   instance?: string;
+
+  @ApiProperty({
+    description: 'Machine-readable error code (UPPER_SNAKE_CASE)',
+    required: false,
+    example: 'ACCOUNT_IN_FREEZE_PERIOD',
+  })
+  code?: string;
+
+  @ApiProperty({
+    description:
+      'Request trace id (CLS-managed; mirrors x-trace-id response header)',
+    required: false,
+    example: '0e6a4d6e-...-2c8f',
+  })
+  traceId?: string;
+
+  @ApiProperty({
+    description: 'ISO 8601 timestamp — for ACCOUNT_IN_FREEZE_PERIOD',
+    required: false,
+    example: '2026-06-20T10:00:00.000Z',
+  })
+  freezeUntil?: string;
+
+  @ApiProperty({
+    description:
+      'Seconds until retry permitted — for AUTH_ATTEMPT_LOCKED / RATE_LIMIT_EXCEEDED',
+    required: false,
+    example: 1800,
+  })
+  retryAfterSeconds?: number;
+
+  @ApiProperty({
+    description:
+      'Per-attribute validation issues — for FORM_VALIDATION; drives client form.setError()',
+    required: false,
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        field: { type: 'string', example: 'displayName' },
+        messages: {
+          type: 'array',
+          items: { type: 'string', example: '1-32 chars required' },
+        },
+      },
+    },
+  })
+  invalidAttributes?: Array<{ field: string; messages: string[] }>;
 }

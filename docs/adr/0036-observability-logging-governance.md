@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0036
-status: Proposed
+status: Accepted
 applies_to: [apps/server, apps/mobile]
 sunset_trigger: |
   - 切 OTLP / OpenTelemetry 真分布式 trace (jaeger / tempo / Datadog APM)
@@ -10,9 +10,11 @@ sunset_trigger: |
 
 # ADR-0036: Observability and Logging Governance — stdout JSON + CLS trace + PII redact
 
-* Status: Proposed
+* Status: Accepted (2026-05-21) — server side shipped via PR-5a; mobile telemetry deferred to Plan 3 (Sentry / Bugsnag 接入时)
 * Deciders: project owner
 * Tags: backend / mobile / observability / cross-cutting
+
+> **PR-5a 实装注**: server 端 stdout JSON + nestjs-pino redact (15 paths: authorization/cookie/password/token/refreshToken/accessToken/jwt/smsCode/phone/...) + nestjs-cls AsyncLocalStorage trace_id (idGenerator honors inbound x-trace-id 头便于上游传播 / 否则 randomUUID) + customProps 注 trace_id 到每条 log + ProblemDetailFilter 注 traceId 到 RFC 9457 response body + x-trace-id header。Mobile 端 console wrap + remote log shipping 留 Plan 3。
 
 ## Context
 

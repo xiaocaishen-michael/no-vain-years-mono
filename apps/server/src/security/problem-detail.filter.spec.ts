@@ -1,6 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ArgumentsHost, BadRequestException, HttpException, UnauthorizedException } from '@nestjs/common';
+import type { ClsService } from 'nestjs-cls';
 import { ProblemDetailFilter } from './problem-detail.filter';
+
+/**
+ * Mock ClsService — returns deterministic trace id for assertions.
+ * Tests that don't assert on traceId can ignore the field.
+ */
+const mockCls = {
+  getId: () => 'test-trace-id',
+} as unknown as ClsService;
 
 function mockHost(): { host: ArgumentsHost; sent: { status?: number; body?: unknown; headers?: Record<string, string> } } {
   const sent: { status?: number; body?: unknown; headers?: Record<string, string> } = { headers: {} };
@@ -28,7 +37,7 @@ function mockHost(): { host: ArgumentsHost; sent: { status?: number; body?: unkn
 }
 
 describe('ProblemDetailFilter', () => {
-  const filter = new ProblemDetailFilter();
+  const filter = new ProblemDetailFilter(mockCls);
 
   it('maps BadRequestException to RFC 9457 problem+json with 400', () => {
     const { host, sent } = mockHost();
