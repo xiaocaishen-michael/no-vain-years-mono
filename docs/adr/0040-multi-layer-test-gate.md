@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0040
-status: Proposed
+status: Accepted
 applies_to: [mono-wide]
 sunset_trigger: |
   - Nx EOL / Anthropic Agent SDK 换框架 — Nx affected 不再可用
@@ -11,7 +11,7 @@ sunset_trigger: |
 
 # ADR-0040: Multi-layer Test Gate Strategy — 机制 / 策略 / 门禁 三段渐进
 
-* Status: Proposed
+* Status: Accepted (2026-05-22, PR-T3 ship)
 * Deciders: project owner
 * Tags: testing / ci / nx / spec-kit / governance / cross-cutting
 
@@ -76,11 +76,23 @@ PR-T3 (门禁层 — docs/plans/2026-05/05-22-test-infra-p3-ci-gates.md)
 
 3 PR 全 merge 后，模拟 Agent ship 一个最小 feature 验证体系拦截能力 — 详见主 plan「Sandbox E2E 终局验收」段。通过门槛：4 类逆向测试 ≥ 3 类被对应 gate 拦截。
 
-## Open Questions（PR-T3 amend 时关掉）
+## 三阶段 ship 证据
 
-- mobile `runtime-smoke` 走 static export vs dev server（留 PR-T2 sub-plan）
-- GH Actions 用 official action vs 自写 PR body parser（留 PR-T3 sub-plan）
-- lefthook anti-mock 正则精度防误伤（留 PR-T3 sub-plan）
+| 阶段 | PR | 实际 ship 内容 |
+|---|---|---|
+| L1 机制 | [#80](https://github.com/xiaocaishen-michael/no-vain-years-mono/pull/80) | `scripts/ci/server-boot-smoke.ts` standalone tsx + spec-kit preset 0.2.2 (state_branches optional / Testing Invariants 3 禁令 / T003 模板) + 本 ADR stub Proposed |
+| L2 策略 | [#81](https://github.com/xiaocaishen-michael/no-vain-years-mono/pull/81) | `nx.json` namedInputs.sharedGlobals 4 核弹 + targetDefaults strict DAG + 5 projects scope tag + api-client implicitDeps + mobile static-export runtime-smoke (5/5 Playwright in 3.6s) + ESLint default-deny boundary |
+| L3 门禁 | PR-T3 (本 PR) | `.github/pull_request_template.md` 3 checkbox + `lefthook.yml` no-bad-mocks 正则拦 + `.github/workflows/{pr-validation,nightly-sweep}.yml` + spec.zod state_branches required (0.3.0) + spec 001/002 backfill + ruleset gh api PUT |
+
+## 已关闭的 Open Questions（PR-T2/PR-T3 决策）
+
+- **mobile `runtime-smoke` static export vs dev server** → static export 胜（PR #81 实证 3.6s vs ~60s dev server）；保留 `mobile:e2e` 走 dev server 作本地 DevX
+- **GH Actions PR body parser** → official `actions/github-script@v7` + 严格段落抽取 regex `### 🚨 部署与存活前置确认[\s\S]*?(?=\n###?\s|$)`
+- **lefthook anti-mock 正则精度** → user blueprint `new [A-Za-z0-9_]+\(` 收紧为 `new[[:space:]]+[A-Za-z_][A-Za-z0-9_]*(Guard|Interceptor|Filter|Pipe|Repository)[[:space:]]*\(` + `createTestingModule[[:space:]]*\(` 严格函数调用形态 + POSIX 字符类（macOS BSD grep 兼容）；grep 现有 specs 仅命中 3 个 known violations，不误伤其他
+
+## Sandbox E2E 终局验收（PR-T3 ship 后）
+
+详见主 plan「Sandbox E2E 终局验收」段。通过门槛：4 类逆向测试 ≥ 3 类被对应 gate 拦截。
 
 ## References
 

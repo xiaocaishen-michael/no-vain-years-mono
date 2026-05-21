@@ -1,5 +1,5 @@
 /**
- * spec.md frontmatter Zod schema — mono-orchestrator-ready 0.2.2.
+ * spec.md frontmatter Zod schema — mono-orchestrator-ready 0.3.0.
  *
  * Loaded by:
  *   - scripts/check-spec-frontmatters.ts (CI + manual)
@@ -9,9 +9,9 @@
  *   - web_compat in {stub, untested} → web_compat_notes required (≥ 10 chars)
  *   - agent_friction_observed === true → agent_friction_notes required (≥ 10 chars)
  *
- * 0.2.2 增量 (PR-T1 / ADR-0040 multi-layer test gate):
- *   - state_branches: 状态机分支穷举字段 — optional during P1; P3 sub-plan
- *     转 required + backfill 既有 specs (per master plan Risk row).
+ * 0.2.2 增量 (PR-T1 / ADR-0040): state_branches optional 字段引入.
+ * 0.3.0 增量 (PR-T3 / ADR-0040 门禁层): state_branches optional → required
+ *   (.min(1)). 同 PR 内 backfill specs/001 + specs/002.
  *
  * Date fields (created_at / updated_at) accept ISO YYYY-MM-DD string OR
  * Date object (gray-matter auto-parses unquoted YAML dates per memory
@@ -64,11 +64,13 @@ export const SpecFrontmatterSchema = z
     agent_friction_notes: z.string().min(10).optional(),
     perf_budgets: z.array(PerfBudgetSchema).optional(),
 
-    // 0.2.2 — state_branches: 状态机分支穷举 (per ADR-0040 multi-layer test
+    // 0.3.0 — state_branches: 状态机分支穷举 (per ADR-0040 multi-layer test
     // gate). Free-form string array, each entry describes one branch of the
     // truth table the feature must exhaustively cover in integration tests.
-    // Optional in 0.2.2 (transition); P3 sub-plan flips to required.
-    state_branches: z.array(z.string().min(1)).optional(),
+    // 0.2.2 optional → 0.3.0 required (.min(1)): every new spec MUST list
+    // ≥ 1 state branch. Catches PR-79 Pattern D (漏 cold-boot 分支) at
+    // /speckit-specify time.
+    state_branches: z.array(z.string().min(1)).min(1),
 
     // contracts (optional, owned by mono-orchestrator-ready 0.1.0)
     contracts: z

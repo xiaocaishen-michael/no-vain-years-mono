@@ -20,6 +20,12 @@ perf_budgets:
   - endpoint: "PATCH /api/v1/accounts/me"
     p95_ms: 100
     p99_ms: 200
+
+state_branches:
+  - "new user auto-created: GET /me → displayName=null, phone present (onboarding trigger state)"
+  - "new user onboarding: PATCH /me {displayName} → 200, persisted, subsequent GET /me returns same"
+  - "existing user with displayName set: GET /me → displayName returns stored value, no onboarding"
+  - "invalid/expired JWT: GET /me or PATCH /me → 401 (boundary, no enumeration leak)"
 ---
 
 # Feature Specification: Account Profile（onboarding 信号 + displayName 维护 + 我的页骨架）

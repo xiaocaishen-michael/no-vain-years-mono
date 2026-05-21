@@ -1,5 +1,12 @@
 name: CI
 
+# Per ADR-0040 multi-layer test gate (PR-T3 / 门禁层): nx-server-specific
+# build/test/lint jobs移到 pr-validation.yml 的 `validate-and-test` mega-job
+# (跑 `nx affected -t lint typecheck test build runtime-smoke`). This file
+# keeps only the workflow-level gates that operate outside nx (gitleaks scans
+# commit history, actionlint validates GH workflow YAML, pr-title validates
+# PR metadata, docker-image scans the built image on push-to-main).
+
 on:
   push:
     branches: [main]
@@ -41,95 +48,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build:
-    name: Build (nx build server)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.2
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
-        working-directory: apps/server
-        run: npx prisma generate
-
-      - name: Build server (SWC)
-        run: pnpm nx build server
-
-  test:
-    name: Test (nx test server)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.2
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
-        working-directory: apps/server
-        run: npx prisma generate
-
-      - name: Test server (vitest)
-        run: pnpm nx test server
-
-  lint:
-    name: Lint (nx lint server)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.2
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint server (eslint + plugin-boundaries)
-        run: pnpm nx lint server
-
   # V9 acceptance gate (Plan 1 § E.3): Docker build + Trivy image scan.
-  # Trigger strategy mirrors my-beloved-server ci.yml — PR skip / main push run.
+  # Trigger strategy: PR skip / main push run.
   # Rationale: image scan ~3-5min, no PR-time value (Dockerfile rarely changes
-  # per PR; native deps caught by build job). main push catches base-image /
-  # transitive CVE on the merged commit within revert window. Not in ruleset
-  # required_status_checks. nightly cron is follow-up (see memory).
+  # per PR; native deps caught by pr-validation runtime-smoke). main push
+  # catches base-image / transitive CVE on the merged commit within revert
+  # window. Not in ruleset required_status_checks. nightly cron is follow-up.
   docker-image:
     name: Docker build + Trivy image scan
     runs-on: ubuntu-latest

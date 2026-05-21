@@ -49,6 +49,60 @@ pre-commit:
         echo "格式化 / typo / 紧急 hotfix 出口: git commit --no-verify"
         exit 1
 
+    no-bad-mocks:
+      tags: test, quality
+      # Per ADR-0040 multi-layer test gate (门禁层 / PR-T3).
+      # 扫 staged *.{guard,interceptor,filter,pipe,repository}.spec.ts;
+      # 命中 `new \w+(Guard|Interceptor|Filter|Pipe|Repository)\b\s*\(`
+      # 但全文无 `createTestingModule` → 拒提交 (PR-79 retro Pattern B
+      # — mock-only test 掩盖 lifecycle 错误).
+      #
+      # Regex narrow 设计 (per sub-plan 3 § A): 不命中 `new SomeException(`
+      # / `new Error(` / `new Date(` 等 value-class 实例化,只命中以
+      # NestJS lifecycle 后缀结尾的 class. grep 验过现有 specs 不误伤。
+      #
+      # Known existing violation: apps/server/src/security/problem-detail.filter.spec.ts
+      # 含 `new ProblemDetailFilter(mockCls)` 不带 createTestingModule;
+      # 本 hook 阻**对该文件的未来 commit**,作者修该 spec 时必须改用
+      # createTestingModule (defensive design,不追溯既有 committed code)。
+      #
+      # 紧急出口: git commit --no-verify
+      run: |
+        set -eu
+        staged=$(git diff --cached --name-only --diff-filter=ACMR \
+          | grep -E '\.(guard|interceptor|filter|pipe|repository)\.spec\.ts$' \
+          || true)
+        if [ -z "$staged" ]; then
+          exit 0
+        fi
+        violations=""
+        for f in $staged; do
+          if [ ! -f "$f" ]; then
+            continue
+          fi
+          if grep -qE 'new[[:space:]]+[A-Za-z_][A-Za-z0-9_]*(Guard|Interceptor|Filter|Pipe|Repository)[[:space:]]*\(' "$f" \
+             && ! grep -qE 'createTestingModule[[:space:]]*\(' "$f"; then
+            violations="${violations}${f}\n"
+          fi
+        done
+        if [ -z "$violations" ]; then
+          exit 0
+        fi
+        echo "❌ no-bad-mocks: 拦截 lifecycle component 隔离实例化测试"
+        echo ""
+        echo "Violating files (含 new \\w+(Guard|Interceptor|Filter|Pipe|Repository)\\b\\s*\\("
+        echo "但全文无 createTestingModule):"
+        printf "$violations" | sed 's/^/  - /'
+        echo ""
+        echo "原因 (per ADR-0040 multi-layer test gate / PR-79 retro Pattern B):"
+        echo "  NestJS Guard / Interceptor / Filter / Pipe / Repository 子类"
+        echo "  必须用 Test.createTestingModule({ imports: [<TheModule>] }).compile()"
+        echo "  装 DI 容器测试;\`new MyGuard()\` 隔离实例化抹掉 lifecycle 顺序"
+        echo "  (PR #79 实证: CLS interceptor mode 漏 Guards/Filters 类 cascade bug)"
+        echo ""
+        echo "紧急出口: git commit --no-verify (格式化 / typo / 紧急 hotfix)"
+        exit 1
+
     docs-organization-drift:
       tags: docs
       # 检查新增 (--diff-filter=A) 的 docs/{plans,experience}/*.md 是否符合
