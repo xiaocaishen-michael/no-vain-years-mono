@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { printRunReport } from './run-report.js';
+import { formatStopsCell, printRunReport } from './run-report.js';
 import { loadFeature, type FeatureState } from './state.js';
 import type { TaskRunResult } from './run-feature.js';
 
@@ -267,5 +267,141 @@ describe('printRunReport', () => {
       writeArchiveFile: false,
     });
     expect(result.rows).toHaveLength(0);
+  });
+
+  it('collects stop_reason histogram from attempts[].llm.turns + renders compact cell + run-level section', async () => {
+    const { state, archiveBase } = load();
+    writeArchive(
+      archiveBase,
+      'T001',
+      {
+        elapsed_ms: 60000,
+        ok: true,
+        reason: 'success',
+        file_ops: {},
+        attempts: [
+          {
+            phase: 'initial',
+            llm: {
+              cost_usd: 0.5,
+              num_turns: 27,
+              turns: [
+                ...Array.from({ length: 26 }, () => ({ stop_reason: 'tool_use' })),
+                { stop_reason: 'end_turn' },
+              ],
+            },
+          },
+        ],
+      },
+      'claude-sonnet-4-6',
+    );
+    writeArchive(
+      archiveBase,
+      'T002',
+      {
+        elapsed_ms: 30000,
+        ok: false,
+        reason: 'error_max_turns',
+        file_ops: {},
+        attempts: [
+          {
+            phase: 'initial',
+            llm: {
+              cost_usd: 0.3,
+              num_turns: 30,
+              turns: [
+                ...Array.from({ length: 29 }, () => ({ stop_reason: 'tool_use' })),
+                { stop_reason: 'max_tokens' },
+              ],
+            },
+          },
+        ],
+      },
+      'claude-sonnet-4-6',
+    );
+
+    const result = await printRunReport({
+      state,
+      results: [fakeResult('T001'), fakeResult('T002', false)],
+      archiveBase,
+      runStartedAt: new Date(),
+      runFinishedAt: new Date(),
+      writeStdout: false,
+      writeArchiveFile: false,
+    });
+
+    expect(result.rows[0].stops).toEqual({ tool_use: 26, end_turn: 1 });
+    expect(result.rows[1].stops).toEqual({ tool_use: 29, max_tokens: 1 });
+
+    expect(result.totals.stop_reason_histogram).toEqual({
+      tool_use: 55,
+      end_turn: 1,
+      max_tokens: 1,
+    });
+
+    // Compact table cell — sorted by count desc, abbreviated names.
+    expect(result.markdown).toContain('| tu26·end1 |');
+    expect(result.markdown).toContain('| tu29·max1 |');
+
+    // Run-level section.
+    expect(result.markdown).toContain('## Stop-reason histogram');
+    expect(result.markdown).toContain('`tool_use`: 55');
+    expect(result.markdown).toContain('`max_tokens`: 1');
+  });
+
+  it('omits Stop-reason histogram section when no task has turns[] data', async () => {
+    const { state, archiveBase } = load();
+    writeArchive(
+      archiveBase,
+      'T001',
+      {
+        elapsed_ms: 60000,
+        ok: true,
+        reason: 'success',
+        file_ops: {},
+        attempts: [
+          { phase: 'initial', llm: { cost_usd: 0.4, num_turns: 8 } }, // no turns[]
+        ],
+      },
+      'claude-sonnet-4-6',
+    );
+    const result = await printRunReport({
+      state,
+      results: [fakeResult('T001')],
+      archiveBase,
+      runStartedAt: new Date(),
+      runFinishedAt: new Date(),
+      writeStdout: false,
+      writeArchiveFile: false,
+    });
+    expect(result.rows[0].stops).toBeUndefined();
+    expect(result.markdown).not.toContain('## Stop-reason histogram');
+    // Table cell shows em-dash for missing data.
+    expect(result.markdown).toMatch(/\| 8 \| — \|/);
+  });
+});
+
+describe('formatStopsCell', () => {
+  it('returns em-dash on undefined', () => {
+    expect(formatStopsCell(undefined)).toBe('—');
+  });
+
+  it('returns em-dash on empty map', () => {
+    expect(formatStopsCell({})).toBe('—');
+  });
+
+  it('abbreviates known stop_reasons and sorts by count desc', () => {
+    expect(formatStopsCell({ tool_use: 26, end_turn: 1 })).toBe('tu26·end1');
+    expect(formatStopsCell({ end_turn: 1, tool_use: 26 })).toBe('tu26·end1');
+  });
+
+  it('passes through unknown stop_reasons verbatim', () => {
+    expect(formatStopsCell({ unknown_reason: 3, tool_use: 5 })).toBe(
+      'tu5·unknown_reason3',
+    );
+  });
+
+  it('breaks count ties alphabetically (stable output)', () => {
+    expect(formatStopsCell({ end_turn: 5, max_tokens: 5 })).toBe('end5·max5');
   });
 });
