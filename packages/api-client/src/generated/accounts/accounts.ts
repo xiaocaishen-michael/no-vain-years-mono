@@ -111,6 +111,67 @@ export const useAccountSmsCodeControllerRequest = <TError = AxiosError<ProblemDe
       return useMutation(getAccountSmsCodeControllerRequestMutationOptions(options), queryClient);
     }
     /**
+ * Verifies SMS code; auto-registers unregistered phones (US2); returns identical shape across all paths for byte-level anti-enumeration (US3).
+ * @summary Authenticate via phone + SMS code
+ */
+export const accountPhoneSmsAuthControllerAuth = (
+    phoneSmsAuthRequest: PhoneSmsAuthRequest, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<PhoneSmsAuthResponse>> => {
+
+
+    return axios.post(
+      `/api/v1/accounts/phone-sms-auth`,
+      phoneSmsAuthRequest,options
+    );
+  }
+
+
+
+export const getAccountPhoneSmsAuthControllerAuthMutationOptions = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>, TError,{data: PhoneSmsAuthRequest}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>, TError,{data: PhoneSmsAuthRequest}, TContext> => {
+
+const mutationKey = ['accountPhoneSmsAuthControllerAuth'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>, {data: PhoneSmsAuthRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  accountPhoneSmsAuthControllerAuth(data,axiosOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AccountPhoneSmsAuthControllerAuthMutationResult = NonNullable<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>>
+    export type AccountPhoneSmsAuthControllerAuthMutationBody = PhoneSmsAuthRequest
+    export type AccountPhoneSmsAuthControllerAuthMutationError = AxiosError<ProblemDetailResponse>
+
+    /**
+ * @summary Authenticate via phone + SMS code
+ */
+export const useAccountPhoneSmsAuthControllerAuth = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>, TError,{data: PhoneSmsAuthRequest}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>,
+        TError,
+        {data: PhoneSmsAuthRequest},
+        TContext
+      > => {
+      return useMutation(getAccountPhoneSmsAuthControllerAuthMutationOptions(options), queryClient);
+    }
+    /**
  * Returns account profile for the bearer-authenticated user. Phone is E.164 raw string; displayName is null for new users (FR-007).
  * @summary Get authenticated account profile
  */
@@ -261,65 +322,4 @@ export const useAccountProfileControllerUpdateDisplayName = <TError = AxiosError
         TContext
       > => {
       return useMutation(getAccountProfileControllerUpdateDisplayNameMutationOptions(options), queryClient);
-    }
-    /**
- * Verifies SMS code; auto-registers unregistered phones (US2); returns identical shape across all paths for byte-level anti-enumeration (US3).
- * @summary Authenticate via phone + SMS code
- */
-export const accountPhoneSmsAuthControllerAuth = (
-    phoneSmsAuthRequest: PhoneSmsAuthRequest, options?: AxiosRequestConfig
- ): Promise<AxiosResponse<PhoneSmsAuthResponse>> => {
-
-
-    return axios.post(
-      `/api/v1/accounts/phone-sms-auth`,
-      phoneSmsAuthRequest,options
-    );
-  }
-
-
-
-export const getAccountPhoneSmsAuthControllerAuthMutationOptions = <TError = AxiosError<ProblemDetailResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>, TError,{data: PhoneSmsAuthRequest}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>, TError,{data: PhoneSmsAuthRequest}, TContext> => {
-
-const mutationKey = ['accountPhoneSmsAuthControllerAuth'];
-const {mutation: mutationOptions, axios: axiosOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, axios: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>, {data: PhoneSmsAuthRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  accountPhoneSmsAuthControllerAuth(data,axiosOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type AccountPhoneSmsAuthControllerAuthMutationResult = NonNullable<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>>
-    export type AccountPhoneSmsAuthControllerAuthMutationBody = PhoneSmsAuthRequest
-    export type AccountPhoneSmsAuthControllerAuthMutationError = AxiosError<ProblemDetailResponse>
-
-    /**
- * @summary Authenticate via phone + SMS code
- */
-export const useAccountPhoneSmsAuthControllerAuth = <TError = AxiosError<ProblemDetailResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>, TError,{data: PhoneSmsAuthRequest}, TContext>, axios?: AxiosRequestConfig}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof accountPhoneSmsAuthControllerAuth>>,
-        TError,
-        {data: PhoneSmsAuthRequest},
-        TContext
-      > => {
-      return useMutation(getAccountPhoneSmsAuthControllerAuthMutationOptions(options), queryClient);
     }

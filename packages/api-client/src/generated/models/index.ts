@@ -11,6 +11,7 @@ export * from './accountProfileResponseStatus';
 export * from './phoneSmsAuthRequest';
 export * from './phoneSmsAuthResponse';
 export * from './problemDetailResponse';
+export * from './problemDetailResponseInvalidAttributesItem';
 export * from './requestSmsCodeRequest';
 export * from './requestSmsCodeResponse';
 export * from './updateDisplayNameRequest';
