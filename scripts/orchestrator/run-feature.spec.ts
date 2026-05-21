@@ -310,7 +310,7 @@ describe('runFeature (integration with fakes)', () => {
     );
     expect(fs.existsSync(path.join(archiveDir, 'summary.json'))).toBe(true);
     expect(fs.existsSync(path.join(archiveDir, 'attempt-0-prompt.md'))).toBe(true);
-    expect(fs.existsSync(path.join(archiveDir, 'attempt-0-llm-stdout.log'))).toBe(true);
+    expect(fs.existsSync(path.join(archiveDir, 'attempt-0-llm-stream.jsonl'))).toBe(true);
     expect(fs.existsSync(path.join(archiveDir, 'attempt-0-action-stdout.log'))).toBe(true);
 
     const summary = JSON.parse(

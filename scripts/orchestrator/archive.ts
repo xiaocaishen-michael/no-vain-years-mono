@@ -6,6 +6,7 @@ import type {
   ClaudeUsage,
   LlmInvokeResult,
 } from './llm-client.js';
+import type { TurnMetric } from './llm-stream-parser.js';
 
 /**
  * Per-task on-disk archive. Streams the LLM stdout/stderr to per-attempt
@@ -31,6 +32,13 @@ export interface LlmSummary {
   num_turns?: number;
   permission_denials?: number;
   usage?: ClaudeUsage;
+  /**
+   * Per-turn diagnostic rows (stop_reason + per-turn cache token usage).
+   * Source: `stream_event.message_delta` + `stream_event.message_start.usage`
+   * when --include-partial-messages is on. Empty / absent when off.
+   * Used for "why N turns / cache hit %" run-report diagnostics.
+   */
+  turns?: TurnMetric[];
 }
 
 export interface ActionSummary {
@@ -231,7 +239,7 @@ export class AttemptHandle {
     }
     this.streamsOpened = true;
     this.stdoutStream = fs.createWriteStream(
-      this.archive.pathFor(this.n, 'llm-stdout.log'),
+      this.archive.pathFor(this.n, 'llm-stream.jsonl'),
     );
     this.stderrStream = fs.createWriteStream(
       this.archive.pathFor(this.n, 'llm-stderr.log'),
@@ -262,7 +270,7 @@ export class AttemptHandle {
 
     if (input.llmResult) {
       await fsp.writeFile(
-        this.archive.pathFor(this.n, 'llm-stdout.log'),
+        this.archive.pathFor(this.n, 'llm-stream.jsonl'),
         input.llmResult.stdout,
       );
       await fsp.writeFile(
@@ -326,6 +334,7 @@ function buildLlmSummary(r: LlmInvokeResult): LlmSummary {
     duration_ms: r.durationMs,
   };
   if (r.metrics) copyMetrics(r.metrics, s);
+  if (r.turns && r.turns.length > 0) s.turns = r.turns;
   return s;
 }
 

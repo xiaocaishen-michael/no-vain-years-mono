@@ -15,7 +15,7 @@ import {
 const BASE_OPTS: LlmInvokeOptions = { cwd: '/tmp/sandbox' };
 
 describe('buildClaudeArgs', () => {
-  it('emits the canonical flag sequence with defaults', () => {
+  it('emits the canonical flag sequence with defaults (stream-json + partial messages)', () => {
     const args = buildClaudeArgs('hello', BASE_OPTS);
     expect(args).toEqual([
       '-p',
@@ -24,13 +24,29 @@ describe('buildClaudeArgs', () => {
       '--allowedTools',
       'Read,Edit,Write,Bash(pnpm *),Bash(git *),Glob,Grep',
       '--output-format',
-      'json',
+      'stream-json',
+      '--verbose',
       '--max-turns',
       '30',
       '--model',
       'sonnet',
+      '--include-partial-messages',
       'hello',
     ]);
+  });
+
+  it('drops --include-partial-messages when ORCHESTRATOR_PARTIAL_MESSAGES=0', () => {
+    const prev = process.env.ORCHESTRATOR_PARTIAL_MESSAGES;
+    process.env.ORCHESTRATOR_PARTIAL_MESSAGES = '0';
+    try {
+      const args = buildClaudeArgs('hi', BASE_OPTS);
+      expect(args).not.toContain('--include-partial-messages');
+      // stream-json itself is always on — only the partial-messages opt is gated.
+      expect(args[args.indexOf('--output-format') + 1]).toBe('stream-json');
+    } finally {
+      if (prev === undefined) delete process.env.ORCHESTRATOR_PARTIAL_MESSAGES;
+      else process.env.ORCHESTRATOR_PARTIAL_MESSAGES = prev;
+    }
   });
 
   it('does NOT pass --bare (which would force ANTHROPIC_API_KEY-only auth)', () => {
@@ -41,17 +57,16 @@ describe('buildClaudeArgs', () => {
     expect(args).not.toContain('--bare');
   });
 
-  it('honors custom allowedTools / maxTurns / outputFormat', () => {
+  it('honors custom allowedTools / maxTurns', () => {
     const args = buildClaudeArgs('x', {
       ...BASE_OPTS,
       allowedTools: ['Read', 'Glob'],
       maxTurns: 8,
-      outputFormat: 'text',
     });
     expect(args).toContain('Read,Glob');
     expect(args.indexOf('--max-turns')).toBeGreaterThan(-1);
     expect(args[args.indexOf('--max-turns') + 1]).toBe('8');
-    expect(args[args.indexOf('--output-format') + 1]).toBe('text');
+    expect(args[args.indexOf('--output-format') + 1]).toBe('stream-json');
   });
 
   it('emits --model sonnet by default (PoC blind spot #17)', () => {

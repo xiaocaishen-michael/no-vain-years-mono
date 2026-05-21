@@ -105,7 +105,7 @@ export async function printRunReport(
   return { markdown, rows, totals, archiveFilePath };
 }
 
-/** Read summary.json + parse model from llm-stdout.log. Returns null
+/** Read summary.json + parse model from llm-stream.jsonl. Returns null
  *  when summary.json doesn't exist (task never got to reserveAttempt). */
 async function loadTaskRow(
   archiveBase: string,
@@ -161,12 +161,14 @@ async function loadTaskRow(
     if (denom > 0) cacheHit = (cr / denom) * 100;
   }
 
-  // Model detection from llm-stdout.log: claude-cli emits "modelUsage":
-  // {"claude-sonnet-4-6":{...}} or claude-opus-4-7 etc.
+  // Model detection from llm-stream.jsonl: claude-cli emits the model name
+  // in multiple events (system.init.model, message_start.message.model,
+  // result.modelUsage keys). The substring grep is intentional — survives
+  // model-name format changes / minor versions.
   let model: TaskRow['model'] = 'unknown';
-  const stdoutPath = path.join(dir, 'attempt-0-llm-stdout.log');
-  if (fs.existsSync(stdoutPath)) {
-    const txt = await fsp.readFile(stdoutPath, 'utf-8');
+  const streamPath = path.join(dir, 'attempt-0-llm-stream.jsonl');
+  if (fs.existsSync(streamPath)) {
+    const txt = await fsp.readFile(streamPath, 'utf-8');
     if (/claude-sonnet/.test(txt)) model = 'sonnet';
     else if (/claude-opus/.test(txt)) model = 'opus';
     else if (/claude-haiku/.test(txt)) model = 'haiku';

@@ -36,7 +36,7 @@ function writeArchive(
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify(summary));
   if (llmStdout !== undefined) {
-    fs.writeFileSync(path.join(dir, 'attempt-0-llm-stdout.log'), llmStdout);
+    fs.writeFileSync(path.join(dir, 'attempt-0-llm-stream.jsonl'), llmStdout);
   }
 }
 
@@ -58,7 +58,7 @@ describe('printRunReport', () => {
     return { state: loadFeature(featureDir), archiveBase };
   }
 
-  it('builds a per-task row from summary.json + parses model from llm-stdout.log', async () => {
+  it('builds a per-task row from summary.json + parses model from llm-stream.jsonl', async () => {
     const { state, archiveBase } = load();
     writeArchive(
       archiveBase,
