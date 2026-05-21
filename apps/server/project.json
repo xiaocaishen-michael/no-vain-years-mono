@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/server/src",
   "projectType": "application",
-  "tags": [],
+  "tags": ["scope:server-app"],
   "targets": {
     "build": {
       "executor": "@nx/js:swc",
@@ -102,6 +102,13 @@
       "options": {
         "command": "vitest",
         "cwd": "apps/server"
+      }
+    },
+    "runtime-smoke": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm tsx scripts/ci/server-boot-smoke.ts",
+        "cwd": "{workspaceRoot}"
       }
     },
     "export-openapi": {
