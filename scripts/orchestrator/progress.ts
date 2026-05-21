@@ -93,6 +93,13 @@ export class ListrProgressSink implements TaskProgressSink {
           process.stderr.write(`[${task.id}] ${status}\n`);
         }
       },
+      heartbeat: (text) => {
+        // High-frequency live update; touches only the listr TTY row, never
+        // stderr (dedup of `update()` would treat each heartbeat as a new
+        // phase and flood the non-TTY log). Composed against the current
+        // phase by the caller (e.g. "🔧 Bash | thinking ...").
+        if (s.listrTask) s.listrTask.output = text;
+      },
       finish: (result) => {
         if (s.finished) return;
         s.finished = true;

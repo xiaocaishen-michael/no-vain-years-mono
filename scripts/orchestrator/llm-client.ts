@@ -1,8 +1,16 @@
 import { spawn } from 'node:child_process';
+import * as readline from 'node:readline';
+import {
+  parseEventLine,
+  StreamAggregator,
+  type StreamEvent,
+  type TurnMetric,
+} from './llm-stream-parser.js';
 
 /**
- * Port for the LLM call. The live impl shells out to `claude -p`;
- * tests inject a FakeLlmClient with a scripted response queue.
+ * Port for the LLM call. The live impl shells out to `claude -p
+ * --output-format stream-json` and parses the NDJSON event stream; tests
+ * inject a FakeLlmClient with a scripted response queue.
  *
  * Per plan § 11.1 + Q-O2: live invocation passes the prompt inline
  * (NOT a file path) — `claude -p` expects the prompt as a positional
@@ -28,35 +36,52 @@ export interface LlmInvokeOptions {
    * affects the parent session, not nested subprocesses).
    */
   model?: string;
-  /** Output format flag. Defaults to 'json'. */
-  outputFormat?: 'json' | 'text';
   /** Hard timeout for the subprocess (ms). */
   timeoutMs?: number;
   /** Permission mode; defaults to 'dontAsk'. */
   permissionMode?: 'dontAsk' | 'plan' | 'default';
   /** Extra args passed verbatim before the prompt argument. Escape hatch. */
   extraArgs?: string[];
-  /** Tee stdout to this sink in real-time (used for archive log streaming). */
+  /**
+   * Tee raw NDJSON bytes to this sink in real-time (archive llm-stream.jsonl).
+   */
   streamStdout?: NodeJS.WritableStream;
   /** Tee stderr to this sink in real-time. */
   streamStderr?: NodeJS.WritableStream;
+  /**
+   * Optional per-event callback fired once per parsed NDJSON line. Used by
+   * run-feature to project phase / heartbeat phrases onto the listr progress
+   * sink. Pure observer — does not affect parsing / result extraction.
+   */
+  onEvent?: (e: StreamEvent) => void;
 }
 
 export interface LlmInvokeResult {
   exitCode: number;
+  /** Raw NDJSON dump (one event per line) — caller persists to llm-stream.jsonl. */
   stdout: string;
   stderr: string;
-  /** Parsed JSON payload when outputFormat='json' and stdout was valid JSON. */
+  /**
+   * Terminal `result` event lifted out of the NDJSON stream. Preserves the
+   * exact field shape that `isClaudeJsonError` / `extractClaudeMetrics` /
+   * `isClaudeMaxTurnsError` / `describeClaudeError` expected before the
+   * stream-json migration (those functions read from this opaque payload).
+   */
   parsed?: unknown;
   /** Wall-clock duration in ms. */
   durationMs: number;
   /**
    * Best-effort claude-cli telemetry extracted from `parsed`. Lets the
-   * archive layer persist cost / token usage / denial counts without
-   * grepping llm-stdout.log post-hoc. Undefined when `parsed` doesn't
-   * look like a claude-cli result payload.
+   * archive layer persist cost / token usage / denial counts.
    */
   metrics?: ClaudeMetrics;
+  /**
+   * Per-turn diagnostic rows (stop_reason + per-turn token usage). Length
+   * equals number of `message_stop` events seen, typically `num_turns`.
+   * Populated by StreamAggregator on the live path; absent on test fixtures
+   * that don't care. Callers should default to `[]`.
+   */
+  turns?: TurnMetric[];
 }
 
 /** Subset of claude-cli `usage` we care about for archive summaries. */
@@ -136,6 +161,17 @@ const DEFAULT_MODEL_FALLBACK = 'sonnet';
 function getDefaultModel(): string {
   return process.env.ORCHESTRATOR_MODEL || DEFAULT_MODEL_FALLBACK;
 }
+
+/**
+ * Whether to add `--include-partial-messages` to `claude -p`. Default ON
+ * — the three unique signals (thinking_delta / per-turn message_delta
+ * stop_reason / per-turn message_start usage) are precisely what diagnose
+ * "why 16 min / why 31 turn / cache hit %". Set ORCHESTRATOR_PARTIAL_MESSAGES=0
+ * to opt out when archive disk is a concern (NDJSON shrinks ~10×).
+ */
+function partialMessagesEnabled(): boolean {
+  return process.env.ORCHESTRATOR_PARTIAL_MESSAGES !== '0';
+}
 // 2026-05-20 A-002 PoC surfaced blind spot 7: 5min wall-clock is too tight
 // when max_turns=30 and each turn takes 10-30s. T001 (Expo workspace bootstrap)
 // timed out mid-stream after burning research turns + file writes. Bumped to
@@ -164,12 +200,16 @@ export function buildClaudeArgs(
     '--allowedTools',
     allowed,
     '--output-format',
-    opts.outputFormat ?? 'json',
+    'stream-json',
+    '--verbose',
     '--max-turns',
     String(opts.maxTurns ?? getDefaultMaxTurns()),
     '--model',
     opts.model ?? getDefaultModel(),
   ];
+  if (partialMessagesEnabled()) {
+    args.push('--include-partial-messages');
+  }
   if (opts.extraArgs && opts.extraArgs.length > 0) {
     args.push(...opts.extraArgs);
   }
@@ -304,12 +344,34 @@ export class ClaudeCliClient implements LlmClient {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
+      const agg = new StreamAggregator();
       let stdout = '';
       let stderr = '';
-      child.stdout.on('data', (b: Buffer) => {
-        stdout += b.toString('utf-8');
-        if (opts.streamStdout) opts.streamStdout.write(b);
+
+      const rl = readline.createInterface({
+        input: child.stdout,
+        crlfDelay: Infinity,
       });
+      rl.on('line', (line: string) => {
+        // 1. Physical archive: stream raw line + newline so the .jsonl
+        //    file is parseable by jq / vitest fixtures verbatim.
+        stdout += line + '\n';
+        if (opts.streamStdout) opts.streamStdout.write(line + '\n');
+        // 2. Logical aggregation: parse → feed aggregator + fire observer.
+        //    Malformed lines (parseEventLine returns null) are silently
+        //    archived; we don't crash on schema drift.
+        const event = parseEventLine(line);
+        if (!event) return;
+        agg.feed(event);
+        if (opts.onEvent) {
+          try {
+            opts.onEvent(event);
+          } catch {
+            // Observer must not break the LLM call; swallow.
+          }
+        }
+      });
+
       child.stderr.on('data', (b: Buffer) => {
         stderr += b.toString('utf-8');
         if (opts.streamStderr) opts.streamStderr.write(b);
@@ -331,23 +393,17 @@ export class ClaudeCliClient implements LlmClient {
 
       child.on('close', (code) => {
         clearTimeout(timer);
+        rl.close();
         const exitCode = code ?? 0;
-        let parsed: unknown;
-        if ((opts.outputFormat ?? 'json') === 'json') {
-          try {
-            parsed = JSON.parse(stdout);
-          } catch {
-            // leave parsed undefined; caller can decide whether that's fatal
-          }
-        }
+        const { result, turns } = agg.finalize();
+        const parsed: unknown = result;
         // claude -p signals semantic errors (auth, quota, refusals) via
-        // is_error=true inside the JSON payload while still exiting 0.
+        // is_error=true in the terminal `result` event while still exiting 0.
         // Surface those as LlmInvokeError so callers don't see false-green.
         if (isClaudeJsonError(parsed)) {
-          // PoC blind spot #15: even on semantic error claude-cli emits
-          // total_cost_usd / num_turns / usage in the final JSON. Attach
-          // them to the error so the archive layer can persist them on
-          // the failure path instead of having to grep llm-stdout.log.
+          // PoC blind spot #15: even on semantic error the result event
+          // carries total_cost_usd / num_turns / usage. Attach metrics +
+          // turns so the archive layer can persist them on the failure path.
           reject(
             new LlmInvokeError(
               `claude -p returned semantic error: ${describeClaudeError(parsed)}`,
@@ -365,6 +421,7 @@ export class ClaudeCliClient implements LlmClient {
           parsed,
           durationMs: Date.now() - start,
           metrics: extractClaudeMetrics(parsed),
+          turns,
         });
       });
     });

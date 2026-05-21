@@ -24,6 +24,7 @@ import {
   type LlmInvokeOptions,
   type LlmInvokeResult,
 } from './llm-client.js';
+import { phraseFor, type StreamEvent } from './llm-stream-parser.js';
 import { buildPrompt } from './prompt-assembler.js';
 import { ralphLoop, type RalphLoopResult } from './ralph-loop.js';
 import type { Shell, ShellRunResult } from './shell.js';
@@ -57,8 +58,13 @@ export interface TaskProgressSink {
 }
 
 export interface TaskProgressHandle {
-  /** Update the human-readable status line for this task (e.g. "🧠 Claude (12s)"). */
+  /** Update the human-readable status line for this task (e.g. "🧠 Claude (12s)").
+   *  Triggers the dedup-gated stderr line write on phase change. */
   update(status: string): void;
+  /** Update the live TTY status line only (no stderr write). Used for high-frequency
+   *  heartbeat output (e.g. thinking_delta) where the underlying phase is unchanged
+   *  but we want to surface live progress in the listr task row. Default: noop. */
+  heartbeat?(text: string): void;
   /** Called when runTask is done (success or fail). Idempotent. */
   finish(result: TaskRunResult): void;
 }
@@ -389,7 +395,7 @@ async function runTaskInner(
   let attempt = archive.reserveAttempt('initial');
   let { stdout: llmStdoutSink, stderr: llmStderrSink } = attempt.openLlmStreams();
   const llmStartedAt = Date.now();
-  let stopLlmTimer = startElapsedTimer(progress, '🧠 Claude');
+  let projector = startLiveProjector(progress, '🧠 Claude');
   let llmResult: LlmInvokeResult | undefined;
   let llmFinalError: Error | undefined;
 
@@ -405,12 +411,13 @@ async function runTaskInner(
         ...(passModel ? { model: passModel } : {}),
         streamStdout: llmStdoutSink,
         streamStderr: llmStderrSink,
+        onEvent: (e) => projector.onEvent(e),
       });
-      stopLlmTimer();
+      projector.stop();
       llmFinalError = undefined;
       break;
     } catch (e) {
-      stopLlmTimer();
+      projector.stop();
       const err = e instanceof Error ? e : new Error(String(e));
       const shouldEscalate =
         pass === 0 &&
@@ -438,7 +445,7 @@ async function runTaskInner(
       const newStreams = attempt.openLlmStreams();
       llmStdoutSink = newStreams.stdout;
       llmStderrSink = newStreams.stderr;
-      stopLlmTimer = startElapsedTimer(progress, '🧠 Claude (opus retry)');
+      projector = startLiveProjector(progress, '🧠 Claude (opus retry)');
     }
   }
 
@@ -609,25 +616,80 @@ async function runTaskInner(
  * Fires an immediate "(0s)" tick so the sink shows the label right away
  * even if the step finishes before the first interval boundary.
  */
-function startElapsedTimer(
+/**
+ * Live projector: unified phase narration + heartbeat + elapsed-timer ticker.
+ *
+ * Replaces the prior `startElapsedTimer` whose ticker stomped on phrase
+ * updates from any other source. Now the projector owns the listr task row
+ * for the LLM phase: phrases come from claude-cli NDJSON events (via
+ * `onEvent`), elapsed seconds get suffixed, heartbeat (thinking_delta /
+ * text_delta) is throttled and rendered into a second TTY-only line.
+ *
+ * Channels:
+ *  - `phase` events → updates currentPhase + stderr-logged via progress.update
+ *    on actual phase change (dedup gated downstream by phaseKey strip).
+ *  - `heartbeat` events → 500ms throttle, appended as `${phase} | ${tail}`,
+ *    written to TTY only via progress.heartbeat? (no stderr noise).
+ *  - Background ticker: 1s TTY / 15s non-TTY, refreshes `${currentPhase} (Ns)`
+ *    so users see "still alive" between events (LLM thinking with no deltas).
+ */
+const HEARTBEAT_THROTTLE_MS = 500;
+
+interface LiveProjector {
+  onEvent(e: StreamEvent): void;
+  stop(): void;
+}
+
+function startLiveProjector(
   progress: TaskProgressHandle | undefined,
-  label: string,
-): () => void {
-  if (!progress) return () => undefined;
+  initialPhase: string,
+): LiveProjector {
+  if (!progress) {
+    return { onEvent: () => undefined, stop: () => undefined };
+  }
   const start = Date.now();
-  progress.update(`${label} (0s)`);
-  // PoC blind spot #12: listr2 falls back to verbose (line-per-update)
-  // renderer when stdout isn't a TTY (e.g. orchestrator launched via
-  // CI / Claude Code Bash tool / `| tee`). A 1s tick floods the log
-  // with ~175 lines per task. In TTY the in-place spinner re-renders
-  // are cheap and useful; in non-TTY throttle to 15s so the log stays
-  // skimmable but still proves life.
-  const tickMs = process.stdout.isTTY ? 1000 : 15000;
-  const handle = setInterval(() => {
+  let currentPhase = initialPhase;
+  let lastHeartbeatAt = 0;
+  let lastRenderedHeartbeat: string | undefined;
+
+  const elapsedSuffix = () => {
     const s = Math.floor((Date.now() - start) / 1000);
-    progress.update(`${label} (${s}s)`);
-  }, tickMs);
-  return () => clearInterval(handle);
+    return ` (${s}s)`;
+  };
+  const renderPhase = () => {
+    progress.update(currentPhase + elapsedSuffix());
+  };
+  renderPhase();
+
+  // PoC blind spot #12: listr2 falls back to verbose (line-per-update)
+  // renderer when stdout isn't a TTY. 1s tick floods the log; 15s non-TTY.
+  const tickMs = process.stdout.isTTY ? 1000 : 15000;
+  const handle = setInterval(renderPhase, tickMs);
+
+  return {
+    onEvent: (e) => {
+      const out = phraseFor(e);
+      if (!out) return;
+      if (out.channel === 'phase') {
+        currentPhase = out.phrase;
+        lastRenderedHeartbeat = undefined;
+        renderPhase();
+        return;
+      }
+      // heartbeat
+      const now = Date.now();
+      if (now - lastHeartbeatAt < HEARTBEAT_THROTTLE_MS) return;
+      if (out.phrase === lastRenderedHeartbeat) return;
+      lastHeartbeatAt = now;
+      lastRenderedHeartbeat = out.phrase;
+      if (progress.heartbeat) {
+        progress.heartbeat(
+          `${currentPhase}${elapsedSuffix()} | ${out.phrase}`,
+        );
+      }
+    },
+    stop: () => clearInterval(handle),
+  };
 }
 
 async function safeDiff(

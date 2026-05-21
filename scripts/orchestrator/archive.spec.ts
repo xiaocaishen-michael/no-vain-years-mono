@@ -50,7 +50,7 @@ describe('AttemptHandle.finish', () => {
     });
 
     expect(fs.readFileSync(path.join(dir, 'attempt-0-prompt.md'), 'utf-8')).toBe('PROMPT BODY');
-    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stdout.log'), 'utf-8')).toBe('LLM-STDOUT');
+    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stream.jsonl'), 'utf-8')).toBe('LLM-STDOUT');
     expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stderr.log'), 'utf-8')).toBe('LLM-STDERR');
     expect(fs.readFileSync(path.join(dir, 'attempt-0-action-stdout.log'), 'utf-8')).toBe('ACT-STDOUT');
     expect(fs.readFileSync(path.join(dir, 'attempt-0-action-stderr.log'), 'utf-8')).toBe('ACT-STDERR');
@@ -116,7 +116,7 @@ describe('AttemptHandle.finish', () => {
     await new Promise<void>((r) => stdout.end(() => r()));
     await new Promise<void>((r) => stderr.end(() => r()));
 
-    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stdout.log'), 'utf-8')).toBe('mid-run chunk\n');
+    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stream.jsonl'), 'utf-8')).toBe('mid-run chunk\n');
     expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stderr.log'), 'utf-8')).toBe('mid-run err\n');
   });
 });
@@ -252,7 +252,7 @@ describe('TaskArchive.finalize', () => {
     // Pre-populate with stale residue from a hypothetical prior run.
     fs.writeFileSync(path.join(dir, 'attempt-0-prompt.md'), 'OLD PROMPT');
     fs.writeFileSync(path.join(dir, 'summary.json'), '{"old":"summary"}');
-    fs.writeFileSync(path.join(dir, 'attempt-0-llm-stdout.log'), 'old stdout');
+    fs.writeFileSync(path.join(dir, 'attempt-0-llm-stream.jsonl'), 'old stdout');
 
     await TaskArchive.create(dir, { featureId: 'f', taskId: 'T01' });
 
