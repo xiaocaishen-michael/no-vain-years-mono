@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AuthState } from './store.js';
+import type { AuthState } from './store';
 
 vi.mock('expo-secure-store', () => ({
   getItemAsync: vi.fn().mockResolvedValue(null),
@@ -12,7 +12,7 @@ vi.mock('@nvy/api-client', () => ({
 }));
 
 import { accountProfileControllerGetProfile } from '@nvy/api-client';
-import { useAuthStore } from './store.js';
+import { useAuthStore } from './store';
 
 const CLEAN: Partial<AuthState> = {
   accountId: null,
