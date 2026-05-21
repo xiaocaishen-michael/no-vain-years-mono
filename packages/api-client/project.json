@@ -7,7 +7,7 @@
     "generate": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node_modules/.bin/openapi-ts -f openapi-ts.config.ts",
+        "command": "node_modules/.bin/orval --config orval.config.ts",
         "cwd": "packages/api-client"
       }
     }

@@ -13,11 +13,15 @@
     }
   },
   "scripts": {
-    "api:gen": "openapi-ts -f openapi-ts.config.ts",
+    "api:gen": "orval --config orval.config.ts",
     "typecheck": "tsc --build tsconfig.json --emitDeclarationOnly",
     "lint": "eslint ."
   },
   "devDependencies": {
-    "@hey-api/openapi-ts": "^0.97.1"
+    "orval": "^8.11.0"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.100.11",
+    "axios": "^1.16.1"
   }
 }

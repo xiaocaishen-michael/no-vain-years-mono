@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0027
-status: Proposed
+status: Accepted
 applies_to: [apps/mobile, packages/api-client]
 sunset_trigger: |
   - 全栈 RSC (Expo Router Server Actions 成熟) 让 react-query 边缘化
@@ -10,9 +10,11 @@ sunset_trigger: |
 
 # ADR-0027: Frontend Data + Test Layer — Orval + TanStack Query + Zustand + Maestro
 
-* Status: Proposed
+* Status: Accepted (2026-05-21) — packages/api-client Orval swap shipped via PR-5b; mobile consumer wiring (QueryClient mount + axios mutator interceptor + Zustand vs RQ 职责分工 + useAuthStore → useQuery refactor) shipped via PR-5c; Maestro lock to Plan 4 unchanged (binary 分发 prerequisite)
 * Deciders: project owner
 * Tags: frontend / data / test / cross-cutting
+
+> **PR-5b 实装注**: orval 8.11.0,config `mode: tags-split / client: react-query / httpClient: axios / output: src/generated/`。生成 per-tag service files (accounts/accounts.ts + app/app.ts) 含 raw queryFn (`accountProfileControllerGetProfile`) + react-query hooks (`useAccountProfileControllerGetProfile` + mutation 等) + models。Consumer `packages/auth/src/store.ts` 现 raw function 调用 axios-compat (AxiosResponse.data 解构同 hey-api shape),无需 fix。删 `@hey-api/openapi-ts` devDep + 旧 `src/{gen,generated}/` 输出 (close Issue #68 of @hey-api `.js` 后缀 Metro problem)。custom axios mutator (x-trace-id req header + ProblemDetail interceptor 联 ADR-0036/0038) defer 到 PR-5c。
 
 ## Context
 
