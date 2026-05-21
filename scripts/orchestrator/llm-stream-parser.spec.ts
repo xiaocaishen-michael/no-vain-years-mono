@@ -297,6 +297,142 @@ describe('StreamAggregator', () => {
     expect(agg.finalize().result).toBeUndefined();
   });
 
+  it('finalize reports apiRounds (== turns.length) and userTurns (= tool_results + 1)', () => {
+    const agg = new StreamAggregator();
+    const apiRound = (stop: string) => {
+      agg.feed({
+        type: 'stream_event',
+        event: { type: 'message_start', message: { usage: {} } },
+      } as StreamEvent);
+      agg.feed({
+        type: 'stream_event',
+        event: { type: 'message_delta', delta: { stop_reason: stop } },
+      } as StreamEvent);
+      agg.feed({
+        type: 'stream_event',
+        event: { type: 'message_stop' },
+      } as StreamEvent);
+    };
+    const toolResult = () => {
+      agg.feed({
+        type: 'user',
+        message: {
+          content: [{ type: 'tool_result', tool_use_id: 'x', is_error: false }],
+        },
+      } as StreamEvent);
+    };
+    // Simulate: 2 API rounds where the first batched 3 tool_use → 3 tool_results.
+    apiRound('tool_use');
+    toolResult();
+    toolResult();
+    toolResult();
+    apiRound('end_turn');
+
+    const { apiRounds, userTurns, turns } = agg.finalize();
+    expect(turns).toHaveLength(2);
+    expect(apiRounds).toBe(2);
+    // 1 initial prompt + 3 tool_result echoes = 4 user-side iterations.
+    expect(userTurns).toBe(4);
+  });
+
+  it('finalize reports 0/0 when no events fed at all', () => {
+    const agg = new StreamAggregator();
+    const { apiRounds, userTurns, turns } = agg.finalize();
+    expect(turns).toEqual([]);
+    expect(apiRounds).toBe(0);
+    expect(userTurns).toBe(0);
+  });
+
+  it('finalize reports userTurns=1 when stream had only system.init (no tool calls)', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      model: 'sonnet',
+    } as StreamEvent);
+    const { userTurns, apiRounds } = agg.finalize();
+    expect(userTurns).toBe(1);
+    expect(apiRounds).toBe(0);
+  });
+
+  it('captures mcp_servers from the first system.init event', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      model: 'sonnet',
+      mcp_servers: [
+        { name: 'plugin:claude-mem:mcp-search', status: 'connected' },
+        { name: 'context7', status: 'connected' },
+        { name: 'graphify', status: 'connected' },
+      ],
+    } as StreamEvent);
+    const { mcpServers } = agg.finalize();
+    expect(mcpServers).toEqual([
+      { name: 'plugin:claude-mem:mcp-search', status: 'connected' },
+      { name: 'context7', status: 'connected' },
+      { name: 'graphify', status: 'connected' },
+    ]);
+  });
+
+  it('ignores mcp_servers on non-init system events; init wins exactly once', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'system',
+      subtype: 'status',
+      mcp_servers: [{ name: 'should-not-capture' }],
+    } as StreamEvent);
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      mcp_servers: [{ name: 'first-init', status: 'connected' }],
+    } as StreamEvent);
+    // Second init (defensive — shouldn't happen in real streams) should NOT clobber.
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      mcp_servers: [{ name: 'second-init', status: 'error' }],
+    } as StreamEvent);
+    const { mcpServers } = agg.finalize();
+    expect(mcpServers).toEqual([
+      { name: 'first-init', status: 'connected' },
+    ]);
+  });
+
+  it('mcpServers is undefined when no system.init event seen', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'assistant',
+      message: { content: [{ type: 'text', text: 'hi' }] },
+    } as StreamEvent);
+    expect(agg.finalize().mcpServers).toBeUndefined();
+  });
+
+  it('omits status field when source event has no status', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      mcp_servers: [{ name: 'bare-name' }],
+    } as StreamEvent);
+    expect(agg.finalize().mcpServers).toEqual([{ name: 'bare-name' }]);
+  });
+
+  it('ignores user events that are not tool_result (defensive)', () => {
+    const agg = new StreamAggregator();
+    agg.feed({
+      type: 'system',
+      subtype: 'init',
+      model: 'sonnet',
+    } as StreamEvent);
+    // Hypothetical user event with no tool_result content — should not bump.
+    agg.feed({
+      type: 'user',
+      message: { content: [{ type: 'text', text: 'noise' }] as never },
+    } as StreamEvent);
+    expect(agg.finalize().userTurns).toBe(1);
+  });
+
   it('feed() returns phrase output (combines mapping + state)', () => {
     const agg = new StreamAggregator();
     const out = agg.feed({

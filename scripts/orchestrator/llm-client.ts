@@ -3,6 +3,7 @@ import * as readline from 'node:readline';
 import {
   parseEventLine,
   StreamAggregator,
+  type McpServerInfo,
   type StreamEvent,
   type TurnMetric,
 } from './llm-stream-parser.js';
@@ -77,11 +78,35 @@ export interface LlmInvokeResult {
   metrics?: ClaudeMetrics;
   /**
    * Per-turn diagnostic rows (stop_reason + per-turn token usage). Length
-   * equals number of `message_stop` events seen, typically `num_turns`.
+   * equals number of `message_stop` events seen — i.e., `apiRounds` (count
+   * of Anthropic Messages API rounds). NOTE: this is NOT identical to the
+   * result event's `num_turns` field — see StreamAggregator JSDoc for the
+   * semantic distinction (T032 2026-05-21: 27 apiRounds vs 40 num_turns,
+   * because one API round can batch multiple tool_use blocks).
+   *
    * Populated by StreamAggregator on the live path; absent on test fixtures
    * that don't care. Callers should default to `[]`.
    */
   turns?: TurnMetric[];
+  /**
+   * Count of Anthropic Messages API rounds (== `turns.length`). Surfaced
+   * explicitly so summary readers can sanity-check the parser without
+   * inspecting the per-turn array length.
+   */
+  apiRounds?: number;
+  /**
+   * Count of agent-loop iterations from the user-prompt side
+   * (= 1 initial prompt + N `user.tool_result` events). Independent
+   * derivation of what the result event reports as `num_turns`; surfaced
+   * for cross-validation when the two diverge.
+   */
+  userTurns?: number;
+  /**
+   * MCP servers reported in this subprocess's `system.init` event.
+   * Snapshot of `{name, status?}` per server. Undefined when the stream
+   * carried no system.init event (test fixtures / partial-message mode off).
+   */
+  mcpServers?: McpServerInfo[];
 }
 
 /** Subset of claude-cli `usage` we care about for archive summaries. */
@@ -395,7 +420,8 @@ export class ClaudeCliClient implements LlmClient {
         clearTimeout(timer);
         rl.close();
         const exitCode = code ?? 0;
-        const { result, turns } = agg.finalize();
+        const { result, turns, apiRounds, userTurns, mcpServers } =
+          agg.finalize();
         const parsed: unknown = result;
         // claude -p signals semantic errors (auth, quota, refusals) via
         // is_error=true in the terminal `result` event while still exiting 0.
@@ -422,6 +448,9 @@ export class ClaudeCliClient implements LlmClient {
           durationMs: Date.now() - start,
           metrics: extractClaudeMetrics(parsed),
           turns,
+          apiRounds: apiRounds > 0 ? apiRounds : undefined,
+          userTurns: userTurns > 0 ? userTurns : undefined,
+          mcpServers,
         });
       });
     });

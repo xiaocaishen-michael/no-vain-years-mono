@@ -61,6 +61,17 @@ export interface RalphLoopParams {
    * the archive type. Awaited — failures propagate.
    */
   onRound?: (round: RalphRoundEvent) => Promise<void>;
+  /**
+   * Called just before each round's LLM invocation. The returned partial
+   * options are merged into `llmInvokeOpts` for that round only — used by
+   * callers to wire per-round live observability (e.g. `onEvent` /
+   * `streamStdout`) for UI narration without ralph-loop knowing about
+   * progress sinks.
+   */
+  prepareRound?: (
+    attemptNumber: number,
+    maxRetries: number,
+  ) => Partial<LlmInvokeOptions>;
 }
 
 /** A single entry in the retry timeline; useful for diagnostics + tests. */
@@ -113,8 +124,11 @@ export async function ralphLoop(
     history.push({ kind: 'retry-prompt', attemptNumber: i, prompt: retryPrompt });
 
     let llmResult: LlmInvokeResult;
+    const roundOpts: LlmInvokeOptions = params.prepareRound
+      ? { ...params.llmInvokeOpts, ...params.prepareRound(i, max) }
+      : params.llmInvokeOpts;
     try {
-      llmResult = await params.llm.invoke(retryPrompt, params.llmInvokeOpts);
+      llmResult = await params.llm.invoke(retryPrompt, roundOpts);
     } catch (e) {
       const llmError = e instanceof Error ? e : new Error(String(e));
       if (params.onRound) {

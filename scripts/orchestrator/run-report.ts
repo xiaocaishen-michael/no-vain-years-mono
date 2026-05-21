@@ -32,6 +32,13 @@ export interface TaskRow {
   files_modified: number;
   cache_hit_pct?: number;
   permission_denials: number;
+  /**
+   * Histogram of `attempts[].llm.turns[].stop_reason` for this task.
+   * `undefined` when no `turns[]` data is available (legacy archives
+   * written before the NDJSON parser shipped, or runs with
+   * ORCHESTRATOR_PARTIAL_MESSAGES=0).
+   */
+  stops?: Record<string, number>;
   /** PoC #22 P1 drift telemetry, carried over from TaskRunResult.commit. */
   drift?: CommitDriftRecord;
 }
@@ -46,6 +53,11 @@ export interface RunTotals {
   total_cost_usd: number;
   total_llm_wall_min: number;
   total_turns: number;
+  /**
+   * Run-wide aggregate of per-task `stops` maps. Empty when no task had
+   * per-turn `stop_reason` data available.
+   */
+  stop_reason_histogram: Record<string, number>;
   run_started_at: Date;
   run_finished_at: Date;
   run_wall_min: number;
@@ -135,6 +147,7 @@ async function loadTaskRow(
           cache_read_input_tokens?: number;
           cache_creation_input_tokens?: number;
         };
+        turns?: Array<{ stop_reason?: string }>;
       };
     }>;
   };
@@ -174,6 +187,8 @@ async function loadTaskRow(
     else if (/claude-haiku/.test(txt)) model = 'haiku';
   }
 
+  const stops = collectStopReasons(summary.attempts);
+
   const title = state.tasks.tasks.find((t) => t.id === taskId)?.title ?? '';
 
   // Prefer explicit commit.sha; else fall back to head_after if HEAD shifted.
@@ -203,7 +218,61 @@ async function loadTaskRow(
     files_modified: summary.file_ops?.modify ?? 0,
     cache_hit_pct: cacheHit,
     permission_denials: summary.attempts[0]?.llm?.permission_denials ?? 0,
+    stops,
   };
+}
+
+/**
+ * Reduce `attempts[].llm.turns[].stop_reason` into a count map. Returns
+ * undefined when no attempt carried a `turns[]` array — distinguishes
+ * "task had per-turn data and the model never stopped" (empty map) from
+ * "we have no data at all" (undefined → display as `—`).
+ */
+function collectStopReasons(
+  attempts: Array<{
+    llm?: { turns?: Array<{ stop_reason?: string }> };
+  }>,
+): Record<string, number> | undefined {
+  let sawTurns = false;
+  const counts: Record<string, number> = {};
+  for (const a of attempts) {
+    const turns = a.llm?.turns;
+    if (!turns) continue;
+    sawTurns = true;
+    for (const t of turns) {
+      if (typeof t.stop_reason === 'string') {
+        counts[t.stop_reason] = (counts[t.stop_reason] ?? 0) + 1;
+      }
+    }
+  }
+  return sawTurns ? counts : undefined;
+}
+
+/** Map full stop_reason names to ≤3-char abbreviations for the table cell. */
+const STOP_REASON_SHORT: Record<string, string> = {
+  tool_use: 'tu',
+  end_turn: 'end',
+  max_tokens: 'max',
+  stop_sequence: 'ss',
+  pause_turn: 'pause',
+  refusal: 'refusal',
+};
+
+/**
+ * Format a stops map as a compact cell (e.g. `tu26·end1`). Returns `—`
+ * when the map is undefined (no data) or empty. Stable sort: highest
+ * count first, ties broken alphabetically so the rendering is deterministic.
+ */
+export function formatStopsCell(
+  stops: Record<string, number> | undefined,
+): string {
+  if (!stops) return '—';
+  const entries = Object.entries(stops);
+  if (entries.length === 0) return '—';
+  entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  return entries
+    .map(([k, n]) => `${STOP_REASON_SHORT[k] ?? k}${n}`)
+    .join('·');
 }
 
 function buildTotals(
@@ -211,6 +280,13 @@ function buildTotals(
   startedAt: Date,
   finishedAt: Date,
 ): RunTotals {
+  const stop_reason_histogram: Record<string, number> = {};
+  for (const r of rows) {
+    if (!r.stops) continue;
+    for (const [k, n] of Object.entries(r.stops)) {
+      stop_reason_histogram[k] = (stop_reason_histogram[k] ?? 0) + n;
+    }
+  }
   return {
     task_count: rows.length,
     ok_count: rows.filter((r) => r.ok).length,
@@ -221,6 +297,7 @@ function buildTotals(
     total_cost_usd: rows.reduce((s, r) => s + r.cost, 0),
     total_llm_wall_min: rows.reduce((s, r) => s + r.wall_min, 0),
     total_turns: rows.reduce((s, r) => s + r.turns, 0),
+    stop_reason_histogram,
     run_started_at: startedAt,
     run_finished_at: finishedAt,
     run_wall_min: (finishedAt.getTime() - startedAt.getTime()) / 60_000,
@@ -246,10 +323,10 @@ function formatMarkdown(
   }
 
   lines.push(
-    '| Task | Title | Wall | Turns | Cost | Model | Atts | Ralph | OK | Reason | Cache% | Files | Commit |',
+    '| Task | Title | Wall | Turns | Stops | Cost | Model | Atts | Ralph | OK | Reason | Cache% | Files | Commit |',
   );
   lines.push(
-    '|---|---|---:|---:|---:|---|---:|---:|:---:|---|---:|---|---|',
+    '|---|---|---:|---:|---|---:|---|---:|---:|:---:|---|---:|---|---|',
   );
   for (const r of rows) {
     const wall = `${r.wall_min.toFixed(1)}min`;
@@ -260,8 +337,9 @@ function formatMarkdown(
     const filesStr = `${r.files_created}c/${r.files_modified}m`;
     const commitStr = r.commit_sha ? `\`${r.commit_sha}\`` : '—';
     const denialsStr = r.permission_denials > 0 ? ` (denials=${r.permission_denials})` : '';
+    const stopsCell = formatStopsCell(r.stops);
     lines.push(
-      `| ${r.id} | ${escapePipe(r.title)} | ${wall} | ${r.turns} | ${cost} | ${r.model} | ${r.attempts} | ${r.ralph} | ${status} | ${escapePipe(r.reason)}${denialsStr} | ${cacheStr} | ${filesStr} | ${commitStr} |`,
+      `| ${r.id} | ${escapePipe(r.title)} | ${wall} | ${r.turns} | ${stopsCell} | ${cost} | ${r.model} | ${r.attempts} | ${r.ralph} | ${status} | ${escapePipe(r.reason)}${denialsStr} | ${cacheStr} | ${filesStr} | ${commitStr} |`,
     );
   }
 
@@ -284,6 +362,9 @@ function formatMarkdown(
   lines.push(
     `- Run wall-clock: **${totals.run_wall_min.toFixed(1)} min** (overhead = ${(totals.run_wall_min - totals.total_llm_wall_min).toFixed(1)} min for sandbox/graphify/commit)`,
   );
+
+  // Stop-reason histogram (run-level aggregate of attempts[].llm.turns[].stop_reason).
+  appendStopReasonSection(lines, totals.stop_reason_histogram);
 
   // Outliers
   if (rows.length >= 2) {
@@ -314,6 +395,28 @@ function formatMarkdown(
   appendDriftSection(lines, rows);
 
   return lines.join('\n');
+}
+
+function appendStopReasonSection(
+  lines: string[],
+  histogram: Record<string, number>,
+): void {
+  const entries = Object.entries(histogram);
+  if (entries.length === 0) return;
+  // Highest count first; ties alphabetical for stable output.
+  entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const total = entries.reduce((s, [, n]) => s + n, 0);
+  lines.push('');
+  lines.push('## Stop-reason histogram');
+  lines.push('');
+  lines.push(
+    'Aggregate of `attempts[].llm.turns[].stop_reason` across all tasks in this run.',
+  );
+  lines.push('');
+  for (const [k, n] of entries) {
+    const pct = total > 0 ? ` (${((n / total) * 100).toFixed(0)}%)` : '';
+    lines.push(`- \`${k}\`: ${n}${pct}`);
+  }
 }
 
 function appendDriftSection(lines: string[], rows: TaskRow[]): void {
