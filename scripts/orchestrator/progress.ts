@@ -30,6 +30,7 @@ interface PerTaskState {
   resolve: (r: TaskRunResult | typeof SKIP_SENTINEL) => void;
   promise: Promise<TaskRunResult | typeof SKIP_SENTINEL>;
   finished: boolean;
+  lastPhase?: string;
 }
 
 const SKIP_SENTINEL = Symbol('upstream-skip');
@@ -70,6 +71,8 @@ export class ListrProgressSink implements TaskProgressSink {
         concurrent: true,
         exitOnError: false,
         rendererOptions: { collapseErrors: false },
+        fallbackRenderer: 'verbose',
+        fallbackRendererCondition: () => !process.stdout.isTTY,
       },
     );
   }
@@ -84,6 +87,11 @@ export class ListrProgressSink implements TaskProgressSink {
     return {
       update: (status) => {
         if (s.listrTask) s.listrTask.output = status;
+        const phaseKey = status.replace(/\s*\(\d+s\)$/, '');
+        if (phaseKey !== s.lastPhase) {
+          s.lastPhase = phaseKey;
+          process.stderr.write(`[${task.id}] ${status}\n`);
+        }
       },
       finish: (result) => {
         if (s.finished) return;
