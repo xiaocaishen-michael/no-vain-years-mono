@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
+import type { CommitDriftRecord } from './git-flow.js';
 import type { FeatureState } from './state.js';
 import type { TaskRunResult } from './run-feature.js';
 
@@ -31,6 +32,8 @@ export interface TaskRow {
   files_modified: number;
   cache_hit_pct?: number;
   permission_denials: number;
+  /** PoC #22 P1 drift telemetry, carried over from TaskRunResult.commit. */
+  drift?: CommitDriftRecord;
 }
 
 export interface RunTotals {
@@ -74,7 +77,10 @@ export async function printRunReport(
   const rows: TaskRow[] = [];
   for (const r of input.results) {
     const row = await loadTaskRow(input.archiveBase, r.taskId, input.state);
-    if (row) rows.push(row);
+    if (row) {
+      if (r.commit?.drift) row.drift = r.commit.drift;
+      rows.push(row);
+    }
   }
   const totals = buildTotals(rows, input.runStartedAt, input.runFinishedAt);
   const markdown = formatMarkdown(rows, totals, input.state);
@@ -301,7 +307,54 @@ function formatMarkdown(
     }
   }
 
+  // Scope drift (PoC #22 P1) — orphan files the LLM touched outside its
+  // declared task.files, and how the gate resolved them.
+  appendDriftSection(lines, rows);
+
   return lines.join('\n');
+}
+
+function appendDriftSection(lines: string[], rows: TaskRow[]): void {
+  const driftRows = rows.filter((r) => r.drift && r.drift.resolution !== 'no-drift');
+  if (driftRows.length === 0) return;
+
+  // Resolution histogram across all rows that have a drift record.
+  const counts: Record<CommitDriftRecord['resolution'], number> = {
+    'no-drift': 0,
+    'gen-fenced': 0,
+    'orphan-resolved-expand': 0,
+    'orphan-resolved-revert': 0,
+    'orphan-stuck': 0,
+    'llm-self-committed-skipped': 0,
+  };
+  for (const r of rows) {
+    if (r.drift) counts[r.drift.resolution] += 1;
+  }
+
+  lines.push('');
+  lines.push('## Scope drift (PoC #22 gate)');
+  lines.push('');
+  lines.push('Resolution histogram (per-task outcome of the kind-aware drift gate):');
+  lines.push('');
+  for (const [k, n] of Object.entries(counts)) {
+    if (n > 0) lines.push(`- \`${k}\`: ${n}`);
+  }
+  lines.push('');
+  lines.push('Tasks with drift:');
+  for (const r of driftRows) {
+    const d = r.drift!;
+    const orphCount = d.orphans.length;
+    const scope = d.genScope ? ` scope=\`${d.genScope.join(', ')}\`` : '';
+    lines.push(
+      `- **${r.id}** \`${d.resolution}\` — ${orphCount} orphan file(s)${scope}`,
+    );
+    if (d.orphans.length > 0 && d.orphans.length <= 10) {
+      for (const f of d.orphans) lines.push(`    - ${f}`);
+    } else if (d.orphans.length > 10) {
+      for (const f of d.orphans.slice(0, 5)) lines.push(`    - ${f}`);
+      lines.push(`    - … (+${d.orphans.length - 5} more)`);
+    }
+  }
 }
 
 function escapePipe(s: string): string {

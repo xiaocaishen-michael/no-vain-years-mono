@@ -318,10 +318,12 @@ describe('commitTask', () => {
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
+      'diffNameOnly',
       'add',
       'commit',
+      'statusPorcelain',
     ]);
-    expect(git.calls[2].args[0]).toMatch(/^feat\(account\): .* \(T001\)$/);
+    expect(git.calls[3].args[0]).toMatch(/^feat\(account\): .* \(T001\)$/);
     expect(llm.calls).toHaveLength(0); // ralph-loop not engaged
   });
 
@@ -340,14 +342,16 @@ describe('commitTask', () => {
     expect(r.ralph?.attempts).toBe(1);
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
 
-    // Sequence: revParseHead, add, commit (fail), restoreStaged, [LLM retry], add, commit (ok)
+    // Sequence: revParseHead, diffNameOnly, add, commit (fail), restoreStaged, [LLM retry], add, commit (ok), statusPorcelain
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
+      'diffNameOnly',
       'add',
       'commit',
       'restoreStaged',
       'add',
       'commit',
+      'statusPorcelain',
     ]);
     expect(llm.calls).toHaveLength(1);
     expect(llm.calls[0].prompt).toMatch(/markdownlint: line too long/);
@@ -387,8 +391,11 @@ describe('commitTask', () => {
     expect(r.reason).toBe('llm-self-committed');
     // tasks.md unchanged: orchestrator does NOT flip when LLM owns the commit.
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe(initial);
-    // Only revParseHead was called; no add/commit/restoreStaged.
-    expect(git.calls.map((c) => c.method)).toEqual(['revParseHead']);
+    // revParseHead + statusPorcelain (post-#22 orphan assert); no add/commit/restoreStaged.
+    expect(git.calls.map((c) => c.method)).toEqual([
+      'revParseHead',
+      'statusPorcelain',
+    ]);
     expect(llm.calls).toHaveLength(0);
   });
 
@@ -407,8 +414,10 @@ describe('commitTask', () => {
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
+      'diffNameOnly',
       'add',
       'commit',
+      'statusPorcelain',
     ]);
   });
 
@@ -426,6 +435,98 @@ describe('commitTask', () => {
     ).rejects.toThrow(/git add catastrophe/);
     // tasks.md should have been reverted
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe(initial);
+  });
+
+  // PoC blind spot #22: commit succeeded by orchestrator's contract (declared
+  // task.files staged + committed), but the LLM left undeclared files dirty
+  // in the worktree. These would silently contaminate the next task's baseline
+  // (cf. T027 / T023 ralph runs) — assert turns the silent leak into a hard
+  // failure visible in run-report.
+  it('orphan files after first-commit success → ok=false, reason=orphan-after-commit', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([{ ok: true }]);
+    git.enqueueStatus([
+      '?? packages/api-client/src/gen/index.ts',
+      ' M apps/server/src/foo.ts',
+    ]);
+    const llm = new FakeLlmClient();
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('orphan-after-commit');
+    expect(r.lastStderr).toMatch(/Orphan files in worktree after commit/);
+    expect(r.lastStderr).toMatch(/packages\/api-client\/src\/gen\/index\.ts/);
+    expect(r.lastStderr).toMatch(/apps\/server\/src\/foo\.ts/);
+    // commit itself ran (the assert is post-commit, not pre-commit)
+    expect(git.calls.map((c) => c.method)).toEqual([
+      'revParseHead',
+      'diffNameOnly',
+      'add',
+      'commit',
+      'statusPorcelain',
+    ]);
+  });
+
+  it('orphan files after ralph-recovered commit → ok=false, reason=orphan-after-commit, ralph kept', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([
+      { ok: false, stderr: 'markdownlint: line too long' },
+      { ok: true }, // retry succeeds
+    ]);
+    git.enqueueStatus(['?? leftover.ts']);
+    const llm = new FakeLlmClient([llmOk('lint fixed')]);
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('orphan-after-commit');
+    expect(r.ralph?.attempts).toBe(1); // ralph still attempted
+    expect(r.lastStderr).toMatch(/leftover\.ts/);
+  });
+
+  it('orphan files on LLM self-commit path → ok=false, reason=orphan-after-commit', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([]); // no commit responses scripted — must not be called
+    git.enqueueHeadSha('sha-after-llm-commit');
+    git.enqueueStatus(['?? llm-forgot-to-add.ts']);
+    const llm = new FakeLlmClient();
+    const r = await commitTask(
+      makeInput(git, llm, tasksMdPath, repoRoot, {
+        headBefore: 'sha-before-llm',
+      }),
+    );
+
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('orphan-after-commit');
+    expect(r.lastStderr).toMatch(/llm-forgot-to-add\.ts/);
+    expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe(initial); // tasks.md still untouched
+    expect(git.calls.map((c) => c.method)).toEqual([
+      'revParseHead',
+      'statusPorcelain',
+    ]);
+  });
+
+  it('clean worktree on LLM self-commit path → ok=true, reason=llm-self-committed (regression: existing #9 path)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([]);
+    git.enqueueHeadSha('sha-after-llm-commit');
+    // No enqueueStatus → FakeGit returns [] (clean) by default
+    const llm = new FakeLlmClient();
+    const r = await commitTask(
+      makeInput(git, llm, tasksMdPath, repoRoot, {
+        headBefore: 'sha-before-llm',
+      }),
+    );
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('llm-self-committed');
+    expect(git.calls.map((c) => c.method)).toEqual([
+      'revParseHead',
+      'statusPorcelain',
+    ]);
   });
 });
 

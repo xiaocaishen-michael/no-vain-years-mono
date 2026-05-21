@@ -226,6 +226,19 @@ function fileOpsSection(task: ParsedTask): string {
     `**DO NOT call \`git add\` or \`git commit\` yourself.** The orchestrator owns the commit step — it stages your files + flips tasks.md \`[X]\` + commits atomically after the verify_command above passes. If you commit yourself, the orchestrator's subsequent commit attempt will find an empty stage and falsely report a lefthook rejection. \`git log\` / \`git diff\` / \`git status\` for context-gathering are fine; just don't mutate.`,
   );
   lines.push('');
+  lines.push(
+    `**Scope boundary (PoC #22 gate):** the files listed below are your declared \`task.files\` whitelist. The orchestrator's default commit stage is exactly this list. If you must touch other files to complete the task:`,
+  );
+  lines.push(
+    `- For \`kind: gen\` or \`kind: migration\` tasks, files inside the task's \`gen_dirs\` (or the auto-derived gen-scope of declared files) are silently allowed — no extra step needed.`,
+  );
+  lines.push(
+    `- For ANY other case (or files outside the gen-scope), the orchestrator will detect the orphans after your verify passes and invoke a follow-up "orphan self-justify" prompt asking you to either \`expand\` (legitimate ripple — add them to scope) or \`revert\` (hallucination — discard them). That follow-up is JSON-only; you will not be allowed to edit code in it.`,
+  );
+  lines.push(
+    `- Prefer to declare ripples up-front in this turn by mentally checking which files you'll need; the self-justify retry budget is small (2).`,
+  );
+  lines.push('');
   for (const f of task.files) {
     switch (f.op) {
       case 'create':
