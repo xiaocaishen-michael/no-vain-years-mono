@@ -1,3 +1,13 @@
+---
+adr_id: ADR-0022
+status: Accepted
+applies_to: [apps/server]
+sunset_trigger: |
+  - @nestjs/throttler 维护停滞
+  - 性能瓶颈触发 distributed rate limit 需求
+  - Redis 切其他 KV store (DragonflyDB / KeyDB / Memorystore)
+---
+
 # ADR-0022: 限流 — @nestjs/throttler v6 + @nest-lab/throttler-storage-redis (取代 meta Bucket4j + JCache→Redis)
 
 * Status: Accepted (2026-05-19) — **backfill**(实装已落,本 ADR 追溯立)

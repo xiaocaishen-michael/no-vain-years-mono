@@ -1,3 +1,12 @@
+---
+adr_id: ADR-0020
+status: Accepted
+applies_to: [apps/server, packages/api-client, packages/types]
+sunset_trigger: |
+  - 切非 NestJS 框架
+  - hexagonal layer 对 LLM 命中率反向负担实证
+---
+
 # ADR-0020: 模块边界 — NestJS Module 框架级 + ESLint `eslint-plugin-boundaries` v6 文件级
 
 * Status: Accepted (2026-05-18)

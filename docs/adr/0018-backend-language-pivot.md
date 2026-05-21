@@ -1,3 +1,13 @@
+---
+adr_id: ADR-0018
+status: Accepted
+applies_to: [apps/server]
+sunset_trigger: |
+  - Anthropic Agent SDK Java/Kotlin 出一等公民
+  - NestJS 生态新框架显著超越 & LLM 命中率 90%+ 等价
+  - Bun M3 业务稳态 PoC 通过
+---
+
 # ADR-0018: Backend Language Pivot — TypeScript on NestJS + Fastify + Prisma + Nx
 
 * Status: Accepted (2026-05-18)
