@@ -24,7 +24,11 @@ import {
   type LlmInvokeOptions,
   type LlmInvokeResult,
 } from './llm-client.js';
-import { phraseFor, type StreamEvent } from './llm-stream-parser.js';
+import type { StreamEvent } from './llm-stream-parser.js';
+import {
+  startLiveProjector,
+  type LiveProjector,
+} from './live-projector.js';
 import { buildPrompt } from './prompt-assembler.js';
 import { ralphLoop, type RalphLoopResult } from './ralph-loop.js';
 import type { Shell, ShellRunResult } from './shell.js';
@@ -524,6 +528,9 @@ async function runTaskInner(
   let verifyRalph: RalphLoopResult | undefined;
   if (verifyResult.exitCode !== 0) {
     let lastVerify: ShellRunResult | undefined;
+    // Fresh projector per round so each retry's elapsed timer starts at 0
+    // and heartbeat dedup doesn't carry over phrases from the previous round.
+    let roundProjector: LiveProjector | undefined;
     verifyRalph = await ralphLoop({
       phase: 'verify-command',
       maxRetries: options.maxVerifyRetries,
@@ -531,6 +538,8 @@ async function runTaskInner(
       buildRetryPrompt: (feedback, n) =>
         buildVerifyRetryPrompt(task, feedback, n),
       attempt: async () => {
+        if (roundProjector) roundProjector.stop();
+        roundProjector = undefined;
         progress?.update('🧪 verify retry');
         const r = await deps.shell.run(verifyCmd, { cwd: workspaceCwd });
         lastVerify = r;
@@ -538,6 +547,12 @@ async function runTaskInner(
           ok: r.exitCode === 0,
           feedback: r.exitCode === 0 ? undefined : r.stderr || r.stdout,
         };
+      },
+      prepareRound: (n, max) => {
+        if (roundProjector) roundProjector.stop();
+        roundProjector = startLiveProjector(progress, '🧠 Claude');
+        roundProjector.setPrefix(`⚠️  verify-ralph #${n}/${max}`);
+        return { onEvent: (e) => roundProjector?.onEvent(e) };
       },
       llm: deps.llm,
       llmInvokeOpts,
@@ -559,6 +574,7 @@ async function runTaskInner(
         });
       },
     });
+    if (roundProjector) roundProjector.stop();
     if (!verifyRalph.ok) {
       return {
         taskId: task.id,
@@ -585,6 +601,7 @@ async function runTaskInner(
     maxHookRetries: options.maxHookRetries,
     headBefore,
     archive,
+    progress,
   });
 
   const reason: TaskRunReason = mapCommitReason(commit.ok, commit.reason);
@@ -616,81 +633,9 @@ async function runTaskInner(
  * Fires an immediate "(0s)" tick so the sink shows the label right away
  * even if the step finishes before the first interval boundary.
  */
-/**
- * Live projector: unified phase narration + heartbeat + elapsed-timer ticker.
- *
- * Replaces the prior `startElapsedTimer` whose ticker stomped on phrase
- * updates from any other source. Now the projector owns the listr task row
- * for the LLM phase: phrases come from claude-cli NDJSON events (via
- * `onEvent`), elapsed seconds get suffixed, heartbeat (thinking_delta /
- * text_delta) is throttled and rendered into a second TTY-only line.
- *
- * Channels:
- *  - `phase` events → updates currentPhase + stderr-logged via progress.update
- *    on actual phase change (dedup gated downstream by phaseKey strip).
- *  - `heartbeat` events → 500ms throttle, appended as `${phase} | ${tail}`,
- *    written to TTY only via progress.heartbeat? (no stderr noise).
- *  - Background ticker: 1s TTY / 15s non-TTY, refreshes `${currentPhase} (Ns)`
- *    so users see "still alive" between events (LLM thinking with no deltas).
- */
-const HEARTBEAT_THROTTLE_MS = 500;
-
-interface LiveProjector {
-  onEvent(e: StreamEvent): void;
-  stop(): void;
-}
-
-function startLiveProjector(
-  progress: TaskProgressHandle | undefined,
-  initialPhase: string,
-): LiveProjector {
-  if (!progress) {
-    return { onEvent: () => undefined, stop: () => undefined };
-  }
-  const start = Date.now();
-  let currentPhase = initialPhase;
-  let lastHeartbeatAt = 0;
-  let lastRenderedHeartbeat: string | undefined;
-
-  const elapsedSuffix = () => {
-    const s = Math.floor((Date.now() - start) / 1000);
-    return ` (${s}s)`;
-  };
-  const renderPhase = () => {
-    progress.update(currentPhase + elapsedSuffix());
-  };
-  renderPhase();
-
-  // PoC blind spot #12: listr2 falls back to verbose (line-per-update)
-  // renderer when stdout isn't a TTY. 1s tick floods the log; 15s non-TTY.
-  const tickMs = process.stdout.isTTY ? 1000 : 15000;
-  const handle = setInterval(renderPhase, tickMs);
-
-  return {
-    onEvent: (e) => {
-      const out = phraseFor(e);
-      if (!out) return;
-      if (out.channel === 'phase') {
-        currentPhase = out.phrase;
-        lastRenderedHeartbeat = undefined;
-        renderPhase();
-        return;
-      }
-      // heartbeat
-      const now = Date.now();
-      if (now - lastHeartbeatAt < HEARTBEAT_THROTTLE_MS) return;
-      if (out.phrase === lastRenderedHeartbeat) return;
-      lastHeartbeatAt = now;
-      lastRenderedHeartbeat = out.phrase;
-      if (progress.heartbeat) {
-        progress.heartbeat(
-          `${currentPhase}${elapsedSuffix()} | ${out.phrase}`,
-        );
-      }
-    },
-    stop: () => clearInterval(handle),
-  };
-}
+// LiveProjector / startLiveProjector moved to `./live-projector.ts` so
+// git-flow.ts can wire hook-ralph + orphan-ralph rounds to the same live
+// narration channel without a circular import.
 
 async function safeDiff(
   git: Git,

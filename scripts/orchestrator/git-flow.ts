@@ -2,6 +2,10 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { TaskArchive } from './archive.js';
 import { classifyDrift, normalizePath } from './drift-classifier.js';
+import {
+  startLiveProjector,
+  type LiveProjector,
+} from './live-projector.js';
 import type { LlmClient, LlmInvokeOptions } from './llm-client.js';
 import {
   runOrphanRalph,
@@ -9,6 +13,7 @@ import {
 } from './orphan-ralph.js';
 import type { ParsedPlan } from './parsers/plan.js';
 import { ralphLoop, type RalphLoopResult } from './ralph-loop.js';
+import type { TaskProgressHandle } from './run-feature.js';
 import type { Workspace } from './schemas/plan.js';
 import type { ParsedTask, TaskKind } from './schemas/tasks.js';
 import type { Shell } from './shell.js';
@@ -406,6 +411,15 @@ export interface CommitTaskInput {
    * hook stderr captured for later cat-based debugging.
    */
   archive?: TaskArchive;
+  /**
+   * Optional listr task row handle. When provided, hook-ralph and
+   * orphan-ralph rounds each spin up a fresh LiveProjector with a label
+   * prefix (e.g. "🪝 hook-ralph #1/2", "🩹 orphan-ralph #2/2") so the
+   * user sees per-round narration in the row instead of frozen static
+   * labels. Caller (run-feature) is responsible for projector cleanup
+   * when commitTask returns.
+   */
+  progress?: TaskProgressHandle;
 }
 
 export type CommitTaskTerminalReason =
@@ -489,6 +503,7 @@ export async function commitTask(
     llm,
     llmInvokeOpts,
     headBefore,
+    progress,
   } = input;
 
   // Step C': PoC blind spot 9 — if HEAD moved during the LLM run, the
@@ -540,6 +555,7 @@ export async function commitTask(
     case 'needs-ralph': {
       // Step G: orphan self-justify.
       orphans = decision.orphans;
+      let orphanProjector: LiveProjector | undefined;
       orphanRalph = await runOrphanRalph({
         task,
         declared,
@@ -550,7 +566,14 @@ export async function commitTask(
         git,
         repoRoot,
         tasksMdPath,
+        prepareRound: (n, max) => {
+          if (orphanProjector) orphanProjector.stop();
+          orphanProjector = startLiveProjector(progress, '🧠 Claude');
+          orphanProjector.setPrefix(`🩹 orphan-ralph #${n}/${max}`);
+          return { onEvent: (e) => orphanProjector?.onEvent(e) };
+        },
       });
+      if (orphanProjector) orphanProjector.stop();
       if (!orphanRalph.ok) {
         // stuck / max-retries / invalid / llm-error all surface as orphan-stuck
         // to the caller; the per-reason history is preserved on the result.
@@ -641,6 +664,7 @@ export async function commitTask(
   // Hook failure → ralph-loop with phase=git-hook (default maxRetries=2).
   let lastFeedback: string | undefined = first.feedback;
   const archive = input.archive;
+  let hookProjector: LiveProjector | undefined;
   const ralph = await ralphLoop({
     phase: 'git-hook',
     maxRetries: input.maxHookRetries,
@@ -648,9 +672,17 @@ export async function commitTask(
     buildRetryPrompt: (feedback) =>
       buildHookRetryPrompt(task, allStaged, feedback),
     attempt: async () => {
+      if (hookProjector) hookProjector.stop();
+      hookProjector = undefined;
       const r = await performCommit();
       lastFeedback = r.feedback;
       return r;
+    },
+    prepareRound: (n, max) => {
+      if (hookProjector) hookProjector.stop();
+      hookProjector = startLiveProjector(progress, '🧠 Claude');
+      hookProjector.setPrefix(`🪝 hook-ralph #${n}/${max}`);
+      return { onEvent: (e) => hookProjector?.onEvent(e) };
     },
     llm,
     llmInvokeOpts,
@@ -668,6 +700,7 @@ export async function commitTask(
         }
       : undefined,
   });
+  if (hookProjector) hookProjector.stop();
 
   if (ralph.ok) {
     const orphan = await checkOrphans(git, repoRoot);
