@@ -28,9 +28,12 @@ export default [
             //      "account" is the spec frontmatter business name, src/auth/ is the on-disk module dir)
             //   - mobile: apps/mobile/app/(app)/(tabs)/profile.tsx + co-located feature code
             //
-            // depConstraints below are tag-driven via `scope:*` Nx tags on each project.json;
-            // until tags land (downstream task), the trailing `sourceTag: "*"` fallback keeps
-            // current imports green while the constraint shape is registered.
+            // depConstraints below are tag-driven via `scope:*` Nx tags on each project.json.
+            // PR-T2 (ADR-0040 L2 策略层) flipped this from "fallback-permitted" to default-deny:
+            // all 5 projects (server / mobile / api-client / types / orchestrator) now have
+            // explicit scope tags; the previous `sourceTag: "*"` fallback was removed so
+            // any new project added without a tag will fail lint immediately (forcing the
+            // author to declare the intended scope upfront).
             "@nx/enforce-module-boundaries": [
                 "error",
                 {
@@ -90,12 +93,23 @@ export default [
                                 "@prisma/client"
                             ]
                         },
-                        // Fallback — untagged projects keep current behavior so the lint stays
-                        // green until each project.json `tags` field lands downstream.
+                        // orchestrator — spec-kit DAG runner (scripts/orchestrator/). Total
+                        // import isolation: drives apps via subprocess + fs reads, not via
+                        // type imports. Allows external deps only (zod, gray-matter, listr2,
+                        // node:*); forbids any business app/lib surface to prevent type
+                        // pollution from server/mobile evolving its way into the orchestrator.
                         {
-                            sourceTag: "*",
-                            onlyDependOnLibsWithTags: [
-                                "*"
+                            sourceTag: "scope:orchestrator",
+                            onlyDependOnLibsWithTags: [],
+                            bannedExternalImports: [
+                                "@nestjs/*",
+                                "@prisma/client",
+                                "react",
+                                "react-native",
+                                "nativewind",
+                                "expo",
+                                "expo-*",
+                                "zustand"
                             ]
                         }
                     ]

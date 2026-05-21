@@ -1,0 +1,30 @@
+{
+  "name": "@nvy/orchestrator",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "scripts/orchestrator",
+  "projectType": "library",
+  "tags": ["scope:orchestrator"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit",
+        "cwd": "scripts/orchestrator"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint .",
+        "cwd": "scripts/orchestrator"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run",
+        "cwd": "scripts/orchestrator"
+      }
+    }
+  }
+}

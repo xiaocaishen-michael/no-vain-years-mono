@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/mobile",
   "projectType": "application",
-  "tags": [],
+  "tags": ["scope:mobile-app"],
   "targets": {
     "typecheck": {
       "executor": "nx:run-commands",
@@ -58,6 +58,18 @@
       ],
       "options": {
         "command": "playwright test",
+        "cwd": "apps/mobile"
+      }
+    },
+    "runtime-smoke": {
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{projectRoot}/dist",
+        "{projectRoot}/playwright-report",
+        "{projectRoot}/playwright-test-results"
+      ],
+      "options": {
+        "command": "npx expo export -p web && pnpm exec playwright test -c playwright.runtime-smoke.config.ts",
         "cwd": "apps/mobile"
       }
     }

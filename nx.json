@@ -1,14 +1,37 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.spec.ts",
+      "!{projectRoot}/**/*.test.ts"
+    ],
+    "sharedGlobals": [
+      "{workspaceRoot}/apps/server/prisma/schema.prisma",
+      "{workspaceRoot}/.env.example",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/pnpm-workspace.yaml"
+    ]
+  },
   "targetDefaults": {
     "build": {
-      "cache": true
+      "cache": true,
+      "inputs": ["production", "^production"]
+    },
+    "typecheck": {
+      "cache": true,
+      "dependsOn": ["^build"]
     },
     "test": {
-      "cache": true
+      "cache": true,
+      "dependsOn": ["typecheck"]
     },
     "lint": {
       "cache": true
+    },
+    "runtime-smoke": {
+      "cache": false
     }
   },
   "plugins": [
