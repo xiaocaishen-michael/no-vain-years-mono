@@ -21,6 +21,7 @@ coverage/
 .idea/
 .obsidian/
 *.swp
+.obsidian/
 
 # Logs
 *.log
@@ -42,3 +43,10 @@ graphify-out/
 
 # orchestrator per-task run archive (P1 debug sink; volatile per run)
 .spec-kit/runs/
+
+# Expo metro cache
+.expo/
+
+# Playwright artifacts
+playwright-report/
+playwright-test-results/

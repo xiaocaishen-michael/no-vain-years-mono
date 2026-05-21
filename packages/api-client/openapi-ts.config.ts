@@ -14,7 +14,7 @@ import { defineConfig } from '@hey-api/openapi-ts';
  */
 export default defineConfig({
   input: process.env.OPENAPI_INPUT ?? '../../apps/server/openapi.json',
-  output: { path: 'src/generated' },
+  output: { path: 'src/gen' },
   plugins: [
     '@hey-api/client-fetch',
     '@hey-api/typescript',

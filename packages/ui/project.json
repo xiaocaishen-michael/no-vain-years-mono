@@ -1,0 +1,22 @@
+{
+  "name": "ui",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ui/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/ui",
+        "command": "echo 'ui workspace shell — typecheck deferred until apps/mobile (T033) bootstraps react-native + nativewind peer deps; D4 v2 reuse-not-rewrite migration only drops source.'"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/ui",
+        "command": "tsc --noEmit -p tsconfig.json"
+      }
+    }
+  }
+}
