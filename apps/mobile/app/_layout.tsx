@@ -1,6 +1,5 @@
 import '../global.css';
 
-import { useAuthStore } from '@nvy/auth';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useNavigationContainerRef, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -8,10 +7,11 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { decideAuthRoute } from '../lib/auth-gate-decision';
-import { queryClient } from '../lib/api/query-client';
-import { setupAxios } from '../lib/api/setup';
-import { ErrorBoundary } from '../lib/error-boundary';
+import { useAuthStore } from '~/auth';
+import { decideAuthRoute } from '~/core/auth-gate-decision';
+import { queryClient } from '~/core/api/query-client';
+import { setupAxios } from '~/core/api/setup';
+import { ErrorBoundary } from '~/core/error-boundary';
 
 // One-shot axios install — baseURL + x-trace-id + Authorization Bearer
 // interceptors (per ADR-0027 / ADR-0036 / ADR-0038). Idempotent (booted flag).

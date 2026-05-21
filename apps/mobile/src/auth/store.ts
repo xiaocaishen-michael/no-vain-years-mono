@@ -23,8 +23,8 @@ import * as SecureStore from 'expo-secure-store';
 // default {}`) — fall back to window.localStorage directly so AuthGate /
 // persist rehydration work for Expo Web (Playwright T040).
 //
-// We probe via `typeof window` rather than `Platform.OS === 'web'` to avoid
-// pulling the react-native dep into @nvy/auth (it's UI-platform-neutral).
+// We probe via `typeof window` rather than `Platform.OS === 'web'` to keep
+// the auth module UI-platform-neutral (no react-native dep).
 const isWebEnv =
   typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 

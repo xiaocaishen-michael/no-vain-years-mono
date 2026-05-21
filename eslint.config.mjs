@@ -19,7 +19,8 @@ export default [
         ],
         rules: {
             // Mono-level Nx project boundary (per ADR-0020 § Decision 层 3).
-            // Source of truth: specs/002-account-profile/plan.md § module_boundaries (7 workspaces).
+            // Source of truth: specs/002-account-profile/plan.md § module_boundaries
+            // (post-PR-3 ADR-0030: 4 workspaces — apps/{server,mobile} + packages/{api-client,types}).
             //
             // Business module "account" → filesystem path mapping (per 2026-05-20 dry-run + 001 reality):
             //   - server: apps/server/src/auth/{domain,application,infrastructure,web}/**
@@ -45,9 +46,6 @@ export default [
                                 "scope:pkg-types"
                             ],
                             bannedExternalImports: [
-                                "@nvy/auth",
-                                "@nvy/ui",
-                                "@nvy/design-tokens",
                                 "@nvy/api-client",
                                 "react",
                                 "react-native",
@@ -57,13 +55,12 @@ export default [
                                 "zustand"
                             ]
                         },
-                        // mobile-app — Expo client; consumes all 5 packages; no server / Nest / Prisma.
+                        // mobile-app — Expo client; consumes api-client + types (Orval-generated
+                        // typed client + shared types). auth/ui/theme/core inlined to
+                        // apps/mobile/src/ per ADR-0030 (5→2 packages).
                         {
                             sourceTag: "scope:mobile-app",
                             onlyDependOnLibsWithTags: [
-                                "scope:pkg-auth",
-                                "scope:pkg-ui",
-                                "scope:pkg-design-tokens",
                                 "scope:pkg-types",
                                 "scope:pkg-api-client"
                             ],
@@ -72,63 +69,17 @@ export default [
                                 "@prisma/client"
                             ]
                         },
-                        // pkg-auth — zustand store + expo-secure-store + typed API client;
-                        // no UI / design-tokens (auth is headless), no Nest / Prisma (client-side).
-                        {
-                            sourceTag: "scope:pkg-auth",
-                            onlyDependOnLibsWithTags: [
-                                "scope:pkg-types",
-                                "scope:pkg-api-client"
-                            ],
-                            bannedExternalImports: [
-                                "@nestjs/*",
-                                "@prisma/client",
-                                "@nvy/ui",
-                                "@nvy/design-tokens"
-                            ]
-                        },
-                        // pkg-ui — presentational RN components; consumes design-tokens only;
-                        // no auth / api-client / types (UI must stay data-shape-agnostic).
-                        {
-                            sourceTag: "scope:pkg-ui",
-                            onlyDependOnLibsWithTags: [
-                                "scope:pkg-design-tokens"
-                            ],
-                            bannedExternalImports: [
-                                "@nestjs/*",
-                                "@prisma/client",
-                                "@nvy/auth",
-                                "@nvy/api-client",
-                                "@nvy/types"
-                            ]
-                        },
-                        // pkg-design-tokens — leaf; zero internal deps; consumed by pkg-ui + mobile-app.
-                        {
-                            sourceTag: "scope:pkg-design-tokens",
-                            onlyDependOnLibsWithTags: [],
-                            bannedExternalImports: [
-                                "@nestjs/*",
-                                "@prisma/client",
-                                "@nvy/auth",
-                                "@nvy/ui",
-                                "@nvy/api-client",
-                                "@nvy/types"
-                            ]
-                        },
                         // pkg-types — re-exports @prisma/client types; zero internal deps.
                         {
                             sourceTag: "scope:pkg-types",
                             onlyDependOnLibsWithTags: [],
                             bannedExternalImports: [
                                 "@nestjs/*",
-                                "@nvy/ui",
-                                "@nvy/design-tokens",
-                                "@nvy/auth",
                                 "@nvy/api-client"
                             ]
                         },
-                        // pkg-api-client — @hey-api/openapi-ts generated typed client;
-                        // consumes @nvy/types only; no Nest / Prisma / UI / auth.
+                        // pkg-api-client — Orval-generated typed client; consumes @nvy/types only;
+                        // no Nest / Prisma / UI / auth.
                         {
                             sourceTag: "scope:pkg-api-client",
                             onlyDependOnLibsWithTags: [
@@ -136,10 +87,7 @@ export default [
                             ],
                             bannedExternalImports: [
                                 "@nestjs/*",
-                                "@prisma/client",
-                                "@nvy/auth",
-                                "@nvy/ui",
-                                "@nvy/design-tokens"
+                                "@prisma/client"
                             ]
                         },
                         // Fallback — untagged projects keep current behavior so the lint stays

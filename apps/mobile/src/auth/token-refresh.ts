@@ -1,4 +1,4 @@
-// Token-refresh infrastructure for @nvy/auth.
+// Token-refresh infrastructure for the auth module.
 //
 // Single-flights concurrent refresh calls to prevent thundering-herd when
 // multiple API calls return 401 simultaneously. On failure the session is

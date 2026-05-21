@@ -116,6 +116,7 @@ A-002 = 2 endpoints (`GET /api/v1/accounts/me` returning profile + `PATCH /api/v
     }
   ],
   "module_boundaries": {
+    "_note": "HISTORICAL — superseded by ADR-0030 (5→2 packages). packages/{auth,ui,design-tokens} were inlined into apps/mobile/src/{auth,ui,theme} post-PR-3. The pkg-auth / pkg-ui / pkg-design-tokens entries below describe the as-built A-002 ship, not the current mono shape.",
     "server-app": {
       "modules": ["account"],
       "allowed_imports": ["@nestjs/*", "libs/db", "@nvy/types", "@prisma/client"],

@@ -47,7 +47,7 @@ test.beforeEach(async ({ page }) => {
 test.setTimeout(120_000);
 
 async function waitForBootedRoot(page: import('@playwright/test').Page) {
-  await waitForBootedRoot(page);
+  await page.goto('/');
   // Wait until network goes idle so the JS bundle has finished downloading +
   // executing. Then expect the AuthGate-driven hero displayName text.
   await page.waitForLoadState('networkidle', { timeout: 90_000 });

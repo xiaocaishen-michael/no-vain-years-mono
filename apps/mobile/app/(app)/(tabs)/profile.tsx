@@ -23,8 +23,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import Svg, { Circle, Defs, G, LinearGradient, Line, Path, Rect, Stop } from 'react-native-svg';
-import { useAuthStore } from '@nvy/auth';
-import { tokens } from '@nvy/design-tokens';
+import { useAuthStore } from '~/auth';
+import { tokens } from '~/theme';
 
 const COPY = {
   unnamed: '未命名',

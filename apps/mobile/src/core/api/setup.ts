@@ -22,7 +22,7 @@
  */
 import axios from 'axios';
 import * as Crypto from 'expo-crypto';
-import { useAuthStore } from '@nvy/auth';
+import { useAuthStore } from '~/auth';
 
 let booted = false;
 
