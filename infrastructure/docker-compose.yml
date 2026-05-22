@@ -1,0 +1,90 @@
+# Production-leaning compose stub for no-vain-years-mono.
+#
+# Per ADR-0037 § 4 (secrets via volumes mount, no image ENV baking):
+#   - Secrets are mounted as files at /run/secrets/<name>.
+#   - Server config loader reads /run/secrets/<NAME> first, falls back to
+#     process.env.<NAME> (loader impl deferred to refresh-token-rotation
+#     feature spec; ADR-0037 § 4 paragraph 2 contract).
+#   - Dockerfile NEVER bakes secrets via ENV / build args.
+#
+# Local dev still uses docker-compose.dev.yml (root-level, db+redis only,
+# no app container, no secrets — dev uses apps/server/.env directly).
+#
+# This file is a stub Plan 3 Phase 1 will finalize (per ADR-0026 deploy
+# topology decision). Until then it serves as the contract anchor for
+# ADR-0037 secrets discipline.
+#
+# Usage (when finalized):
+#   echo -n "<actual-jwt-secret>" > infrastructure/secrets/auth-jwt-secret
+#   echo -n "<actual-hmac-secret>" > infrastructure/secrets/sms-code-hmac-secret
+#   docker compose -f infrastructure/docker-compose.yml --env-file .env.prod up -d
+
+name: mbw-prod
+
+services:
+  server:
+    # Image built without secrets baked in — secrets injected only at runtime.
+    image: ghcr.io/xiaocaishen-michael/no-vain-years-mono-server:latest
+    container_name: mbw-server
+    environment:
+      NODE_ENV: production
+      # NOTE: non-secret config still comes from env vars; secrets are not.
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      # AUTH_JWT_SECRET / SMS_CODE_HMAC_SECRET are NOT here — read from
+      # /run/secrets/* by the server's config loader.
+    secrets:
+      - auth-jwt-secret
+      - sms-code-hmac-secret
+    ports:
+      - '3000:3000'
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: mbw-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mbw}
+      POSTGRES_USER: ${POSTGRES_USER:-mbw}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
+    secrets:
+      - postgres-password
+    volumes:
+      - mbw-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-mbw}']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: mbw-redis
+    volumes:
+      - mbw-redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+secrets:
+  # File-backed secrets — mounted to /run/secrets/<name> in each service.
+  # Files in infrastructure/secrets/ MUST be gitignored.
+  auth-jwt-secret:
+    file: ./secrets/auth-jwt-secret
+  sms-code-hmac-secret:
+    file: ./secrets/sms-code-hmac-secret
+  postgres-password:
+    file: ./secrets/postgres-password
+
+volumes:
+  mbw-pgdata:
+  mbw-redisdata:
