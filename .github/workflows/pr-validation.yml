@@ -105,11 +105,4 @@ jobs:
         # only for affected. cross-package wiring (api-client implicitDeps,
         # mobile static dep) makes single server-file change cascade to
         # api-client + mobile per ADR-0040 P2 design.
-        #
-        # `--exclude=@nvy/orchestrator` — temporary workaround:
-        # orchestrator's run-feature.spec.ts has 6 tests that fail only in CI
-        # (consistent, not flaky); local nx run @nvy/orchestrator:test --skip-nx-cache
-        # passes 329/329. First exposed by chore/meta-config-mono-migration PR #94
-        # (2026-05-22) since workspace-root config changes cascade orchestrator into
-        # affected. Tracked via #95; restore once root cause fixed.
-        run: pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main --exclude=@nvy/orchestrator
+        run: pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main

@@ -662,7 +662,16 @@ export async function detectLlmNoOp(
       offenders.push(`${f.path} (empty after LLM)`);
       continue;
     }
-    if (stat.mtimeMs < llmStartedAt) {
+    // Tolerance handles Linux kernel quirk: filesystem mtime is sampled
+    // via CLOCK_REALTIME_COARSE (timer-tick granularity, 1ms on most modern
+    // distros; 4ms with CONFIG_HZ=250) while Date.now() reads precise
+    // CLOCK_REALTIME — so mtime can appear slightly EARLIER than the
+    // `llmStartedAt` snapshot captured just before the LLM call. Real LLM
+    // calls take seconds so this never produces false positives in prod;
+    // the tolerance is sized to handle fake-driven tests that complete in
+    // single-digit ms. Issue #95.
+    const FS_MTIME_COARSE_TOLERANCE_MS = 10;
+    if (stat.mtimeMs < llmStartedAt - FS_MTIME_COARSE_TOLERANCE_MS) {
       offenders.push(`${f.path} (untouched after LLM)`);
     }
   }
