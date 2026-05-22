@@ -1,15 +1,15 @@
 ---
 feature_id: 002-account-profile-base
 modules: [account]
-owners: ['@xiaocaishen-michael']
+owners: ["@xiaocaishen-michael"]
 status: planned
 created_at: 2026-05-20
 updated_at: 2026-05-20
-spec_kit_version: '>=0.8.5,<0.10.0'
-orchestrator_compat: '>=0.1.0'
+spec_kit_version: ">=0.8.5,<0.10.0"
+orchestrator_compat: ">=0.1.0"
 contracts:
-  - path: 'packages/api-client/src/profile.interface.ts'
-    checksum: 'sha256-abcd1234'
+  - path: "packages/api-client/src/profile.interface.ts"
+    checksum: "sha256-abcd1234"
 ---
 
 # Feature Specification: Account Profile Base
@@ -34,13 +34,11 @@ sequenceDiagram
 ## User Scenarios & Testing
 
 ### User Story 1 — 查看个人信息 (Priority: P1)
-
 <!-- us-meta: {"id":"US1","priority":"P1","independent_test":"Login with valid phone → see profile","trace_fr":["FR-001"]} -->
 
 **Why this priority**: 用户必须能查看自己的资料。
 
 **Acceptance Scenarios**:
-
 1. **Given** logged-in account, **When** open profile page, **Then** see displayName & masked phone
 
 ### Edge Cases
