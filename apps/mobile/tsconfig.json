@@ -51,10 +51,5 @@
     "e2e",
     "playwright-report"
   ],
-  "references": [
-    {
-      "path": "../../packages/api-client"
-    }
-  ],
   "extends": "expo/tsconfig.base"
 }
