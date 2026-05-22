@@ -10,7 +10,8 @@
   },
   "scripts": {
     "postinstall": "lefthook install",
-    "orchestrate": "tsx scripts/orchestrator/index.ts"
+    "orchestrate": "tsx scripts/orchestrator/index.ts",
+    "db:migrate": "tsx scripts/prisma-migrate.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

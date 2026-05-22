@@ -46,6 +46,54 @@ pre-commit:
       # K_example == K_env per pair + process.env refs ⊆ K_example ∪ ALLOWLIST.
       run: pnpm tsx scripts/check-env-sync.ts
 
+    prisma-generate-gate:
+      tags: data
+      glob: 'apps/server/prisma/schema.prisma'
+      # Per ADR-0035 § 2 — staged schema.prisma → auto regenerate client.
+      # Generated output is gitignored (apps/server/.gitignore /src/generated/prisma),
+      # so we don't need to re-stage anything. The gate's value is: if the schema
+      # changed and `prisma generate` fails (invalid schema, dialect break), the
+      # commit aborts here instead of failing later in CI / runtime.
+      run: pnpm -C apps/server prisma generate
+
+    migration-naming-check:
+      tags: data
+      # Per ADR-0035 § 1 — new migration directories under apps/server/prisma/migrations/
+      # MUST match `<yyyymmddhhmm>_<verb_obj>` (12-digit timestamp + underscore + slug).
+      # Existing historical names (0_init, 1_add_outbox_event, ...) are immutable;
+      # check only --diff-filter=A new additions, mirroring docs-organization-drift.
+      # Use `pnpm db:migrate "<verb obj>"` wrapper to auto-prepend timestamp.
+      run: |
+        set -eu
+        new_migs=$(git diff --cached --name-only --diff-filter=A \
+          | grep -E '^apps/server/prisma/migrations/[^/]+/migration\.sql$' \
+          | sed -E 's|^apps/server/prisma/migrations/([^/]+)/.*$|\1|' \
+          | sort -u \
+          || true)
+        if [ -z "$new_migs" ]; then
+          exit 0
+        fi
+        invalid=""
+        while IFS= read -r dir; do
+          if ! echo "$dir" | grep -qE '^[0-9]{8}_[0-9]{4}_[a-z][a-z0-9_]*$'; then
+            invalid="${invalid}${dir}\n"
+          fi
+        done <<< "$new_migs"
+        if [ -z "$invalid" ]; then
+          exit 0
+        fi
+        echo "❌ migration-naming-check: 新增 migration 目录名违反 ADR-0035 § 1"
+        echo ""
+        echo "Invalid directories:"
+        printf "$invalid" | sed 's/^/  - /'
+        echo ""
+        echo "约束: <yyyymmddhhmm>_<verb_obj>  (e.g. 20260520_1430_add_phone_to_account)"
+        echo "wrapper: pnpm db:migrate \"add phone to account\"  (auto-prepends timestamp)"
+        echo ""
+        echo "Historical names (0_init / 1_add_outbox_event / ...) 是 immutable 不追溯."
+        echo "紧急出口: git commit --no-verify"
+        exit 1
+
     tasks-md-drift:
       tags: sdd
       # 三段检查:
