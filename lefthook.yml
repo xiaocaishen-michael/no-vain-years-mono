@@ -29,6 +29,23 @@ pre-commit:
       run: pnpm exec prettier --write {staged_files}
       stage_fixed: true
 
+    gitleaks:
+      tags: security
+      # Per ADR-0037 § 1 — staged-only scan with shared .gitleaks.toml ruleset.
+      # `protect --staged` reads the git index directly (not {staged_files}),
+      # avoiding the lefthook template quote-stripping pitfall.
+      # CI mirror: .github/workflows/ci.yml gitleaks job runs `detect` on full
+      # history. Emergency exit: git commit --no-verify.
+      run: gitleaks protect --staged --no-banner --config .gitleaks.toml
+
+    check-env-sync:
+      tags: security
+      glob: '{**/.env,**/.env.example}'
+      # Per ADR-0037 § 2 — trigger only on .env / .env.example diffs to keep
+      # the typical commit fast (script walks apps/**/*.ts once). Algorithm:
+      # K_example == K_env per pair + process.env refs ⊆ K_example ∪ ALLOWLIST.
+      run: pnpm tsx scripts/check-env-sync.ts
+
     tasks-md-drift:
       tags: sdd
       # 三段检查:

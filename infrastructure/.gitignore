@@ -1,0 +1,5 @@
+# Deny everything under secrets/ except the .gitkeep marker.
+# Per ADR-0037 § 4 — secrets MUST NOT be committed; files here are mounted
+# into containers at /run/secrets/<name> at runtime.
+secrets/*
+!secrets/.gitkeep
