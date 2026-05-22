@@ -91,9 +91,14 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
     const code = mockSms.getLastCode(Phone.create(phone));
     expect(code).toMatch(/^\d{6}$/);
 
+    // Send inbound x-trace-id header — nestjs-cls middleware honors it
+    // (per security.module.ts idGenerator) so the same trace propagates
+    // into the outbox row metadata (per ADR-0033).
+    const inboundTraceId = '0a1b2c3d-4e5f-6789-abcd-ef0123456789';
     const authRes = await app.inject({
       method: 'POST',
       url: '/api/v1/accounts/phone-sms-auth',
+      headers: { 'x-trace-id': inboundTraceId },
       payload: { phone, code },
     });
 
@@ -111,16 +116,35 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
     expect(created!.status).toBe('ACTIVE');
     expect(created!.id.toString()).toBe(body.accountId);
 
-    // outbox row written
+    // outbox row written — payload follows ADR-0033 envelope shape
+    // { metadata: { trace_id, occurred_at, event_version, producer_context }, data }
     const outboxRows = await prisma.outbox_event.findMany({
       where: { event_type: ACCOUNT_CREATED_EVENT_TYPE },
     });
     const matching = outboxRows.filter((r) => {
-      const p = r.payload as { phone?: string };
-      return p?.phone === phone;
+      const p = r.payload as { data?: { phone?: string } };
+      return p?.data?.phone === phone;
     });
     expect(matching).toHaveLength(1);
     expect(matching[0]!.published_at).toBeNull();
+
+    const envelope = matching[0]!.payload as {
+      metadata: {
+        trace_id: string;
+        occurred_at: string;
+        event_version: number;
+        producer_context: string;
+      };
+      data: { accountId: string; phone: string; createdAt: string };
+    };
+    expect(envelope.metadata.trace_id).toBe(inboundTraceId);
+    expect(envelope.metadata.event_version).toBe(1);
+    expect(envelope.metadata.producer_context).toBe('auth');
+    expect(envelope.metadata.occurred_at).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
+    expect(envelope.data.phone).toBe(phone);
+    expect(envelope.data.accountId).toBe(body.accountId);
   });
 
   it('US2 unregistered path response key set matches US1 ACTIVE path (anti-enumeration prep)', async () => {
