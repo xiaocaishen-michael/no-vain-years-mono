@@ -6,9 +6,29 @@ extends:
 # 强制层 commit-time 硬拦:`tasks-md-drift` 拒"commit 含 impl 代码但 tasks.md 未 staged"。
 # `--no-verify` 仅限格式化 / typo / 紧急 hotfix 出口。
 
+# Conventional Commits enforcement at commit time.
+# Mirrors meta-repo behavior — full ruleset (header/body/footer max-length,
+# config-conventional types) shared via commitlint.config.mjs;CI runs the
+# same check via wagoid/commitlint-github-action. PR title also validated
+# by amannn/action-semantic-pull-request (load-bearing for squash merge:
+# PR title becomes commit message).
+commit-msg:
+  commands:
+    conventional-format:
+      run: pnpm exec commitlint --edit {1}
+
 pre-commit:
   parallel: true
   commands:
+    format:
+      tags: format
+      # Prettier 重写 staged 文件并 re-stage (stage_fixed: true)。
+      # 与其他 pre-commit 命令并行运行 — Prettier 仅改格式（空白/换行/引号），
+      # tasks-md-drift / no-bad-mocks / docs-organization-drift 都不读会变的内容。
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,md,yml,yaml}'
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true
+
     tasks-md-drift:
       tags: sdd
       # 三段检查:

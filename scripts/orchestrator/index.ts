@@ -7,11 +7,7 @@ import {
   type FileOpPlanResult,
 } from './fs-ops.js';
 import { GitCli } from './git-flow.js';
-import {
-  queryGraph,
-  resolveDefaultGraphPath,
-  type CodeContext,
-} from './graphify-client.js';
+import { queryGraph, resolveDefaultGraphPath, type CodeContext } from './graphify-client.js';
 import { ClaudeCliClient } from './llm-client.js';
 import { ConstitutionViolationError } from './parsers/plan.js';
 import { ListrProgressSink } from './progress.js';
@@ -72,14 +68,10 @@ function parseArgs(argv: string[]): CliArgs {
     throw new CliUsageError('feature path is required');
   }
   if (positional.length > 1) {
-    throw new CliUsageError(
-      `expected exactly 1 feature path, got ${positional.length}`,
-    );
+    throw new CliUsageError(`expected exactly 1 feature path, got ${positional.length}`);
   }
   if (only !== null && !/^T\d{3}$/.test(only)) {
-    throw new CliUsageError(
-      `--only value must match /^T\\d{3}$/ (got "${only}")`,
-    );
+    throw new CliUsageError(`--only value must match /^T\\d{3}$/ (got "${only}")`);
   }
   if (dryRun && live) {
     throw new CliUsageError('cannot pass both --dry-run and --live');
@@ -124,9 +116,7 @@ function printDryRunReport(state: FeatureState): void {
   const lines: string[] = [];
   lines.push(`✅ Feature: ${s.featureId}`);
   lines.push(`   dir: ${state.featureDir}`);
-  lines.push(
-    `   status: spec=${s.specStatus} / plan=${s.planStatus} / tasks=${s.tasksStatus}`,
-  );
+  lines.push(`   status: spec=${s.specStatus} / plan=${s.planStatus} / tasks=${s.tasksStatus}`);
   lines.push('');
   lines.push(`✅ Spec`);
   lines.push(`   user_stories=${s.userStories}`);
@@ -221,9 +211,7 @@ function appendFilePlanReport(state: FeatureState, lines: string[]): void {
 function appendPromptPreviewReport(state: FeatureState, lines: string[]): void {
   const repoRoot = path.resolve(state.featureDir, '..', '..');
   const graphPath = resolveDefaultGraphPath(repoRoot);
-  const workspaceById = new Map(
-    state.plan.config.workspaces.map((w) => [w.id, w]),
-  );
+  const workspaceById = new Map(state.plan.config.workspaces.map((w) => [w.id, w]));
 
   const pending = state.tasks.tasks.filter((t) => t.status === 'pending');
   if (pending.length === 0) {
@@ -232,9 +220,7 @@ function appendPromptPreviewReport(state: FeatureState, lines: string[]): void {
     return;
   }
 
-  lines.push(
-    `✅ Prompt Preview (first ${PROMPT_PREVIEW_LINES} lines per task; dry-run only)`,
-  );
+  lines.push(`✅ Prompt Preview (first ${PROMPT_PREVIEW_LINES} lines per task; dry-run only)`);
   lines.push(`   graphify: ${graphPath}`);
 
   for (const task of pending) {
@@ -335,9 +321,7 @@ async function main(argv: string[]): Promise<number> {
     .filter((t) => !args.only || t.id === args.only);
 
   // eslint-disable-next-line no-console
-  console.error(
-    `▶ orchestrator --live: ${pending.length} pending task(s) for ${state.featureId}`,
-  );
+  console.error(`▶ orchestrator --live: ${pending.length} pending task(s) for ${state.featureId}`);
 
   const sink = new ListrProgressSink(pending);
   const runStartedAt = new Date();
@@ -354,10 +338,14 @@ async function main(argv: string[]): Promise<number> {
     }),
     (async () => {
       try {
-        return await runFeature(state, { llm, git, shell, progress: sink }, {
-          onlyTaskId: args.only ?? undefined,
-          parallel: args.parallel,
-        });
+        return await runFeature(
+          state,
+          { llm, git, shell, progress: sink },
+          {
+            onlyTaskId: args.only ?? undefined,
+            parallel: args.parallel,
+          },
+        );
       } finally {
         sink.finalizeSkipped();
       }
@@ -370,12 +358,7 @@ async function main(argv: string[]): Promise<number> {
   // Best-effort: never fail the orchestrator if report writing has issues.
   try {
     const repoRoot = path.resolve(state.featureDir, '..', '..');
-    const archiveBase = path.join(
-      repoRoot,
-      '.spec-kit',
-      'runs',
-      state.featureId,
-    );
+    const archiveBase = path.join(repoRoot, '.spec-kit', 'runs', state.featureId);
     await printRunReport({
       state,
       results: result.results,
@@ -385,9 +368,7 @@ async function main(argv: string[]): Promise<number> {
     });
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.error(
-      `(run-report failed: ${e instanceof Error ? e.message : String(e)})`,
-    );
+    console.error(`(run-report failed: ${e instanceof Error ? e.message : String(e)})`);
   }
 
   if (!result.ok) {
@@ -406,9 +387,7 @@ function printLiveSummary(results: TaskRunResult[]): void {
   const lines: string[] = ['', '── Task results ──'];
   for (const r of results) {
     const tag = r.ok ? '✅' : '✗';
-    const detail = r.ok
-      ? ''
-      : ` (${r.reason}${r.message ? ': ' + r.message : ''})`;
+    const detail = r.ok ? '' : ` (${r.reason}${r.message ? ': ' + r.message : ''})`;
     lines.push(`${tag} ${r.taskId}${detail}`);
     if (r.sandboxCwd && r.sandboxCleaned === false) {
       lines.push(`   ↳ sandbox preserved: ${r.sandboxCwd}`);

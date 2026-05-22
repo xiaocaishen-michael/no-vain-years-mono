@@ -46,9 +46,7 @@ export const FrMetaSchema = z.object({
       options: z.array(z.string()).optional(),
     }),
   ),
-  trace_us: z
-    .array(z.union([z.string().regex(/^US\d+$/), z.literal('GLOBAL')]))
-    .min(1),
+  trace_us: z.array(z.union([z.string().regex(/^US\d+$/), z.literal('GLOBAL')])).min(1),
   trace_sc: z.array(z.string().regex(/^SC-\d{3}$/)),
 });
 

@@ -1,16 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import {
-  RedisContainer,
-  type StartedRedisContainer,
-} from '@testcontainers/redis';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
@@ -46,10 +37,8 @@ describe('US2-002 e2e — Onboarding PATCH /me 设置 displayName (FR-003, FR-00
 
     process.env.DATABASE_URL = pgContainer.getConnectionUri();
     process.env.REDIS_URL = redisContainer.getConnectionUrl();
-    process.env.AUTH_JWT_SECRET =
-      'us2-002-e2e-jwt-secret-min-32-bytes-pad-abc';
-    process.env.SMS_CODE_HMAC_SECRET =
-      'us2-002-e2e-hmac-secret-min-32-bytes-pad-zzz';
+    process.env.AUTH_JWT_SECRET = 'us2-002-e2e-jwt-secret-min-32-bytes-pad-abc';
+    process.env.SMS_CODE_HMAC_SECRET = 'us2-002-e2e-hmac-secret-min-32-bytes-pad-zzz';
 
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       cwd: SERVER_DIR,
@@ -61,9 +50,7 @@ describe('US2-002 e2e — Onboarding PATCH /me 设置 displayName (FR-003, FR-00
       imports: [AppModule],
     }).compile();
 
-    app = moduleRef.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.setGlobalPrefix('api');
     await app.init();

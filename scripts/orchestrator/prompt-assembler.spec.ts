@@ -5,21 +5,14 @@ import type { CodeContext } from './graphify-client.js';
 import { PlanAnalyzer } from './parsers/plan.js';
 import { SpecAnalyzer } from './parsers/spec.js';
 import { TasksAnalyzer } from './parsers/tasks.js';
-import {
-  buildPrompt,
-  PromptAssemblyError,
-} from './prompt-assembler.js';
+import { buildPrompt, PromptAssemblyError } from './prompt-assembler.js';
 
 const FIXTURES_DIR = path.resolve(__dirname, '__fixtures__');
 
 function loadFixtures() {
   const spec = new SpecAnalyzer().parse(path.join(FIXTURES_DIR, 'spec-happy.md'));
   const plan = new PlanAnalyzer().parse(path.join(FIXTURES_DIR, 'plan-happy.md'));
-  const tasks = new TasksAnalyzer().parse(
-    path.join(FIXTURES_DIR, 'tasks-happy.md'),
-    plan,
-    spec,
-  );
+  const tasks = new TasksAnalyzer().parse(path.join(FIXTURES_DIR, 'tasks-happy.md'), plan, spec);
   return { spec, plan, tasks };
 }
 
@@ -35,9 +28,7 @@ describe('buildPrompt', () => {
   it('throws when workspace lacks verify_commands[verify_kind]', () => {
     const { spec, plan, tasks } = loadFixtures();
     const task = tasks.tasks.find((t) => t.id === 'T001')!;
-    const workspace = plan.config.workspaces.find(
-      (w) => w.id === task.workspace,
-    )!;
+    const workspace = plan.config.workspaces.find((w) => w.id === task.workspace)!;
     // mutate a copy so other tests aren't affected
     const brokenWorkspace = {
       ...workspace,
@@ -57,9 +48,7 @@ describe('buildPrompt', () => {
   it('renders all required sections for an impl task', () => {
     const { spec, plan, tasks } = loadFixtures();
     const task = tasks.tasks.find((t) => t.id === 'T001')!;
-    const workspace = plan.config.workspaces.find(
-      (w) => w.id === task.workspace,
-    )!;
+    const workspace = plan.config.workspaces.find((w) => w.id === task.workspace)!;
 
     const prompt = buildPrompt({
       task,
@@ -88,9 +77,7 @@ describe('buildPrompt', () => {
     const { spec, plan, tasks } = loadFixtures();
     // T003 traces FR-002 only, not FR-001
     const task = tasks.tasks.find((t) => t.id === 'T003')!;
-    const workspace = plan.config.workspaces.find(
-      (w) => w.id === task.workspace,
-    )!;
+    const workspace = plan.config.workspaces.find((w) => w.id === task.workspace)!;
 
     const prompt = buildPrompt({ task, spec, plan, workspace, codeCtx: EMPTY_CODE_CTX });
 
@@ -115,9 +102,7 @@ describe('buildPrompt', () => {
   it('renders code context from graphify when nodes present', () => {
     const { spec, plan, tasks } = loadFixtures();
     const task = tasks.tasks.find((t) => t.id === 'T001')!;
-    const workspace = plan.config.workspaces.find(
-      (w) => w.id === task.workspace,
-    )!;
+    const workspace = plan.config.workspaces.find((w) => w.id === task.workspace)!;
     const codeCtx: CodeContext = {
       scope: 'apps/server/src/modules/account',
       graphPath: '/x/graph.json',
@@ -133,16 +118,16 @@ describe('buildPrompt', () => {
       truncated: false,
     };
     const prompt = buildPrompt({ task, spec, plan, workspace, codeCtx });
-    expect(prompt).toMatch(/AccountService @ apps\/server\/src\/modules\/account\/account\.service\.ts:L10/);
+    expect(prompt).toMatch(
+      /AccountService @ apps\/server\/src\/modules\/account\/account\.service\.ts:L10/,
+    );
   });
 
   it('falls back gracefully when task has no trace_ep', () => {
     const { spec, plan, tasks } = loadFixtures();
     const baseTask = tasks.tasks.find((t) => t.id === 'T001')!;
     const taskNoEp = { ...baseTask, trace_ep: undefined };
-    const workspace = plan.config.workspaces.find(
-      (w) => w.id === baseTask.workspace,
-    )!;
+    const workspace = plan.config.workspaces.find((w) => w.id === baseTask.workspace)!;
     const prompt = buildPrompt({
       task: taskNoEp,
       spec,
@@ -157,9 +142,7 @@ describe('buildPrompt', () => {
     const { spec, plan, tasks } = loadFixtures();
     const baseTask = tasks.tasks.find((t) => t.id === 'T002')!;
     const tddTask = { ...baseTask, tdd_red_expected: true };
-    const workspace = plan.config.workspaces.find(
-      (w) => w.id === baseTask.workspace,
-    )!;
+    const workspace = plan.config.workspaces.find((w) => w.id === baseTask.workspace)!;
     const prompt = buildPrompt({
       task: tddTask,
       spec,
@@ -173,9 +156,7 @@ describe('buildPrompt', () => {
   it('reports missing module_boundaries for workspace gracefully', () => {
     const { spec, plan, tasks } = loadFixtures();
     const task = tasks.tasks.find((t) => t.id === 'T001')!;
-    const workspace = plan.config.workspaces.find(
-      (w) => w.id === task.workspace,
-    )!;
+    const workspace = plan.config.workspaces.find((w) => w.id === task.workspace)!;
     const planNoBoundary = {
       ...plan,
       config: { ...plan.config, module_boundaries: {} },
@@ -193,9 +174,7 @@ describe('buildPrompt', () => {
   it('ends with a single trailing newline', () => {
     const { spec, plan, tasks } = loadFixtures();
     const task = tasks.tasks.find((t) => t.id === 'T001')!;
-    const workspace = plan.config.workspaces.find(
-      (w) => w.id === task.workspace,
-    )!;
+    const workspace = plan.config.workspaces.find((w) => w.id === task.workspace)!;
     const prompt = buildPrompt({ task, spec, plan, workspace, codeCtx: EMPTY_CODE_CTX });
     expect(prompt.endsWith('\n')).toBe(true);
     expect(prompt.endsWith('\n\n')).toBe(false);

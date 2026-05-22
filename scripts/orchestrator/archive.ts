@@ -1,11 +1,7 @@
 import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import type {
-  ClaudeMetrics,
-  ClaudeUsage,
-  LlmInvokeResult,
-} from './llm-client.js';
+import type { ClaudeMetrics, ClaudeUsage, LlmInvokeResult } from './llm-client.js';
 import type { McpServerInfo, TurnMetric } from './llm-stream-parser.js';
 
 /**
@@ -141,10 +137,7 @@ export class TaskArchive {
     public readonly taskId: string,
   ) {}
 
-  static async create(
-    dir: string,
-    opts: TaskArchiveCreateOptions,
-  ): Promise<TaskArchive> {
+  static async create(dir: string, opts: TaskArchiveCreateOptions): Promise<TaskArchive> {
     // PoC blind spot #16: re-running the same task left stale prompt.md /
     // summary.json / diff.patch from a prior failed run co-existing with
     // the new run's streamed log files — visually confusing mid-run state
@@ -254,17 +247,11 @@ export class AttemptHandle {
    */
   openLlmStreams(): { stdout: fs.WriteStream; stderr: fs.WriteStream } {
     if (this.streamsOpened) {
-      throw new Error(
-        `AttemptHandle: streams already opened for attempt ${this.n}`,
-      );
+      throw new Error(`AttemptHandle: streams already opened for attempt ${this.n}`);
     }
     this.streamsOpened = true;
-    this.stdoutStream = fs.createWriteStream(
-      this.archive.pathFor(this.n, 'llm-stream.jsonl'),
-    );
-    this.stderrStream = fs.createWriteStream(
-      this.archive.pathFor(this.n, 'llm-stderr.log'),
-    );
+    this.stdoutStream = fs.createWriteStream(this.archive.pathFor(this.n, 'llm-stream.jsonl'));
+    this.stderrStream = fs.createWriteStream(this.archive.pathFor(this.n, 'llm-stderr.log'));
     return { stdout: this.stdoutStream, stderr: this.stderrStream };
   }
 
@@ -284,50 +271,28 @@ export class AttemptHandle {
     if (this.stdoutStream) await closeStream(this.stdoutStream);
     if (this.stderrStream) await closeStream(this.stderrStream);
 
-    await fsp.writeFile(
-      this.archive.pathFor(this.n, 'prompt.md'),
-      input.prompt,
-    );
+    await fsp.writeFile(this.archive.pathFor(this.n, 'prompt.md'), input.prompt);
 
     if (input.llmResult) {
-      await fsp.writeFile(
-        this.archive.pathFor(this.n, 'llm-stream.jsonl'),
-        input.llmResult.stdout,
-      );
-      await fsp.writeFile(
-        this.archive.pathFor(this.n, 'llm-stderr.log'),
-        input.llmResult.stderr,
-      );
+      await fsp.writeFile(this.archive.pathFor(this.n, 'llm-stream.jsonl'), input.llmResult.stdout);
+      await fsp.writeFile(this.archive.pathFor(this.n, 'llm-stderr.log'), input.llmResult.stderr);
     }
 
     if (input.llmError) {
       const body =
-        `${input.llmError.name}: ${input.llmError.message}\n` +
-        (input.llmError.stack ?? '') + '\n';
-      await fsp.writeFile(
-        this.archive.pathFor(this.n, 'llm-error.log'),
-        body,
-      );
+        `${input.llmError.name}: ${input.llmError.message}\n` + (input.llmError.stack ?? '') + '\n';
+      await fsp.writeFile(this.archive.pathFor(this.n, 'llm-error.log'), body);
     }
 
     if (input.actionStdout !== undefined) {
-      await fsp.writeFile(
-        this.archive.pathFor(this.n, 'action-stdout.log'),
-        input.actionStdout,
-      );
+      await fsp.writeFile(this.archive.pathFor(this.n, 'action-stdout.log'), input.actionStdout);
     }
     if (input.actionStderr !== undefined) {
-      await fsp.writeFile(
-        this.archive.pathFor(this.n, 'action-stderr.log'),
-        input.actionStderr,
-      );
+      await fsp.writeFile(this.archive.pathFor(this.n, 'action-stderr.log'), input.actionStderr);
     }
 
     if (input.diff !== undefined) {
-      await fsp.writeFile(
-        this.archive.pathFor(this.n, 'diff.patch'),
-        input.diff,
-      );
+      await fsp.writeFile(this.archive.pathFor(this.n, 'diff.patch'), input.diff);
     }
 
     this.archive.recordAttemptMetadata({
@@ -337,13 +302,10 @@ export class AttemptHandle {
       llm: input.llmResult
         ? buildLlmSummary(input.llmResult)
         : input.llmMetrics
-        ? buildPartialLlmSummary(input.llmMetrics)
-        : undefined,
-      llm_error: input.llmError?.message,
-      action:
-        input.actionExitCode !== undefined
-          ? { exit_code: input.actionExitCode }
+          ? buildPartialLlmSummary(input.llmMetrics)
           : undefined,
+      llm_error: input.llmError?.message,
+      action: input.actionExitCode !== undefined ? { exit_code: input.actionExitCode } : undefined,
       ok: input.ok,
     });
   }

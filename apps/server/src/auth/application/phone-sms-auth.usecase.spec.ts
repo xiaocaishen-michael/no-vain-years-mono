@@ -95,9 +95,7 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
   });
 
   it('ACTIVE + matching code → tokens + DB updates', async () => {
-    vi.mocked(accountRepo.findByPhone).mockResolvedValue(
-      Account.fromPrisma(activeAccountRow),
-    );
+    vi.mocked(accountRepo.findByPhone).mockResolvedValue(Account.fromPrisma(activeAccountRow));
     vi.mocked(smsCodeRepo.verify).mockResolvedValue(true);
 
     const result = await useCase.execute(phone, code);
@@ -108,41 +106,30 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
 
     expect(smsCodeRepo.clear).toHaveBeenCalledWith(phone);
     expect(accountRepo.updateLastLoginAt).toHaveBeenCalledTimes(1);
-    const [updatedId, updatedAt] = vi.mocked(accountRepo.updateLastLoginAt).mock
-      .calls[0];
+    const [updatedId, updatedAt] = vi.mocked(accountRepo.updateLastLoginAt).mock.calls[0];
     expect(updatedId).toBe(42n);
     expect(updatedAt).toBeInstanceOf(Date);
   });
 
   it('ACTIVE + code mismatch (verify false) → 401 INVALID_CREDENTIALS', async () => {
-    vi.mocked(accountRepo.findByPhone).mockResolvedValue(
-      Account.fromPrisma(activeAccountRow),
-    );
+    vi.mocked(accountRepo.findByPhone).mockResolvedValue(Account.fromPrisma(activeAccountRow));
     vi.mocked(smsCodeRepo.verify).mockResolvedValue(false);
 
-    await expect(useCase.execute(phone, code)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(useCase.execute(phone, code)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(smsCodeRepo.clear).not.toHaveBeenCalled();
     expect(accountRepo.updateLastLoginAt).not.toHaveBeenCalled();
   });
 
   it('ACTIVE + code expired (verify null) → 401 INVALID_CREDENTIALS', async () => {
-    vi.mocked(accountRepo.findByPhone).mockResolvedValue(
-      Account.fromPrisma(activeAccountRow),
-    );
+    vi.mocked(accountRepo.findByPhone).mockResolvedValue(Account.fromPrisma(activeAccountRow));
     vi.mocked(smsCodeRepo.verify).mockResolvedValue(null);
 
-    await expect(useCase.execute(phone, code)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(useCase.execute(phone, code)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(accountRepo.updateLastLoginAt).not.toHaveBeenCalled();
   });
 
   it('signs access token with bigint accountId payload', async () => {
-    vi.mocked(accountRepo.findByPhone).mockResolvedValue(
-      Account.fromPrisma(activeAccountRow),
-    );
+    vi.mocked(accountRepo.findByPhone).mockResolvedValue(Account.fromPrisma(activeAccountRow));
     vi.mocked(smsCodeRepo.verify).mockResolvedValue(true);
 
     await useCase.execute(phone, code);
@@ -200,9 +187,7 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
     prismaService = {
       $transaction: vi
         .fn()
-        .mockImplementation(
-          async (cb: (tx: typeof fakeTx) => unknown) => cb(fakeTx),
-        ),
+        .mockImplementation(async (cb: (tx: typeof fakeTx) => unknown) => cb(fakeTx)),
     } as unknown as PrismaService;
     timingDefense = { pad: vi.fn().mockResolvedValue(undefined) };
 
@@ -230,8 +215,7 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
 
     // outbox publish in same tx (first arg is the tx, not undefined)
     expect(outboxPublisher.publish).toHaveBeenCalledTimes(1);
-    const [client, eventType, payload] = vi.mocked(outboxPublisher.publish).mock
-      .calls[0]!;
+    const [client, eventType, payload] = vi.mocked(outboxPublisher.publish).mock.calls[0]!;
     expect(client).toBe(fakeTx);
     expect(eventType).toBe(ACCOUNT_CREATED_EVENT_TYPE);
     expect(payload).toMatchObject({
@@ -248,18 +232,14 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
   it('unregistered phone + verify false → 401 (code must still match before auto-register)', async () => {
     vi.mocked(smsCodeRepo.verify).mockResolvedValue(false);
 
-    await expect(useCase.execute(phone, code)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(useCase.execute(phone, code)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(fakeTx.account.create).not.toHaveBeenCalled();
     expect(outboxPublisher.publish).not.toHaveBeenCalled();
   });
 
   it('unregistered phone → byte-equal response shape vs ACTIVE path (accountId/access/refresh keys present)', async () => {
     const result = await useCase.execute(phone, code);
-    expect(Object.keys(result).sort()).toEqual(
-      ['accessToken', 'accountId', 'refreshToken'].sort(),
-    );
+    expect(Object.keys(result).sort()).toEqual(['accessToken', 'accountId', 'refreshToken'].sort());
   });
 });
 
@@ -351,9 +331,7 @@ describe('PhoneSmsAuthUseCase US3 FROZEN disclosure path (CL-006)', () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(AccountInFreezePeriodException);
-    expect((caught as AccountInFreezePeriodException).freezeUntil).toEqual(
-      freezeUntil,
-    );
+    expect((caught as AccountInFreezePeriodException).freezeUntil).toEqual(freezeUntil);
   });
 
   it('FROZEN does NOT call timingDefense.pad (disclosure path, FR-S06 + CL-006)', async () => {
@@ -401,9 +379,7 @@ describe('PhoneSmsAuthUseCase US3 ANONYMIZED anti-enumeration (CL-006)', () => {
       Account.fromPrisma({ ...baseAccountRow, status: 'ANONYMIZED' }),
     );
 
-    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(h.timingDefense.pad).toHaveBeenCalledTimes(1);
     expect(h.jwtTokenService.signAccessToken).not.toHaveBeenCalled();
     expect(h.accountRepo.updateLastLoginAt).not.toHaveBeenCalled();
@@ -416,27 +392,19 @@ describe('PhoneSmsAuthUseCase US3 timing defense across 3 anti-enum 401 paths', 
 
   it('path 1 ACTIVE + verify false → timingDefense.pad invoked before 401', async () => {
     const h = buildUseCaseHarness();
-    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(
-      Account.fromPrisma(baseAccountRow),
-    );
+    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(Account.fromPrisma(baseAccountRow));
     vi.mocked(h.smsCodeRepo.verify).mockResolvedValue(false);
 
-    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(h.timingDefense.pad).toHaveBeenCalledTimes(1);
   });
 
   it('path 2 ACTIVE + verify null (code expired) → timingDefense.pad invoked before 401', async () => {
     const h = buildUseCaseHarness();
-    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(
-      Account.fromPrisma(baseAccountRow),
-    );
+    vi.mocked(h.accountRepo.findByPhone).mockResolvedValue(Account.fromPrisma(baseAccountRow));
     vi.mocked(h.smsCodeRepo.verify).mockResolvedValue(null);
 
-    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(h.timingDefense.pad).toHaveBeenCalledTimes(1);
   });
 
@@ -446,9 +414,7 @@ describe('PhoneSmsAuthUseCase US3 timing defense across 3 anti-enum 401 paths', 
       Account.fromPrisma({ ...baseAccountRow, status: 'ANONYMIZED' }),
     );
 
-    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(h.timingDefense.pad).toHaveBeenCalledTimes(1);
   });
 });

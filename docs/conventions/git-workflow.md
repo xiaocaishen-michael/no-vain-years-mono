@@ -22,13 +22,13 @@
 
 **B. 非 SDD 改动分支** — 走传统 `<type>/<kebab-desc>`
 
-| type | 用途 |
-|------|------|
-| `fix` | bug 修复（非 spec scope，如 infra / build / 紧急 patch） |
-| `hotfix` | 紧急修复（已上线缺陷） |
-| `chore` | 杂项（依赖更新、配置等无业务逻辑改动） |
-| `refactor` | 重构（不改外部行为） |
-| `docs` | 仅文档变更（含 ADR / convention amend / experience report） |
+| type       | 用途                                                        |
+| ---------- | ----------------------------------------------------------- |
+| `fix`      | bug 修复（非 spec scope，如 infra / build / 紧急 patch）    |
+| `hotfix`   | 紧急修复（已上线缺陷）                                      |
+| `chore`    | 杂项（依赖更新、配置等无业务逻辑改动）                      |
+| `refactor` | 重构（不改外部行为）                                        |
+| `docs`     | 仅文档变更（含 ADR / convention amend / experience report） |
 
 示例：`fix/prisma-migrate-drift` / `docs/adr-0024-spec-layout` / `chore/repo-init-skeleton`
 
@@ -38,11 +38,11 @@
 
 遵循 Conventional Commits：`<type>(<scope>): <subject>`
 
-| 字段 | 说明 |
-|------|------|
-| `type` | `feat / fix / docs / chore / refactor / style / test / perf / build / ci`；`feat!` 或加 `BREAKING CHANGE:` 表示 breaking |
-| `scope` | 业务模块名（`account / pkm / ...`），跨模块用 `core`，整仓配置/工具用 `repo`，packages 共享包用 `api-client` / `shared-types` 等 |
-| `subject` | 一句话描述本次改动；现在时；首字母小写；不加句号 |
+| 字段      | 说明                                                                                                                             |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `type`    | `feat / fix / docs / chore / refactor / style / test / perf / build / ci`；`feat!` 或加 `BREAKING CHANGE:` 表示 breaking         |
+| `scope`   | 业务模块名（`account / pkm / ...`），跨模块用 `core`，整仓配置/工具用 `repo`，packages 共享包用 `api-client` / `shared-types` 等 |
+| `subject` | 一句话描述本次改动；现在时；首字母小写；不加句号                                                                                 |
 
 示例：
 

@@ -50,11 +50,19 @@ describe('AttemptHandle.finish', () => {
     });
 
     expect(fs.readFileSync(path.join(dir, 'attempt-0-prompt.md'), 'utf-8')).toBe('PROMPT BODY');
-    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stream.jsonl'), 'utf-8')).toBe('LLM-STDOUT');
+    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stream.jsonl'), 'utf-8')).toBe(
+      'LLM-STDOUT',
+    );
     expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stderr.log'), 'utf-8')).toBe('LLM-STDERR');
-    expect(fs.readFileSync(path.join(dir, 'attempt-0-action-stdout.log'), 'utf-8')).toBe('ACT-STDOUT');
-    expect(fs.readFileSync(path.join(dir, 'attempt-0-action-stderr.log'), 'utf-8')).toBe('ACT-STDERR');
-    expect(fs.readFileSync(path.join(dir, 'attempt-0-diff.patch'), 'utf-8')).toBe('diff --git a/foo b/foo\n');
+    expect(fs.readFileSync(path.join(dir, 'attempt-0-action-stdout.log'), 'utf-8')).toBe(
+      'ACT-STDOUT',
+    );
+    expect(fs.readFileSync(path.join(dir, 'attempt-0-action-stderr.log'), 'utf-8')).toBe(
+      'ACT-STDERR',
+    );
+    expect(fs.readFileSync(path.join(dir, 'attempt-0-diff.patch'), 'utf-8')).toBe(
+      'diff --git a/foo b/foo\n',
+    );
   });
 
   it('writes llm-error.log when llmError provided', async () => {
@@ -116,8 +124,12 @@ describe('AttemptHandle.finish', () => {
     await new Promise<void>((r) => stdout.end(() => r()));
     await new Promise<void>((r) => stderr.end(() => r()));
 
-    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stream.jsonl'), 'utf-8')).toBe('mid-run chunk\n');
-    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stderr.log'), 'utf-8')).toBe('mid-run err\n');
+    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stream.jsonl'), 'utf-8')).toBe(
+      'mid-run chunk\n',
+    );
+    expect(fs.readFileSync(path.join(dir, 'attempt-0-llm-stderr.log'), 'utf-8')).toBe(
+      'mid-run err\n',
+    );
   });
 });
 
@@ -153,9 +165,7 @@ describe('TaskArchive.finalize', () => {
 
     await a.finalize({ ok: true, reason: 'success' });
 
-    const summary = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const summary = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
 
     expect(summary.feature_id).toBe('002-demo');
     expect(summary.task_id).toBe('T003');
@@ -229,9 +239,7 @@ describe('TaskArchive.finalize', () => {
       ok: true,
     });
     await a.finalize({ ok: true, reason: 'success' });
-    const s = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
     expect(s.attempts[0].llm).toMatchObject({
       exit_code: 0,
       duration_ms: 100,
@@ -265,9 +273,7 @@ describe('TaskArchive.finalize', () => {
       ok: true,
     });
     await a.finalize({ ok: true, reason: 'success' });
-    const s = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
     expect(s.attempts[0].llm).toMatchObject({
       num_turns: 40,
       api_rounds: 27,
@@ -285,9 +291,7 @@ describe('TaskArchive.finalize', () => {
       ok: true,
     });
     await a.finalize({ ok: true, reason: 'success' });
-    const s = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
     expect(s.attempts[0].llm.api_rounds).toBeUndefined();
     expect(s.attempts[0].llm.user_turns).toBeUndefined();
   });
@@ -311,9 +315,7 @@ describe('TaskArchive.finalize', () => {
       ok: true,
     });
     await a.finalize({ ok: true, reason: 'success' });
-    const s = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
     expect(s.attempts[0].llm.mcp_servers).toEqual([
       { name: 'plugin:claude-mem:mcp-search', status: 'connected' },
       { name: 'graphify', status: 'connected' },
@@ -330,9 +332,7 @@ describe('TaskArchive.finalize', () => {
       ok: true,
     });
     await a.finalize({ ok: true, reason: 'success' });
-    const s = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
     expect(s.attempts[0].llm.mcp_servers).toBeUndefined();
   });
 
@@ -377,9 +377,7 @@ describe('TaskArchive.finalize', () => {
       ok: false,
     });
     await a.finalize({ ok: false, reason: 'llm-error' });
-    const s = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
     expect(s.attempts[0].llm).toEqual({
       cost_usd: 2.25,
       num_turns: 30,
@@ -392,10 +390,7 @@ describe('TaskArchive.finalize', () => {
       },
     });
     // diff was captured even on failure path
-    const diffContent = fs.readFileSync(
-      path.join(dir, 'attempt-0-diff.patch'),
-      'utf-8',
-    );
+    const diffContent = fs.readFileSync(path.join(dir, 'attempt-0-diff.patch'), 'utf-8');
     expect(diffContent).toBe('+ partial work');
   });
 
@@ -416,9 +411,7 @@ describe('TaskArchive.finalize', () => {
       ok: true,
     });
     await a.finalize({ ok: true, reason: 'success' });
-    const s = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
     expect(s.attempts[0].llm.cost_usd).toBe(1.0);
   });
 
@@ -432,9 +425,7 @@ describe('TaskArchive.finalize', () => {
       ok: true,
     });
     await a.finalize({ ok: true, reason: 'success' });
-    const s = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
     expect(s.attempts[0].llm).toEqual({ exit_code: 0, duration_ms: 50 });
   });
 
@@ -442,9 +433,7 @@ describe('TaskArchive.finalize', () => {
     const dir = makeDir();
     const a = await TaskArchive.create(dir, { featureId: 'f1', taskId: 'T001' });
     await a.finalize({ ok: false, reason: 'workspace-missing' });
-    const s = JSON.parse(
-      fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'),
-    );
+    const s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf-8'));
     expect(s.ok).toBe(false);
     expect(s.reason).toBe('workspace-missing');
     expect(s.attempts).toEqual([]);

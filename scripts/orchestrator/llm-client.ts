@@ -207,10 +207,7 @@ const DEFAULT_TIMEOUT_MS = 20 * 60 * 1000;
  * Build the argv vector for the live `claude -p` invocation. Exported
  * so tests can assert flag composition without spawning a subprocess.
  */
-export function buildClaudeArgs(
-  prompt: string,
-  opts: LlmInvokeOptions,
-): string[] {
+export function buildClaudeArgs(prompt: string, opts: LlmInvokeOptions): string[] {
   const allowed = (opts.allowedTools ?? DEFAULT_ALLOWED_TOOLS).join(',');
   // NB: --bare was dropped 2026-05-20. It restricts auth to
   // ANTHROPIC_API_KEY only (OAuth / keychain are never read), which
@@ -250,9 +247,7 @@ export function buildClaudeArgs(
  * is the gate; sibling `CLAUDE_CODE_*` vars are not, so we leave them
  * for the subprocess's own telemetry / call-source signal.
  */
-export function buildSpawnEnv(
-  parentEnv: NodeJS.ProcessEnv,
-): NodeJS.ProcessEnv {
+export function buildSpawnEnv(parentEnv: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...parentEnv };
   delete env.CLAUDECODE;
   return env;
@@ -354,10 +349,7 @@ export function describeClaudeError(parsed: unknown): string {
 export class ClaudeCliClient implements LlmClient {
   constructor(private readonly claudePath = 'claude') {}
 
-  async invoke(
-    prompt: string,
-    opts: LlmInvokeOptions,
-  ): Promise<LlmInvokeResult> {
+  async invoke(prompt: string, opts: LlmInvokeOptions): Promise<LlmInvokeResult> {
     const args = buildClaudeArgs(prompt, opts);
     const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const start = Date.now();
@@ -404,11 +396,7 @@ export class ClaudeCliClient implements LlmClient {
 
       const timer = setTimeout(() => {
         child.kill('SIGKILL');
-        reject(
-          new LlmInvokeError(
-            `claude -p timed out after ${timeoutMs}ms (cwd=${opts.cwd})`,
-          ),
-        );
+        reject(new LlmInvokeError(`claude -p timed out after ${timeoutMs}ms (cwd=${opts.cwd})`));
       }, timeoutMs);
 
       child.on('error', (err) => {
@@ -420,8 +408,7 @@ export class ClaudeCliClient implements LlmClient {
         clearTimeout(timer);
         rl.close();
         const exitCode = code ?? 0;
-        const { result, turns, apiRounds, userTurns, mcpServers } =
-          agg.finalize();
+        const { result, turns, apiRounds, userTurns, mcpServers } = agg.finalize();
         const parsed: unknown = result;
         // claude -p signals semantic errors (auth, quota, refusals) via
         // is_error=true in the terminal `result` event while still exiting 0.
@@ -478,10 +465,7 @@ export class FakeLlmClient implements LlmClient {
     this.queue.push(r);
   }
 
-  async invoke(
-    prompt: string,
-    opts: LlmInvokeOptions,
-  ): Promise<LlmInvokeResult> {
+  async invoke(prompt: string, opts: LlmInvokeOptions): Promise<LlmInvokeResult> {
     this.calls.push({ prompt, opts });
     const next = this.queue.shift();
     if (next === undefined) {

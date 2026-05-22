@@ -18,9 +18,7 @@ import type { AuthenticatedUser } from './jwt-auth.guard';
  */
 @Injectable()
 export class AccountIdThrottlerGuard extends ThrottlerGuard {
-  protected override getTracker(
-    req: Record<string, unknown>,
-  ): Promise<string> {
+  protected override getTracker(req: Record<string, unknown>): Promise<string> {
     const user = req['user'] as AuthenticatedUser | undefined;
     if (user && user.accountId !== undefined && user.accountId !== null) {
       return Promise.resolve(`me:${String(user.accountId)}`);

@@ -11,10 +11,10 @@ sunset_trigger: |
 
 # ADR-0041: Server `src/common/` Directory Policy — 不引入,平台 infra 进 security/
 
-* Status: Accepted (2026-05-22)
-* Deciders: project owner
-* Tags: backend / architecture / directory-policy
-* Supersedes: —
+- Status: Accepted (2026-05-22)
+- Deciders: project owner
+- Tags: backend / architecture / directory-policy
+- Supersedes: —
 
 ## Context
 
@@ -38,12 +38,12 @@ PR-4 (#72, Server bounded context split) 实装时 [ADR-0032](0032-backend-bound
 
 ### 2. 分类规则 — 新增 cross-cutting 类落点
 
-| 类的性质 | 落点 |
-|---|---|
-| **Platform infra**(无业务知识) — DB client / Redis client / 通用 error filter / generic exception class / request validation 工具 / logger setup / tracing infra | `src/security/` |
-| **Business-domain shared type**(被 ≥ 2 个 bounded context 复用的领域对象) | 不属于任何现有 context → 触发新 bounded context 评估;不要塞 security/ |
-| **Single-context 内部使用** | 当前 context 的对应 layer (`domain/` / `application/` / `infrastructure/`) |
-| **DTO** — `Problem Detail` / 跨 endpoint 复用的 response shape | `src/security/dto/`(沿 PR-4 当前布局) |
+| 类的性质                                                                                                                                                         | 落点                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Platform infra**(无业务知识) — DB client / Redis client / 通用 error filter / generic exception class / request validation 工具 / logger setup / tracing infra | `src/security/`                                                            |
+| **Business-domain shared type**(被 ≥ 2 个 bounded context 复用的领域对象)                                                                                        | 不属于任何现有 context → 触发新 bounded context 评估;不要塞 security/      |
+| **Single-context 内部使用**                                                                                                                                      | 当前 context 的对应 layer (`domain/` / `application/` / `infrastructure/`) |
+| **DTO** — `Problem Detail` / 跨 endpoint 复用的 response shape                                                                                                   | `src/security/dto/`(沿 PR-4 当前布局)                                      |
 
 ### 3. `security/` 别名理解
 
@@ -66,13 +66,13 @@ PR-4 (#72, Server bounded context split) 实装时 [ADR-0032](0032-backend-bound
 
 `apps/server/src/security/` 现有非 JWT 平台 infra members (5 个):
 
-| 成员 | 性质 |
-|---|---|
-| `prisma.service.ts` | platform infra (DB) |
-| `redis.token.ts` | platform infra (Redis client DI token) |
-| `problem-detail.filter.ts` | platform infra (RFC 9457 全局异常 filter) |
-| `dto/problem-detail.response.ts` | platform infra (跨 endpoint DTO) |
-| `form-validation.exception.ts` | platform infra (validation 错通用 exception) |
+| 成员                             | 性质                                         |
+| -------------------------------- | -------------------------------------------- |
+| `prisma.service.ts`              | platform infra (DB)                          |
+| `redis.token.ts`                 | platform infra (Redis client DI token)       |
+| `problem-detail.filter.ts`       | platform infra (RFC 9457 全局异常 filter)    |
+| `dto/problem-detail.response.ts` | platform infra (跨 endpoint DTO)             |
+| `form-validation.exception.ts`   | platform infra (validation 错通用 exception) |
 
 JWT 相关 (`jwt-token.service.ts` + `security.module.ts` 本体) 不计入 sunset 阈值。
 
@@ -88,12 +88,12 @@ JWT 相关 (`jwt-token.service.ts` + `security.module.ts` 本体) 不计入 suns
 
 ## Trade-offs
 
-| 短板 | 接受理由 |
-|---|---|
+| 短板                                                                 | 接受理由                                                                                                     |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `security/` 字面意义(safety/auth)与实际容纳的内容(platform base)不符 | rename 成本(大量 import 重写 + ESLint elements + tsconfig)> "字面准确" 收益;内部 doc-comment + 本 ADR 已说明 |
-| 新人需先读 ADR-0041 / security.module.ts doc 才能理解 security/ 范围 | 改用 src/common/ 路径会引入两个"杂物间"互相竞争,LLM 选址成本更高 |
-| sunset trigger 中"非 JWT 成员数 > 7"是经验拍脑袋阈值 | 5 → 7 是 +40% 增长空间,触发时回头看具体内容判断是否拆;阈值不必精确,显式 trigger 比无 trigger 强 |
-| 4-th bounded context 引入时强制 re-review 可能阻塞 Plan 2 某 feature | re-review 不等于"必须拆" — 触发条件不等于自动结论,需 ADR-0041 amend 或 supersede |
+| 新人需先读 ADR-0041 / security.module.ts doc 才能理解 security/ 范围 | 改用 src/common/ 路径会引入两个"杂物间"互相竞争,LLM 选址成本更高                                             |
+| sunset trigger 中"非 JWT 成员数 > 7"是经验拍脑袋阈值                 | 5 → 7 是 +40% 增长空间,触发时回头看具体内容判断是否拆;阈值不必精确,显式 trigger 比无 trigger 强              |
+| 4-th bounded context 引入时强制 re-review 可能阻塞 Plan 2 某 feature | re-review 不等于"必须拆" — 触发条件不等于自动结论,需 ADR-0041 amend 或 supersede                             |
 
 ## Open Questions
 

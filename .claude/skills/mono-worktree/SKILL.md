@@ -16,18 +16,18 @@ solo dev 在 mono 仓需要**并行**多个 feature（如同时跑两个 SDD 分
 
 ## 2. 4 个命令
 
-| 命令 | 作用 |
-|---|---|
-| `feat-open <branch>` | 开 worktree（自动 branch attach/create）+ 分配 PORT/Metro/Redis db + 建 PG DB + 写 `.envrc` + `pnpm install --frozen-lockfile` |
-| `feat-close <branch> [--keep-db]` | 删 worktree + 删本地分支 + drop DB（含 `pg_dump` 自动备份到 `/tmp` 兜底） |
-| `feat-claude <branch>` | `cd` 进 worktree + `export CC_NS=<suffix>` + 启 `claude`（独立 memory pool） |
-| `feat-list` | 列所有 worktree + 容器目录磁盘占用 + 现存 `mbw_*` feature DB |
+| 命令                              | 作用                                                                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `feat-open <branch>`              | 开 worktree（自动 branch attach/create）+ 分配 PORT/Metro/Redis db + 建 PG DB + 写 `.envrc` + `pnpm install --frozen-lockfile` |
+| `feat-close <branch> [--keep-db]` | 删 worktree + 删本地分支 + drop DB（含 `pg_dump` 自动备份到 `/tmp` 兜底）                                                      |
+| `feat-claude <branch>`            | `cd` 进 worktree + `export CC_NS=<suffix>` + 启 `claude`（独立 memory pool）                                                   |
+| `feat-list`                       | 列所有 worktree + 容器目录磁盘占用 + 现存 `mbw_*` feature DB                                                                   |
 
 ## 3. Branch 命名（两套并行，per `docs/conventions/git-workflow.md`）
 
-| 类型 | 格式 | 示例 |
-|---|---|---|
-| SDD | `NNN-<slug>` | `feat-open 003-pkm-link-graph` |
+| 类型   | 格式             | 示例                           |
+| ------ | ---------------- | ------------------------------ |
+| SDD    | `NNN-<slug>`     | `feat-open 003-pkm-link-graph` |
 | 非 SDD | `<type>/<kebab>` | `feat-open chore/docs-cleanup` |
 
 regex 校验：`^[a-z0-9][a-z0-9/-]*[a-z0-9]$`。**首尾必须字母/数字，禁大写**。
@@ -44,6 +44,7 @@ export EXPO_METRO_PORT=<metro_port> # 8082 起递增
 ```
 
 **双信号源分配**（每次 `feat-open` 都跑）：
+
 - 端口：`lsof -i :p LISTEN`（实测）+ 扫所有副 worktree `.envrc` 已分配值
 - Redis db：Redis `dbsize > 0`（实测）+ `.envrc` 已分配
 
@@ -98,13 +99,13 @@ feat-close 003-pkm-link-graph --keep-db
 
 ## 7. 故障排查
 
-| 症状 | 排查 |
-|---|---|
-| `❌ PG container mbw-poc-postgres 未在跑` | `cd <mono> && docker compose -f docker-compose.dev.yml up -d` |
-| `pnpm install` 失败 lockfile drift | 进 wt 手工 `pnpm install`（不 frozen），feat-open 已 echo 提示但不 rollback |
-| worktree 跑 server 启动报 `EADDRINUSE: 3001` | `.envrc` 未被 direnv 加载 → `cd $wt && direnv allow` |
-| `feat-close` 卡 `DROP DATABASE` | 有残连 → 脚本已 `pg_terminate_backend`，仍卡说明 server 进程仍在跑，先 `kill` |
-| `feat-list` PG 段空白 | 已修：现在显示 `(无 feature DB)` 兜底 |
+| 症状                                         | 排查                                                                          |
+| -------------------------------------------- | ----------------------------------------------------------------------------- |
+| `❌ PG container mbw-poc-postgres 未在跑`    | `cd <mono> && docker compose -f docker-compose.dev.yml up -d`                 |
+| `pnpm install` 失败 lockfile drift           | 进 wt 手工 `pnpm install`（不 frozen），feat-open 已 echo 提示但不 rollback   |
+| worktree 跑 server 启动报 `EADDRINUSE: 3001` | `.envrc` 未被 direnv 加载 → `cd $wt && direnv allow`                          |
+| `feat-close` 卡 `DROP DATABASE`              | 有残连 → 脚本已 `pg_terminate_backend`，仍卡说明 server 进程仍在跑，先 `kill` |
+| `feat-list` PG 段空白                        | 已修：现在显示 `(无 feature DB)` 兜底                                         |
 
 ## 8. 与其他 skill 协同
 

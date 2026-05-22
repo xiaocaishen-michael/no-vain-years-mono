@@ -1,16 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import {
-  RedisContainer,
-  type StartedRedisContainer,
-} from '@testcontainers/redis';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
@@ -49,10 +40,8 @@ describe('US4 e2e — FROZEN / ANONYMIZED + valid token → 401 (FR-009)', () =>
 
     process.env.DATABASE_URL = pgContainer.getConnectionUri();
     process.env.REDIS_URL = redisContainer.getConnectionUrl();
-    process.env.AUTH_JWT_SECRET =
-      'us4-e2e-test-jwt-secret-min-32-bytes-pad-xyz';
-    process.env.SMS_CODE_HMAC_SECRET =
-      'us4-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
+    process.env.AUTH_JWT_SECRET = 'us4-e2e-test-jwt-secret-min-32-bytes-pad-xyz';
+    process.env.SMS_CODE_HMAC_SECRET = 'us4-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
 
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       cwd: SERVER_DIR,
@@ -64,9 +53,7 @@ describe('US4 e2e — FROZEN / ANONYMIZED + valid token → 401 (FR-009)', () =>
       imports: [AppModule],
     }).compile();
 
-    app = moduleRef.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.setGlobalPrefix('api');
     await app.init();
@@ -190,8 +177,7 @@ describe('US4 e2e — FROZEN / ANONYMIZED + valid token → 401 (FR-009)', () =>
     const bodyKeys = (res: { body: string }): string[] =>
       Object.keys((JSON.parse(res.body) as Record<string, unknown>) ?? {}).sort();
 
-    const ct = (res: { headers: Record<string, unknown> }) =>
-      res.headers['content-type'];
+    const ct = (res: { headers: Record<string, unknown> }) => res.headers['content-type'];
 
     // Body shape (keys) must be identical across all 401 paths
     expect(bodyKeys(resFrozen)).toEqual(bodyKeys(resMissingToken));

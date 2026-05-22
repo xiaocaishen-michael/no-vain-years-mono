@@ -10,9 +10,9 @@ sunset_trigger: |
 
 # ADR-0038: Full-Stack Error Handling and UX Contract — RFC 9457 ProblemDetail + 业务扩展 + trace 串联
 
-* Status: Accepted (2026-05-21) — server contract + ProblemDetail filter shipped via PR-5a; client consumer (Orval typed error codes + form.setError + Error Boundary trace_id) shipped via PR-5b/c
-* Deciders: project owner
-* Tags: backend / mobile / error / ux / cross-cutting
+- Status: Accepted (2026-05-21) — server contract + ProblemDetail filter shipped via PR-5a; client consumer (Orval typed error codes + form.setError + Error Boundary trace_id) shipped via PR-5b/c
+- Deciders: project owner
+- Tags: backend / mobile / error / ux / cross-cutting
 
 > **PR-5a 实装注**: ProblemDetailResponse 加 5 业务扩展字段 (code/traceId/freezeUntil/retryAfterSeconds/invalidAttributes)。FormValidationException 新建 (status 400, code FORM_VALIDATION, invalidAttributes 直通)。ProblemDetailFilter 重写为通用 HttpException dispatch (无 domain instanceof 反向 import) + 从 ClsService 注 traceId + log level 分流 (4xx warn / 5xx error+stack)。AccountInFreezePeriodException 重构 extends HttpException (原 extends Error) 让 filter 通用 dispatch 工作。ProblemDetailFilter 物理位置 auth/infrastructure → security/ (cross-context 概念归 platform infra 层)。
 
@@ -20,10 +20,10 @@ sunset_trigger: |
 
 A-002 ship 后错误流状态:
 
-* server `ProblemDetailFilter` 已存在 (per memory obs 3958, 3961),输出 RFC 9457 顶层 5 字段
-* 客户端 `core/api/client.ts` 无 ProblemDetail 消费 — fallback 全 throw 通用 Error
-* 业务扩展字段散乱:`/auth/freeze` 用 `freezeUntil`,`/auth/sms` 用 `retryAfterSeconds`,无 union 类型
-* trace_id 不串到前端 — 用户看到错误无法关联后端 log
+- server `ProblemDetailFilter` 已存在 (per memory obs 3958, 3961),输出 RFC 9457 顶层 5 字段
+- 客户端 `core/api/client.ts` 无 ProblemDetail 消费 — fallback 全 throw 通用 Error
+- 业务扩展字段散乱:`/auth/freeze` 用 `freezeUntil`,`/auth/sms` 用 `retryAfterSeconds`,无 union 类型
+- trace_id 不串到前端 — 用户看到错误无法关联后端 log
 
 ## Decision
 
@@ -32,18 +32,18 @@ A-002 ship 后错误流状态:
 ```ts
 type ProblemDetailResponse = {
   // RFC 9457 mandatory
-  type: string;       // URI ref e.g. "https://nvy.app/errors/auth-locked"
-  title: string;      // human-readable summary
-  status: number;     // HTTP status mirror
-  detail?: string;    // human-readable explanation
-  instance?: string;  // URI ref to this error instance (request id)
+  type: string; // URI ref e.g. "https://nvy.app/errors/auth-locked"
+  title: string; // human-readable summary
+  status: number; // HTTP status mirror
+  detail?: string; // human-readable explanation
+  instance?: string; // URI ref to this error instance (request id)
 
   // 业务扩展 (this ADR)
-  code: string;                // machine code e.g. "AUTH_LOCKED"
-  traceId: string;             // 联 [ADR-0036](0036-observability-logging-governance.md) CLS trace_id
-  freezeUntil?: string;        // ISO 8601 — for AUTH_LOCKED
-  retryAfterSeconds?: number;  // for RATE_LIMIT_EXCEEDED
-  invalidAttributes?: Array<{ field: string; messages: string[] }>;  // for FORM_VALIDATION
+  code: string; // machine code e.g. "AUTH_LOCKED"
+  traceId: string; // 联 [ADR-0036](0036-observability-logging-governance.md) CLS trace_id
+  freezeUntil?: string; // ISO 8601 — for AUTH_LOCKED
+  retryAfterSeconds?: number; // for RATE_LIMIT_EXCEEDED
+  invalidAttributes?: Array<{ field: string; messages: string[] }>; // for FORM_VALIDATION
   // 可继续扩 (e.g. requiredCaptcha for FORM_NEEDS_CAPTCHA)
 };
 ```
@@ -54,7 +54,11 @@ type ProblemDetailResponse = {
 
 ```ts
 // generated/api-client/auth.ts
-export type PhoneSmsAuthErrorCode = "FORM_VALIDATION" | "AUTH_LOCKED" | "RATE_LIMIT_EXCEEDED" | "SMS_CODE_INVALID";
+export type PhoneSmsAuthErrorCode =
+  | 'FORM_VALIDATION'
+  | 'AUTH_LOCKED'
+  | 'RATE_LIMIT_EXCEEDED'
+  | 'SMS_CODE_INVALID';
 ```
 
 客户端 switch `error.code` 时穷举枚举 + ESLint exhaustive-check 拒漏分支。
@@ -78,8 +82,8 @@ function extractProblemDetail(err: unknown): ProblemDetailResponse | null {
 
 ### 4. trace_id 串联到 UI
 
-* server `ProblemDetailFilter` amend:`traceId: clsGet().trace_id` 注入 response (per [ADR-0036](0036-observability-logging-governance.md))
-* mobile `app/_layout.tsx` Error Boundary:catch 后展示 `trace_id` 灰字底部 (用户截图反馈时附带)
+- server `ProblemDetailFilter` amend:`traceId: clsGet().trace_id` 注入 response (per [ADR-0036](0036-observability-logging-governance.md))
+- mobile `app/_layout.tsx` Error Boundary:catch 后展示 `trace_id` 灰字底部 (用户截图反馈时附带)
 
 ### 5. FormValidationException 新建
 
@@ -88,9 +92,9 @@ server domain 抛 `FormValidationException(invalidAttributes)` → `ProblemDetai
 客户端 `useMutation` onError:
 
 ```ts
-if (problem.code === "FORM_VALIDATION") {
+if (problem.code === 'FORM_VALIDATION') {
   problem.invalidAttributes?.forEach(({ field, messages }) =>
-    form.setError(field as any, { message: messages.join("; ") })
+    form.setError(field as any, { message: messages.join('; ') }),
   );
 }
 ```
@@ -101,10 +105,10 @@ if (problem.code === "FORM_VALIDATION") {
 
 ```ts
 export const ERROR_DISPLAY_MAP: Record<string, string> = {
-  AUTH_LOCKED: "账号已锁定",
-  RATE_LIMIT_EXCEEDED: "操作过于频繁,请稍后再试",
-  SMS_CODE_INVALID: "验证码错误或已过期",
-  FORM_VALIDATION: "表单信息有误",
+  AUTH_LOCKED: '账号已锁定',
+  RATE_LIMIT_EXCEEDED: '操作过于频繁,请稍后再试',
+  SMS_CODE_INVALID: '验证码错误或已过期',
+  FORM_VALIDATION: '表单信息有误',
   // ...
 };
 ```
@@ -115,26 +119,26 @@ export const ERROR_DISPLAY_MAP: Record<string, string> = {
 
 `ProblemDetailFilter`:
 
-* `BadRequestException` / `UnauthorizedException` / `ForbiddenException` / `NotFoundException` / `ConflictException` / `TooManyRequestsException`(业务 4xx) → `logger.warn`
-* `InternalServerErrorException` / 未 caught 异常 → `logger.error` + 全 stack trace
-* `HttpException` 边界 4xx → `logger.warn`
+- `BadRequestException` / `UnauthorizedException` / `ForbiddenException` / `NotFoundException` / `ConflictException` / `TooManyRequestsException`(业务 4xx) → `logger.warn`
+- `InternalServerErrorException` / 未 caught 异常 → `logger.error` + 全 stack trace
+- `HttpException` 边界 4xx → `logger.warn`
 
 (联 [ADR-0036](0036-observability-logging-governance.md) log level 治理)
 
 ## Consequences
 
-* PR-5 ship:client interceptor + problem-guards + form.setError + Error Boundary trace_id 显示
-* PR-5 server amend:ProblemDetailResponse 加 6 业务扩展字段 + Filter 注入 traceId + FormValidationException 新建
-* 联 ADR-0027 Orval codegen 自动产 typed error code
+- PR-5 ship:client interceptor + problem-guards + form.setError + Error Boundary trace_id 显示
+- PR-5 server amend:ProblemDetailResponse 加 6 业务扩展字段 + Filter 注入 traceId + FormValidationException 新建
+- 联 ADR-0027 Orval codegen 自动产 typed error code
 
 ## Trade-offs
 
-* 6 业务扩展字段非 RFC 9457 标准 — 但通过 RFC 9457 § 3.2 "extension members" 显式 allow,合规
-* `code` 全大写 SNAKE_CASE 字符串(非 enum 数字)— 调试 + grep log 友好
+- 6 业务扩展字段非 RFC 9457 标准 — 但通过 RFC 9457 § 3.2 "extension members" 显式 allow,合规
+- `code` 全大写 SNAKE_CASE 字符串(非 enum 数字)— 调试 + grep log 友好
 
 ## References
 
-* memory obs (3958-3961 ProblemDetail filter inspection)
-* RFC 9457 (Problem Details for HTTP APIs)
-* [ADR-0027](0027-frontend-data-test-layer.md)
-* [ADR-0036](0036-observability-logging-governance.md)
+- memory obs (3958-3961 ProblemDetail filter inspection)
+- RFC 9457 (Problem Details for HTTP APIs)
+- [ADR-0027](0027-frontend-data-test-layer.md)
+- [ADR-0036](0036-observability-logging-governance.md)

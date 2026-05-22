@@ -30,27 +30,17 @@ interface ErrorBoundaryState {
 
 const INITIAL_STATE: ErrorBoundaryState = { hasError: false, error: null };
 
-export class ErrorBoundary extends Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   override state: ErrorBoundaryState = INITIAL_STATE;
 
   static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  override componentDidCatch(
-    error: unknown,
-    info: { componentStack?: string | null },
-  ): void {
+  override componentDidCatch(error: unknown, info: { componentStack?: string | null }): void {
     // Log to console so it shows up in `expo start` / RN dev tools.
     // Plan 3 introduces Sentry / Bugsnag in this hook.
-    console.error(
-      `[ErrorBoundary] trace=${extractTraceId(error)}`,
-      error,
-      info.componentStack,
-    );
+    console.error(`[ErrorBoundary] trace=${extractTraceId(error)}`, error, info.componentStack);
   }
 
   private handleRetry = (): void => {

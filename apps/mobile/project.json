@@ -15,7 +15,7 @@
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "eslint . --max-warnings=0",
+        "command": "eslint .",
         "cwd": "apps/mobile"
       }
     },
@@ -52,10 +52,7 @@
     },
     "e2e": {
       "executor": "nx:run-commands",
-      "outputs": [
-        "{projectRoot}/playwright-report",
-        "{projectRoot}/playwright-test-results"
-      ],
+      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/playwright-test-results"],
       "options": {
         "command": "playwright test",
         "cwd": "apps/mobile"

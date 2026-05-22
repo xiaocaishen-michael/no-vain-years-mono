@@ -1,8 +1,8 @@
 ---
 paths:
-  - ".specify/presets/**"
-  - ".specify/schemas/**"
-  - ".specify/extensions.yml"
+  - '.specify/presets/**'
+  - '.specify/schemas/**'
+  - '.specify/extensions.yml'
 ---
 
 # Preset 修改纪律（path-triggered，触及 `.specify/presets/` 自动加载）

@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
 import type { ClsService } from 'nestjs-cls';
 import { PrismaService } from '../../security/prisma.service';
@@ -65,9 +62,7 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
     expect(row.event_type).toBe(eventType);
     expect(row.published_at).toBeNull();
     expect(row.created_at).toBeInstanceOf(Date);
-    expect(row.id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    );
+    expect(row.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
     const payload = row.payload as {
       metadata: {
@@ -81,9 +76,7 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
     expect(payload.metadata.trace_id).toBe(traceId);
     expect(payload.metadata.event_version).toBe(1);
     expect(payload.metadata.producer_context).toBe('auth');
-    expect(payload.metadata.occurred_at).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
-    );
+    expect(payload.metadata.occurred_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     expect(payload.data).toEqual(data);
   });
 
@@ -93,9 +86,7 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
 
     await publisher.publish(prisma, eventType, { x: 1 });
 
-    const row = (
-      await prisma.outbox_event.findMany({ where: { event_type: eventType } })
-    )[0]!;
+    const row = (await prisma.outbox_event.findMany({ where: { event_type: eventType } }))[0]!;
     const payload = row.payload as { metadata: { trace_id: string } };
     expect(payload.metadata.trace_id).toMatch(
       /^out-of-request-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
@@ -122,9 +113,7 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
   });
 
   it('publish(tx, ...) inside $transaction is rolled back when business throws', async () => {
-    const publisher = new OutboxEventPrismaPublisher(
-      makeCls('tx-rollback-trace'),
-    );
+    const publisher = new OutboxEventPrismaPublisher(makeCls('tx-rollback-trace'));
     const eventType = 'auth.tx.rolled-back';
     await expect(
       prisma.$transaction(async (tx) => {

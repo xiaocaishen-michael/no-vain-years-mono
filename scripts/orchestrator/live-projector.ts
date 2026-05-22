@@ -42,14 +42,8 @@ export interface LiveProjector {
  *
  * Exported for unit testability.
  */
-export function composeLabel(
-  prefix: string,
-  currentPhase: string,
-  elapsedSuffix: string,
-): string {
-  return prefix
-    ? `${prefix} | ${currentPhase}${elapsedSuffix}`
-    : `${currentPhase}${elapsedSuffix}`;
+export function composeLabel(prefix: string, currentPhase: string, elapsedSuffix: string): string {
+  return prefix ? `${prefix} | ${currentPhase}${elapsedSuffix}` : `${currentPhase}${elapsedSuffix}`;
 }
 
 export function startLiveProjector(

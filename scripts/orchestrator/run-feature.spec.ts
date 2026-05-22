@@ -67,9 +67,7 @@ function llmFills(task: ParsedTask, content = '// patched by fake LLM\n'): FakeR
 }
 
 function fillingResponses(state: FeatureState): FakeResponse[] {
-  return state.tasks.tasks
-    .filter((t) => t.status === 'pending')
-    .map((t) => llmFills(t));
+  return state.tasks.tasks.filter((t) => t.status === 'pending').map((t) => llmFills(t));
 }
 
 describe('runFeature (integration with fakes)', () => {
@@ -85,25 +83,14 @@ describe('runFeature (integration with fakes)', () => {
     featureDir: string;
     repoRoot: string;
   } {
-    const repoRoot = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'orchestrator-runfeature-'),
-    );
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'orchestrator-runfeature-'));
     dirs.push(repoRoot);
     // Mirror the fixture layout: <repo>/specs/002-demo/<spec|plan|tasks>.md
     const featureDir = path.join(repoRoot, 'specs', '002-demo');
     fs.mkdirSync(featureDir, { recursive: true });
-    fs.copyFileSync(
-      path.join(FIXTURES_DIR, 'spec-happy.md'),
-      path.join(featureDir, 'spec.md'),
-    );
-    fs.copyFileSync(
-      path.join(FIXTURES_DIR, 'plan-happy.md'),
-      path.join(featureDir, 'plan.md'),
-    );
-    fs.copyFileSync(
-      path.join(FIXTURES_DIR, 'tasks-happy.md'),
-      path.join(featureDir, 'tasks.md'),
-    );
+    fs.copyFileSync(path.join(FIXTURES_DIR, 'spec-happy.md'), path.join(featureDir, 'spec.md'));
+    fs.copyFileSync(path.join(FIXTURES_DIR, 'plan-happy.md'), path.join(featureDir, 'plan.md'));
+    fs.copyFileSync(path.join(FIXTURES_DIR, 'tasks-happy.md'), path.join(featureDir, 'tasks.md'));
     return { featureDir, repoRoot };
   }
 
@@ -111,15 +98,12 @@ describe('runFeature (integration with fakes)', () => {
     // Each pending task: 1 LLM call (initial, which mirrors a Write side
     // effect to satisfy the post-LLM no-op detector) + 1 verify shell call.
     const llmResponses: FakeResponse[] = fillingResponses(state);
-    const shellResponses: ShellRunResult[] = Array.from(
-      { length: llmResponses.length },
-      () => shellOk('verify ok'),
+    const shellResponses: ShellRunResult[] = Array.from({ length: llmResponses.length }, () =>
+      shellOk('verify ok'),
     );
     return {
       llm: new FakeLlmClient(llmResponses),
-      git: new FakeGit(
-        Array.from({ length: llmResponses.length }, () => ({ ok: true as const })),
-      ),
+      git: new FakeGit(Array.from({ length: llmResponses.length }, () => ({ ok: true as const }))),
       shell: new FakeShell(shellResponses),
     };
   }
@@ -137,10 +121,7 @@ describe('runFeature (integration with fakes)', () => {
     expect(result.results.every((r) => r.reason === 'success')).toBe(true);
 
     // All 8 task checkboxes flipped in tasks.md
-    const tasksMd = fs.readFileSync(
-      path.join(featureDir, 'tasks.md'),
-      'utf-8',
-    );
+    const tasksMd = fs.readFileSync(path.join(featureDir, 'tasks.md'), 'utf-8');
     for (const id of ['T001', 'T002', 'T003', 'T004', 'T005', 'T006', 'T007', 'T008']) {
       expect(tasksMd).toMatch(new RegExp(`- \\[X\\] ${id}`));
     }
@@ -204,9 +185,13 @@ describe('runFeature (integration with fakes)', () => {
       shellOk('green now'),
     ]);
 
-    const result = await runFeature(state, { llm, git, shell }, {
-      onlyTaskId: 'T001',
-    });
+    const result = await runFeature(
+      state,
+      { llm, git, shell },
+      {
+        onlyTaskId: 'T001',
+      },
+    );
 
     expect(result.ok).toBe(true);
     expect(llm.calls).toHaveLength(2);
@@ -222,15 +207,16 @@ describe('runFeature (integration with fakes)', () => {
       llmFills(t001), // T001 initial — fills declared files
       llmOk(), // T001 git-hook retry — fixes lint
     ]);
-    const git = new FakeGit([
-      { ok: false, stderr: 'markdownlint: line too long' },
-      { ok: true },
-    ]);
+    const git = new FakeGit([{ ok: false, stderr: 'markdownlint: line too long' }, { ok: true }]);
     const shell = new FakeShell([shellOk('verify green')]);
 
-    const result = await runFeature(state, { llm, git, shell }, {
-      onlyTaskId: 'T001',
-    });
+    const result = await runFeature(
+      state,
+      { llm, git, shell },
+      {
+        onlyTaskId: 'T001',
+      },
+    );
 
     expect(result.ok).toBe(true);
     expect(result.results[0].commit?.ralph?.attempts).toBe(1);
@@ -278,9 +264,13 @@ describe('runFeature (integration with fakes)', () => {
     const git = new FakeGit([{ ok: true }]);
     const shell = new FakeShell([shellOk('verify green')]);
 
-    const result = await runFeature(state, { llm, git, shell }, {
-      onlyTaskId: 'T001',
-    });
+    const result = await runFeature(
+      state,
+      { llm, git, shell },
+      {
+        onlyTaskId: 'T001',
+      },
+    );
 
     expect(result.ok).toBe(false);
     const tr = result.results[0];
@@ -301,21 +291,13 @@ describe('runFeature (integration with fakes)', () => {
     });
     expect(result.ok).toBe(true);
 
-    const archiveDir = path.join(
-      repoRoot,
-      '.spec-kit',
-      'runs',
-      state.featureId,
-      'T001',
-    );
+    const archiveDir = path.join(repoRoot, '.spec-kit', 'runs', state.featureId, 'T001');
     expect(fs.existsSync(path.join(archiveDir, 'summary.json'))).toBe(true);
     expect(fs.existsSync(path.join(archiveDir, 'attempt-0-prompt.md'))).toBe(true);
     expect(fs.existsSync(path.join(archiveDir, 'attempt-0-llm-stream.jsonl'))).toBe(true);
     expect(fs.existsSync(path.join(archiveDir, 'attempt-0-action-stdout.log'))).toBe(true);
 
-    const summary = JSON.parse(
-      fs.readFileSync(path.join(archiveDir, 'summary.json'), 'utf-8'),
-    );
+    const summary = JSON.parse(fs.readFileSync(path.join(archiveDir, 'summary.json'), 'utf-8'));
     expect(summary.feature_id).toBe(state.featureId);
     expect(summary.task_id).toBe('T001');
     expect(summary.ok).toBe(true);
@@ -366,11 +348,7 @@ describe('runFeature (integration with fakes)', () => {
     );
     const sink = new FakeProgressSink();
 
-    await runFeature(
-      state,
-      { ...defaultDeps(state), progress: sink },
-      { onlyTaskId: 'T001' },
-    );
+    await runFeature(state, { ...defaultDeps(state), progress: sink }, { onlyTaskId: 'T001' });
 
     const t001 = sink.events.filter((e) => e.taskId === 'T001');
     expect(t001[0].kind).toBe('start');
@@ -386,31 +364,27 @@ describe('runFeature (integration with fakes)', () => {
     const t001 = state.tasks.tasks.find((t) => t.id === 'T001')!;
     const llm = new FakeLlmClient([
       llmFills(t001), // initial — fills declared files
-      llmOk(),        // verify-ralph round 1
+      llmOk(), // verify-ralph round 1
     ]);
     const git = new FakeGit([{ ok: true }]);
     const shell = new FakeShell([
       shellFail('verify red'), // initial verify fails
-      shellOk('green now'),    // ralph round 1 verify passes
+      shellOk('green now'), // ralph round 1 verify passes
     ]);
 
-    const result = await runFeature(state, { llm, git, shell }, {
-      onlyTaskId: 'T001',
-    });
+    const result = await runFeature(
+      state,
+      { llm, git, shell },
+      {
+        onlyTaskId: 'T001',
+      },
+    );
     expect(result.ok).toBe(true);
 
-    const archiveDir = path.join(
-      repoRoot,
-      '.spec-kit',
-      'runs',
-      state.featureId,
-      'T001',
-    );
+    const archiveDir = path.join(repoRoot, '.spec-kit', 'runs', state.featureId, 'T001');
     expect(fs.existsSync(path.join(archiveDir, 'attempt-0-prompt.md'))).toBe(true);
     expect(fs.existsSync(path.join(archiveDir, 'attempt-1-prompt.md'))).toBe(true);
-    const summary = JSON.parse(
-      fs.readFileSync(path.join(archiveDir, 'summary.json'), 'utf-8'),
-    );
+    const summary = JSON.parse(fs.readFileSync(path.join(archiveDir, 'summary.json'), 'utf-8'));
     expect(summary.attempts).toHaveLength(2);
     expect(summary.attempts[0].phase).toBe('initial');
     expect(summary.attempts[0].ok).toBe(false);
@@ -434,15 +408,21 @@ describe('runFeature (integration with fakes)', () => {
       const t001 = state.tasks.tasks.find((t) => t.id === 'T001')!;
 
       const llm = new FakeLlmClient([
-        () => { throw maxTurnsError(); }, // Sonnet attempt
-        llmFills(t001),                    // Opus retry — fills files
+        () => {
+          throw maxTurnsError();
+        }, // Sonnet attempt
+        llmFills(t001), // Opus retry — fills files
       ]);
       const git = new FakeGit([{ ok: true }]);
       const shell = new FakeShell([shellOk('verify green')]);
 
-      const result = await runFeature(state, { llm, git, shell }, {
-        onlyTaskId: 'T001',
-      });
+      const result = await runFeature(
+        state,
+        { llm, git, shell },
+        {
+          onlyTaskId: 'T001',
+        },
+      );
 
       expect(result.ok).toBe(true);
       expect(llm.calls).toHaveLength(2);
@@ -452,12 +432,8 @@ describe('runFeature (integration with fakes)', () => {
       expect(llm.calls[1].opts.model).toBe('opus');
 
       // Archive records two attempts (Sonnet failure + Opus success)
-      const archiveDir = path.join(
-        repoRoot, '.spec-kit', 'runs', state.featureId, 'T001',
-      );
-      const summary = JSON.parse(
-        fs.readFileSync(path.join(archiveDir, 'summary.json'), 'utf-8'),
-      );
+      const archiveDir = path.join(repoRoot, '.spec-kit', 'runs', state.featureId, 'T001');
+      const summary = JSON.parse(fs.readFileSync(path.join(archiveDir, 'summary.json'), 'utf-8'));
       expect(summary.attempts).toHaveLength(2);
       expect(summary.attempts[0].ok).toBe(false);
       expect(summary.attempts[0].llm_error).toMatch(/error_max_turns/);
@@ -469,14 +445,20 @@ describe('runFeature (integration with fakes)', () => {
       const state = loadFeature(featureDir);
 
       const llm = new FakeLlmClient([
-        () => { throw new LlmInvokeError('some other error'); },
+        () => {
+          throw new LlmInvokeError('some other error');
+        },
       ]);
       const git = new FakeGit([{ ok: true }]);
       const shell = new FakeShell([]);
 
-      const result = await runFeature(state, { llm, git, shell }, {
-        onlyTaskId: 'T001',
-      });
+      const result = await runFeature(
+        state,
+        { llm, git, shell },
+        {
+          onlyTaskId: 'T001',
+        },
+      );
 
       expect(result.ok).toBe(false);
       expect(llm.calls).toHaveLength(1); // no retry
@@ -487,7 +469,9 @@ describe('runFeature (integration with fakes)', () => {
       const state = loadFeature(featureDir);
 
       const llm = new FakeLlmClient([
-        () => { throw maxTurnsError(); },
+        () => {
+          throw maxTurnsError();
+        },
       ]);
       const git = new FakeGit([{ ok: true }]);
       const shell = new FakeShell([]);
@@ -507,15 +491,23 @@ describe('runFeature (integration with fakes)', () => {
       const state = loadFeature(featureDir);
 
       const llm = new FakeLlmClient([
-        () => { throw maxTurnsError(); },                             // Sonnet
-        () => { throw new LlmInvokeError('Opus also broke'); },        // Opus
+        () => {
+          throw maxTurnsError();
+        }, // Sonnet
+        () => {
+          throw new LlmInvokeError('Opus also broke');
+        }, // Opus
       ]);
       const git = new FakeGit([{ ok: true }]);
       const shell = new FakeShell([]);
 
-      const result = await runFeature(state, { llm, git, shell }, {
-        onlyTaskId: 'T001',
-      });
+      const result = await runFeature(
+        state,
+        { llm, git, shell },
+        {
+          onlyTaskId: 'T001',
+        },
+      );
 
       expect(result.ok).toBe(false);
       expect(llm.calls).toHaveLength(2);
@@ -534,9 +526,7 @@ describe('runFeature (integration with fakes)', () => {
     const { featureDir } = setupFeature();
     const state = loadFeature(featureDir);
     // Redirect sandbox to a test-owned tmp dir so we don't leak into /tmp.
-    const sandboxBase = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'orchestrator-sb-'),
-    );
+    const sandboxBase = fs.mkdtempSync(path.join(os.tmpdir(), 'orchestrator-sb-'));
     dirs.push(sandboxBase);
     state.plan.config.sandbox.cwd_template = `${sandboxBase}/{feature_id}-{task_id}`;
     // cleanup_on_success=true is already the fixture default; assert.
@@ -548,9 +538,7 @@ describe('runFeature (integration with fakes)', () => {
 
     expect(result.ok).toBe(true);
     const tr = result.results[0];
-    expect(tr.sandboxCwd).toBe(
-      `${sandboxBase}/002-account-profile-base-T001`,
-    );
+    expect(tr.sandboxCwd).toBe(`${sandboxBase}/002-account-profile-base-T001`);
     expect(tr.sandboxCleaned).toBe(true);
     expect(fs.existsSync(tr.sandboxCwd!)).toBe(false);
   });
@@ -566,9 +554,7 @@ describe('maybeCleanupSandbox', () => {
   });
 
   function makeSandbox(): string {
-    const d = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'orchestrator-sandbox-'),
-    );
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), 'orchestrator-sandbox-'));
     dirs.push(d);
     fs.writeFileSync(path.join(d, 'marker.txt'), 'x');
     return d;

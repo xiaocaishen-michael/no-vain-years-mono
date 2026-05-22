@@ -1,16 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import {
-  RedisContainer,
-  type StartedRedisContainer,
-} from '@testcontainers/redis';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
@@ -95,10 +86,8 @@ describe.skipIf(!RUN_PERF)(
 
       process.env.DATABASE_URL = pgContainer.getConnectionUri();
       process.env.REDIS_URL = redisContainer.getConnectionUrl();
-      process.env.AUTH_JWT_SECRET =
-        'p95-it-jwt-secret-min-32-bytes-pad-abcdef';
-      process.env.SMS_CODE_HMAC_SECRET =
-        'p95-it-hmac-secret-min-32-bytes-pad-zzzzzz';
+      process.env.AUTH_JWT_SECRET = 'p95-it-jwt-secret-min-32-bytes-pad-abcdef';
+      process.env.SMS_CODE_HMAC_SECRET = 'p95-it-hmac-secret-min-32-bytes-pad-zzzzzz';
 
       execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
         cwd: SERVER_DIR,
@@ -110,12 +99,8 @@ describe.skipIf(!RUN_PERF)(
         imports: [AppModule],
       }).compile();
 
-      app = moduleRef.createNestApplication<NestFastifyApplication>(
-        new FastifyAdapter(),
-      );
-      app.useGlobalPipes(
-        new ValidationPipe({ transform: true, whitelist: true }),
-      );
+      app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+      app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
       app.setGlobalPrefix('api');
       await app.init();
       await app.getHttpAdapter().getInstance().ready();
@@ -136,11 +121,7 @@ describe.skipIf(!RUN_PERF)(
       });
 
       // ACTIVE_WRONG: pre-store correct SMS code (1h TTL). 1000 reps send WRONG_CODE → 401.
-      await smsCodeRepo.store(
-        Phone.create(ACTIVE_PHONE_WRONG),
-        SmsCode.create(STORED_CODE),
-        3600,
-      );
+      await smsCodeRepo.store(Phone.create(ACTIVE_PHONE_WRONG), SmsCode.create(STORED_CODE), 3600);
       // ACTIVE_EXPIRED: NEVER store SMS code → verify returns null → 码过期 path.
       await smsCodeRepo.clear(Phone.create(ACTIVE_PHONE_EXPIRED));
       // ANONYMIZED: code state irrelevant (ANONYMIZED throws before verify).
@@ -179,77 +160,67 @@ describe.skipIf(!RUN_PERF)(
 
     const percentile = (arr: number[], p: number): number => {
       const sorted = [...arr].sort((a, b) => a - b);
-      const idx = Math.min(
-        Math.floor(p * sorted.length),
-        sorted.length - 1,
-      );
+      const idx = Math.min(Math.floor(p * sorted.length), sorted.length - 1);
       return sorted[idx];
     };
 
-    it(
-      `P95 wall-clock 时延差 ≤ 50ms across 3 anti-enum 401 paths (${REPS} reps)`,
-      async () => {
-        const lat: {
-          activeWrong: number[];
-          activeExpired: number[];
-          anonymizedAny: number[];
-        } = { activeWrong: [], activeExpired: [], anonymizedAny: [] };
+    it(`P95 wall-clock 时延差 ≤ 50ms across 3 anti-enum 401 paths (${REPS} reps)`, async () => {
+      const lat: {
+        activeWrong: number[];
+        activeExpired: number[];
+        anonymizedAny: number[];
+      } = { activeWrong: [], activeExpired: [], anonymizedAny: [] };
 
-        for (let i = 0; i < REPS; i++) {
-          await clearLockKeys();
+      for (let i = 0; i < REPS; i++) {
+        await clearLockKeys();
 
-          // P1: ACTIVE + wrong code → 401
-          const r1 = await callAuth(ACTIVE_PHONE_WRONG, WRONG_CODE);
-          expect(r1.statusCode).toBe(401);
-          lat.activeWrong.push(r1.elapsedMs);
+        // P1: ACTIVE + wrong code → 401
+        const r1 = await callAuth(ACTIVE_PHONE_WRONG, WRONG_CODE);
+        expect(r1.statusCode).toBe(401);
+        lat.activeWrong.push(r1.elapsedMs);
 
-          // P2: ACTIVE + expired (no code in redis) → 401
-          const r2 = await callAuth(ACTIVE_PHONE_EXPIRED, STORED_CODE);
-          expect(r2.statusCode).toBe(401);
-          lat.activeExpired.push(r2.elapsedMs);
+        // P2: ACTIVE + expired (no code in redis) → 401
+        const r2 = await callAuth(ACTIVE_PHONE_EXPIRED, STORED_CODE);
+        expect(r2.statusCode).toBe(401);
+        lat.activeExpired.push(r2.elapsedMs);
 
-          // P3: ANONYMIZED + any code → 401 (反枚举吞, pad before verify)
-          const r3 = await callAuth(ANONYMIZED_PHONE, STORED_CODE);
-          expect(r3.statusCode).toBe(401);
-          lat.anonymizedAny.push(r3.elapsedMs);
+        // P3: ANONYMIZED + any code → 401 (反枚举吞, pad before verify)
+        const r3 = await callAuth(ANONYMIZED_PHONE, STORED_CODE);
+        expect(r3.statusCode).toBe(401);
+        lat.anonymizedAny.push(r3.elapsedMs);
 
-          if (i % 100 === 0 && i > 0) {
-            // eslint-disable-next-line no-console
-            console.log(
-              `[timing-defense.p95.it] progress ${i}/${REPS} reps complete`,
-            );
-          }
+        if (i % 100 === 0 && i > 0) {
+          // eslint-disable-next-line no-console
+          console.log(`[timing-defense.p95.it] progress ${i}/${REPS} reps complete`);
         }
+      }
 
-        const p95Active = percentile(lat.activeWrong, 0.95);
-        const p95Expired = percentile(lat.activeExpired, 0.95);
-        const p95Anon = percentile(lat.anonymizedAny, 0.95);
+      const p95Active = percentile(lat.activeWrong, 0.95);
+      const p95Expired = percentile(lat.activeExpired, 0.95);
+      const p95Anon = percentile(lat.anonymizedAny, 0.95);
 
-        const p95s = [p95Active, p95Expired, p95Anon];
-        const minP95 = Math.min(...p95s);
-        const maxP95 = Math.max(...p95s);
-        const diff = maxP95 - minP95;
+      const p95s = [p95Active, p95Expired, p95Anon];
+      const minP95 = Math.min(...p95s);
+      const maxP95 = Math.max(...p95s);
+      const diff = maxP95 - minP95;
 
-        // eslint-disable-next-line no-console
-        console.log(
-          '[timing-defense.p95.it] result',
-          JSON.stringify({
-            reps: REPS,
-            p95Active_wrong_ms: p95Active,
-            p95Active_expired_ms: p95Expired,
-            p95Anonymized_any_ms: p95Anon,
-            minP95_ms: minP95,
-            maxP95_ms: maxP95,
-            diff_ms: diff,
-            threshold_ms: 50,
-            verdict: diff <= 50 ? 'PASS' : 'FAIL',
-          }),
-        );
+      // eslint-disable-next-line no-console
+      console.log(
+        '[timing-defense.p95.it] result',
+        JSON.stringify({
+          reps: REPS,
+          p95Active_wrong_ms: p95Active,
+          p95Active_expired_ms: p95Expired,
+          p95Anonymized_any_ms: p95Anon,
+          minP95_ms: minP95,
+          maxP95_ms: maxP95,
+          diff_ms: diff,
+          threshold_ms: 50,
+          verdict: diff <= 50 ? 'PASS' : 'FAIL',
+        }),
+      );
 
-        expect(diff).toBeLessThanOrEqual(50);
-      },
-      // 1000 reps × 3 paths × ~100ms each ≈ 5min; allow 10min headroom.
-      600_000,
-    );
+      expect(diff).toBeLessThanOrEqual(50);
+    }, 600_000); // 1000 reps × 3 paths × ~100ms each ≈ 5min; allow 10min headroom.
   },
 );

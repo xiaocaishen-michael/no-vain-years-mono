@@ -1,0 +1,32 @@
+**/dist/
+**/build/
+**/node_modules/
+**/.next/
+**/.expo/
+**/coverage/
+**/target/
+
+# Lockfiles / generated
+pnpm-lock.yaml
+apps/server/openapi.json
+packages/api-client/src/generated/
+
+# AI 草稿 / 高频改写区
+specs/*/plan.md
+specs/*/tasks.md
+specs/*/analysis.md
+docs/plans/
+docs/daily/
+docs/experience/
+
+# Test fixtures emulating real SDD spec/plan/tasks shape — Prettier strips
+# CommonMark list-item HTML-comment continuation indent which is structurally
+# meaningful to the orchestrator parsers (per tasks.spec.ts T001 task-meta).
+scripts/orchestrator/__fixtures__/
+
+# Upstream vendored (spec-kit + michael-speckit-presets)
+# 该目录由 spec-kit init / preset 安装管理，本地格式化会被下次同步覆盖
+# 同时混入 .cache/ 自动生成文件，绝不能 Prettier 重写。
+.specify/
+.claude/commands/speckit-*.md
+.claude/skills/speckit-*/

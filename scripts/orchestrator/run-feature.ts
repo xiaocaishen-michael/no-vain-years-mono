@@ -1,22 +1,9 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { TaskArchive } from './archive.js';
-import {
-  applyFileOpPlan,
-  FileOpApplyError,
-  planFileOps,
-} from './fs-ops.js';
-import {
-  buildCommitMsg,
-  commitTask,
-  type CommitTaskResult,
-  type Git,
-} from './git-flow.js';
-import {
-  queryGraph,
-  resolveDefaultGraphPath,
-  type CodeContext,
-} from './graphify-client.js';
+import { applyFileOpPlan, FileOpApplyError, planFileOps } from './fs-ops.js';
+import { buildCommitMsg, commitTask, type CommitTaskResult, type Git } from './git-flow.js';
+import { queryGraph, resolveDefaultGraphPath, type CodeContext } from './graphify-client.js';
 import {
   isClaudeMaxTurnsError,
   LlmInvokeError,
@@ -25,10 +12,7 @@ import {
   type LlmInvokeResult,
 } from './llm-client.js';
 import type { StreamEvent } from './llm-stream-parser.js';
-import {
-  startLiveProjector,
-  type LiveProjector,
-} from './live-projector.js';
+import { startLiveProjector, type LiveProjector } from './live-projector.js';
 import { buildPrompt } from './prompt-assembler.js';
 import { ralphLoop, type RalphLoopResult } from './ralph-loop.js';
 import type { Shell, ShellRunResult } from './shell.js';
@@ -142,18 +126,12 @@ export async function runFeature(
       .filter((t) => !options.onlyTaskId || t.id === options.onlyTaskId);
     if (candidates.length === 0) continue;
 
-    const parallelGroup = options.parallel
-      ? candidates.filter((t) => t.parallel)
-      : [];
-    const serialGroup = options.parallel
-      ? candidates.filter((t) => !t.parallel)
-      : candidates;
+    const parallelGroup = options.parallel ? candidates.filter((t) => t.parallel) : [];
+    const serialGroup = options.parallel ? candidates.filter((t) => !t.parallel) : candidates;
 
     if (parallelGroup.length > 0) {
       const parallelResults = await Promise.all(
-        parallelGroup.map((t) =>
-          runTask(t, state, deps, repoRoot, options),
-        ),
+        parallelGroup.map((t) => runTask(t, state, deps, repoRoot, options)),
       );
       results.push(...parallelResults);
       const failed = parallelResults.find((r) => !r.ok);
@@ -194,12 +172,8 @@ function warnOrphanStuck(r: TaskRunResult): void {
     lines.push('   Orphans:');
     for (const f of orphans) lines.push(`     - ${f}`);
   }
-  lines.push(
-    '   Resolve manually: inspect the worktree, choose `git restore` (hallucination)',
-  );
-  lines.push(
-    '   or `git add` + edit tasks.md task.files (legitimate ripple), then re-run.',
-  );
+  lines.push('   Resolve manually: inspect the worktree, choose `git restore` (hallucination)');
+  lines.push('   or `git add` + edit tasks.md task.files (legitimate ripple), then re-run.');
   // eslint-disable-next-line no-console
   console.error(lines.join('\n'));
 }
@@ -221,9 +195,7 @@ export async function runTask(
 ): Promise<TaskRunResult> {
   const progressHandle = deps.progress?.start(task);
 
-  const workspace = state.plan.config.workspaces.find(
-    (w) => w.id === task.workspace,
-  );
+  const workspace = state.plan.config.workspaces.find((w) => w.id === task.workspace);
   if (!workspace) {
     const r: TaskRunResult = {
       taskId: task.id,
@@ -239,13 +211,7 @@ export async function runTask(
   await fs.mkdir(sandboxCwd, { recursive: true });
   await fs.mkdir(path.join(sandboxCwd, '.spec-kit'), { recursive: true });
 
-  const archiveDir = path.join(
-    repoRoot,
-    '.spec-kit',
-    'runs',
-    state.featureId,
-    task.id,
-  );
+  const archiveDir = path.join(repoRoot, '.spec-kit', 'runs', state.featureId, task.id);
   const archive = await TaskArchive.create(archiveDir, {
     featureId: state.featureId,
     taskId: task.id,
@@ -345,8 +311,7 @@ async function runTaskInner(
 
   // 1. graphify code context
   progress?.update('📦 Loading code context (graphify)');
-  const graphJsonPath =
-    deps.graphJsonPath ?? resolveDefaultGraphPath(repoRoot);
+  const graphJsonPath = deps.graphJsonPath ?? resolveDefaultGraphPath(repoRoot);
   const scope = task.graphify_scope_override ?? workspace.graphify_scope;
   const codeCtx: CodeContext = queryGraph(graphJsonPath, scope);
 
@@ -403,8 +368,7 @@ async function runTaskInner(
   let llmResult: LlmInvokeResult | undefined;
   let llmFinalError: Error | undefined;
 
-  const baseModel =
-    llmInvokeOpts.model ?? process.env.ORCHESTRATOR_MODEL ?? 'sonnet';
+  const baseModel = llmInvokeOpts.model ?? process.env.ORCHESTRATOR_MODEL ?? 'sonnet';
   const canEscalateModel = baseModel.toLowerCase() !== 'opus';
 
   for (let pass = 0; pass < 2; pass++) {
@@ -423,18 +387,14 @@ async function runTaskInner(
     } catch (e) {
       projector.stop();
       const err = e instanceof Error ? e : new Error(String(e));
-      const shouldEscalate =
-        pass === 0 &&
-        canEscalateModel &&
-        isClaudeMaxTurnsError(err);
+      const shouldEscalate = pass === 0 && canEscalateModel && isClaudeMaxTurnsError(err);
       if (!shouldEscalate) {
         llmFinalError = err;
         break;
       }
       // Close out the failed attempt (Sonnet), open a fresh one for Opus.
       const failureDiff = await safeDiff(deps.git, repoRoot, task.files);
-      const llmMetrics =
-        err instanceof LlmInvokeError ? err.metrics : undefined;
+      const llmMetrics = err instanceof LlmInvokeError ? err.metrics : undefined;
       await attempt.finish({
         prompt,
         llmError: err,
@@ -442,9 +402,7 @@ async function runTaskInner(
         diff: failureDiff,
         ok: false,
       });
-      archive.pushError(
-        `${baseModel} hit max_turns; escalating to Opus retry`,
-      );
+      archive.pushError(`${baseModel} hit max_turns; escalating to Opus retry`);
       attempt = archive.reserveAttempt('initial');
       const newStreams = attempt.openLlmStreams();
       llmStdoutSink = newStreams.stdout;
@@ -456,10 +414,7 @@ async function runTaskInner(
   if (llmFinalError) {
     // PoC blind spot #15: capture diff + recover metrics from LlmInvokeError.
     const failureDiff = await safeDiff(deps.git, repoRoot, task.files);
-    const llmMetrics =
-      llmFinalError instanceof LlmInvokeError
-        ? llmFinalError.metrics
-        : undefined;
+    const llmMetrics = llmFinalError instanceof LlmInvokeError ? llmFinalError.metrics : undefined;
     await attempt.finish({
       prompt,
       llmError: llmFinalError,
@@ -535,8 +490,7 @@ async function runTaskInner(
       phase: 'verify-command',
       maxRetries: options.maxVerifyRetries,
       initialFailure: verifyResult.stderr || verifyResult.stdout,
-      buildRetryPrompt: (feedback, n) =>
-        buildVerifyRetryPrompt(task, feedback, n),
+      buildRetryPrompt: (feedback, n) => buildVerifyRetryPrompt(task, feedback, n),
       attempt: async () => {
         if (roundProjector) roundProjector.stop();
         roundProjector = undefined;
@@ -643,9 +597,7 @@ async function safeDiff(
   files?: ReadonlyArray<{ op: string; path: string }>,
 ): Promise<string> {
   try {
-    const intentToAddPaths = files
-      ?.filter((f) => f.op === 'create')
-      .map((f) => f.path);
+    const intentToAddPaths = files?.filter((f) => f.op === 'create').map((f) => f.path);
     return await git.diffWorkingTree({ cwd: repoRoot, intentToAddPaths });
   } catch {
     return '';
@@ -672,10 +624,7 @@ export async function maybeCleanupSandbox(
   }
 }
 
-export function resolveSandboxCwd(
-  state: FeatureState,
-  task: ParsedTask,
-): string {
+export function resolveSandboxCwd(state: FeatureState, task: ParsedTask): string {
   const tmpl = state.plan.config.sandbox.cwd_template;
   return tmpl
     .replace('{feature_id}', state.plan.frontmatter.feature_id)
@@ -696,9 +645,7 @@ export async function detectLlmNoOp(
   repoRoot: string,
   llmStartedAt: number,
 ): Promise<string | null> {
-  const targets = task.files.filter(
-    (f) => f.op === 'create' || f.op === 'modify',
-  );
+  const targets = task.files.filter((f) => f.op === 'create' || f.op === 'modify');
   if (targets.length === 0) return null;
 
   const offenders: string[] = [];

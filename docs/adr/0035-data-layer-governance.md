@@ -10,9 +10,9 @@ sunset_trigger: |
 
 # ADR-0035: Data Layer Governance — migrate + naming + seed + types regen gate
 
-* Status: Proposed
-* Deciders: project owner
-* Tags: backend / data / prisma / governance / cross-cutting
+- Status: Proposed
+- Deciders: project owner
+- Tags: backend / data / prisma / governance / cross-cutting
 
 ## Context
 
@@ -35,8 +35,8 @@ Plan 1 W1.4 起 Prisma db pull / migrate 走通,但实际使用暴露 4 类失�
 20260521_0900_drop_legacy_session_table
 ```
 
-* `prisma migrate dev --name <verb>_<obj>` CLI wrapper (`scripts/prisma-migrate.ts`) 自动 prepend timestamp 前缀,user 只写 `verb_obj`
-* lefthook 校验 `prisma/migrations/*/migration.sql` 文件夹名匹配该 regex
+- `prisma migrate dev --name <verb>_<obj>` CLI wrapper (`scripts/prisma-migrate.ts`) 自动 prepend timestamp 前缀,user 只写 `verb_obj`
+- lefthook 校验 `prisma/migrations/*/migration.sql` 文件夹名匹配该 regex
 
 ### 2. prisma generate hard gate (lefthook)
 
@@ -46,7 +46,7 @@ Plan 1 W1.4 起 Prisma db pull / migrate 走通,但实际使用暴露 4 类失�
 pre-commit:
   commands:
     prisma-generate-gate:
-      glob: "apps/server/prisma/schema.prisma"
+      glob: 'apps/server/prisma/schema.prisma'
       run: |
         pnpm -C apps/server prisma generate
         git add apps/server/src/generated/prisma  # or wherever output 指
@@ -83,23 +83,23 @@ spec 加 `migration_refs: [20260520_1430_add_phone_to_account]` (可选字段,�
 
 ## Consequences
 
-* **PR-6** ship lefthook prisma-generate-gate + 3 层 seed 骨架 + CLI wrapper
-* **migration 命名 retrofit**:已存在 migrations 不动 (历史 immutable),新 migration 起强制
-* **`scripts/prisma-migrate.ts`** wrapper CLI:`pnpm db:migrate "add phone to account"` → 自动 timestamp + 移交 prisma migrate dev
+- **PR-6** ship lefthook prisma-generate-gate + 3 层 seed 骨架 + CLI wrapper
+- **migration 命名 retrofit**:已存在 migrations 不动 (历史 immutable),新 migration 起强制
+- **`scripts/prisma-migrate.ts`** wrapper CLI:`pnpm db:migrate "add phone to account"` → 自动 timestamp + 移交 prisma migrate dev
 
 ## Trade-offs
 
-* lefthook generate 慢(~3-5s)— 仅 schema.prisma staged 时触发,可接受 (per memory `feedback_avoid_slow_pre_commit_or_pre_push`)
-* timestamp 命名增 LOC — Grep / Git history 收益更大
+- lefthook generate 慢(~3-5s)— 仅 schema.prisma staged 时触发,可接受 (per memory `feedback_avoid_slow_pre_commit_or_pre_push`)
+- timestamp 命名增 LOC — Grep / Git history 收益更大
 
 ## Open Questions
 
-* `db:migrate` wrapper 在 prisma generate 出错时如何 graceful rollback (避免 half-applied schema)
-* `local-personal.ts` 是否每个 dev machine 各写 1 份(分散) vs git-crypt 加密入仓(集中) — 起步分散,M3 团队加人触发集中
+- `db:migrate` wrapper 在 prisma generate 出错时如何 graceful rollback (避免 half-applied schema)
+- `local-personal.ts` 是否每个 dev machine 各写 1 份(分散) vs git-crypt 加密入仓(集中) — 起步分散,M3 团队加人触发集中
 
 ## References
 
-* memory obs `prisma migration strategy for LLM agents` (3949)
-* memory obs `Lefthook hard gate for schema changes` (3950)
-* memory obs `idempotent 3-layer seed architecture` (3951)
-* [ADR-0019](0019-orm-prisma.md)
+- memory obs `prisma migration strategy for LLM agents` (3949)
+- memory obs `Lefthook hard gate for schema changes` (3950)
+- memory obs `idempotent 3-layer seed architecture` (3951)
+- [ADR-0019](0019-orm-prisma.md)

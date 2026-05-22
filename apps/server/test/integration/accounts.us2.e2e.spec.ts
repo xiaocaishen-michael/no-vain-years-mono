@@ -1,16 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import {
-  RedisContainer,
-  type StartedRedisContainer,
-} from '@testcontainers/redis';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
@@ -40,10 +31,8 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
 
     process.env.DATABASE_URL = pgContainer.getConnectionUri();
     process.env.REDIS_URL = redisContainer.getConnectionUrl();
-    process.env.AUTH_JWT_SECRET =
-      'us2-e2e-test-jwt-secret-min-32-bytes-pad-abc';
-    process.env.SMS_CODE_HMAC_SECRET =
-      'us2-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
+    process.env.AUTH_JWT_SECRET = 'us2-e2e-test-jwt-secret-min-32-bytes-pad-abc';
+    process.env.SMS_CODE_HMAC_SECRET = 'us2-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
 
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       cwd: SERVER_DIR,
@@ -55,9 +44,7 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
       imports: [AppModule],
     }).compile();
 
-    app = moduleRef.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.setGlobalPrefix('api');
     await app.init();
@@ -105,9 +92,7 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
     expect(authRes.statusCode).toBe(200);
     const body = authRes.json();
     expect(body.accountId).toMatch(/^\d+$/);
-    expect(body.accessToken).toMatch(
-      /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
-    );
+    expect(body.accessToken).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     expect(body.refreshToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
     // post-condition: new account row created with ACTIVE status
@@ -140,9 +125,7 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
     expect(envelope.metadata.trace_id).toBe(inboundTraceId);
     expect(envelope.metadata.event_version).toBe(1);
     expect(envelope.metadata.producer_context).toBe('auth');
-    expect(envelope.metadata.occurred_at).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
-    );
+    expect(envelope.metadata.occurred_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     expect(envelope.data.phone).toBe(phone);
     expect(envelope.data.accountId).toBe(body.accountId);
   });
@@ -165,8 +148,6 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
     expect(authRes.statusCode).toBe(200);
 
     const body = authRes.json();
-    expect(Object.keys(body).sort()).toEqual(
-      ['accessToken', 'accountId', 'refreshToken'].sort(),
-    );
+    expect(Object.keys(body).sort()).toEqual(['accessToken', 'accountId', 'refreshToken'].sort());
   });
 });

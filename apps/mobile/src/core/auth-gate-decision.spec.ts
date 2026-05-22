@@ -80,9 +80,10 @@ describe('decideAuthRoute — A-002 FR-014 / CL-009 三态决策', () => {
   it('auth + displayName set + at root `/` (no group, !inTabs) → replace /(app)/(tabs)/profile', () => {
     // Pre-PR-5-tail bug: cold-boot from seeded persist landed on `/` (index.tsx
     // returns null), AuthGate returned noop → blank screen + e2e suite failed.
-    expect(
-      decideAuthRoute({ ...base, isAuthenticated: true, displayName: '小明' }),
-    ).toEqual({ kind: 'replace', target: '/(app)/(tabs)/profile' });
+    expect(decideAuthRoute({ ...base, isAuthenticated: true, displayName: '小明' })).toEqual({
+      kind: 'replace',
+      target: '/(app)/(tabs)/profile',
+    });
   });
 
   it('auth + displayName set + inOnboarding → replace /(app)/(tabs)/profile (no holding on gate)', () => {

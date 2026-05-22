@@ -14,11 +14,7 @@ import {
   type CommitTaskInput,
   type Git,
 } from './git-flow.js';
-import {
-  FakeLlmClient,
-  type LlmInvokeOptions,
-  type LlmInvokeResult,
-} from './llm-client.js';
+import { FakeLlmClient, type LlmInvokeOptions, type LlmInvokeResult } from './llm-client.js';
 import { PlanAnalyzer } from './parsers/plan.js';
 import { SpecAnalyzer } from './parsers/spec.js';
 import { TasksAnalyzer } from './parsers/tasks.js';
@@ -30,11 +26,7 @@ const INVOKE_OPTS: LlmInvokeOptions = { cwd: '/tmp/sandbox' };
 function loadFixtures() {
   const spec = new SpecAnalyzer().parse(path.join(FIXTURES_DIR, 'spec-happy.md'));
   const plan = new PlanAnalyzer().parse(path.join(FIXTURES_DIR, 'plan-happy.md'));
-  const tasks = new TasksAnalyzer().parse(
-    path.join(FIXTURES_DIR, 'tasks-happy.md'),
-    plan,
-    spec,
-  );
+  const tasks = new TasksAnalyzer().parse(path.join(FIXTURES_DIR, 'tasks-happy.md'), plan, spec);
   return { spec, plan, tasks };
 }
 
@@ -92,11 +84,7 @@ describe('filesToStage', () => {
         { path: 'fresh.ts', op: 'create' as const },
       ],
     };
-    expect(filesToStage(task as never)).toEqual([
-      'keep.ts',
-      'new.ts',
-      'fresh.ts',
-    ]);
+    expect(filesToStage(task as never)).toEqual(['keep.ts', 'new.ts', 'fresh.ts']);
   });
 });
 
@@ -118,18 +106,14 @@ describe('GitCli', () => {
   it('throws GitCommitError on non-zero commit exit', async () => {
     const sh = new FakeShell([shellFail('hook rejected', 1)]);
     const git = new GitCli(sh);
-    await expect(git.commit('msg', { cwd: '/repo' })).rejects.toBeInstanceOf(
-      GitCommitError,
-    );
+    await expect(git.commit('msg', { cwd: '/repo' })).rejects.toBeInstanceOf(GitCommitError);
   });
 
   it('builds `git restore --staged` for rollback', async () => {
     const sh = new FakeShell([shellOk()]);
     const git = new GitCli(sh);
     await git.restoreStaged(['a.ts', 'tasks.md'], { cwd: '/repo' });
-    expect(sh.calls[0].command).toBe(
-      'git restore --staged "a.ts" "tasks.md"',
-    );
+    expect(sh.calls[0].command).toBe('git restore --staged "a.ts" "tasks.md"');
   });
 
   it('add() noops for empty files list', async () => {
@@ -140,9 +124,7 @@ describe('GitCli', () => {
   });
 
   it('revParseHead returns trimmed stdout SHA', async () => {
-    const sh = new FakeShell([
-      shellOk('deadbeefcafef00d1234567890abcdef12345678\n'),
-    ]);
+    const sh = new FakeShell([shellOk('deadbeefcafef00d1234567890abcdef12345678\n')]);
     const git = new GitCli(sh);
     const sha = await git.revParseHead({ cwd: '/repo' });
     expect(sh.calls[0].command).toBe('git rev-parse HEAD');
@@ -152,9 +134,7 @@ describe('GitCli', () => {
   it('revParseHead throws on non-zero exit', async () => {
     const sh = new FakeShell([shellFail('not a git repo', 128)]);
     const git = new GitCli(sh);
-    await expect(git.revParseHead({ cwd: '/repo' })).rejects.toThrow(
-      /git rev-parse HEAD failed/,
-    );
+    await expect(git.revParseHead({ cwd: '/repo' })).rejects.toThrow(/git rev-parse HEAD failed/);
   });
 
   describe('diffWorkingTree', () => {
@@ -180,9 +160,9 @@ describe('GitCli', () => {
       // the diff captures full content; reset undoes the intent so the
       // index isn't left polluted for the subsequent commitTask.
       const sh = new FakeShell([
-        shellOk(''),               // git add --intent-to-add
+        shellOk(''), // git add --intent-to-add
         shellOk('+new file diff'), // git diff HEAD
-        shellOk(''),               // git reset HEAD
+        shellOk(''), // git reset HEAD
       ]);
       const git: Git = new GitCli(sh);
       const r = await git.diffWorkingTree({
@@ -198,11 +178,7 @@ describe('GitCli', () => {
     });
 
     it('still resets intent-to-add when diff fails (try/finally)', async () => {
-      const sh = new FakeShell([
-        shellOk(''),
-        shellFail('boom', 1),
-        shellOk(''),
-      ]);
+      const sh = new FakeShell([shellOk(''), shellFail('boom', 1), shellOk('')]);
       const git: Git = new GitCli(sh);
       const r = await git.diffWorkingTree({ cwd: '/r', intentToAddPaths: ['a.ts'] });
       expect(r).toBe('');
@@ -240,9 +216,7 @@ describe('FakeGit', () => {
 
   it('throws GitCommitError when next response is ok:false', async () => {
     const git = new FakeGit([{ ok: false, stderr: 'lint fail' }]);
-    await expect(git.commit('msg', { cwd: '/r' })).rejects.toBeInstanceOf(
-      GitCommitError,
-    );
+    await expect(git.commit('msg', { cwd: '/r' })).rejects.toBeInstanceOf(GitCommitError);
   });
 
   it('revParseHead returns enqueued SHAs in order then falls back to default', async () => {
@@ -268,9 +242,7 @@ describe('commitTask', () => {
     repoRoot: string;
     tasksMdPath: string;
   } {
-    const repoRoot = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'orchestrator-commit-'),
-    );
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'orchestrator-commit-'));
     dirs.push(repoRoot);
     const featureDir = path.join(repoRoot, 'specs', '002-demo');
     fs.mkdirSync(featureDir, { recursive: true });
@@ -289,9 +261,7 @@ describe('commitTask', () => {
     const { spec, plan, tasks } = loadFixtures();
     void spec;
     const task = tasks.tasks.find((t) => t.id === 'T001')!;
-    const workspace = plan.config.workspaces.find(
-      (w) => w.id === task.workspace,
-    )!;
+    const workspace = plan.config.workspaces.find((w) => w.id === task.workspace)!;
     return {
       task,
       plan,
@@ -392,10 +362,7 @@ describe('commitTask', () => {
     // tasks.md unchanged: orchestrator does NOT flip when LLM owns the commit.
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe(initial);
     // revParseHead + statusPorcelain (post-#22 orphan assert); no add/commit/restoreStaged.
-    expect(git.calls.map((c) => c.method)).toEqual([
-      'revParseHead',
-      'statusPorcelain',
-    ]);
+    expect(git.calls.map((c) => c.method)).toEqual(['revParseHead', 'statusPorcelain']);
     expect(llm.calls).toHaveLength(0);
   });
 
@@ -430,9 +397,9 @@ describe('commitTask', () => {
       throw new Error('git add catastrophe');
     };
     const llm = new FakeLlmClient();
-    await expect(
-      commitTask(makeInput(failingAddGit, llm, tasksMdPath, repoRoot)),
-    ).rejects.toThrow(/git add catastrophe/);
+    await expect(commitTask(makeInput(failingAddGit, llm, tasksMdPath, repoRoot))).rejects.toThrow(
+      /git add catastrophe/,
+    );
     // tasks.md should have been reverted
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe(initial);
   });
@@ -446,10 +413,7 @@ describe('commitTask', () => {
     const initial = '- [ ] T001 Hello\n';
     const { repoRoot, tasksMdPath } = makeRepo(initial);
     const git = new FakeGit([{ ok: true }]);
-    git.enqueueStatus([
-      '?? packages/api-client/src/gen/index.ts',
-      ' M apps/server/src/foo.ts',
-    ]);
+    git.enqueueStatus(['?? packages/api-client/src/gen/index.ts', ' M apps/server/src/foo.ts']);
     const llm = new FakeLlmClient();
     const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
 
@@ -502,10 +466,7 @@ describe('commitTask', () => {
     expect(r.reason).toBe('orphan-after-commit');
     expect(r.lastStderr).toMatch(/llm-forgot-to-add\.ts/);
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe(initial); // tasks.md still untouched
-    expect(git.calls.map((c) => c.method)).toEqual([
-      'revParseHead',
-      'statusPorcelain',
-    ]);
+    expect(git.calls.map((c) => c.method)).toEqual(['revParseHead', 'statusPorcelain']);
   });
 
   it('clean worktree on LLM self-commit path → ok=true, reason=llm-self-committed (regression: existing #9 path)', async () => {
@@ -523,10 +484,7 @@ describe('commitTask', () => {
 
     expect(r.ok).toBe(true);
     expect(r.reason).toBe('llm-self-committed');
-    expect(git.calls.map((c) => c.method)).toEqual([
-      'revParseHead',
-      'statusPorcelain',
-    ]);
+    expect(git.calls.map((c) => c.method)).toEqual(['revParseHead', 'statusPorcelain']);
   });
 });
 
@@ -536,11 +494,7 @@ describe('buildHookRetryPrompt', () => {
       id: 'T042',
       files: [],
     } as never;
-    const p = buildHookRetryPrompt(
-      task,
-      ['a.ts', 'tasks.md'],
-      'eslint: no-unused-vars',
-    );
+    const p = buildHookRetryPrompt(task, ['a.ts', 'tasks.md'], 'eslint: no-unused-vars');
     expect(p).toMatch(/T042/);
     expect(p).toMatch(/a\.ts, tasks\.md/);
     expect(p).toMatch(/eslint: no-unused-vars/);

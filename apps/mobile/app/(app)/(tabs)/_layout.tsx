@@ -33,10 +33,7 @@ export default function TabsLayout() {
         name="search"
         options={{ title: TAB_LABELS.search, tabBarLabel: TAB_LABELS.search }}
       />
-      <Tabs.Screen
-        name="pkm"
-        options={{ title: TAB_LABELS.pkm, tabBarLabel: TAB_LABELS.pkm }}
-      />
+      <Tabs.Screen name="pkm" options={{ title: TAB_LABELS.pkm, tabBarLabel: TAB_LABELS.pkm }} />
       <Tabs.Screen
         name="profile"
         options={{ title: TAB_LABELS.profile, tabBarLabel: TAB_LABELS.profile }}

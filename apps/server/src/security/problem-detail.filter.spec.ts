@@ -1,6 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
-import { ArgumentsHost, BadRequestException, HttpException, UnauthorizedException } from '@nestjs/common';
-import type { ClsService } from 'nestjs-cls';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { Test } from '@nestjs/testing';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  HttpException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
 import { ProblemDetailFilter } from './problem-detail.filter';
 
 /**
@@ -11,8 +17,13 @@ const mockCls = {
   getId: () => 'test-trace-id',
 } as unknown as ClsService;
 
-function mockHost(): { host: ArgumentsHost; sent: { status?: number; body?: unknown; headers?: Record<string, string> } } {
-  const sent: { status?: number; body?: unknown; headers?: Record<string, string> } = { headers: {} };
+function mockHost(): {
+  host: ArgumentsHost;
+  sent: { status?: number; body?: unknown; headers?: Record<string, string> };
+} {
+  const sent: { status?: number; body?: unknown; headers?: Record<string, string> } = {
+    headers: {},
+  };
   const reply = {
     status: vi.fn((code: number) => {
       sent.status = code;
@@ -37,7 +48,14 @@ function mockHost(): { host: ArgumentsHost; sent: { status?: number; body?: unkn
 }
 
 describe('ProblemDetailFilter', () => {
-  const filter = new ProblemDetailFilter(mockCls);
+  let filter: ProblemDetailFilter;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [ProblemDetailFilter, { provide: ClsService, useValue: mockCls }],
+    }).compile();
+    filter = moduleRef.get(ProblemDetailFilter);
+  });
 
   it('maps BadRequestException to RFC 9457 problem+json with 400', () => {
     const { host, sent } = mockHost();
@@ -57,7 +75,11 @@ describe('ProblemDetailFilter', () => {
     const { host, sent } = mockHost();
     filter.catch(new UnauthorizedException('INVALID_CREDENTIALS'), host);
     expect(sent.status).toBe(401);
-    expect(sent.body).toMatchObject({ status: 401, title: 'Unauthorized', detail: 'INVALID_CREDENTIALS' });
+    expect(sent.body).toMatchObject({
+      status: 401,
+      title: 'Unauthorized',
+      detail: 'INVALID_CREDENTIALS',
+    });
   });
 
   it('maps generic HttpException with custom status', () => {

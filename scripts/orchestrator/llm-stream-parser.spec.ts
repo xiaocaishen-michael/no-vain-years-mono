@@ -50,12 +50,8 @@ describe('phraseFor (pure mapping)', () => {
   });
 
   it('ignores system.status / hook events', () => {
-    expect(
-      phraseFor({ type: 'system', subtype: 'status' } as StreamEvent),
-    ).toBeNull();
-    expect(
-      phraseFor({ type: 'system', subtype: 'hook_started' } as StreamEvent),
-    ).toBeNull();
+    expect(phraseFor({ type: 'system', subtype: 'status' } as StreamEvent)).toBeNull();
+    expect(phraseFor({ type: 'system', subtype: 'hook_started' } as StreamEvent)).toBeNull();
   });
 
   it('maps assistant.thinking block to "💭 思考中"', () => {
@@ -70,9 +66,7 @@ describe('phraseFor (pure mapping)', () => {
     const e = {
       type: 'assistant',
       message: {
-        content: [
-          { type: 'tool_use', name: 'Bash', input: { command: 'ls /tmp' } },
-        ],
+        content: [{ type: 'tool_use', name: 'Bash', input: { command: 'ls /tmp' } }],
       },
     } as StreamEvent;
     expect(phraseFor(e)).toEqual({
@@ -177,9 +171,7 @@ describe('phraseFor (pure mapping)', () => {
         is_error: false,
       } as StreamEvent),
     ).toBeNull();
-    expect(
-      phraseFor({ type: 'rate_limit_event' } as StreamEvent),
-    ).toBeNull();
+    expect(phraseFor({ type: 'rate_limit_event' } as StreamEvent)).toBeNull();
   });
 });
 
@@ -247,11 +239,7 @@ describe('StreamAggregator', () => {
     cycle('tool_use');
     cycle('end_turn');
     const { turns } = agg.finalize();
-    expect(turns.map((t) => t.stop_reason)).toEqual([
-      'tool_use',
-      'tool_use',
-      'end_turn',
-    ]);
+    expect(turns.map((t) => t.stop_reason)).toEqual(['tool_use', 'tool_use', 'end_turn']);
   });
 
   it('handles message_delta without prior message_start (defensive)', () => {
@@ -394,9 +382,7 @@ describe('StreamAggregator', () => {
       mcp_servers: [{ name: 'second-init', status: 'error' }],
     } as StreamEvent);
     const { mcpServers } = agg.finalize();
-    expect(mcpServers).toEqual([
-      { name: 'first-init', status: 'connected' },
-    ]);
+    expect(mcpServers).toEqual([{ name: 'first-init', status: 'connected' }]);
   });
 
   it('mcpServers is undefined when no system.init event seen', () => {
@@ -462,9 +448,7 @@ describe('end-to-end: feed spike NDJSON sample', () => {
       {
         type: 'assistant',
         message: {
-          content: [
-            { type: 'tool_use', name: 'Bash', input: { command: 'ls /tmp' } },
-          ],
+          content: [{ type: 'tool_use', name: 'Bash', input: { command: 'ls /tmp' } }],
         },
       },
       {
@@ -479,9 +463,7 @@ describe('end-to-end: feed spike NDJSON sample', () => {
       {
         type: 'user',
         message: {
-          content: [
-            { type: 'tool_result', tool_use_id: 'x', is_error: false },
-          ],
+          content: [{ type: 'tool_result', tool_use_id: 'x', is_error: false }],
         },
       },
       {

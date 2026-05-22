@@ -60,22 +60,16 @@ function taskHeader(task: ParsedTask): string {
 function specSection(task: ParsedTask, spec: ParsedSpec): string {
   const lines: string[] = ['## Spec context'];
 
-  const usMatched = spec.userStories.filter((us) =>
-    task.trace_us.includes(us.meta.id),
-  );
+  const usMatched = spec.userStories.filter((us) => task.trace_us.includes(us.meta.id));
   if (usMatched.length > 0) {
     lines.push('');
     lines.push('### User stories');
     for (const us of usMatched) {
-      lines.push(
-        `- ${us.meta.id} [${us.meta.priority}] ${us.title}`,
-      );
+      lines.push(`- ${us.meta.id} [${us.meta.priority}] ${us.title}`);
     }
   }
 
-  const frMatched = spec.functionalRequirements.filter((fr) =>
-    task.trace_fr.includes(fr.meta.id),
-  );
+  const frMatched = spec.functionalRequirements.filter((fr) => task.trace_fr.includes(fr.meta.id));
   if (frMatched.length > 0) {
     lines.push('');
     lines.push('### Functional requirements');
@@ -85,9 +79,7 @@ function specSection(task: ParsedTask, spec: ParsedSpec): string {
   }
 
   const scTargets = task.trace_sc ?? [];
-  const scMatched = spec.successCriteria.filter((sc) =>
-    scTargets.includes(sc.id),
-  );
+  const scMatched = spec.successCriteria.filter((sc) => scTargets.includes(sc.id));
   if (scMatched.length > 0) {
     lines.push('');
     lines.push('### Success criteria');
@@ -100,9 +92,7 @@ function specSection(task: ParsedTask, spec: ParsedSpec): string {
     lines.push('');
     lines.push('### Entities');
     for (const e of spec.entities) {
-      const attrs = e.attrs
-        .map((a) => `${a.name}: ${a.type}`)
-        .join(', ');
+      const attrs = e.attrs.map((a) => `${a.name}: ${a.type}`).join(', ');
       lines.push(`- ${e.id} ${e.name}${e.domain ? ` (${e.domain})` : ''} { ${attrs} }`);
     }
   }
@@ -151,12 +141,8 @@ function moduleBoundariesSection(plan: ParsedPlan, workspace: Workspace): string
   }
   lines.push('');
   lines.push(`- modules: ${mb.modules.join(', ') || '(none)'}`);
-  lines.push(
-    `- allowed imports: ${mb.allowed_imports.join(', ') || '(none)'}`,
-  );
-  lines.push(
-    `- forbidden imports: ${mb.forbidden_imports.join(', ') || '(none)'}`,
-  );
+  lines.push(`- allowed imports: ${mb.allowed_imports.join(', ') || '(none)'}`);
+  lines.push(`- forbidden imports: ${mb.forbidden_imports.join(', ') || '(none)'}`);
   return lines.join('\n');
 }
 
@@ -165,9 +151,7 @@ function apiContractSection(task: ParsedTask, plan: ParsedPlan): string {
   if (targets.length === 0) {
     return `## API contract\n\n(task not bound to any endpoint)`;
   }
-  const matched = plan.contracts.endpoints.filter((e) =>
-    targets.includes(e.id),
-  );
+  const matched = plan.contracts.endpoints.filter((e) => targets.includes(e.id));
   const lines: string[] = ['## API contract'];
   if (matched.length === 0) {
     lines.push('');
@@ -197,11 +181,7 @@ function codebaseSection(codeCtx: CodeContext): string {
   return `## Codebase context\n\n${formatCodeContext(codeCtx)}`;
 }
 
-function verifySection(
-  workspace: Workspace,
-  verifyKind: string,
-  verifyCmd: string,
-): string {
+function verifySection(workspace: Workspace, verifyKind: string, verifyCmd: string): string {
   return [
     `## Verify command`,
     ``,
@@ -251,9 +231,7 @@ function fileOpsSection(task: ParsedTask): string {
         lines.push(`- already deleted: \`${f.path}\` — do not recreate`);
         break;
       case 'rename':
-        lines.push(
-          `- already renamed: \`${f.path}\` → \`${f.rename_to}\` — edit at the new path`,
-        );
+        lines.push(`- already renamed: \`${f.path}\` → \`${f.rename_to}\` — edit at the new path`);
         break;
     }
   }

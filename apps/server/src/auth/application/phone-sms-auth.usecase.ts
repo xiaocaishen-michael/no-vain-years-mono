@@ -5,18 +5,9 @@ import {
   ACCOUNT_REPOSITORY,
   type AccountRepository,
 } from '../../account/application/ports/account.repository.port';
-import {
-  SMS_CODE_REPOSITORY,
-  type SmsCodeRepository,
-} from './ports/sms-code.repository.port';
-import {
-  OUTBOX_PUBLISHER,
-  type OutboxPublisher,
-} from './ports/outbox-publisher.port';
-import {
-  TIMING_DEFENSE_EXECUTOR,
-  type TimingDefenseExecutor,
-} from './ports/timing-defense.port';
+import { SMS_CODE_REPOSITORY, type SmsCodeRepository } from './ports/sms-code.repository.port';
+import { OUTBOX_PUBLISHER, type OutboxPublisher } from './ports/outbox-publisher.port';
+import { TIMING_DEFENSE_EXECUTOR, type TimingDefenseExecutor } from './ports/timing-defense.port';
 import { AuthFailureLockService } from '../infrastructure/auth-failure-lock.service';
 import { JwtTokenService } from '../../security/jwt-token.service';
 import { PrismaService } from '../../security/prisma.service';
@@ -63,10 +54,7 @@ export class PhoneSmsAuthUseCase {
     }
   }
 
-  private async executeInternal(
-    phone: Phone,
-    code: SmsCode,
-  ): Promise<PhoneSmsAuthResult> {
+  private async executeInternal(phone: Phone, code: SmsCode): Promise<PhoneSmsAuthResult> {
     const account = await this.accountRepo.findByPhone(phone);
 
     if (!account) {
@@ -75,9 +63,7 @@ export class PhoneSmsAuthUseCase {
 
     // CL-006 FROZEN disclosure — 403 + freezeUntil, NOT in timing pad scope.
     if (account.isFrozen()) {
-      throw new AccountInFreezePeriodException(
-        account.freezeUntil ?? new Date(),
-      );
+      throw new AccountInFreezePeriodException(account.freezeUntil ?? new Date());
     }
 
     // CL-006 ANONYMIZED anti-enumeration — 401 + dummy bcrypt timing pad.
@@ -108,10 +94,7 @@ export class PhoneSmsAuthUseCase {
     return { accountId: account.id, accessToken, refreshToken };
   }
 
-  private async handleUnregistered(
-    phone: Phone,
-    code: SmsCode,
-  ): Promise<PhoneSmsAuthResult> {
+  private async handleUnregistered(phone: Phone, code: SmsCode): Promise<PhoneSmsAuthResult> {
     const verifyResult = await this.smsCodeRepo.verify(phone, code);
     if (verifyResult !== true) {
       // FR-S06 timing defense: 未注册 + 码错 → pad before throw.
@@ -131,11 +114,7 @@ export class PhoneSmsAuthUseCase {
             },
           });
 
-          const event = AccountCreatedEvent.create(
-            created.id,
-            phone.value,
-            created.created_at,
-          );
+          const event = AccountCreatedEvent.create(created.id, phone.value, created.created_at);
           await this.outboxPublisher.publish(
             tx,
             ACCOUNT_CREATED_EVENT_TYPE,
@@ -175,9 +154,6 @@ export class PhoneSmsAuthUseCase {
 
 function isPrismaUniqueViolation(e: unknown): boolean {
   return (
-    typeof e === 'object' &&
-    e !== null &&
-    'code' in e &&
-    (e as { code?: unknown }).code === 'P2002'
+    typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'P2002'
   );
 }

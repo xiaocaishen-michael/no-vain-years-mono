@@ -69,16 +69,10 @@ class RedisLifecycle implements OnModuleDestroy {
         mount: true,
         generateId: true,
         useEnterWith: true,
-        idGenerator: (req: {
-          headers?: Record<string, string | string[] | undefined>;
-        }) => {
+        idGenerator: (req: { headers?: Record<string, string | string[] | undefined> }) => {
           const headerValue = req?.headers?.['x-trace-id'];
-          const inbound = Array.isArray(headerValue)
-            ? headerValue[0]
-            : headerValue;
-          return typeof inbound === 'string' && inbound.length > 0
-            ? inbound
-            : randomUUID();
+          const inbound = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+          return typeof inbound === 'string' && inbound.length > 0 ? inbound : randomUUID();
         },
       },
     }),

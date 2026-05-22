@@ -1,8 +1,4 @@
-import type {
-  LlmClient,
-  LlmInvokeOptions,
-  LlmInvokeResult,
-} from './llm-client.js';
+import type { LlmClient, LlmInvokeOptions, LlmInvokeResult } from './llm-client.js';
 
 /**
  * Per plan § 5.3.15.8.3:
@@ -68,10 +64,7 @@ export interface RalphLoopParams {
    * `streamStdout`) for UI narration without ralph-loop knowing about
    * progress sinks.
    */
-  prepareRound?: (
-    attemptNumber: number,
-    maxRetries: number,
-  ) => Partial<LlmInvokeOptions>;
+  prepareRound?: (attemptNumber: number, maxRetries: number) => Partial<LlmInvokeOptions>;
 }
 
 /** A single entry in the retry timeline; useful for diagnostics + tests. */
@@ -87,10 +80,7 @@ export type RalphHistoryEntry =
     }
   | { kind: 'attempt'; attemptNumber: number; ok: boolean; feedback?: string };
 
-export type RalphTerminalReason =
-  | 'success'
-  | 'max-retries-exceeded'
-  | 'llm-error';
+export type RalphTerminalReason = 'success' | 'max-retries-exceeded' | 'llm-error';
 
 export interface RalphLoopResult {
   ok: boolean;
@@ -111,9 +101,7 @@ export interface RalphLoopResult {
  *
  * Time complexity: O(N) LLM calls + O(N) attempts where N <= maxRetries.
  */
-export async function ralphLoop(
-  params: RalphLoopParams,
-): Promise<RalphLoopResult> {
+export async function ralphLoop(params: RalphLoopParams): Promise<RalphLoopResult> {
   const max = params.maxRetries ?? RALPH_DEFAULT_MAX_RETRIES[params.phase];
   const history: RalphHistoryEntry[] = [];
   let feedback = params.initialFailure;

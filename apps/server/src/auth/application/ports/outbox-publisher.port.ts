@@ -20,9 +20,5 @@
 export const OUTBOX_PUBLISHER = Symbol('OUTBOX_PUBLISHER');
 
 export interface OutboxPublisher {
-  publish(
-    client: unknown,
-    eventType: string,
-    payload: Record<string, unknown>,
-  ): Promise<void>;
+  publish(client: unknown, eventType: string, payload: Record<string, unknown>): Promise<void>;
 }

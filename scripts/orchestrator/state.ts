@@ -34,20 +34,14 @@ export function loadFeature(featureDir: string): FeatureState {
     throw new FeatureFileMissingError([absDir]);
   }
 
-  const missing = REQUIRED_FILES.filter(
-    (f) => !fs.existsSync(path.join(absDir, f)),
-  );
+  const missing = REQUIRED_FILES.filter((f) => !fs.existsSync(path.join(absDir, f)));
   if (missing.length > 0) {
     throw new FeatureFileMissingError(missing);
   }
 
   const spec = new SpecAnalyzer().parse(path.join(absDir, 'spec.md'));
   const plan = new PlanAnalyzer().parse(path.join(absDir, 'plan.md'));
-  const tasks = new TasksAnalyzer().parse(
-    path.join(absDir, 'tasks.md'),
-    plan,
-    spec,
-  );
+  const tasks = new TasksAnalyzer().parse(path.join(absDir, 'tasks.md'), plan, spec);
 
   if (plan.frontmatter.feature_id !== spec.frontmatter.feature_id) {
     throw new FeatureRefMismatchError(

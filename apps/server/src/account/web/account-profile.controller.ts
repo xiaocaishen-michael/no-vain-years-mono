@@ -1,12 +1,7 @@
 import { Body, Controller, Get, HttpCode, Patch, Req, UseGuards } from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AccountIdThrottlerGuard } from './account-id-throttler.guard';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAccountProfileUseCase } from '../application/get-account-profile.usecase';
 import { UpdateDisplayNameUseCase } from '../application/update-display-name.usecase';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard';
@@ -56,9 +51,7 @@ export class AccountProfileController {
     description: 'Rate limit exceeded (FR-008: 60 requests per 60s per account)',
     type: ProblemDetailResponse,
   })
-  async getProfile(
-    @Req() req: { user: AuthenticatedUser },
-  ): Promise<AccountProfileResponse> {
+  async getProfile(@Req() req: { user: AuthenticatedUser }): Promise<AccountProfileResponse> {
     const result = await this.useCase.execute(req.user.accountId);
     return {
       accountId: result.accountId.toString(),

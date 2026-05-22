@@ -14,10 +14,7 @@ import { PrismaClient } from '../generated/prisma/client';
  * connect / disconnect.
  */
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor(connectionString: string) {
     super({ adapter: new PrismaPg({ connectionString }) });
   }

@@ -54,10 +54,7 @@ export class AccountPhoneSmsAuthController {
     type: ProblemDetailResponse,
   })
   async auth(@Body() body: PhoneSmsAuthRequest): Promise<PhoneSmsAuthResponse> {
-    const result = await this.useCase.execute(
-      Phone.create(body.phone),
-      SmsCode.create(body.code),
-    );
+    const result = await this.useCase.execute(Phone.create(body.phone), SmsCode.create(body.code));
     return {
       accountId: result.accountId.toString(),
       accessToken: result.accessToken,

@@ -10,9 +10,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
  */
 @Injectable()
 export class SmsPhoneThrottlerGuard extends ThrottlerGuard {
-  protected override getTracker(
-    req: Record<string, unknown>,
-  ): Promise<string> {
+  protected override getTracker(req: Record<string, unknown>): Promise<string> {
     const body = req['body'] as { phone?: unknown } | undefined;
     if (body && typeof body.phone === 'string' && body.phone.length > 0) {
       return Promise.resolve(`sms:${body.phone}`);

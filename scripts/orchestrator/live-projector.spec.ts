@@ -9,9 +9,9 @@ describe('composeLabel', () => {
   });
 
   it('prepends "${prefix} | " when prefix is non-empty', () => {
-    expect(
-      composeLabel('⚠️  verify-ralph #2/3', '🔧 Bash(pnpm test)', ' (4s)'),
-    ).toBe('⚠️  verify-ralph #2/3 | 🔧 Bash(pnpm test) (4s)');
+    expect(composeLabel('⚠️  verify-ralph #2/3', '🔧 Bash(pnpm test)', ' (4s)')).toBe(
+      '⚠️  verify-ralph #2/3 | 🔧 Bash(pnpm test) (4s)',
+    );
   });
 });
 
@@ -69,17 +69,13 @@ describe('startLiveProjector', () => {
     const p = makeProgress();
     const proj = startLiveProjector(p, '🧠 Claude');
     proj.setPrefix('⚠️  verify-ralph #1/3');
-    expect(p.updates.at(-1)).toMatch(
-      /^⚠️ {2}verify-ralph #1\/3 \| 🧠 Claude \(\d+s\)$/,
-    );
+    expect(p.updates.at(-1)).toMatch(/^⚠️ {2}verify-ralph #1\/3 \| 🧠 Claude \(\d+s\)$/);
     // Phase change preserves the prefix.
     proj.onEvent({
       type: 'assistant',
       message: { content: [{ type: 'thinking', thinking: 'plan' }] },
     } as StreamEvent);
-    expect(p.updates.at(-1)).toMatch(
-      /^⚠️ {2}verify-ralph #1\/3 \| 💭 思考中 \(\d+s\)$/,
-    );
+    expect(p.updates.at(-1)).toMatch(/^⚠️ {2}verify-ralph #1\/3 \| 💭 思考中 \(\d+s\)$/);
     proj.stop();
   });
 
@@ -104,9 +100,7 @@ describe('startLiveProjector', () => {
       },
     } as StreamEvent);
     expect(p.heartbeats).toHaveLength(1);
-    expect(p.heartbeats[0]).toMatch(
-      /^🩹 orphan-ralph #1\/2 \| 🧠 Claude \(\d+s\) \| .*pondering$/,
-    );
+    expect(p.heartbeats[0]).toMatch(/^🩹 orphan-ralph #1\/2 \| 🧠 Claude \(\d+s\) \| .*pondering$/);
     proj.stop();
   });
 

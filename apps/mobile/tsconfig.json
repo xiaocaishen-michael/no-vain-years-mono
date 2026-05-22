@@ -4,10 +4,7 @@
     "esModuleInterop": true,
     "jsx": "react-native",
     "jsxImportSource": "nativewind",
-    "lib": [
-      "DOM",
-      "ESNext"
-    ],
+    "lib": ["DOM", "ESNext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "noEmit": true,
@@ -21,35 +18,14 @@
     "target": "ESNext",
     "baseUrl": ".",
     "paths": {
-      "~/*": [
-        "./src/*"
-      ],
-      "@nvy/api-client": [
-        "../../packages/api-client/src/index.ts"
-      ],
-      "@nvy/api-client/*": [
-        "../../packages/api-client/src/*"
-      ],
-      "@nvy/types": [
-        "../../packages/types/src/index.ts"
-      ],
-      "@nvy/types/*": [
-        "../../packages/types/src/*"
-      ]
+      "~/*": ["./src/*"],
+      "@nvy/api-client": ["../../packages/api-client/src/index.ts"],
+      "@nvy/api-client/*": ["../../packages/api-client/src/*"],
+      "@nvy/types": ["../../packages/types/src/index.ts"],
+      "@nvy/types/*": ["../../packages/types/src/*"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.js",
-    "nativewind-env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    ".expo",
-    "e2e",
-    "playwright-report"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.js", "nativewind-env.d.ts"],
+  "exclude": ["node_modules", "dist", ".expo", "e2e", "playwright-report"],
   "extends": "expo/tsconfig.base"
 }

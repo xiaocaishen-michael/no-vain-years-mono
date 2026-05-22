@@ -30,8 +30,7 @@ export function setupAxios(): void {
   if (booted) return;
   booted = true;
 
-  const baseURL =
-    process.env['EXPO_PUBLIC_API_BASE_URL'] ?? 'http://localhost:3000';
+  const baseURL = process.env['EXPO_PUBLIC_API_BASE_URL'] ?? 'http://localhost:3000';
   axios.defaults.baseURL = baseURL;
 
   axios.interceptors.request.use((config) => {

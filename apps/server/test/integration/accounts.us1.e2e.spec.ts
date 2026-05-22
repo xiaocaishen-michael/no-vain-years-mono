@@ -1,16 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import {
-  RedisContainer,
-  type StartedRedisContainer,
-} from '@testcontainers/redis';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
@@ -39,10 +30,8 @@ describe('US1 e2e smoke (Testcontainers PG + Redis + Fastify)', () => {
 
     process.env.DATABASE_URL = pgContainer.getConnectionUri();
     process.env.REDIS_URL = redisContainer.getConnectionUrl();
-    process.env.AUTH_JWT_SECRET =
-      'e2e-test-jwt-secret-min-32-bytes-pad-abcdef';
-    process.env.SMS_CODE_HMAC_SECRET =
-      'us1-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
+    process.env.AUTH_JWT_SECRET = 'e2e-test-jwt-secret-min-32-bytes-pad-abcdef';
+    process.env.SMS_CODE_HMAC_SECRET = 'us1-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
 
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       cwd: SERVER_DIR,
@@ -54,9 +43,7 @@ describe('US1 e2e smoke (Testcontainers PG + Redis + Fastify)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleRef.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.setGlobalPrefix('api');
     await app.init();
@@ -112,9 +99,7 @@ describe('US1 e2e smoke (Testcontainers PG + Redis + Fastify)', () => {
     expect(authRes.statusCode).toBe(200);
     const body = authRes.json();
     expect(body.accountId).toBe(acc.id.toString());
-    expect(body.accessToken).toMatch(
-      /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
-    );
+    expect(body.accessToken).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     expect(body.refreshToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
     const updated = await prisma.account.findUnique({ where: { id: acc.id } });

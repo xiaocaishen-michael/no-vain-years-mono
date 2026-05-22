@@ -43,9 +43,7 @@ export class SmsCodeRedisRepository implements SmsCodeRepository {
   }
 
   private hmac(code: SmsCode): string {
-    return createHmac('sha256', this.hmacSecret)
-      .update(code.value)
-      .digest('base64url');
+    return createHmac('sha256', this.hmacSecret).update(code.value).digest('base64url');
   }
 
   private key(phone: Phone): string {

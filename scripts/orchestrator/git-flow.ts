@@ -2,15 +2,9 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { TaskArchive } from './archive.js';
 import { classifyDrift, normalizePath } from './drift-classifier.js';
-import {
-  startLiveProjector,
-  type LiveProjector,
-} from './live-projector.js';
+import { startLiveProjector, type LiveProjector } from './live-projector.js';
 import type { LlmClient, LlmInvokeOptions } from './llm-client.js';
-import {
-  runOrphanRalph,
-  type OrphanRalphResult,
-} from './orphan-ralph.js';
+import { runOrphanRalph, type OrphanRalphResult } from './orphan-ralph.js';
 import type { ParsedPlan } from './parsers/plan.js';
 import { ralphLoop, type RalphLoopResult } from './ralph-loop.js';
 import type { TaskProgressHandle } from './run-feature.js';
@@ -39,10 +33,7 @@ export interface Git {
    * left polluted (commitTask's own staging is a strict whitelist of
    * `task.files ∪ {tasks.md}`, not `git add -A`).
    */
-  diffWorkingTree(opts: {
-    cwd: string;
-    intentToAddPaths?: readonly string[];
-  }): Promise<string>;
+  diffWorkingTree(opts: { cwd: string; intentToAddPaths?: readonly string[] }): Promise<string>;
   /**
    * Returns the parsed lines of `git status --porcelain` (empty array when the
    * worktree is fully clean). Used by commitTask's post-commit orphan assert
@@ -121,17 +112,12 @@ export class GitCli implements Git {
     }
   }
 
-  async restoreStaged(
-    files: string[],
-    opts: { cwd: string },
-  ): Promise<void> {
+  async restoreStaged(files: string[], opts: { cwd: string }): Promise<void> {
     if (files.length === 0) return;
     const cmd = `git restore --staged ${files.map(quote).join(' ')}`;
     const r = await this.shell.run(cmd, { cwd: opts.cwd });
     if (r.exitCode !== 0) {
-      throw new Error(
-        `git restore --staged failed (exit ${r.exitCode}): ${r.stderr}`,
-      );
+      throw new Error(`git restore --staged failed (exit ${r.exitCode}): ${r.stderr}`);
     }
   }
 
@@ -169,34 +155,23 @@ export class GitCli implements Git {
   async statusPorcelain(opts: { cwd: string }): Promise<string[]> {
     const r = await this.shell.run('git status --porcelain', { cwd: opts.cwd });
     if (r.exitCode !== 0) {
-      throw new Error(
-        `git status --porcelain failed (exit ${r.exitCode}): ${r.stderr}`,
-      );
+      throw new Error(`git status --porcelain failed (exit ${r.exitCode}): ${r.stderr}`);
     }
     return r.stdout.split('\n').filter((line) => line.length > 0);
   }
 
-  async diffNameOnly(
-    fromSha: string,
-    opts: { cwd: string },
-  ): Promise<string[]> {
+  async diffNameOnly(fromSha: string, opts: { cwd: string }): Promise<string[]> {
     // Modified + added + deleted vs <fromSha>.
-    const diff = await this.shell.run(
-      `git diff --name-only ${quote(fromSha)}`,
-      { cwd: opts.cwd },
-    );
+    const diff = await this.shell.run(`git diff --name-only ${quote(fromSha)}`, { cwd: opts.cwd });
     if (diff.exitCode !== 0) {
-      throw new Error(
-        `git diff --name-only failed (exit ${diff.exitCode}): ${diff.stderr}`,
-      );
+      throw new Error(`git diff --name-only failed (exit ${diff.exitCode}): ${diff.stderr}`);
     }
     // Untracked (new files the LLM created but never staged).
     // --exclude-standard honors .gitignore so Obsidian / .DS_Store etc. don't
     // leak in as false-positive orphans.
-    const untracked = await this.shell.run(
-      'git ls-files --others --exclude-standard',
-      { cwd: opts.cwd },
-    );
+    const untracked = await this.shell.run('git ls-files --others --exclude-standard', {
+      cwd: opts.cwd,
+    });
     if (untracked.exitCode !== 0) {
       throw new Error(
         `git ls-files --others failed (exit ${untracked.exitCode}): ${untracked.stderr}`,
@@ -313,10 +288,7 @@ export class FakeGit implements Git {
     }
   }
 
-  async restoreStaged(
-    files: string[],
-    opts: { cwd: string },
-  ): Promise<void> {
+  async restoreStaged(files: string[], opts: { cwd: string }): Promise<void> {
     this.calls.push({ method: 'restoreStaged', args: [files, opts] });
   }
 
@@ -338,10 +310,7 @@ export class FakeGit implements Git {
     return this.statusQueue.shift() ?? [];
   }
 
-  async diffNameOnly(
-    fromSha: string,
-    opts: { cwd: string },
-  ): Promise<string[]> {
+  async diffNameOnly(fromSha: string, opts: { cwd: string }): Promise<string[]> {
     this.calls.push({ method: 'diffNameOnly', args: [fromSha, opts] });
     return this.nameOnlyQueue.shift() ?? [];
   }
@@ -363,17 +332,11 @@ const KIND_TO_CONVENTIONAL_TYPE: Record<TaskKind, string> = {
 };
 
 /** Per § 5.3.12 commit message example: `feat(account): add phone-sms-auth (T001)`. */
-export function buildCommitMsg(
-  task: ParsedTask,
-  plan: ParsedPlan,
-  workspace: Workspace,
-): string {
+export function buildCommitMsg(task: ParsedTask, plan: ParsedPlan, workspace: Workspace): string {
   const type = KIND_TO_CONVENTIONAL_TYPE[task.kind] ?? 'chore';
   const moduleBoundary = plan.config.module_boundaries[workspace.id];
   const scope =
-    moduleBoundary && moduleBoundary.modules.length > 0
-      ? moduleBoundary.modules[0]
-      : workspace.id;
+    moduleBoundary && moduleBoundary.modules.length > 0 ? moduleBoundary.modules[0] : workspace.id;
   return `${type}(${scope}): ${task.title} (${task.id})`;
 }
 
@@ -490,9 +453,7 @@ export interface CommitTaskResult {
  *        stuck    → return ok:false, reason:'orphan-stuck'
  *   H. Final git.statusPorcelain assert (PR-1 baseline; catches edge cases).
  */
-export async function commitTask(
-  input: CommitTaskInput,
-): Promise<CommitTaskResult> {
+export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResult> {
   const {
     task,
     plan,
@@ -522,9 +483,7 @@ export async function commitTask(
   // Exclude tasks.md from drift accounting — it isn't "LLM-touched code", it's
   // orchestrator-owned bookkeeping. (The flip happens inside performCommit
   // below; tasks.md isn't part of declared either.)
-  const actual = actualRaw
-    .map(normalizePath)
-    .filter((f) => f !== tasksMdRel);
+  const actual = actualRaw.map(normalizePath).filter((f) => f !== tasksMdRel);
 
   // Step D: declared list (mutable — orphan-ralph expand may grow it).
   let declared = filesToStage(task).map(normalizePath);
@@ -669,8 +628,7 @@ export async function commitTask(
     phase: 'git-hook',
     maxRetries: input.maxHookRetries,
     initialFailure: first.feedback ?? '',
-    buildRetryPrompt: (feedback) =>
-      buildHookRetryPrompt(task, allStaged, feedback),
+    buildRetryPrompt: (feedback) => buildHookRetryPrompt(task, allStaged, feedback),
     attempt: async () => {
       if (hookProjector) hookProjector.stop();
       hookProjector = undefined;
@@ -723,7 +681,6 @@ export async function commitTask(
   };
 }
 
-
 /**
  * Post-commit orphan assert (PoC blind spot #22): `git status --porcelain`
  * must be empty after a successful commit. Non-empty → the LLM modified
@@ -732,10 +689,7 @@ export async function commitTask(
  * baseline (cf. T027 / T023 ralph runs). Returns the failure CommitTaskResult
  * to use, or null when clean.
  */
-async function checkOrphans(
-  git: Git,
-  repoRoot: string,
-): Promise<CommitTaskResult | null> {
+async function checkOrphans(git: Git, repoRoot: string): Promise<CommitTaskResult | null> {
   const orphans = await git.statusPorcelain({ cwd: repoRoot });
   if (orphans.length === 0) return null;
   const err = new OrphanAfterCommitError(orphans);

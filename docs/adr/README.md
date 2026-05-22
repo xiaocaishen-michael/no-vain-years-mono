@@ -6,9 +6,9 @@
 
 走 [`adr-governance` preset](https://github.com/xiaocaishen-michael/michael-speckit-presets) 装的 template:
 
-* 模板路径: `.specify/presets/adr-governance/templates/adr-template.md`
-* 校验脚本: `scripts/check-adr-frontmatters.ts` (lefthook pre-commit 自动跑;手动 `pnpm tsx scripts/check-adr-frontmatters.ts`)
-* schema: `.specify/schemas/adr-governance/adr.zod.ts`
+- 模板路径: `.specify/presets/adr-governance/templates/adr-template.md`
+- 校验脚本: `scripts/check-adr-frontmatters.ts` (lefthook pre-commit 自动跑;手动 `pnpm tsx scripts/check-adr-frontmatters.ts`)
+- schema: `.specify/schemas/adr-governance/adr.zod.ts`
 
 新 ADR 流程:
 
@@ -21,38 +21,38 @@
 
 ## Frontmatter 4 必填字段 (per [ADR-0031](0031-adr-governance.md))
 
-| 字段 | 值域 | 用途 |
-|---|---|---|
-| `adr_id` | `ADR-NNNN` | 与文件名 NNNN 严格一致 (e.g. `0042-foo.md` ↔ `ADR-0042`),lefthook cross-check |
-| `status` | `Proposed` / `Accepted` / `Deprecated` / `Superseded` / `Reserved` | 生命周期 |
-| `applies_to` | list of `{ apps/<name>, packages/<name>, infrastructure, security, mono-wide }` | LLM agent programmatic filter,按 task scope 决定加载哪些 ADR |
-| `sunset_trigger` | 多行字符串 ≥ 10 字符 | 强制显式记录"何时本 ADR 应被重审/退役" |
+| 字段             | 值域                                                                            | 用途                                                                          |
+| ---------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `adr_id`         | `ADR-NNNN`                                                                      | 与文件名 NNNN 严格一致 (e.g. `0042-foo.md` ↔ `ADR-0042`),lefthook cross-check |
+| `status`         | `Proposed` / `Accepted` / `Deprecated` / `Superseded` / `Reserved`              | 生命周期                                                                      |
+| `applies_to`     | list of `{ apps/<name>, packages/<name>, infrastructure, security, mono-wide }` | LLM agent programmatic filter,按 task scope 决定加载哪些 ADR                  |
+| `sunset_trigger` | 多行字符串 ≥ 10 字符                                                            | 强制显式记录"何时本 ADR 应被重审/退役"                                        |
 
 ## ADR 现状索引
 
-| ADR | 主题 | applies_to | status |
-|---|---|---|---|
-| 0018 | Backend Language Pivot — TypeScript on NestJS+Fastify+Prisma+Nx | apps/server | Accepted |
-| 0019 | ORM — Prisma v7+ | apps/server, packages/types | Accepted |
-| 0020 | 模块边界 — NestJS Module + ESLint boundaries v6 | apps/server, packages/api-client, packages/types | Accepted |
-| 0022 | 限流 — @nestjs/throttler v6 + Redis storage | apps/server | Accepted |
-| 0023 | SMS code 存储 — HMAC-SHA256 + constant-time | apps/server | Accepted |
-| 0024 | Specs feature-first 布局 + frontmatter modules 反查 | mono-wide | Accepted |
-| 0025 | 前端部署 — Expo Web → Cloudflare Pages | apps/mobile | Accepted |
-| 0026 | Backend Deployment Topology (stub, Plan 3 Phase 1 决) | apps/server, infrastructure | Proposed |
-| 0027 | Frontend Data + Test Layer (Orval + RQ + Maestro) | apps/mobile, packages/api-client | Proposed |
-| 0028 | Monorepo pnpm Policy (shamefully-hoist) | mono-wide | Proposed |
-| 0029 | TS Module Resolution Policy (bundler base) | mono-wide | Proposed |
-| 0030 | Package Decomposition (5→2) | mono-wide | Proposed |
-| 0031 | ADR Governance & Programmatic Filtering | mono-wide | Proposed |
-| 0032 | Backend Bounded Context Split (security + account + auth) | apps/server | Proposed |
-| 0033 | Cross-Context Communication via Outbox | apps/server | Proposed |
-| 0034 | Auth/Account Operation Catalog (3 传播规则 + LLM decision tree) | apps/server | Proposed |
-| 0035 | Data Layer Governance (migrate + naming + seed + types regen) | apps/server | Proposed |
-| 0036 | Observability and Logging Governance | apps/server, apps/mobile | Proposed |
-| 0037 | Security and Credentials Governance | apps/server, apps/mobile, security | Proposed |
-| 0038 | Full-Stack Error Handling and UX Contract | apps/server, apps/mobile, packages/api-client | Proposed |
-| 0039 | Performance and Latency Governance | mono-wide | Proposed |
+| ADR  | 主题                                                            | applies_to                                       | status   |
+| ---- | --------------------------------------------------------------- | ------------------------------------------------ | -------- |
+| 0018 | Backend Language Pivot — TypeScript on NestJS+Fastify+Prisma+Nx | apps/server                                      | Accepted |
+| 0019 | ORM — Prisma v7+                                                | apps/server, packages/types                      | Accepted |
+| 0020 | 模块边界 — NestJS Module + ESLint boundaries v6                 | apps/server, packages/api-client, packages/types | Accepted |
+| 0022 | 限流 — @nestjs/throttler v6 + Redis storage                     | apps/server                                      | Accepted |
+| 0023 | SMS code 存储 — HMAC-SHA256 + constant-time                     | apps/server                                      | Accepted |
+| 0024 | Specs feature-first 布局 + frontmatter modules 反查             | mono-wide                                        | Accepted |
+| 0025 | 前端部署 — Expo Web → Cloudflare Pages                          | apps/mobile                                      | Accepted |
+| 0026 | Backend Deployment Topology (stub, Plan 3 Phase 1 决)           | apps/server, infrastructure                      | Proposed |
+| 0027 | Frontend Data + Test Layer (Orval + RQ + Maestro)               | apps/mobile, packages/api-client                 | Proposed |
+| 0028 | Monorepo pnpm Policy (shamefully-hoist)                         | mono-wide                                        | Proposed |
+| 0029 | TS Module Resolution Policy (bundler base)                      | mono-wide                                        | Proposed |
+| 0030 | Package Decomposition (5→2)                                     | mono-wide                                        | Proposed |
+| 0031 | ADR Governance & Programmatic Filtering                         | mono-wide                                        | Proposed |
+| 0032 | Backend Bounded Context Split (security + account + auth)       | apps/server                                      | Proposed |
+| 0033 | Cross-Context Communication via Outbox                          | apps/server                                      | Proposed |
+| 0034 | Auth/Account Operation Catalog (3 传播规则 + LLM decision tree) | apps/server                                      | Proposed |
+| 0035 | Data Layer Governance (migrate + naming + seed + types regen)   | apps/server                                      | Proposed |
+| 0036 | Observability and Logging Governance                            | apps/server, apps/mobile                         | Proposed |
+| 0037 | Security and Credentials Governance                             | apps/server, apps/mobile, security               | Proposed |
+| 0038 | Full-Stack Error Handling and UX Contract                       | apps/server, apps/mobile, packages/api-client    | Proposed |
+| 0039 | Performance and Latency Governance                              | mono-wide                                        | Proposed |
 
 (0021 历史空缺,跳过编号 — 详 PR #N+1 commit 历史)
 

@@ -9,17 +9,12 @@ import type { TaskRunResult } from './run-feature.js';
 const FIXTURES_DIR = path.resolve(__dirname, '__fixtures__');
 
 function setupFeature(): { featureDir: string; archiveBase: string } {
-  const repoRoot = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'orchestrator-run-report-'),
-  );
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'orchestrator-run-report-'));
   const featureDir = path.join(repoRoot, 'specs', '002-demo');
   fs.mkdirSync(featureDir, { recursive: true });
   for (const f of ['spec-happy.md', 'plan-happy.md', 'tasks-happy.md']) {
     const dst = f.replace(/-happy/, '');
-    fs.copyFileSync(
-      path.join(FIXTURES_DIR, f),
-      path.join(featureDir, dst),
-    );
+    fs.copyFileSync(path.join(FIXTURES_DIR, f), path.join(featureDir, dst));
   }
   const archiveBase = path.join(repoRoot, '.spec-kit', 'runs', '002-demo');
   fs.mkdirSync(archiveBase, { recursive: true });
@@ -140,9 +135,30 @@ describe('printRunReport', () => {
         reason: 'success',
         file_ops: { create: 0, modify: 1, delete: 0, rename: 0 },
         attempts: [
-          { n: 0, phase: 'initial', elapsed_ms: 300000, llm: { cost_usd: 0.5, num_turns: 10 }, action: { exit_code: 1 }, ok: false },
-          { n: 1, phase: 'verify-ralph', elapsed_ms: 200000, llm: { cost_usd: 0.3, num_turns: 5 }, action: { exit_code: 1 }, ok: false },
-          { n: 2, phase: 'verify-ralph', elapsed_ms: 100000, llm: { cost_usd: 0.2, num_turns: 4 }, action: { exit_code: 0 }, ok: true },
+          {
+            n: 0,
+            phase: 'initial',
+            elapsed_ms: 300000,
+            llm: { cost_usd: 0.5, num_turns: 10 },
+            action: { exit_code: 1 },
+            ok: false,
+          },
+          {
+            n: 1,
+            phase: 'verify-ralph',
+            elapsed_ms: 200000,
+            llm: { cost_usd: 0.3, num_turns: 5 },
+            action: { exit_code: 1 },
+            ok: false,
+          },
+          {
+            n: 2,
+            phase: 'verify-ralph',
+            elapsed_ms: 100000,
+            llm: { cost_usd: 0.2, num_turns: 4 },
+            action: { exit_code: 0 },
+            ok: true,
+          },
         ],
       },
       'claude-sonnet-4-6',
@@ -168,13 +184,25 @@ describe('printRunReport', () => {
     writeArchive(
       archiveBase,
       'T001',
-      { elapsed_ms: 60000, ok: true, reason: 'success', file_ops: {}, attempts: [{ phase: 'initial', llm: { cost_usd: 0.4, num_turns: 8 } }] },
+      {
+        elapsed_ms: 60000,
+        ok: true,
+        reason: 'success',
+        file_ops: {},
+        attempts: [{ phase: 'initial', llm: { cost_usd: 0.4, num_turns: 8 } }],
+      },
       'claude-sonnet-4-6',
     );
     writeArchive(
       archiveBase,
       'T002',
-      { elapsed_ms: 120000, ok: false, reason: 'llm-error', file_ops: {}, attempts: [{ phase: 'initial', llm: { cost_usd: 0.6, num_turns: 15 } }] },
+      {
+        elapsed_ms: 120000,
+        ok: false,
+        reason: 'llm-error',
+        file_ops: {},
+        attempts: [{ phase: 'initial', llm: { cost_usd: 0.6, num_turns: 15 } }],
+      },
       'claude-opus-4-7',
     );
 
@@ -202,7 +230,13 @@ describe('printRunReport', () => {
     writeArchive(
       archiveBase,
       'T001',
-      { elapsed_ms: 60000, ok: true, reason: 'success', file_ops: {}, attempts: [{ phase: 'initial', llm: { cost_usd: 0.4, num_turns: 8 } }] },
+      {
+        elapsed_ms: 60000,
+        ok: true,
+        reason: 'success',
+        file_ops: {},
+        attempts: [{ phase: 'initial', llm: { cost_usd: 0.4, num_turns: 8 } }],
+      },
       'claude-sonnet-4-6',
     );
 
@@ -224,7 +258,12 @@ describe('printRunReport', () => {
 
   it('skips writing archive file when writeArchiveFile=false', async () => {
     const { state, archiveBase } = load();
-    writeArchive(archiveBase, 'T001', { elapsed_ms: 1, ok: true, reason: 'success', file_ops: {}, attempts: [] }, '');
+    writeArchive(
+      archiveBase,
+      'T001',
+      { elapsed_ms: 1, ok: true, reason: 'success', file_ops: {}, attempts: [] },
+      '',
+    );
 
     const result = await printRunReport({
       state,
@@ -396,9 +435,7 @@ describe('formatStopsCell', () => {
   });
 
   it('passes through unknown stop_reasons verbatim', () => {
-    expect(formatStopsCell({ unknown_reason: 3, tool_use: 5 })).toBe(
-      'tu5·unknown_reason3',
-    );
+    expect(formatStopsCell({ unknown_reason: 3, tool_use: 5 })).toBe('tu5·unknown_reason3');
   });
 
   it('breaks count ties alphabetically (stable output)', () => {

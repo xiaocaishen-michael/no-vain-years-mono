@@ -5,11 +5,7 @@ import {
   type LlmInvokeOptions,
   type LlmInvokeResult,
 } from './llm-client.js';
-import {
-  ralphLoop,
-  RALPH_DEFAULT_MAX_RETRIES,
-  type RalphAttemptOutcome,
-} from './ralph-loop.js';
+import { ralphLoop, RALPH_DEFAULT_MAX_RETRIES, type RalphAttemptOutcome } from './ralph-loop.js';
 
 const INVOKE_OPTS: LlmInvokeOptions = { cwd: '/tmp/sandbox' };
 
@@ -23,13 +19,12 @@ function llmOk(stdout = 'patched'): LlmInvokeResult {
   return { exitCode: 0, stdout, stderr: '', durationMs: 1 };
 }
 
-function makeAttempts(
-  outcomes: RalphAttemptOutcome[],
-): () => Promise<RalphAttemptOutcome> {
+function makeAttempts(outcomes: RalphAttemptOutcome[]): () => Promise<RalphAttemptOutcome> {
   let i = 0;
   return async () => {
     const next = outcomes[i++];
-    if (!next) throw new Error(`attempt called ${i} times, only ${outcomes.length} outcomes scripted`);
+    if (!next)
+      throw new Error(`attempt called ${i} times, only ${outcomes.length} outcomes scripted`);
     return next;
   };
 }
@@ -58,7 +53,7 @@ describe('ralphLoop', () => {
     expect(llm.calls[0].prompt).toBe('retry 1: first failure');
   });
 
-  it('threads each attempt\'s feedback into the next retry prompt', async () => {
+  it("threads each attempt's feedback into the next retry prompt", async () => {
     const llm = new FakeLlmClient([llmOk('fix-1'), llmOk('fix-2'), llmOk('fix-3')]);
     const attempt = makeAttempts([
       { ok: false, feedback: 'err A' },
@@ -169,18 +164,28 @@ describe('ralphLoop', () => {
       llmInvokeOpts: INVOKE_OPTS,
     });
     expect(r.history).toHaveLength(3);
-    expect(r.history[0]).toMatchObject({ kind: 'retry-prompt', attemptNumber: 1, prompt: 'please: oops' });
-    expect(r.history[1]).toMatchObject({ kind: 'llm-output', attemptNumber: 1, stdout: 'stdout-A' });
+    expect(r.history[0]).toMatchObject({
+      kind: 'retry-prompt',
+      attemptNumber: 1,
+      prompt: 'please: oops',
+    });
+    expect(r.history[1]).toMatchObject({
+      kind: 'llm-output',
+      attemptNumber: 1,
+      stdout: 'stdout-A',
+    });
     expect(r.history[2]).toMatchObject({ kind: 'attempt', attemptNumber: 1, ok: true });
   });
 
   it('fires onRound once per round with llmResult + outcome (success path)', async () => {
     const llm = new FakeLlmClient([llmOk('a'), llmOk('b')]);
-    const attempt = makeAttempts([
-      { ok: false, feedback: 'err A' },
-      { ok: true },
-    ]);
-    const rounds: Array<{ n: number; ok: boolean | undefined; stdout: string | undefined; hasError: boolean }> = [];
+    const attempt = makeAttempts([{ ok: false, feedback: 'err A' }, { ok: true }]);
+    const rounds: Array<{
+      n: number;
+      ok: boolean | undefined;
+      stdout: string | undefined;
+      hasError: boolean;
+    }> = [];
     await ralphLoop({
       phase: 'verify-command',
       initialFailure: 'INIT',

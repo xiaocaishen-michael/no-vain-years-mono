@@ -61,8 +61,7 @@ export class ProblemDetailResponse {
   code?: string;
 
   @ApiProperty({
-    description:
-      'Request trace id (CLS-managed; mirrors x-trace-id response header)',
+    description: 'Request trace id (CLS-managed; mirrors x-trace-id response header)',
     required: false,
     example: '0e6a4d6e-...-2c8f',
   })
@@ -76,8 +75,7 @@ export class ProblemDetailResponse {
   freezeUntil?: string;
 
   @ApiProperty({
-    description:
-      'Seconds until retry permitted — for AUTH_ATTEMPT_LOCKED / RATE_LIMIT_EXCEEDED',
+    description: 'Seconds until retry permitted — for AUTH_ATTEMPT_LOCKED / RATE_LIMIT_EXCEEDED',
     required: false,
     example: 1800,
   })

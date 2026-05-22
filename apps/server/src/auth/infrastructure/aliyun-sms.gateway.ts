@@ -54,9 +54,7 @@ export class AliyunSmsGateway implements SmsGateway {
   }
 
   async sendCode(phone: Phone, code: SmsCode): Promise<void> {
-    const phoneNumber = phone.value.startsWith('+86')
-      ? phone.value.slice(3)
-      : phone.value;
+    const phoneNumber = phone.value.startsWith('+86') ? phone.value.slice(3) : phone.value;
 
     const request = new SendSmsRequest({
       phoneNumbers: phoneNumber,
@@ -65,9 +63,7 @@ export class AliyunSmsGateway implements SmsGateway {
       templateParam: JSON.stringify({ code: code.value }),
     });
 
-    const response = await this.retryExecutor.execute(() =>
-      this.client.sendSms(request),
-    );
+    const response = await this.retryExecutor.execute(() => this.client.sendSms(request));
 
     if (response.body?.code !== 'OK') {
       throw new Error(

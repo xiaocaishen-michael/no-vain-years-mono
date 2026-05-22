@@ -296,8 +296,7 @@ export default function ProfileScreen() {
   // FR-017: settings stack lives at /(app)/settings (spec B owns impl).
   // Cast through router.push's parameter type since the route doesn't yet
   // exist in app/ and Expo Router's generated Href type would reject the string.
-  const pushSettings = () =>
-    router.push('/(app)/settings' as Parameters<typeof router.push>[0]);
+  const pushSettings = () => router.push('/(app)/settings' as Parameters<typeof router.push>[0]);
 
   return (
     <SafeAreaView

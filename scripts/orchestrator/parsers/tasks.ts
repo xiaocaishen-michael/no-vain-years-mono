@@ -23,11 +23,7 @@ export class TasksAnalyzer {
     return this.parseContent(fileContent, plan, spec);
   }
 
-  parseContent(
-    fileContent: string,
-    plan: ParsedPlan,
-    spec: ParsedSpec,
-  ): ParsedTasks {
+  parseContent(fileContent: string, plan: ParsedPlan, spec: ParsedSpec): ParsedTasks {
     const { data, body } = parseFrontmatterRaw(fileContent);
     const frontmatter = TasksFrontmatterSchema.parse(data);
 
@@ -53,17 +49,14 @@ export class TasksAnalyzer {
 
   private extractTasks(body: string): ParsedTask[] {
     // `- [ ] T<n> <title>\n  <!-- task-meta: {...} -->` or `- [X] ...`
-    const regex =
-      /^-\s+\[([ X])\]\s+(T\d{3})\s+(.+?)\n\s*<!--\s*task-meta:\s*([\s\S]*?)\s*-->/gm;
+    const regex = /^-\s+\[([ X])\]\s+(T\d{3})\s+(.+?)\n\s*<!--\s*task-meta:\s*([\s\S]*?)\s*-->/gm;
     const out: ParsedTask[] = [];
     let m: RegExpExecArray | null;
     while ((m = regex.exec(body)) !== null) {
       const [, checkbox, id, title, metaRaw] = m;
       const meta = parseJson5(metaRaw, TaskMetaSchema);
       if (meta.id !== id) {
-        throw new Error(
-          `task-meta id (${meta.id}) ≠ checkbox id (${id}) at "${title.trim()}"`,
-        );
+        throw new Error(`task-meta id (${meta.id}) ≠ checkbox id (${id}) at "${title.trim()}"`);
       }
       const parsed = ParsedTaskSchema.parse({
         ...meta,
@@ -75,16 +68,10 @@ export class TasksAnalyzer {
     return out;
   }
 
-  private validateTask(
-    t: ParsedTask,
-    plan: ParsedPlan,
-    spec: ParsedSpec,
-  ): void {
+  private validateTask(t: ParsedTask, plan: ParsedPlan, spec: ParsedSpec): void {
     const ws = plan.config.workspaces.find((w) => w.id === t.workspace);
     if (!ws) {
-      throw new Error(
-        `task ${t.id} workspace '${t.workspace}' not in plan.workspaces`,
-      );
+      throw new Error(`task ${t.id} workspace '${t.workspace}' not in plan.workspaces`);
     }
     if (!(t.verify_kind in ws.verify_commands)) {
       throw new Error(
@@ -94,9 +81,7 @@ export class TasksAnalyzer {
     if (t.trace_ep) {
       for (const ep of t.trace_ep) {
         if (!plan.contracts.endpoints.find((e) => e.id === ep)) {
-          throw new Error(
-            `task ${t.id} trace_ep '${ep}' not in plan.api_contracts`,
-          );
+          throw new Error(`task ${t.id} trace_ep '${ep}' not in plan.api_contracts`);
         }
       }
     }
@@ -139,9 +124,7 @@ export class TasksAnalyzer {
       current = next;
     }
     if (processed !== tasks.length) {
-      throw new Error(
-        `task DAG has cycle (processed ${processed} of ${tasks.length})`,
-      );
+      throw new Error(`task DAG has cycle (processed ${processed} of ${tasks.length})`);
     }
     return batches;
   }
