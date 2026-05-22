@@ -1,5 +1,7 @@
 # Plan: PR-5 Tail — Orval + 数据流重构收口（polyfill 修 + 全链路验证）
 
+> **[已迁入 2026-05-22]** 本 plan 的 8 处 cascade 修 baseline 已并入 [05-22-server-bounded-context-governance.md](05-22-server-bounded-context-governance.md) Part B。本文件保留作 historical trace（PR #79 ship 时的工作流细节）；后续 governance / follow-up 看新 plan。
+
 ## Context
 
 PR-5 链（PR-5a #73 server / PR-5b #74 api-client Orval / PR-5c #75 mobile）于 2026-05-21 全部 merged，但**未跑过任何真后端 + 真 mobile runtime smoke**。本 plan 从 [05-21-review-tech-stack-post-a002](2026-05/05-21-review-tech-stack-post-a002.md) 的 PR-5 段单独迁出，理由：

@@ -169,6 +169,9 @@ PR-7 ADR-0026 stub doc + Catalog v1 + Maestro testID convention 文档落地 (30
 - 002 plan.md module_boundaries 段 mark historical
 
 **PR-4 Server bounded context split**
+
+> **[已迁出 2026-05-22]** 本 PR 内容（含 PR #72 物理 split + PR #79 cascade 修 + ADR-0033 / 0034 / 0041 + hexagonal layer ESLint reintroduce + governance checklist）已并入独立 plan：[05-22-server-bounded-context-governance.md](05-22-server-bounded-context-governance.md)。Plan 2 业务迁入每个 feature 触发的 bounded context 评估走新 plan，本段保留作历史 trace。
+
 - 新建 src/security/{module, strategy, guard}.ts
 - mv ~13 files src/auth → src/account/
 - 新建 src/account/account.module.ts
