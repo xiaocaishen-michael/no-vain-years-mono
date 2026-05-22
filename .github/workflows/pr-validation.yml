@@ -3,18 +3,30 @@ name: PR Validation
 # Per ADR-0040 multi-layer test gate (PR-T3 / 门禁层 / 云端主防线).
 # Single mega-job 'validate-and-test' that:
 #   1. Enforces 3 hard checkboxes in PR body (`### 🚨 部署与存活前置确认`
-#      section parsed via actions/github-script — any `- [ ]` left → fail).
+#      section). Body is fetched via `github.rest.pulls.get` (LIVE), NOT
+#      `context.payload.pull_request.body` (which is a webhook snapshot
+#      frozen at workflow-trigger time — gh pr edit does not update it
+#      and gh run rerun reuses the stored payload → eternal red).
+#      See docs/conventions/pr-creation-protocol.md § 出错恢复路径.
 #   2. Runs `nx affected -t lint typecheck test build runtime-smoke`
 #      with `--base=origin/main` for incremental cascade detection.
 #      `fetch-depth: 0` ensures nx can compute affected vs base.
-# This job replaces the previous server-only Build/Test/Lint jobs in ci.yml.
+# `types: [..., edited]` lets `gh pr edit --body` wake a fresh run so
+# author can recover from a body regression without close+reopen dance.
+# Trade-off: title / body / any PR-field edit triggers full pipeline
+# (~5-15 min). DO NOT skip heavy steps on `edited` events via
+# `if: github.event.action != 'edited'` — branch protection takes the
+# latest check run for the head SHA, so a green `edited` run would
+# silently overwrite a red `synchronize` run and let bad code merge.
 
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   validate-and-test:
@@ -43,25 +55,36 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const body = context.payload.pull_request.body;
-            if (!body) {
-              core.setFailed('🚨 PR body empty — must contain `### 🚨 部署与存活前置确认` checklist (see .github/pull_request_template.md).');
-              return;
-            }
-            // Strict section extraction — match `### 🚨 部署与存活前置确认` header
-            // and consume until next `##` or `###` header or EOF. Other sections
-            // (Test plan / unrelated checklists) are NOT scanned.
+            // LIVE fetch — `context.payload.pull_request.body` is the
+            // webhook snapshot frozen at trigger time. `gh pr edit` does
+            // not update it, and `gh run rerun` reuses the same stored
+            // payload, so a body-fix → rerun loop never escapes red.
+            // Always fetch the current PR resource so edit-then-rerun
+            // (or the `edited` trigger) reads the latest body.
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const body = pr.body || '';
+            // Match `### 🚨 部署与存活前置确认` header and consume until
+            // the next `## ` (H2) or `### ` (H3) header, or EOF.
+            // `###?` = 2 or 3 hashes; `\n.*\s` boundary prevents matching
+            // `##` mid-line. Critical: matching `## ` is required because
+            // `## Test plan` immediately follows the gate section in the
+            // template — without H2 boundary, Test plan `- [ ]` entries
+            // (post-merge follow-ups) would false-fail the gate.
             const checklistRegex = /### 🚨 部署与存活前置确认[\s\S]*?(?=\n###?\s|$)/;
             const match = body.match(checklistRegex);
             if (!match) {
-              core.setFailed('🚨 PR body missing `### 🚨 部署与存活前置确认` section. Re-add via .github/pull_request_template.md.');
+              core.setFailed('🚨 拦截成功：未找到 `### 🚨 部署与存活前置确认` 区块。PR body 可能被 Claude Code 默认 HEREDOC 覆盖,请从 .github/pull_request_template.md 拷贝完整 section（详见 docs/conventions/pr-creation-protocol.md）。');
               return;
             }
             if (match[0].includes('- [ ]')) {
-              core.setFailed('🚨 拦截成功：`### 🚨 部署与存活前置确认` 区域含未勾选项,请本地验证通过后勾选全部 checkbox 再触发 CI。');
+              core.setFailed('🚨 拦截成功：`### 🚨 部署与存活前置确认` 区域含未勾选项,本地物理验证通过后再勾全部 checkbox。');
               return;
             }
-            core.info('✅ All deployment & smoke gate checkboxes ticked.');
+            core.info('✅ All deployment & smoke gate checkboxes ticked (live body fetch).');
 
       - name: Generate Prisma client
         working-directory: apps/server
