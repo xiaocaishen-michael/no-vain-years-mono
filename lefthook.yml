@@ -6,6 +6,17 @@ extends:
 # 强制层 commit-time 硬拦:`tasks-md-drift` 拒"commit 含 impl 代码但 tasks.md 未 staged"。
 # `--no-verify` 仅限格式化 / typo / 紧急 hotfix 出口。
 
+# Conventional Commits enforcement at commit time.
+# Mirrors meta-repo behavior — full ruleset (header/body/footer max-length,
+# config-conventional types) shared via commitlint.config.mjs;CI runs the
+# same check via wagoid/commitlint-github-action. PR title also validated
+# by amannn/action-semantic-pull-request (load-bearing for squash merge:
+# PR title becomes commit message).
+commit-msg:
+  commands:
+    conventional-format:
+      run: pnpm exec commitlint --edit {1}
+
 pre-commit:
   parallel: true
   commands:
