@@ -1,9 +1,11 @@
+import fastifyCors from '@fastify/cors';
 import { ValidationError, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app/app.module';
+import { appConfig, parseOrigins, type AppConfig } from './config/index.js';
 import { buildOpenApiConfig } from './openapi.config';
 import {
   FormValidationException,
@@ -29,6 +31,16 @@ async function bootstrap() {
     bufferLogs: true,
   });
   app.useLogger(app.get(Logger));
+
+  // CORS must register before any route mounts (Fastify plugin order).
+  // Origins drawn from typed appConfig — Zod parsed at boot, so `*` (dev) /
+  // strict allowlist (prod) is settled before listen.
+  const cfg = app.get<AppConfig>(appConfig.KEY);
+  await app.register(fastifyCors, {
+    origin: parseOrigins(cfg.corsAllowedOrigins),
+    credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -52,10 +64,9 @@ async function bootstrap() {
     jsonDocumentUrl: 'docs-json',
   });
 
-  const port = Number(process.env.PORT) || 3000;
-  await app.listen(port, '0.0.0.0');
-  app.get(Logger).log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix}`);
-  app.get(Logger).log(`📘 OpenAPI docs: http://localhost:${port}/docs`);
+  await app.listen(cfg.port, '0.0.0.0');
+  app.get(Logger).log(`🚀 Application is running on: http://localhost:${cfg.port}/${globalPrefix}`);
+  app.get(Logger).log(`📘 OpenAPI docs: http://localhost:${cfg.port}/docs`);
 }
 
 bootstrap();

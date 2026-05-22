@@ -25,6 +25,14 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.spec.ts', 'src/**/*.test.ts', 'src/main.ts', 'src/generated/**'],
+      // M1.1 baseline mirroring meta-repo JaCoCo (LINE ≥ 0.60 / BRANCH ≥ 0.50).
+      // M2 业务代码量上来后收紧 75%/65% per gap-audit plan A5.
+      thresholds: {
+        lines: 60,
+        branches: 50,
+        functions: 60,
+        statements: 60,
+      },
     },
   },
 });

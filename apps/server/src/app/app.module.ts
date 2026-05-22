@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { ClsModule, ClsService } from 'nestjs-cls';
 import { AuthModule } from '../auth/auth.module.js';
+import { appConfig, type AppConfig } from '../config/index.js';
 import { HealthModule } from '../observability/health.module.js';
 import { MetricsModule } from '../observability/metrics.module.js';
 import { AppController } from './app.controller.js';
@@ -39,10 +40,10 @@ import { AppService } from './app.service.js';
       // injectable anywhere without explicit ClsModule import. Still listed
       // here to make the dependency explicit + survive future refactors.
       imports: [ClsModule],
-      inject: [ClsService],
-      useFactory: (cls: ClsService) => ({
+      inject: [ClsService, appConfig.KEY],
+      useFactory: (cls: ClsService, cfg: AppConfig) => ({
         pinoHttp: {
-          level: process.env['LOG_LEVEL'] ?? 'info',
+          level: cfg.logLevel,
           redact: {
             paths: [
               'req.headers.authorization',

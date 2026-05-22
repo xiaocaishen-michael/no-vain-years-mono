@@ -7,7 +7,7 @@ import { PrismaClient } from '../generated/prisma/client';
  * adapter pattern, requires @prisma/adapter-pg).
  *
  * Constructor takes connectionString so:
- *  - production / dev factory injects ConfigService.getOrThrow('DATABASE_URL')
+ *  - production / dev factory injects dbConfig.url (Zod-validated at boot)
  *  - integration tests construct directly with Testcontainers URL
  *
  * onModuleInit / onModuleDestroy bind to NestJS lifecycle for graceful

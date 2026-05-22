@@ -1,0 +1,56 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { smsConfig } from './sms.config.js';
+
+const ENV_KEYS = [
+  'SMS_GATEWAY',
+  'ALIYUN_ACCESS_KEY_ID',
+  'ALIYUN_ACCESS_KEY_SECRET',
+  'ALIYUN_SMS_SIGN_NAME',
+  'ALIYUN_SMS_TEMPLATE_CODE',
+] as const;
+
+describe('smsConfig discriminated union', () => {
+  let saved: Record<string, string | undefined>;
+
+  beforeEach(() => {
+    saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
+    for (const k of ENV_KEYS) delete process.env[k];
+  });
+
+  afterEach(() => {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  it('defaults to kind=mock when SMS_GATEWAY unset', () => {
+    expect(smsConfig()).toEqual({ kind: 'mock' });
+  });
+
+  it('returns kind=mock when SMS_GATEWAY=mock (no aliyun creds required)', () => {
+    process.env.SMS_GATEWAY = 'mock';
+    expect(smsConfig()).toEqual({ kind: 'mock' });
+  });
+
+  it('throws when SMS_GATEWAY=aliyun but ALIYUN_* env partial', () => {
+    process.env.SMS_GATEWAY = 'aliyun';
+    process.env.ALIYUN_ACCESS_KEY_ID = 'k';
+    expect(() => smsConfig()).toThrow();
+  });
+
+  it('parses full aliyun config when all 4 ALIYUN_* set', () => {
+    process.env.SMS_GATEWAY = 'aliyun';
+    process.env.ALIYUN_ACCESS_KEY_ID = 'k';
+    process.env.ALIYUN_ACCESS_KEY_SECRET = 's';
+    process.env.ALIYUN_SMS_SIGN_NAME = 'sn';
+    process.env.ALIYUN_SMS_TEMPLATE_CODE = 'tc';
+    expect(smsConfig()).toEqual({
+      kind: 'aliyun',
+      accessKeyId: 'k',
+      accessKeySecret: 's',
+      signName: 'sn',
+      templateCode: 'tc',
+    });
+  });
+});

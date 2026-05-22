@@ -1,8 +1,15 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { Redis } from 'ioredis';
+import {
+  authConfig,
+  redisConfig,
+  smsConfig,
+  type AuthConfig,
+  type RedisConfig,
+  type SmsConfig,
+} from '../config/index.js';
 import { SecurityModule } from '../security/security.module.js';
 import { AccountModule } from '../account/account.module.js';
 import { REDIS_CLIENT } from '../security/redis.token.js';
@@ -53,8 +60,8 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
     SecurityModule,
     AccountModule,
     ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      inject: [redisConfig.KEY],
+      useFactory: (cfg: RedisConfig) => {
         return {
           throttlers: [
             // FR-S07 第 1 条: sms:<phone> 60s 1 次 (default → 标准 Retry-After)
@@ -92,7 +99,7 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
               },
             },
           ],
-          storage: new ThrottlerStorageRedisService(config.getOrThrow<string>('REDIS_URL')),
+          storage: new ThrottlerStorageRedisService(cfg.url),
         };
       },
     }),
@@ -101,34 +108,29 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
   providers: [
     {
       // Per ADR-0023: HMAC-SHA256 + timingSafeEqual 替换 bcrypt cost=12.
-      // SMS_CODE_HMAC_SECRET fail-fast,与 AUTH_JWT_SECRET 同管理面.
+      // SMS_CODE_HMAC_SECRET fail-fast at boot via authConfig Zod schema.
       provide: SMS_CODE_REPOSITORY,
-      useFactory: (redis: Redis, config: ConfigService) =>
-        new SmsCodeRedisRepository(redis, config.getOrThrow<string>('SMS_CODE_HMAC_SECRET')),
-      inject: [REDIS_CLIENT, ConfigService],
+      useFactory: (redis: Redis, cfg: AuthConfig) =>
+        new SmsCodeRedisRepository(redis, cfg.smsCodeHmacSecret),
+      inject: [REDIS_CLIENT, authConfig.KEY],
     },
     {
-      // SMS_GATEWAY=aliyun → AliyunSmsGateway (要求 ALIYUN_* env 全配, fail-fast)
-      // SMS_GATEWAY=mock | undefined → MockSmsGateway (dev/test 默认)
+      // smsConfig is a discriminated union: kind='mock' (default) or
+      // kind='aliyun' (Aliyun creds validated at boot — partial config rejected).
       provide: SMS_GATEWAY,
-      useFactory: (config: ConfigService, retryExecutor: RetryExecutor) => {
-        const gatewayKind = config.get<string>('SMS_GATEWAY', 'mock');
-        if (gatewayKind === 'aliyun') {
-          const accessKeyId = config.getOrThrow<string>('ALIYUN_ACCESS_KEY_ID');
-          const accessKeySecret = config.getOrThrow<string>('ALIYUN_ACCESS_KEY_SECRET');
-          const signName = config.getOrThrow<string>('ALIYUN_SMS_SIGN_NAME');
-          const templateCode = config.getOrThrow<string>('ALIYUN_SMS_TEMPLATE_CODE');
+      useFactory: (cfg: SmsConfig, retryExecutor: RetryExecutor) => {
+        if (cfg.kind === 'aliyun') {
           const client = AliyunSmsGateway.createClient({
-            accessKeyId,
-            accessKeySecret,
-            signName,
-            templateCode,
+            accessKeyId: cfg.accessKeyId,
+            accessKeySecret: cfg.accessKeySecret,
+            signName: cfg.signName,
+            templateCode: cfg.templateCode,
           });
-          return new AliyunSmsGateway(client, signName, templateCode, retryExecutor);
+          return new AliyunSmsGateway(client, cfg.signName, cfg.templateCode, retryExecutor);
         }
         return new MockSmsGateway();
       },
-      inject: [ConfigService, RETRY_EXECUTOR],
+      inject: [smsConfig.KEY, RETRY_EXECUTOR],
     },
     { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
     { provide: TIMING_DEFENSE_EXECUTOR, useClass: BcryptTimingDefenseExecutor },
