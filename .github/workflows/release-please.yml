@@ -1,0 +1,29 @@
+name: release-please
+
+# Per ADR-0042 monorepo release strategy. manifest mode + 双线 (server + mobile)
+# + separate Release PRs + component-in-tag. Token 走 PAT-with-fallback:
+# GITHUB_TOKEN 创建的 Release PR 不触发 required checks (GH 反递归保护),
+# ruleset required_status_checks 会 BLOCK merge — PAT 可绕过;fallback 让
+# fork / 未配 PAT 环境仍能起 PR (虽然 CI 不绿).
+#
+# Plan 3 部署阶段在 release-please-action step 后追加 deploy job,用
+#   if: ${{ steps.release.outputs['apps/server--release_created'] }}
+# 分支接 deploy hook;本 workflow 本期不预留.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_PAT || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
