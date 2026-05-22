@@ -75,6 +75,18 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.issue.number,
             });
+            // Bypass: release-please bot's Release PRs (label
+            // `autorelease: pending`) carry auto-generated CHANGELOG
+            // bodies — no deploy gate section by design (per ADR-0042).
+            // They're pure version-bump PRs, no code change requires
+            // smoke test verification. Enforcing the gate would BLOCK
+            // them permanently. Label-based detection is reliable across
+            // token modes (GITHUB_TOKEN bot author vs PAT-as-user author).
+            const labels = (pr.labels || []).map(l => l.name);
+            if (labels.includes('autorelease: pending')) {
+              core.info('⏭ Skipped: release-please Release PR (autorelease: pending label).');
+              return;
+            }
             const body = pr.body || '';
             // Match `### 🚨 部署与存活前置确认` header and consume until
             // the next `## ` (H2) or `### ` (H3) header, or EOF.
