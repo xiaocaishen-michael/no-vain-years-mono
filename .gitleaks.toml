@@ -1,0 +1,20 @@
+# Gitleaks configuration for no-vain-years-mono.
+# Extends the default ruleset shipped with gitleaks.
+# https://github.com/gitleaks/gitleaks#configuration
+
+[extend]
+useDefault = true
+
+# Allowlist entries are gated on path + regex (AND logic) to avoid
+# eroding the defense via broad path globs. Document each inline.
+
+# Test-only HMAC/JWT secrets in apps/server/test/ contain the
+# "-min-32-bytes-" padding signature (used to satisfy ≥ 32-byte key
+# length requirement). Always paired with names like AUTH_JWT_SECRET /
+# SMS_CODE_HMAC_SECRET in e2e/IT spec files. Prettier consolidating
+# multi-line `process.env.X = '...'` declarations into single-line
+# triggers generic-api-key false positives (993b6a4 实证 8 hits).
+[allowlist]
+description = "Test-only HMAC/JWT secrets in apps/server/test/"
+regexes = ['''-min-32-bytes-''']
+paths = ['''apps/server/test/.*\.spec\.ts''']
