@@ -6,3 +6,6 @@ export { useAuthStore } from './store';
 export type { AuthState, Session } from './store';
 
 export { refreshOnce, refreshTokenFlow, rehydrateSession } from './token-refresh';
+
+export { useDeviceStore, getDeviceHeaders } from './device-store';
+export type { DeviceState, DeviceType } from './device-store';
