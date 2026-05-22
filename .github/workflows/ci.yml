@@ -70,6 +70,29 @@ jobs:
         with:
           configFile: commitlint.config.mjs
 
+  # Per 05-22-mono-meta-frontend-gap-audit.md A1: Trivy fs scan covers the
+  # source tree + pnpm transitive deps for both apps (server + mobile) +
+  # packages/* — complementary to docker-image's base-image scan (caught on
+  # main push only). fs scan runs PR + push so dep-tree CVE land in the
+  # pre-merge gate. skip-dirs excludes generated artifacts and docs/.claude
+  # to keep signal-to-noise high; ignore-unfixed mirrors image scan
+  # (unfixed Expo / RN ecosystem CVE block PRs forever otherwise).
+  trivy-fs:
+    name: Trivy fs scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Trivy fs scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+          skip-dirs: 'docs,.claude,packages/api-client/src/generated,apps/mobile/dist,apps/server/dist,node_modules'
+
   # V9 acceptance gate (Plan 1 § E.3): Docker build + Trivy image scan.
   # Trigger strategy: PR skip / main push run.
   # Rationale: image scan ~3-5min, no PR-time value (Dockerfile rarely changes
