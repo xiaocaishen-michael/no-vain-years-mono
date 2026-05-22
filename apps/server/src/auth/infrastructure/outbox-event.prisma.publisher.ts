@@ -1,14 +1,34 @@
-import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Injectable, Optional } from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
 import type { OutboxPublisher } from '../application/ports/outbox-publisher.port';
+import {
+  OutboxEventEnvelopeSchema,
+  type OutboxEventEnvelope,
+} from '../application/outbox-event-envelope.schema';
 
 /**
- * OutboxEventPrismaPublisher — writes domain events to `outbox_event` (FR-S11).
+ * OutboxEventPrismaPublisher — writes domain events to `outbox_event` (FR-S11,
+ * per ADR-0033 envelope enforcement).
  *
- * `publish` 接 Prisma client (or $transaction-bound TransactionClient) 作首参 —
- * 让 caller 显式将 publish 纳入业务 tx, 失败时整 tx (含 outbox 行) 一起 rollback.
+ * Internal contract:
+ *   - Caller transparent: 仍传 `(client, eventType, data: Record<string, unknown>)`
+ *     3 个参数。
+ *   - Publisher 内部把 flat data 封进 ADR-0033 `OutboxEventEnvelope`:
+ *       { metadata: { trace_id, occurred_at, event_version, producer_context }, data }
+ *   - trace_id 来源: `ClsService.getId()` (HTTP req `x-trace-id` via nestjs-cls
+ *     middleware) → fallback `out-of-request-<uuid>` 当 ClsService 未注入或
+ *     getId() 空 (cron / worker / out-of-request 触发)。
+ *   - Envelope 经 `OutboxEventEnvelopeSchema.parse()` 校验后写入
+ *     `outbox_event.payload` jsonb 列, 不写 outbox_event 表新列 (per ADR-0033
+ *     决策点 1)。
  *
- * Port 用 unknown 不泄露 Prisma 类型到 domain; 内部 narrow 到 outbox_event.create
- * 形状即可 (任何 Prisma{Client,TransactionClient} 都满足).
+ * Transaction model: caller MUST pass Prisma client / TransactionClient as
+ * `client` 首参, 让 publish 与业务写共享 tx, 业务 rollback 时 outbox 行也撤。
+ * Port 用 `unknown` 不泄露 Prisma 到 domain; 内部 narrow 到 outbox_event.create。
+ *
+ * ClsService 注入用 `@Optional()` — 让 race spec 等无 DI 上下文的测试可
+ * `new OutboxEventPrismaPublisher()` 直接构造, fallback trace_id 路径覆盖。
  */
 type PrismaOutboxClient = {
   outbox_event: {
@@ -22,20 +42,43 @@ type PrismaOutboxClient = {
   };
 };
 
+const DEFAULT_EVENT_VERSION = 1;
+const PRODUCER_CONTEXT = 'auth';
+
 @Injectable()
 export class OutboxEventPrismaPublisher implements OutboxPublisher {
+  constructor(@Optional() private readonly cls?: ClsService) {}
+
   async publish(
     client: unknown,
     eventType: string,
-    payload: Record<string, unknown>,
+    data: Record<string, unknown>,
   ): Promise<void> {
+    const envelope: OutboxEventEnvelope = OutboxEventEnvelopeSchema.parse({
+      metadata: {
+        trace_id: this.resolveTraceId(),
+        occurred_at: new Date().toISOString(),
+        event_version: DEFAULT_EVENT_VERSION,
+        producer_context: PRODUCER_CONTEXT,
+      },
+      data,
+    });
+
     const c = client as PrismaOutboxClient;
     await c.outbox_event.create({
       data: {
         event_type: eventType,
-        payload,
+        payload: envelope,
         published_at: null,
       },
     });
+  }
+
+  private resolveTraceId(): string {
+    const fromCls = this.cls?.getId();
+    if (typeof fromCls === 'string' && fromCls.length > 0) {
+      return fromCls;
+    }
+    return `out-of-request-${randomUUID()}`;
   }
 }
