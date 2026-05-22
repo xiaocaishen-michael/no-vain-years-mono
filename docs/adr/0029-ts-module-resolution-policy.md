@@ -80,4 +80,4 @@ A-002 ship (PR #65/#66/#67) 暴露 `tsconfig.base.json` 用 `moduleResolution: n
 
 - memory `reference_pnpm_C_does_not_propagate_child_cwd` (相关 build tool cwd 不一致问题)
 - PR #67 (`shamefully-hoist` ship 同时 sweep packages/auth `.js` 后缀)
-- https://www.typescriptlang.org/docs/handbook/modules/reference.html#bundler
+- <https://www.typescriptlang.org/docs/handbook/modules/reference.html#bundler>
