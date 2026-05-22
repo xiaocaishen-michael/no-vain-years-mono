@@ -311,3 +311,16 @@ V2 module boundary：`pnpm nx run server:lint` 0 boundaries violation；4 类规
 ---
 
 **Plan Version**: 1.0.0 | **Created**: 2026-05-17 | **Phase 0 Research grounding**: `/nestjs/jwt` + `/connor4312/cockatiel` via context7
+
+<!-- BEGIN auto-generated: performance-budget (from spec.md frontmatter; do not edit) -->
+
+## Performance Budget
+
+| Endpoint | P95 (ms) | P99 (ms) | Timing-defense diff P95 (ms) |
+| --- | ---: | ---: | ---: |
+| `POST /api/v1/phone-sms-auth` | 200 | 500 | 50 |
+| `POST /api/v1/sms-codes` | 150 | 400 | — |
+
+_Edit `perf_budgets:` in spec.md frontmatter to change. Regenerate this block with `pnpm tsx scripts/orchestrator/plan-compiler.ts <spec-dir>`._
+
+<!-- END auto-generated: performance-budget -->
