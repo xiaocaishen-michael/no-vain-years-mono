@@ -4,5 +4,8 @@ node_modules
 
 /src/generated/prisma
 
+# Local-personal seed — per ADR-0035 § 3, each dev maintains their own.
+prisma/seeds/local-personal.ts
+
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
