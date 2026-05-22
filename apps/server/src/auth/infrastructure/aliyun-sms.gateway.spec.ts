@@ -57,25 +57,16 @@ describe('AliyunSmsGateway', () => {
       buildPassThroughRetryMock(),
     );
 
-    await expect(gateway.sendCode(phone, code)).rejects.toThrow(
-      /Aliyun SMS send failed/,
-    );
+    await expect(gateway.sendCode(phone, code)).rejects.toThrow(/Aliyun SMS send failed/);
   });
 
   it('SDK throw → retryExecutor 接到, error propagate', async () => {
     const sendSms = vi.fn().mockRejectedValue(new Error('network timeout'));
     const mockClient = { sendSms } as unknown as Dysmsapi;
     const retryExecutor = buildPassThroughRetryMock();
-    const gateway = new AliyunSmsGateway(
-      mockClient,
-      SIGN_NAME,
-      TEMPLATE_CODE,
-      retryExecutor,
-    );
+    const gateway = new AliyunSmsGateway(mockClient, SIGN_NAME, TEMPLATE_CODE, retryExecutor);
 
-    await expect(gateway.sendCode(phone, code)).rejects.toThrow(
-      'network timeout',
-    );
+    await expect(gateway.sendCode(phone, code)).rejects.toThrow('network timeout');
     expect(retryExecutor.execute).toHaveBeenCalledTimes(1);
   });
 

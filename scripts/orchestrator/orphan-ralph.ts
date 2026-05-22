@@ -1,17 +1,9 @@
 import * as fs from 'node:fs/promises';
 import { z } from 'zod';
 import type { Git } from './git-flow.js';
-import type {
-  LlmClient,
-  LlmInvokeOptions,
-  LlmInvokeResult,
-} from './llm-client.js';
+import type { LlmClient, LlmInvokeOptions, LlmInvokeResult } from './llm-client.js';
 import { parseJson5 } from './parsers/common/json5-cleanse.js';
-import {
-  TaskMetaSchema,
-  type ParsedTask,
-  type TaskFileOp,
-} from './schemas/tasks.js';
+import { TaskMetaSchema, type ParsedTask, type TaskFileOp } from './schemas/tasks.js';
 import { normalizePath } from './drift-classifier.js';
 
 /**
@@ -87,10 +79,7 @@ export interface RunOrphanRalphInput {
    * callers to wire per-round live observability (`onEvent` / `streamStdout`)
    * for UI narration. Mirrors the same hook in `ralph-loop.ts`.
    */
-  prepareRound?: (
-    attemptNumber: number,
-    maxRetries: number,
-  ) => Partial<LlmInvokeOptions>;
+  prepareRound?: (attemptNumber: number, maxRetries: number) => Partial<LlmInvokeOptions>;
 }
 
 export type OrphanRalphTerminalReason =
@@ -135,9 +124,7 @@ export interface OrphanRalphResult {
 // Main entry point
 // ---------------------------------------------------------------------------
 
-export async function runOrphanRalph(
-  input: RunOrphanRalphInput,
-): Promise<OrphanRalphResult> {
+export async function runOrphanRalph(input: RunOrphanRalphInput): Promise<OrphanRalphResult> {
   const max = input.maxRetries ?? 2;
   const history: OrphanRalphHistoryEntry[] = [];
   let declared = input.declared.map(normalizePath);
@@ -153,16 +140,13 @@ export async function runOrphanRalph(
       declared,
       orphans,
       attemptNumber: attempt,
-      previousError:
-        lastEntry?.parseError ?? lastEntry?.semanticError ?? undefined,
+      previousError: lastEntry?.parseError ?? lastEntry?.semanticError ?? undefined,
     });
     const entry: OrphanRalphHistoryEntry = { attemptNumber: attempt, prompt };
     history.push(entry);
 
     let llmResult: LlmInvokeResult;
-    const extraOpts = input.prepareRound
-      ? input.prepareRound(attempt, max)
-      : {};
+    const extraOpts = input.prepareRound ? input.prepareRound(attempt, max) : {};
     try {
       llmResult = await input.llm.invoke(prompt, {
         ...input.llmInvokeOpts,
@@ -262,8 +246,7 @@ export async function runOrphanRalph(
     if (orphans.length === 0) {
       return {
         ok: true,
-        reason:
-          lastResolution === 'revert' ? 'resolved-revert' : 'resolved-expand',
+        reason: lastResolution === 'revert' ? 'resolved-revert' : 'resolved-expand',
         attempts: attempt,
         history,
         finalDeclared: declared,
@@ -348,9 +331,7 @@ interface ApplyExpandResult {
  * re-validate via Zod, and persist. Throws on any failure (caller's
  * try/catch turns it into a ralph retry).
  */
-export async function applyExpand(
-  input: ApplyExpandInput,
-): Promise<ApplyExpandResult> {
+export async function applyExpand(input: ApplyExpandInput): Promise<ApplyExpandResult> {
   const content = await fs.readFile(input.tasksMdPath, 'utf-8');
 
   // Same anchored regex as the parser, but per-task so we only touch this
@@ -393,9 +374,7 @@ export async function applyExpand(
 function declaredOf(files: ReadonlyArray<TaskFileOp>): string[] {
   return files
     .filter((f) => f.op !== 'delete')
-    .map((f) =>
-      f.op === 'rename' && f.rename_to ? f.rename_to : f.path,
-    )
+    .map((f) => (f.op === 'rename' && f.rename_to ? f.rename_to : f.path))
     .map(normalizePath);
 }
 
@@ -442,16 +421,12 @@ export function buildOrphanRalphPrompt(input: PromptInput): string {
     '    {"action":"expand","files":["packages/foo/src/gen/a.ts","packages/foo/src/gen/b.ts"],"rationale":"openapi-ts emitted these alongside the declared barrel"}',
   );
   lines.push('');
-  lines.push(
-    '(B) Revert — orphans are hallucinations or unwanted side effects; discard them:',
-  );
+  lines.push('(B) Revert — orphans are hallucinations or unwanted side effects; discard them:');
   lines.push(
     '    {"action":"revert","files":["apps/server/src/wrong-file.ts"],"rationale":"unrelated edit, undo"}',
   );
   lines.push('');
-  lines.push(
-    '(C) Stuck — you cannot decide and need a human (halts the entire feature run):',
-  );
+  lines.push('(C) Stuck — you cannot decide and need a human (halts the entire feature run):');
   lines.push('    {"action":"stuck","reason":"<one short sentence>"}');
   lines.push('');
   lines.push('Constraints:');
@@ -463,8 +438,6 @@ export function buildOrphanRalphPrompt(input: PromptInput): string {
       input.attemptNumber +
       '. You have a small retry budget; choose carefully.',
   );
-  lines.push(
-    '- DO NOT edit code in this turn. Only the JSON intent is read by the orchestrator.',
-  );
+  lines.push('- DO NOT edit code in this turn. Only the JSON intent is read by the orchestrator.');
   return lines.join('\n');
 }

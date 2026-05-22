@@ -48,9 +48,39 @@ describe('Account aggregate', () => {
   });
 
   it('isActive() / isFrozen() / isAnonymized() reflect status enum', () => {
-    expect(Account.fromPrisma({ id: 1n, phone: '+8613800138000', status: 'ACTIVE', created_at: new Date(), last_login_at: null, freeze_until: null, display_name: null }).isActive()).toBe(true);
-    expect(Account.fromPrisma({ id: 1n, phone: '+8613800138000', status: 'FROZEN', created_at: new Date(), last_login_at: null, freeze_until: null, display_name: null }).isFrozen()).toBe(true);
-    expect(Account.fromPrisma({ id: 1n, phone: '+8613800138000', status: 'ANONYMIZED', created_at: new Date(), last_login_at: null, freeze_until: null, display_name: null }).isAnonymized()).toBe(true);
+    expect(
+      Account.fromPrisma({
+        id: 1n,
+        phone: '+8613800138000',
+        status: 'ACTIVE',
+        created_at: new Date(),
+        last_login_at: null,
+        freeze_until: null,
+        display_name: null,
+      }).isActive(),
+    ).toBe(true);
+    expect(
+      Account.fromPrisma({
+        id: 1n,
+        phone: '+8613800138000',
+        status: 'FROZEN',
+        created_at: new Date(),
+        last_login_at: null,
+        freeze_until: null,
+        display_name: null,
+      }).isFrozen(),
+    ).toBe(true);
+    expect(
+      Account.fromPrisma({
+        id: 1n,
+        phone: '+8613800138000',
+        status: 'ANONYMIZED',
+        created_at: new Date(),
+        last_login_at: null,
+        freeze_until: null,
+        display_name: null,
+      }).isAnonymized(),
+    ).toBe(true);
   });
 
   describe('changeDisplayName()', () => {
@@ -64,8 +94,12 @@ describe('Account aggregate', () => {
 
     it('overwrites an existing displayName', () => {
       const account = Account.fromPrisma({
-        id: 1n, phone: '+8613800138000', status: 'ACTIVE',
-        created_at: new Date(), last_login_at: null, freeze_until: null,
+        id: 1n,
+        phone: '+8613800138000',
+        status: 'ACTIVE',
+        created_at: new Date(),
+        last_login_at: null,
+        freeze_until: null,
         display_name: 'OldName',
       });
       const next = DisplayName.create('NewName');
@@ -94,8 +128,12 @@ describe('Account aggregate', () => {
   describe('fromPrisma() — display_name column', () => {
     it('hydrates non-null display_name into DisplayName VO', () => {
       const account = Account.fromPrisma({
-        id: 1n, phone: '+8613800138000', status: 'ACTIVE',
-        created_at: new Date(), last_login_at: null, freeze_until: null,
+        id: 1n,
+        phone: '+8613800138000',
+        status: 'ACTIVE',
+        created_at: new Date(),
+        last_login_at: null,
+        freeze_until: null,
         display_name: '不虚此生',
       });
       expect(account.displayName).not.toBeNull();
@@ -104,8 +142,12 @@ describe('Account aggregate', () => {
 
     it('keeps displayName null when db column is null (FR-007 invariant)', () => {
       const account = Account.fromPrisma({
-        id: 1n, phone: '+8613800138000', status: 'ACTIVE',
-        created_at: new Date(), last_login_at: null, freeze_until: null,
+        id: 1n,
+        phone: '+8613800138000',
+        status: 'ACTIVE',
+        created_at: new Date(),
+        last_login_at: null,
+        freeze_until: null,
         display_name: null,
       });
       expect(account.displayName).toBeNull();

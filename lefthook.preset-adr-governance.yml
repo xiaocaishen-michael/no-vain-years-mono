@@ -6,7 +6,7 @@ pre-commit:
   commands:
     adr-frontmatter-check:
       tags: adr governance
-      glob: "docs/adr/*.md"
+      glob: 'docs/adr/*.md'
       # Why this hook (per adr-governance preset / mono ADR-0031):
       #   ADR frontmatter is SSOT for ADR lifecycle (status / applies_to /
       #   sunset_trigger) — enables programmatic filtering by orchestrator and

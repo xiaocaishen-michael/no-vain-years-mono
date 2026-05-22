@@ -1,16 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import {
-  RedisContainer,
-  type StartedRedisContainer,
-} from '@testcontainers/redis';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
@@ -49,10 +40,8 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
 
     process.env.DATABASE_URL = pgContainer.getConnectionUri();
     process.env.REDIS_URL = redisContainer.getConnectionUrl();
-    process.env.AUTH_JWT_SECRET =
-      'us3-e2e-test-jwt-secret-min-32-bytes-pad-abc';
-    process.env.SMS_CODE_HMAC_SECRET =
-      'us3-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
+    process.env.AUTH_JWT_SECRET = 'us3-e2e-test-jwt-secret-min-32-bytes-pad-abc';
+    process.env.SMS_CODE_HMAC_SECRET = 'us3-e2e-hmac-secret-min-32-bytes-pad-zzzzzz';
 
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       cwd: SERVER_DIR,
@@ -64,9 +53,7 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleRef.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-    );
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     app.setGlobalPrefix('api');
     await app.init();
@@ -82,9 +69,10 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
     await redisContainer?.stop();
   });
 
-  const stripVolatile = (
-    res: { headers: Record<string, unknown>; body: string },
-  ): { status: number; bodyKeys: string[]; ct: unknown } => ({
+  const stripVolatile = (res: {
+    headers: Record<string, unknown>;
+    body: string;
+  }): { status: number; bodyKeys: string[]; ct: unknown } => ({
     status: 0, // overwritten by caller
     bodyKeys: Object.keys(JSON.parse(res.body) ?? {}).sort(),
     ct: res.headers['content-type'],
@@ -223,8 +211,6 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
     expect(res403.statusCode).toBe(403);
     const body401 = res401.json() as Record<string, unknown>;
     const body403 = res403.json() as Record<string, unknown>;
-    expect(Object.keys(body401).sort()).not.toEqual(
-      Object.keys(body403).sort(),
-    );
+    expect(Object.keys(body401).sort()).not.toEqual(Object.keys(body403).sort());
   });
 });

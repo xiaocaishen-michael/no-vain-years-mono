@@ -24,9 +24,7 @@
 // account/application/update-display-name.usecase.ts
 @Injectable()
 export class UpdateDisplayNameUseCase {
-  constructor(
-    @Inject(ACCOUNT_REPOSITORY) private readonly repo: AccountRepository,
-  ) {}
+  constructor(@Inject(ACCOUNT_REPOSITORY) private readonly repo: AccountRepository) {}
   // 调 same-context AccountRepository, R1, 无注释
 }
 ```
@@ -75,15 +73,15 @@ await this.prisma.$transaction(async (tx) => {
 
 新 use case 起手 `/speckit-specify` 或 `/speckit-plan` 之前跑一遍：
 
-| # | Question | Yes → | No → |
-|---|---|---|---|
-| **Q1** | 本 use case 直接改某 aggregate root 的 state？（e.g. `account.phone` / `credential.password_hash`） | **放该 aggregate 所在 context** （account / security / auth domain object 的归属决定 context） | Q2 |
-| **Q2** | 本 use case 是编排多 context 共同完成 user-facing 业务流程？（e.g. login = verify code + create-or-get account + issue tokens） | **放 `auth/` 编排层** ；内部跨 context call 按 Q5-Q7 区分 R2/R3 | Q3 |
-| **Q3** | 本 use case 是纯 platform infra（token issue / pwd hash / 通用 crypto / generic event bus）？ | **放 `security/`**（per ADR-0041） | Q4 |
-| **Q4** | 本 use case 引入完全新业务领域，3 现 context 都不沾（e.g. notification / pkm / search / 实名认证）？ | **STOP — 走 [ADR-0032](../adr/0032-backend-bounded-context.md) sunset trigger 评估新 bounded context**，触发条件含 spec User Scenarios 行数 ≥ 阈值 / 跨已有 module 边界数 ≥ 2 | Q5 |
-| **Q5** *(只在跨 ctx call 时问)* | callee 失败必须 rollback caller？（事务一致性强需求） | **R2 CROSS-CTX-SYNC**：同 tx + `// CROSS-CONTEXT-SYNC: <reason>` 注释 | Q6 |
-| **Q6** *(只在跨 ctx call 时问)* | 调用是 side-effect notification（audit / SMS push / search reindex / 撤 session / ...）？ | **R3 CROSS-CTX-ASYNC**：Outbox publish + `// CROSS-CONTEXT-ASYNC: <event-type>` 注释 | Q7 |
-| **Q7** *(只在跨 ctx 读时问)* | caller 需要**读** callee 的 aggregate state（不是改）？ | **A. 优先**：调 caller 自己的 context 已 sync 进来的本地副本（典型 = Outbox event replay 维护的物化视图）<br>**B. 临时**：通过 `SecurityModule` export 的共享读服务（如 `PrismaService` 直查 callee table — 但仅限**只读** + 在 catalog 标记 `// CROSS-CONTEXT-READ:`）<br>**C. 禁**：cross-context use case / repository 直 `@Inject()` | （回 Q5 — 跨 ctx call 必走 sync or async 之一） |
+| #                               | Question                                                                                                                        | Yes →                                                                                                                                                                                                                                                                                                                                    | No →                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **Q1**                          | 本 use case 直接改某 aggregate root 的 state？（e.g. `account.phone` / `credential.password_hash`）                             | **放该 aggregate 所在 context** （account / security / auth domain object 的归属决定 context）                                                                                                                                                                                                                                           | Q2                                              |
+| **Q2**                          | 本 use case 是编排多 context 共同完成 user-facing 业务流程？（e.g. login = verify code + create-or-get account + issue tokens） | **放 `auth/` 编排层** ；内部跨 context call 按 Q5-Q7 区分 R2/R3                                                                                                                                                                                                                                                                          | Q3                                              |
+| **Q3**                          | 本 use case 是纯 platform infra（token issue / pwd hash / 通用 crypto / generic event bus）？                                   | **放 `security/`**（per ADR-0041）                                                                                                                                                                                                                                                                                                       | Q4                                              |
+| **Q4**                          | 本 use case 引入完全新业务领域，3 现 context 都不沾（e.g. notification / pkm / search / 实名认证）？                            | **STOP — 走 [ADR-0032](../adr/0032-backend-bounded-context.md) sunset trigger 评估新 bounded context**，触发条件含 spec User Scenarios 行数 ≥ 阈值 / 跨已有 module 边界数 ≥ 2                                                                                                                                                            | Q5                                              |
+| **Q5** _(只在跨 ctx call 时问)_ | callee 失败必须 rollback caller？（事务一致性强需求）                                                                           | **R2 CROSS-CTX-SYNC**：同 tx + `// CROSS-CONTEXT-SYNC: <reason>` 注释                                                                                                                                                                                                                                                                    | Q6                                              |
+| **Q6** _(只在跨 ctx call 时问)_ | 调用是 side-effect notification（audit / SMS push / search reindex / 撤 session / ...）？                                       | **R3 CROSS-CTX-ASYNC**：Outbox publish + `// CROSS-CONTEXT-ASYNC: <event-type>` 注释                                                                                                                                                                                                                                                     | Q7                                              |
+| **Q7** _(只在跨 ctx 读时问)_    | caller 需要**读** callee 的 aggregate state（不是改）？                                                                         | **A. 优先**：调 caller 自己的 context 已 sync 进来的本地副本（典型 = Outbox event replay 维护的物化视图）<br>**B. 临时**：通过 `SecurityModule` export 的共享读服务（如 `PrismaService` 直查 callee table — 但仅限**只读** + 在 catalog 标记 `// CROSS-CONTEXT-READ:`）<br>**C. 禁**：cross-context use case / repository 直 `@Inject()` | （回 Q5 — 跨 ctx call 必走 sync or async 之一） |
 
 ### 决策树死角
 
@@ -94,22 +92,22 @@ await this.prisma.$transaction(async (tx) => {
 
 ### 已实装（截至 2026-05-22）
 
-| Operation | Context | Side effects / Propagation | Source PR |
-|---|---|---|---|
-| `request-sms-code` | auth | (intra; sms gateway external infra; no cross-context) | PR #7 (Plan 1 W2.4) |
-| `phone-sms-auth` | auth | **R2** → `account.autoCreate-or-get` (同 tx); **R2** → `security.issueTokens`; **R3** → outbox publish `auth.account.created` | PR #7 |
-| `get-account-profile` | account | (intra; read-only) | PR #65 (A-002) |
-| `update-display-name` | account | (intra; write Account.display_name) | PR #65 |
+| Operation             | Context | Side effects / Propagation                                                                                                    | Source PR           |
+| --------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `request-sms-code`    | auth    | (intra; sms gateway external infra; no cross-context)                                                                         | PR #7 (Plan 1 W2.4) |
+| `phone-sms-auth`      | auth    | **R2** → `account.autoCreate-or-get` (同 tx); **R2** → `security.issueTokens`; **R3** → outbox publish `auth.account.created` | PR #7               |
+| `get-account-profile` | account | (intra; read-only)                                                                                                            | PR #65 (A-002)      |
+| `update-display-name` | account | (intra; write Account.display_name)                                                                                           | PR #65              |
 
 ### Plan 2 anticipated（示例，非实装承诺）
 
-| Operation | Context | Predicted Propagation |
-|---|---|---|
-| `change-phone` | account | **R3** → `account.phone-changed`（→ security 撤旧 session + audit 留痕） |
-| `freeze-account` | account | **R3** → `account.frozen`（→ security 撤 session + audit） |
-| `refresh-token` | auth | **R2** → `security.rotate-refresh-token`（rotation 失败必须 rollback） |
-| `verify-realname` | account | **R3** → `account.realname-verified`（→ notification 发成功短信 + audit） |
-| `create-note` | **新 context** `pkm/` | Q4 → 触发新 bounded context 评估 |
+| Operation         | Context               | Predicted Propagation                                                     |
+| ----------------- | --------------------- | ------------------------------------------------------------------------- |
+| `change-phone`    | account               | **R3** → `account.phone-changed`（→ security 撤旧 session + audit 留痕）  |
+| `freeze-account`  | account               | **R3** → `account.frozen`（→ security 撤 session + audit）                |
+| `refresh-token`   | auth                  | **R2** → `security.rotate-refresh-token`（rotation 失败必须 rollback）    |
+| `verify-realname` | account               | **R3** → `account.realname-verified`（→ notification 发成功短信 + audit） |
+| `create-note`     | **新 context** `pkm/` | Q4 → 触发新 bounded context 评估                                          |
 
 Anticipated 条目当 spec 启动时迁入「已实装」表，并按真实实装路径校正 propagation。
 

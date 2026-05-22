@@ -85,8 +85,7 @@ export class SpecAnalyzer {
   private extractUserStories(body: string): UserStory[] {
     // Heading `### User Story N — title (Priority: PX)` followed (possibly after blanks)
     // by `<!-- us-meta: {...} -->`.
-    const regex =
-      /^###\s+User Story[^\n]*?\n+\s*<!--\s*us-meta:\s*([\s\S]*?)\s*-->/gm;
+    const regex = /^###\s+User Story[^\n]*?\n+\s*<!--\s*us-meta:\s*([\s\S]*?)\s*-->/gm;
     const out: UserStory[] = [];
     let m: RegExpExecArray | null;
     while ((m = regex.exec(body)) !== null) {
@@ -104,8 +103,7 @@ export class SpecAnalyzer {
 
   private extractFunctionalRequirements(body: string): FunctionalRequirement[] {
     // Line shape: `- **FR-NNN**: text <!-- fr-meta: {...} -->`
-    const regex =
-      /^-\s+\*\*FR-\d{3}\*\*:\s*([\s\S]*?)\s*<!--\s*fr-meta:\s*([\s\S]*?)\s*-->/gm;
+    const regex = /^-\s+\*\*FR-\d{3}\*\*:\s*([\s\S]*?)\s*<!--\s*fr-meta:\s*([\s\S]*?)\s*-->/gm;
     const out: FunctionalRequirement[] = [];
     let m: RegExpExecArray | null;
     while ((m = regex.exec(body)) !== null) {

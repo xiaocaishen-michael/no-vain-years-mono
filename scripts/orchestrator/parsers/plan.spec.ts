@@ -20,14 +20,10 @@ describe('PlanAnalyzer', () => {
 
     expect(result.config.workspaces).toHaveLength(3);
     const server = result.config.workspaces.find((w) => w.id === 'server-app');
-    expect(server?.verify_commands.test).toBe(
-      'pnpm nx test server --watch=false',
-    );
+    expect(server?.verify_commands.test).toBe('pnpm nx test server --watch=false');
     expect(server?.verify_commands.e2e).toBe('pnpm nx run server:e2e');
 
-    expect(result.config.module_boundaries['server-app'].modules).toEqual([
-      'account',
-    ]);
+    expect(result.config.module_boundaries['server-app'].modules).toEqual(['account']);
 
     expect(result.contracts.endpoints).toHaveLength(2);
     expect(result.contracts.endpoints[0].id).toBe('EP1');
@@ -38,10 +34,7 @@ describe('PlanAnalyzer', () => {
   });
 
   it('rejects frontmatter feature_id with wrong format', () => {
-    const bad = happy.replace(
-      'feature_id: 002-account-profile-base',
-      'feature_id: ProfileBase',
-    );
+    const bad = happy.replace('feature_id: 002-account-profile-base', 'feature_id: ProfileBase');
     expect(() => analyzer.parseContent(bad)).toThrowError(/feature_id/);
   });
 
@@ -57,9 +50,7 @@ describe('PlanAnalyzer', () => {
       /"passed": true,\s*\n\s*"violations": \[\]/,
       '"passed": false,\n  "violations": [{"rule_id":"no-circular-deps","justification":"none"}]',
     );
-    expect(() => analyzer.parseContent(bad)).toThrowError(
-      ConstitutionViolationError,
-    );
+    expect(() => analyzer.parseContent(bad)).toThrowError(ConstitutionViolationError);
   });
 
   it('rejects endpoint with empty trace_fr (Zod min(1))', () => {
@@ -92,10 +83,7 @@ describe('PlanAnalyzer', () => {
   });
 
   it('rejects response_schema_ref with malformed expression', () => {
-    const bad = happy.replace(
-      '"response_schema_ref": "E1"',
-      '"response_schema_ref": "Account"',
-    );
+    const bad = happy.replace('"response_schema_ref": "E1"', '"response_schema_ref": "Account"');
     expect(() => analyzer.parseContent(bad)).toThrowError(/response_schema_ref/);
   });
 });

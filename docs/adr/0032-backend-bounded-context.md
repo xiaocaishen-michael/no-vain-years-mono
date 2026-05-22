@@ -10,9 +10,9 @@ sunset_trigger: |
 
 # ADR-0032: Backend Bounded Context Split — security + account + auth
 
-* Status: Accepted (2026-05-21) — shipped via PR-4 (server bounded context split)
-* Deciders: project owner
-* Tags: backend / architecture / ddd / cross-cutting
+- Status: Accepted (2026-05-21) — shipped via PR-4 (server bounded context split)
+- Deciders: project owner
+- Tags: backend / architecture / ddd / cross-cutting
 
 > **PR-4 实装注**: `security` 收纳范围扩展为 platform infra base layer (JWT + PrismaService + Redis client + 通用 error DTO),不只 JWT。`JwtAuthGuard` 实际验 token + Account.isActive() (hybrid),物理位置归 `account/web/` 而非 `security/`(per implementation discovery during PR-4)。Hexagonal layer (domain/application/infrastructure/web) ESLint rules 暂退,PR-7 doc 收口时按 module × layer = 12 elements 重写; PR-4 期 boundaries 仅 module-level (security ← account ← auth 单向)。
 
@@ -20,9 +20,9 @@ sunset_trigger: |
 
 A-002 (account profile) ship 后,`apps/server/src/auth/` module 同时承载:
 
-* JWT issuance / verification / refresh (security 关注点)
-* phone-sms-auth use case (auth 关注点)
-* GetProfile / UpdateDisplayName (account 关注点)
+- JWT issuance / verification / refresh (security 关注点)
+- phone-sms-auth use case (auth 关注点)
+- GetProfile / UpdateDisplayName (account 关注点)
 
 LLM agent 加新 use case (e.g. "加 changePhone")时错向放在 `auth/`,因为现有 module 长这样。但 changePhone 本质是 **account** 操作 (改 account 实体的 phone),应该独立物理位置。
 
@@ -38,10 +38,10 @@ LLM agent 加新 use case (e.g. "加 changePhone")时错向放在 `auth/`,因为
 
 ### 1. `src/security/`
 
-* JWT 签发 / 验证 / refresh rotation (per [ADR-0037](0037-security-credentials-governance.md))
-* Guard / Strategy (Passport-jwt wrap)
-* token revocation (Redis jti whitelist)
-* **不依赖** account / auth
+- JWT 签发 / 验证 / refresh rotation (per [ADR-0037](0037-security-credentials-governance.md))
+- Guard / Strategy (Passport-jwt wrap)
+- token revocation (Redis jti whitelist)
+- **不依赖** account / auth
 
 ```
 src/security/
@@ -54,9 +54,9 @@ src/security/
 
 ### 2. `src/account/`
 
-* Account 实体 + Repository
-* GetProfile / UpdateDisplayName / auto-create use cases
-* **依赖** security (验 JWT) — 但通过 SecurityModule 公开 guard,不直接 import 内部
+- Account 实体 + Repository
+- GetProfile / UpdateDisplayName / auto-create use cases
+- **依赖** security (验 JWT) — 但通过 SecurityModule 公开 guard,不直接 import 内部
 
 ```
 src/account/
@@ -72,10 +72,10 @@ src/account/
 
 ### 3. `src/auth/`
 
-* phone-sms-auth use case (编排 security + account)
-* SMS code domain (SmsCodeRepository / verify)
-* refresh-token use case (per ADR-0037)
-* **依赖** security + account (编排,组合两者)
+- phone-sms-auth use case (编排 security + account)
+- SMS code domain (SmsCodeRepository / verify)
+- refresh-token use case (per ADR-0037)
+- **依赖** security + account (编排,组合两者)
 
 ```
 src/auth/
@@ -95,8 +95,8 @@ auth → security
 
 禁:
 
-* `account → auth`(反向依赖)
-* `security → account / auth`(security 不知业务)
+- `account → auth`(反向依赖)
+- `security → account / auth`(security 不知业务)
 
 ### eslint.config.mjs amend
 
@@ -117,18 +117,18 @@ auth → security
 
 ## Consequences
 
-* PR-4 (Server bounded context split) 物理 mv ~13 文件 src/auth → src/account
-* 001 + 002 spec.md modules 字段调整:`modules: [auth]` → 按主导方;account-profile spec → `modules: [account]`;phone-sms-auth spec → `modules: [auth, security, account]`(编排型 use case)
-* test/integration/* import 改
+- PR-4 (Server bounded context split) 物理 mv ~13 文件 src/auth → src/account
+- 001 + 002 spec.md modules 字段调整:`modules: [auth]` → 按主导方;account-profile spec → `modules: [account]`;phone-sms-auth spec → `modules: [auth, security, account]`(编排型 use case)
+- test/integration/\* import 改
 
 ## Trade-offs
 
-* 3 context 物理拆分 = 早期 over-engineering 风险 — 但 LLM agent 命中率收益 > 该成本(已实证 A-002 错向)
-* 编排型 use case (auth) 引入跨 context import — 由 ESLint boundaries 单向白名单 contained
+- 3 context 物理拆分 = 早期 over-engineering 风险 — 但 LLM agent 命中率收益 > 该成本(已实证 A-002 错向)
+- 编排型 use case (auth) 引入跨 context import — 由 ESLint boundaries 单向白名单 contained
 
 ## References
 
-* memory `project_plan_pivot_nestjs_mono` (Plan 1 NestJS module 边界设计起源)
-* [ADR-0020](0020-module-boundary-nestjs.md) (现有 ESLint boundaries 机制)
-* [ADR-0033](0033-outbox-cross-context-comm.md) (cross-context async 路径)
-* [ADR-0034](0034-auth-account-operation-catalog.md) (LLM decision tree 写在哪)
+- memory `project_plan_pivot_nestjs_mono` (Plan 1 NestJS module 边界设计起源)
+- [ADR-0020](0020-module-boundary-nestjs.md) (现有 ESLint boundaries 机制)
+- [ADR-0033](0033-outbox-cross-context-comm.md) (cross-context async 路径)
+- [ADR-0034](0034-auth-account-operation-catalog.md) (LLM decision tree 写在哪)

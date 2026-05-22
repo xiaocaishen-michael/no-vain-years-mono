@@ -1,34 +1,34 @@
 ---
 feature_id: 001-phone-sms-auth
 modules: [auth, security, account]
-owners: ["@xiaocaishen-michael"]
+owners: ['@xiaocaishen-michael']
 status: implemented
-created_at: "2026-05-04"
-updated_at: "2026-05-17"
-spec_kit_version: ">=0.8.5,<0.10.0"
-orchestrator_compat: ">=0.2.0"
+created_at: '2026-05-04'
+updated_at: '2026-05-17'
+spec_kit_version: '>=0.8.5,<0.10.0'
+orchestrator_compat: '>=0.2.0'
 
 # v2 frontmatter fields (per mono-orchestrator-ready 0.2.0 + ADR-0024 amend + ADR-0039)
 web_compat: untested
-web_compat_notes: "phone-sms-auth use case 仅 server impl,mobile/Web 客户端落地 Plan 2 Phase 2 W4+;Expo Web export 路径未走过"
+web_compat_notes: 'phone-sms-auth use case 仅 server impl,mobile/Web 客户端落地 Plan 2 Phase 2 W4+;Expo Web export 路径未走过'
 agent_friction_observed: true
-agent_friction_notes: "F-002 Typecheck-Boot-Gap (nx run server:test pass 但 boot 需 Prisma+Redis Testcontainers); F-006 Indirect-Spec-Module-Mapping (本 spec 实证横跨 auth/security/account 3 context,modules 字段必显式 list, per ADR-0032 物理拆 + ADR-0034 operation catalog 缓解)"
+agent_friction_notes: 'F-002 Typecheck-Boot-Gap (nx run server:test pass 但 boot 需 Prisma+Redis Testcontainers); F-006 Indirect-Spec-Module-Mapping (本 spec 实证横跨 auth/security/account 3 context,modules 字段必显式 list, per ADR-0032 物理拆 + ADR-0034 operation catalog 缓解)'
 perf_budgets:
-  - endpoint: "POST /api/v1/phone-sms-auth"
+  - endpoint: 'POST /api/v1/phone-sms-auth'
     p95_ms: 200
     p99_ms: 500
     timing_defense:
       diff_p95_ms: 50
-  - endpoint: "POST /api/v1/sms-codes"
+  - endpoint: 'POST /api/v1/sms-codes'
     p95_ms: 150
     p99_ms: 400
 
 state_branches:
-  - "registered user: correct SMS code → token issued, last_login_at updated"
-  - "unregistered user: correct SMS code → account auto-created ACTIVE, token issued"
-  - "FROZEN/ANONYMIZED account with correct code → 401 INVALID_CREDENTIALS, byte-identical to code-error"
-  - "any user: SMS code expired (>5min) → 401 INVALID_CREDENTIALS"
-  - "concurrent phone-sms-auth requests same unregistered number → single Account created (idempotent)"
+  - 'registered user: correct SMS code → token issued, last_login_at updated'
+  - 'unregistered user: correct SMS code → account auto-created ACTIVE, token issued'
+  - 'FROZEN/ANONYMIZED account with correct code → 401 INVALID_CREDENTIALS, byte-identical to code-error'
+  - 'any user: SMS code expired (>5min) → 401 INVALID_CREDENTIALS'
+  - 'concurrent phone-sms-auth requests same unregistered number → single Account created (idempotent)'
 ---
 
 # Feature Specification: Phone SMS Auth (unified login/register)
@@ -47,7 +47,7 @@ state_branches:
 >
 > **W2 焦点 server**：implement 阶段（W2.4）仅 server domain + application + infrastructure 层；client 段属 W4+ mobile use case scope，不在本 W2 implement 内消费。
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - 主流程：已注册用户登录（Priority: P1）
 
@@ -156,7 +156,7 @@ state_branches:
 - **Token 签发失败**：JWT 签名异常 → 返回 `INTERNAL_SERVER_ERROR`（HTTP 500），未更新 last_login_at / 未创建 Account（事务回滚）；客户端可重新走 auth 流程
 - **并发同号自动注册**：DB unique constraint on `account.phone` + 串行化事务（Prisma `$transaction` with `isolationLevel: 'Serializable'`）保证仅创建 1 个 Account；duplicated insert 落错处理为"作为已注册路径处理"（fallback to login）
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Server Requirements (FR-S01 ~ FR-S12)
 
@@ -196,23 +196,23 @@ state_branches:
 
 ### Client (App-side) Requirements (FR-C01 ~ FR-C15)
 
-| ID     | 需求                                                                                                                                                                                                                                                                                                                                                           |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-C01 | 单 form 容器（**无 tab**，无密码 / SMS 切换）；用户操作路径单一：phone → SMS code → submit                                                                                                                                                                                                                                                                     |
-| FR-C02 | 手机号格式校验：客户端用 zod regex `/^\+861[3-9]\d{9}$/`；不合法 form invalid，submit 按钮 disabled；不区分大小写空格（trim 处理）                                                                                                                                                                                                                             |
-| FR-C03 | submit 调 `@nvy/auth.phoneSmsAuth(phone, code)`（已落地于 PR #50 过渡 → PR #54 切到真 `getAccountAuthApi().phoneSmsAuth()`，替换既有 `loginByPassword` / `loginByPhoneSms`）；server 自动判 login/register（per FR-S05）                                                                                                                                       |
-| FR-C04 | SMS 触发：调 `@nvy/api-client.AccountSmsCodeApi.requestSmsCode({phone})` （**无 purpose 字段**，per FR-S04）；60s 倒计时锁按钮防重复点击                                                                                                                                                                                                                       |
-| FR-C05 | submit 成功后：`@nvy/auth.phoneSmsAuth` 内部调 `store.setSession({accountId, accessToken, refreshToken})`；`AuthGate` (apps/native/app/\_layout.tsx) 监听 `isAuthenticated` 自动 `router.replace('/(app)/')`。Hook **不直调** router                                                                                                                           |
-| FR-C06 | 错误统一映射（per `mapApiError` util，已含 `FetchError` 检查 per PR #48 修复）：401 → "手机号或验证码错误"；429 → "请求过于频繁，请稍后再试"；FetchError / TypeError / 5xx → "网络异常，请检查网络后重试"；未知错 → "登录失败，请稍后再试"；**不区分 401 子码**（server 单接口 4 分支字节级一致，client 仅看 401 状态）                                          |
-| FR-C07 | 三方 OAuth 圆形按钮 placeholder：press 弹 toast "<provider> 登录 - Coming in M1.3"；不调任何后端：<br>- 微信（绿色）：iOS / Android / Web 全平台渲染<br>- Google（多彩 G）：iOS / Android / Web 全平台渲染<br>- Apple（黑色苹果）：**iOS only**（`Platform.OS === 'ios'` 条件，per ADR-0016 决策 4）                                                            |
-| FR-C08 | 顶部 close `×` 按钮（per mockup v2，2026-05-04 落地）：press 时 router.back（如有 history） / 否则 noop。**原 "立即体验" 游客模式占位已废**（mockup 落地反向修订；游客模式 M2 评估时再决定 UI 入口位置）                                                                                                                                                       |
-| FR-C09 | 底部 "登录遇到问题" placeholder：press 弹 toast "帮助中心 - Coming in M1.3"；不调后端                                                                                                                                                                                                                                                                          |
-| FR-C10 | SMS "获取验证码" 按钮：成功 / 失败均不区分 toast（成功静默 + 60s 倒计时；失败也只 toast 通用错，**不暴露**"未注册"或"已注册"信号）                                                                                                                                                                                                                             |
-| FR-C11 | 状态机 5 态 idle / requesting_sms / sms_sent / submitting / (success \| error)；submitting 期间 submit 按钮 disabled + loading 视觉；success 短动画 ≤ 800ms（绿色对勾 reanimated scale-in）后 AuthGate 接管切走；error 展示 errorToast；error 状态下任意 input change 清空 errorToast 回 idle                                                                  |
-| FR-C12 | 401 → refresh：本页已 mount AuthGate（PR #48），未登录态进 `/(app)/*` 自动跳 `/(auth)/login`；access token 过期场景由 `@nvy/api-client.client` 拦截器透明 refresh，不在本 spec 责任范围                                                                                                                                                                        |
-| FR-C13 | a11y：所有交互 component（input / submit / OAuth / close × / 登录遇到问题 / 获取验证码）必有 `accessibilityLabel`；submit 按钮 disabled 时 `accessibilityState.disabled = true`；错误 toast 使用 `accessibilityLiveRegion='polite'`（Android）/ `accessibilityRole='alert'`（iOS / Web）                                                                       |
-| FR-C14 | **删除既有逻辑**：双 tab（password / sms 切换） / `<PasswordField>` 渲染 / `loginPasswordSchema` zod / `loginByPassword` use case 调用 / "忘记密码"链接 / "创建一个"footer 链接 / 跳 register 路由 — 全部废弃（已于 PR #50 一并清理）                                                                                                                          |
-| FR-C15 | `errorScope` 双场景（per mockup v2 设计）：hook (`useLoginForm`) 维护 `errorScope: 'sms' \| 'submit' \| null` 字段；`requestSms` 抛错时 setErrorScope('sms')，`submit` 抛错时 setErrorScope('submit')；UI 据此决定哪个 input 标红边框 + ErrorRow 在哪一栏下方渲染（PhoneInput 旁还是 SmsInput 旁）；clearError / 任意 input change → setErrorScope(null)       |
+| ID     | 需求                                                                                                                                                                                                                                                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-C01 | 单 form 容器（**无 tab**，无密码 / SMS 切换）；用户操作路径单一：phone → SMS code → submit                                                                                                                                                                                                                                                               |
+| FR-C02 | 手机号格式校验：客户端用 zod regex `/^\+861[3-9]\d{9}$/`；不合法 form invalid，submit 按钮 disabled；不区分大小写空格（trim 处理）                                                                                                                                                                                                                       |
+| FR-C03 | submit 调 `@nvy/auth.phoneSmsAuth(phone, code)`（已落地于 PR #50 过渡 → PR #54 切到真 `getAccountAuthApi().phoneSmsAuth()`，替换既有 `loginByPassword` / `loginByPhoneSms`）；server 自动判 login/register（per FR-S05）                                                                                                                                 |
+| FR-C04 | SMS 触发：调 `@nvy/api-client.AccountSmsCodeApi.requestSmsCode({phone})` （**无 purpose 字段**，per FR-S04）；60s 倒计时锁按钮防重复点击                                                                                                                                                                                                                 |
+| FR-C05 | submit 成功后：`@nvy/auth.phoneSmsAuth` 内部调 `store.setSession({accountId, accessToken, refreshToken})`；`AuthGate` (apps/native/app/\_layout.tsx) 监听 `isAuthenticated` 自动 `router.replace('/(app)/')`。Hook **不直调** router                                                                                                                     |
+| FR-C06 | 错误统一映射（per `mapApiError` util，已含 `FetchError` 检查 per PR #48 修复）：401 → "手机号或验证码错误"；429 → "请求过于频繁，请稍后再试"；FetchError / TypeError / 5xx → "网络异常，请检查网络后重试"；未知错 → "登录失败，请稍后再试"；**不区分 401 子码**（server 单接口 4 分支字节级一致，client 仅看 401 状态）                                  |
+| FR-C07 | 三方 OAuth 圆形按钮 placeholder：press 弹 toast "<provider> 登录 - Coming in M1.3"；不调任何后端：<br>- 微信（绿色）：iOS / Android / Web 全平台渲染<br>- Google（多彩 G）：iOS / Android / Web 全平台渲染<br>- Apple（黑色苹果）：**iOS only**（`Platform.OS === 'ios'` 条件，per ADR-0016 决策 4）                                                     |
+| FR-C08 | 顶部 close `×` 按钮（per mockup v2，2026-05-04 落地）：press 时 router.back（如有 history） / 否则 noop。**原 "立即体验" 游客模式占位已废**（mockup 落地反向修订；游客模式 M2 评估时再决定 UI 入口位置）                                                                                                                                                 |
+| FR-C09 | 底部 "登录遇到问题" placeholder：press 弹 toast "帮助中心 - Coming in M1.3"；不调后端                                                                                                                                                                                                                                                                    |
+| FR-C10 | SMS "获取验证码" 按钮：成功 / 失败均不区分 toast（成功静默 + 60s 倒计时；失败也只 toast 通用错，**不暴露**"未注册"或"已注册"信号）                                                                                                                                                                                                                       |
+| FR-C11 | 状态机 5 态 idle / requesting_sms / sms_sent / submitting / (success \| error)；submitting 期间 submit 按钮 disabled + loading 视觉；success 短动画 ≤ 800ms（绿色对勾 reanimated scale-in）后 AuthGate 接管切走；error 展示 errorToast；error 状态下任意 input change 清空 errorToast 回 idle                                                            |
+| FR-C12 | 401 → refresh：本页已 mount AuthGate（PR #48），未登录态进 `/(app)/*` 自动跳 `/(auth)/login`；access token 过期场景由 `@nvy/api-client.client` 拦截器透明 refresh，不在本 spec 责任范围                                                                                                                                                                  |
+| FR-C13 | a11y：所有交互 component（input / submit / OAuth / close × / 登录遇到问题 / 获取验证码）必有 `accessibilityLabel`；submit 按钮 disabled 时 `accessibilityState.disabled = true`；错误 toast 使用 `accessibilityLiveRegion='polite'`（Android）/ `accessibilityRole='alert'`（iOS / Web）                                                                 |
+| FR-C14 | **删除既有逻辑**：双 tab（password / sms 切换） / `<PasswordField>` 渲染 / `loginPasswordSchema` zod / `loginByPassword` use case 调用 / "忘记密码"链接 / "创建一个"footer 链接 / 跳 register 路由 — 全部废弃（已于 PR #50 一并清理）                                                                                                                    |
+| FR-C15 | `errorScope` 双场景（per mockup v2 设计）：hook (`useLoginForm`) 维护 `errorScope: 'sms' \| 'submit' \| null` 字段；`requestSms` 抛错时 setErrorScope('sms')，`submit` 抛错时 setErrorScope('submit')；UI 据此决定哪个 input 标红边框 + ErrorRow 在哪一栏下方渲染（PhoneInput 旁还是 SmsInput 旁）；clearError / 任意 input change → setErrorScope(null) |
 
 ### Key Entities
 
@@ -222,7 +222,7 @@ state_branches:
 - **新增**：无（不引入新聚合根 / 实体 / 值对象）
 - **删除**：无（domain 层无变化；删的是 application / web / DTO 层）
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Server Measurable Outcomes (SC-S01 ~ SC-S07)
 
@@ -252,7 +252,7 @@ state_branches:
 
 > Server 端 6 点澄清于 2026-05-04 与 ADR-0016 决策同期完成（CL-006 由 2026-05-07 spec D ship 引入）。Client 端 Open Questions 见下方独立段落。
 
-### CL-001：FROZEN / ANONYMIZED 账号在新模式下如何反枚举 *[from server]*
+### CL-001：FROZEN / ANONYMIZED 账号在新模式下如何反枚举 _[from server]_
 
 **Q**：旧模式 register / login 双接口分别处理 phone 状态；新模式单接口下 FROZEN 账号尝试登录 / ANONYMIZED 账号 phone 被新用户尝试时，如何避免暴露状态？
 
@@ -260,7 +260,7 @@ state_branches:
 
 **落点**：FR-S05 显式 3 分支；User Story 3 含 FROZEN / ANONYMIZED 双场景；Edge Cases 不再有"匿名化 phone 重新注册" 段（自然成为 User Story 2 的子场景）。
 
-### CL-002：`/sms-codes` 删 purpose 字段是否破坏 OpenAPI 兼容 *[from server]*
+### CL-002：`/sms-codes` 删 purpose 字段是否破坏 OpenAPI 兼容 _[from server]_
 
 **Q**：旧 `/sms-codes` 入参支持 `purpose: "register" | "login"`（per login-by-phone-sms FR-009）；新模式删此字段，前端老版本 client 调用会兼容失败吗？
 
@@ -268,7 +268,7 @@ state_branches:
 
 **落点**：FR-S04 明确删 purpose；Out of Scope 加"backward compat for old clients"。
 
-### CL-003：dummy hash 计算的输入来源 *[from server]*
+### CL-003：dummy hash 计算的输入来源 _[from server]_
 
 **Q**：旧 register-by-phone FR-013 dummy hash 用 static final 常量 hash；新模式下 FROZEN / ANONYMIZED 账号已存在但 status 非 ACTIVE，是否对其 phone 计算？
 
@@ -276,7 +276,7 @@ state_branches:
 
 **落点**：FR-S06 复用 `TimingDefenseExecutor`，无新增。
 
-### CL-004：自动注册路径并发同号 *[from server]*
+### CL-004：自动注册路径并发同号 _[from server]_
 
 **Q**：未注册 phone 在极短时间内被两个客户端同时提交（如重发 SMS 后 race），server 如何避免双 Account 创建？
 
@@ -284,7 +284,7 @@ state_branches:
 
 **落点**：FR-S08 + Edge Cases "并发同号"段。
 
-### CL-005：refresh token 持久化沿用 Phase 1.3 计划 *[from server]*
+### CL-005：refresh token 持久化沿用 Phase 1.3 计划 _[from server]_
 
 **Q**：本 use case 不写 RefreshTokenRecord（与既有 register / login 一致），客户端拿到的 refresh token 此时无服务端 revoke 路径——M1.2 阶段是否引入持久化？
 
@@ -292,7 +292,7 @@ state_branches:
 
 **落点**：FR-S09 注 "refresh token 持久化在 Phase 1.3 统一回填"；Out of Scope 加"1.x 内自行管理 RefreshTokenRecord"。
 
-### CL-006：FROZEN 反枚举边界变更（per spec D `expose-frozen-account-status`） *[from server]*
+### CL-006：FROZEN 反枚举边界变更（per spec D `expose-frozen-account-status`） _[from server]_
 
 **决议**：FROZEN 不再反枚举吞，改为显式 disclosure 返 HTTP 403 + `ACCOUNT_IN_FREEZE_PERIOD`；ANONYMIZED 仍反枚举吞 401 INVALID_CREDENTIALS。
 
@@ -305,7 +305,7 @@ state_branches:
 
 **落点**：本 spec FR-S05（第 3 分支拆开 FROZEN/ANONYMIZED 单独表述）+ FR-S06（timing defense 范围明示，FROZEN 不参与）+ SC-S03（IT 路径数 4→3）；FROZEN disclosure 业务行为整合至 meta canonical [`account/delete-account/spec.md`](../../account/delete-account/spec.md)（合并自 server `expose-frozen-account-status` use case）。
 
-### Client Open Questions *[from app]*
+### Client Open Questions _[from app]_
 
 | #   | 问                                                | 决议                                                                                                                      |
 | --- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |

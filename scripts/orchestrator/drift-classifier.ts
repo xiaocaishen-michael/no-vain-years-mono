@@ -152,17 +152,12 @@ export function classifyDrift(
  *   3. auto-LCD fallback → longest common directory of declared files,
  *      subject to safety valves (depth, file count, blacklist).
  */
-export function resolveGenScope(
-  task: ParsedTask,
-  declared: readonly string[],
-): string[] | null {
+export function resolveGenScope(task: ParsedTask, declared: readonly string[]): string[] | null {
   if (task.kind === 'migration') {
     return [normalizeDirPrefix(MIGRATION_HARDCODED_PREFIX)];
   }
   if (task.gen_dirs && task.gen_dirs.length > 0) {
-    const normalized = task.gen_dirs
-      .map((d) => normalizeDirPrefix(d))
-      .filter((d) => d.length > 0);
+    const normalized = task.gen_dirs.map((d) => normalizeDirPrefix(d)).filter((d) => d.length > 0);
     return normalized.length > 0 ? normalized : null;
   }
   // auto-LCD fallback

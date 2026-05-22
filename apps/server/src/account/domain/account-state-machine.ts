@@ -13,9 +13,7 @@ import { DisplayName } from './display-name.vo';
 export class AccountStateMachine {
   changeDisplayName(account: Account, displayName: DisplayName, at: Date): void {
     if (!account.isActive()) {
-      throw new Error(
-        'ACCOUNT_NOT_ACTIVE: only ACTIVE accounts may update display name',
-      );
+      throw new Error('ACCOUNT_NOT_ACTIVE: only ACTIVE accounts may update display name');
     }
     account.changeDisplayName(displayName, at);
   }

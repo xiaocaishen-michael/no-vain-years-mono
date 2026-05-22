@@ -83,9 +83,7 @@ export function planFileOps(
       case 'rename': {
         // Zod refine guarantees rename_to present; assert defensively.
         if (!f.rename_to) {
-          throw new Error(
-            `task ${tag} file ${f.path} op=rename missing rename_to (schema bug)`,
-          );
+          throw new Error(`task ${tag} file ${f.path} op=rename missing rename_to (schema bug)`);
         }
         const renameToAbs = path.resolve(baseAbs, f.rename_to);
         if (!isInsideBase(renameToAbs, baseAbs)) {
@@ -94,9 +92,7 @@ export function planFileOps(
           );
         }
         if (!exists) {
-          warnings.push(
-            `task ${tag} file ${f.path} op=rename but source missing`,
-          );
+          warnings.push(`task ${tag} file ${f.path} op=rename but source missing`);
           entries.push({
             taskId,
             op: 'rename',
@@ -119,9 +115,7 @@ export function planFileOps(
 
       case 'modify':
         if (!exists) {
-          warnings.push(
-            `task ${tag} file ${f.path} op=modify but file missing`,
-          );
+          warnings.push(`task ${tag} file ${f.path} op=modify but file missing`);
           entries.push({
             taskId,
             op: 'modify',

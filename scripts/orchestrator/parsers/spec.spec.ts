@@ -29,9 +29,7 @@ describe('SpecAnalyzer', () => {
     expect(result.entities).toHaveLength(1);
     expect(result.entities[0].id).toBe('E1');
     expect(result.entities[0].aggregate_root).toBe(true);
-    expect(result.entities[0].attrs.find((a) => a.name === 'phone')?.format).toBe(
-      'E.164',
-    );
+    expect(result.entities[0].attrs.find((a) => a.name === 'phone')?.format).toBe('E.164');
 
     expect(result.successCriteria.map((s) => s.id)).toEqual(['SC-001', 'SC-002']);
 
@@ -74,10 +72,7 @@ describe('SpecAnalyzer', () => {
   });
 
   it('returns empty entities array when entities block is absent (optional section)', () => {
-    const noEntities = happy.replace(
-      /```json entities[\s\S]*?```/,
-      '(entities deferred)',
-    );
+    const noEntities = happy.replace(/```json entities[\s\S]*?```/, '(entities deferred)');
     const result = analyzer.parseContent(noEntities);
     expect(result.entities).toEqual([]);
     // Other sections still parse
@@ -86,8 +81,6 @@ describe('SpecAnalyzer', () => {
 
   it('rejects fr-meta with invalid priority enum', () => {
     const bad = happy.replace('"priority":"must"', '"priority":"CRITICAL"');
-    expect(() => analyzer.parseContent(bad)).toThrowError(
-      /priority|CRITICAL|invalid/i,
-    );
+    expect(() => analyzer.parseContent(bad)).toThrowError(/priority|CRITICAL|invalid/i);
   });
 });

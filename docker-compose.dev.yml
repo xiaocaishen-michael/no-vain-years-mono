@@ -20,11 +20,11 @@ services:
       POSTGRES_USER: mbw
       POSTGRES_PASSWORD: mbw
     ports:
-      - "5433:5432"
+      - '5433:5432'
     volumes:
       - mbw-poc-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mbw -d mbw_poc"]
+      test: ['CMD-SHELL', 'pg_isready -U mbw -d mbw_poc']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -33,9 +33,9 @@ services:
     image: redis:7-alpine
     container_name: mbw-poc-redis
     ports:
-      - "6380:6379"
+      - '6380:6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 3s
       retries: 5

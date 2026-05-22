@@ -54,9 +54,7 @@ export class ProblemDetailFilter implements ExceptionFilter {
           : { message: String(exResponse) };
 
       const detail = this.extractDetail(body, exception.message);
-      const title = HttpStatus[status]
-        ? this.titleCase(HttpStatus[status])
-        : 'Error';
+      const title = HttpStatus[status] ? this.titleCase(HttpStatus[status]) : 'Error';
 
       this.logHttpException(status, exception, traceId);
 
@@ -108,10 +106,7 @@ export class ProblemDetailFilter implements ExceptionFilter {
       });
   }
 
-  private extractDetail(
-    body: Record<string, unknown>,
-    fallback: string,
-  ): string | undefined {
+  private extractDetail(body: Record<string, unknown>, fallback: string): string | undefined {
     const candidate = body['message'] ?? body['detail'] ?? fallback;
     if (Array.isArray(candidate)) {
       return candidate.map(String).join('; ');

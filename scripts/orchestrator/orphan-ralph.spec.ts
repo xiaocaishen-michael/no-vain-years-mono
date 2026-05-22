@@ -15,11 +15,13 @@ import type { ParsedTask, TaskKind } from './schemas/tasks.js';
 
 const INVOKE_OPTS = { cwd: '/tmp/sandbox' };
 
-function makeTask(opts: {
-  id?: string;
-  kind?: TaskKind;
-  files?: string[];
-} = {}): ParsedTask {
+function makeTask(
+  opts: {
+    id?: string;
+    kind?: TaskKind;
+    files?: string[];
+  } = {},
+): ParsedTask {
   return {
     id: opts.id ?? 'T001',
     workspace: 'ws',
@@ -49,27 +51,14 @@ function llmJson(intentObj: unknown, ms = 1): LlmInvokeResult {
 
 describe('OrphanIntentSchema', () => {
   it('accepts expand / revert / stuck with required fields', () => {
-    expect(
-      OrphanIntentSchema.safeParse({ action: 'expand', files: ['a.ts'] })
-        .success,
-    ).toBe(true);
-    expect(
-      OrphanIntentSchema.safeParse({ action: 'revert', files: ['a.ts'] })
-        .success,
-    ).toBe(true);
-    expect(
-      OrphanIntentSchema.safeParse({ action: 'stuck', reason: 'unsure' })
-        .success,
-    ).toBe(true);
+    expect(OrphanIntentSchema.safeParse({ action: 'expand', files: ['a.ts'] }).success).toBe(true);
+    expect(OrphanIntentSchema.safeParse({ action: 'revert', files: ['a.ts'] }).success).toBe(true);
+    expect(OrphanIntentSchema.safeParse({ action: 'stuck', reason: 'unsure' }).success).toBe(true);
   });
 
   it('rejects empty files arrays + missing required fields', () => {
-    expect(
-      OrphanIntentSchema.safeParse({ action: 'expand', files: [] }).success,
-    ).toBe(false);
-    expect(
-      OrphanIntentSchema.safeParse({ action: 'stuck' }).success,
-    ).toBe(false);
+    expect(OrphanIntentSchema.safeParse({ action: 'expand', files: [] }).success).toBe(false);
+    expect(OrphanIntentSchema.safeParse({ action: 'stuck' }).success).toBe(false);
   });
 });
 
@@ -220,9 +209,9 @@ describe('applyExpand', () => {
       parallel: false,
     });
 
-    await expect(
-      applyExpand({ tasksMdPath, taskId: 'T999', newFiles: ['x.ts'] }),
-    ).rejects.toThrow(/not found/);
+    await expect(applyExpand({ tasksMdPath, taskId: 'T999', newFiles: ['x.ts'] })).rejects.toThrow(
+      /not found/,
+    );
   });
 });
 
@@ -308,9 +297,7 @@ describe('runOrphanRalph', () => {
     const task = makeTask({ files: ['a.ts'] });
     const { tasksMdPath, root } = makeTasksMdFor(task);
     const git = new FakeGit();
-    const llm = new FakeLlmClient([
-      llmJson({ action: 'stuck', reason: "can't decide" }),
-    ]);
+    const llm = new FakeLlmClient([llmJson({ action: 'stuck', reason: "can't decide" })]);
 
     const r = await runOrphanRalph({
       task,
@@ -335,9 +322,7 @@ describe('runOrphanRalph', () => {
     const { tasksMdPath, root } = makeTasksMdFor(task);
     const git = new FakeGit();
     git.enqueueDiffNameOnly(['a.ts', 'b.ts']); // post-expand, declared now = [a.ts, b.ts] → orphans = ∅
-    const llm = new FakeLlmClient([
-      llmJson({ action: 'expand', files: ['b.ts'] }),
-    ]);
+    const llm = new FakeLlmClient([llmJson({ action: 'expand', files: ['b.ts'] })]);
 
     const r = await runOrphanRalph({
       task,
@@ -363,9 +348,7 @@ describe('runOrphanRalph', () => {
     const { tasksMdPath, root } = makeTasksMdFor(task);
     const git = new FakeGit();
     git.enqueueDiffNameOnly(['a.ts']); // post-revert, b.ts gone
-    const llm = new FakeLlmClient([
-      llmJson({ action: 'revert', files: ['b.ts'] }),
-    ]);
+    const llm = new FakeLlmClient([llmJson({ action: 'revert', files: ['b.ts'] })]);
 
     const r = await runOrphanRalph({
       task,
@@ -475,9 +458,7 @@ describe('runOrphanRalph', () => {
     const task = makeTask();
     const { tasksMdPath, root } = makeTasksMdFor(task);
     const git = new FakeGit();
-    const llm = new FakeLlmClient([
-      llmJson({ action: 'stuck', reason: 'check opts' }),
-    ]);
+    const llm = new FakeLlmClient([llmJson({ action: 'stuck', reason: 'check opts' })]);
 
     await runOrphanRalph({
       task,

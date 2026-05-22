@@ -8,15 +8,15 @@ mono-repo 单仓共享。M1.1 起业务模块按此流程开发。基于 [GitHub
 
 6 步必跑 + `constitution` 项目级一次性。**spec.md 单一来源** 在 `specs/NNN-<feature-slug>/spec.md`（mono root 相对，扁平 feature-first 布局，per [ADR-0024](../adr/0024-spec-feature-first-layout.md)）；plan / tasks / analysis 与 spec 同目录。
 
-| # | 命令 | cwd | 产出位置 |
-|---|---|---|---|
-| 0 | `/speckit-constitution` | mono root | `.specify/memory/constitution.md` |
-| 1 | `/speckit-specify` | mono root | `specs/NNN-<feature-slug>/spec.md`（NNN 由 spec-kit 自动 sequential 编号；同时创 git branch `NNN-<feature-slug>`） |
-| 2 | `/speckit-clarify` | mono root | spec.md 内 `## Clarifications` 段（inline）|
-| 3 | `/speckit-plan` | mono root | `specs/NNN-<feature-slug>/plan.md` |
-| 4 | `/speckit-tasks` | mono root | `tasks.md`；每条标层级 `[Server]` / `[Mobile]` / `[Contract]`；测试任务不独立，绑定到每个实现 task |
-| 5 | `/speckit-analyze` | mono root | `analysis.md`（跨 spec / plan / tasks / constitution 一致性扫描） |
-| 6 | `/speckit-implement` | mono root | 代码 + 测试 + tasks.md `[X]` flip；TDD 红绿循环 |
+| #   | 命令                    | cwd       | 产出位置                                                                                                           |
+| --- | ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| 0   | `/speckit-constitution` | mono root | `.specify/memory/constitution.md`                                                                                  |
+| 1   | `/speckit-specify`      | mono root | `specs/NNN-<feature-slug>/spec.md`（NNN 由 spec-kit 自动 sequential 编号；同时创 git branch `NNN-<feature-slug>`） |
+| 2   | `/speckit-clarify`      | mono root | spec.md 内 `## Clarifications` 段（inline）                                                                        |
+| 3   | `/speckit-plan`         | mono root | `specs/NNN-<feature-slug>/plan.md`                                                                                 |
+| 4   | `/speckit-tasks`        | mono root | `tasks.md`；每条标层级 `[Server]` / `[Mobile]` / `[Contract]`；测试任务不独立，绑定到每个实现 task                 |
+| 5   | `/speckit-analyze`      | mono root | `analysis.md`（跨 spec / plan / tasks / constitution 一致性扫描）                                                  |
+| 6   | `/speckit-implement`    | mono root | 代码 + 测试 + tasks.md `[X]` flip；TDD 红绿循环                                                                    |
 
 **Review gate**：clarify → plan、plan → tasks、analyze → implement 之间均为人工审批卡点，不是装饰。
 
@@ -26,11 +26,12 @@ mono-repo 单仓共享。M1.1 起业务模块按此流程开发。基于 [GitHub
 
 ```yaml
 ---
-modules: [auth]                       # 影响的代码模块,值域 = business-naming.md 列出的业务模块名
-                                      # 单模块: [auth]   多模块: [pkm, account, notification]
-                                      # 完全跨模块平台改造: [cross-cutting]
-owners: ["@xiaocaishen-michael"]      # GitHub handle,与 CODEOWNERS 兼容
-status: implemented                   # draft | planned | implementing | implemented | superseded | archived
+modules:
+  [auth] # 影响的代码模块,值域 = business-naming.md 列出的业务模块名
+  # 单模块: [auth]   多模块: [pkm, account, notification]
+  # 完全跨模块平台改造: [cross-cutting]
+owners: ['@xiaocaishen-michael'] # GitHub handle,与 CODEOWNERS 兼容
+status: implemented # draft | planned | implementing | implemented | superseded | archived
 ---
 ```
 
@@ -40,13 +41,13 @@ status: implemented                   # draft | planned | implementing | impleme
 
 前端 UI 业务模块的 SDD 流程**按 UI 类别分支**（per [ADR-0017](../adr/0017-sdd-business-flow-first-then-mockup.md)，amends [ADR-0015](../adr/0015-claude-design-from-m1-2.md)）：
 
-| UI 类别 | 例子 | 流程 |
-|---|---|---|
-| **类 1 标准 UI** | login / onboarding / 设置 / 表单 / 列表 / 信息卡片 | spec → plan（业务段 + UI 段标占位）→ tasks → impl 业务+占位 UI → 真后端冒烟 → **Mockup（用户跑 Claude Design → HTML preview baseline，over-deliver .tsx 不依赖）** → plan UI 段回填 + UI 完成 impl（HTML 直翻为 RN，不消费 source .tsx）|
-| **类 2 自由画布** | PKM 知识图谱 / 自由画布 | spec → **Mockup**（design/，库选型 + paradigm 决策必先做）→ plan（含完整 UI 段）→ tasks → impl 业务+UI |
-| **类 3 数据可视化** | 财富板块图表 / dashboard | 同类 2（图表库 + 数据建模与 mockup 互锁） |
-| **设计哲学重设页面** | spec User Scenarios 主路径变化（如 ADR-0016 单 form 取代双 tab）| 同类 2（让 mockup 帮决定新方向） |
-| **后端业务模块** | account / pkm / 其他 server use case | 不涉及 UI 流程；走完整 SDD 标准流程（无 mockup 步骤） |
+| UI 类别              | 例子                                                             | 流程                                                                                                                                                                                                                                     |
+| -------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **类 1 标准 UI**     | login / onboarding / 设置 / 表单 / 列表 / 信息卡片               | spec → plan（业务段 + UI 段标占位）→ tasks → impl 业务+占位 UI → 真后端冒烟 → **Mockup（用户跑 Claude Design → HTML preview baseline，over-deliver .tsx 不依赖）** → plan UI 段回填 + UI 完成 impl（HTML 直翻为 RN，不消费 source .tsx） |
+| **类 2 自由画布**    | PKM 知识图谱 / 自由画布                                          | spec → **Mockup**（design/，库选型 + paradigm 决策必先做）→ plan（含完整 UI 段）→ tasks → impl 业务+UI                                                                                                                                   |
+| **类 3 数据可视化**  | 财富板块图表 / dashboard                                         | 同类 2（图表库 + 数据建模与 mockup 互锁）                                                                                                                                                                                                |
+| **设计哲学重设页面** | spec User Scenarios 主路径变化（如 ADR-0016 单 form 取代双 tab） | 同类 2（让 mockup 帮决定新方向）                                                                                                                                                                                                         |
+| **后端业务模块**     | account / pkm / 其他 server use case                             | 不涉及 UI 流程；走完整 SDD 标准流程（无 mockup 步骤）                                                                                                                                                                                    |
 
 ### 类 1 占位 UI 4 边界（强制纪律，per ADR-0017）
 
@@ -64,10 +65,10 @@ status: implemented                   # draft | planned | implementing | impleme
 
 ## 与已有约定的协同
 
-| 约定 | 协同点 |
-|---|---|
+| 约定                  | 协同点                                                                                                    |
+| --------------------- | --------------------------------------------------------------------------------------------------------- |
 | OpenAPI（code-first） | server 注解派生 `/v3/api-docs`（@nestjs/swagger 替代旧 Springdoc），mobile 通过 `pnpm api:gen` 同步 typed |
-| ADR | use case 内部决策留 `plan.md`；跨模块 / 不可逆决策才抽出独立 ADR |
+| ADR                   | use case 内部决策留 `plan.md`；跨模块 / 不可逆决策才抽出独立 ADR                                          |
 
 ## /implement 每 task 闭环 6 步（强制）
 

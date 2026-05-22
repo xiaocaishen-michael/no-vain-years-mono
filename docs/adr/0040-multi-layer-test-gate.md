@@ -11,9 +11,9 @@ sunset_trigger: |
 
 # ADR-0040: Multi-layer Test Gate Strategy — 机制 / 策略 / 门禁 三段渐进
 
-* Status: Accepted (2026-05-22, PR-T3 ship)
-* Deciders: project owner
-* Tags: testing / ci / nx / spec-kit / governance / cross-cutting
+- Status: Accepted (2026-05-22, PR-T3 ship)
+- Deciders: project owner
+- Tags: testing / ci / nx / spec-kit / governance / cross-cutting
 
 ## Context
 
@@ -27,10 +27,10 @@ PR #79 (PR-5 tail) retro 显示 PR #65 / PR-5a/5b/5c 共 8 处 cascade bug 中 6
 
 用 **3 阶段渐进结构** 修复：
 
-| 阶段 | 心法 | 性质 | 出错代价 |
-|---|---|---|---|
-| **L1 机制** | 先把验证脚本写出来、本地裸跑得通 | 能力 | 单纯不可用 |
-| **L2 策略** | 再用 Nx 包装托管 + 自动触发 | 调度 | 可用但人工触发 |
+| 阶段        | 心法                                | 性质 | 出错代价        |
+| ----------- | ----------------------------------- | ---- | --------------- |
+| **L1 机制** | 先把验证脚本写出来、本地裸跑得通    | 能力 | 单纯不可用      |
+| **L2 策略** | 再用 Nx 包装托管 + 自动触发         | 调度 | 可用但人工触发  |
 | **L3 门禁** | 最后 GitHub ruleset / lefthook 强制 | 强制 | 反噬：误拦好 PR |
 
 设计纪律：**L1 不通不写 L2；L2 不稳不上 L3**。
@@ -78,11 +78,11 @@ PR-T3 (门禁层 — docs/plans/2026-05/05-22-test-infra-p3-ci-gates.md)
 
 ## 三阶段 ship 证据
 
-| 阶段 | PR | 实际 ship 内容 |
-|---|---|---|
-| L1 机制 | [#80](https://github.com/xiaocaishen-michael/no-vain-years-mono/pull/80) | `scripts/ci/server-boot-smoke.ts` standalone tsx + spec-kit preset 0.2.2 (state_branches optional / Testing Invariants 3 禁令 / T003 模板) + 本 ADR stub Proposed |
-| L2 策略 | [#81](https://github.com/xiaocaishen-michael/no-vain-years-mono/pull/81) | `nx.json` namedInputs.sharedGlobals 4 核弹 + targetDefaults strict DAG + 5 projects scope tag + api-client implicitDeps + mobile static-export runtime-smoke (5/5 Playwright in 3.6s) + ESLint default-deny boundary |
-| L3 门禁 | PR-T3 (本 PR) | `.github/pull_request_template.md` 3 checkbox + `lefthook.yml` no-bad-mocks 正则拦 + `.github/workflows/{pr-validation,nightly-sweep}.yml` + spec.zod state_branches required (0.3.0) + spec 001/002 backfill + ruleset gh api PUT |
+| 阶段    | PR                                                                       | 实际 ship 内容                                                                                                                                                                                                                     |
+| ------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L1 机制 | [#80](https://github.com/xiaocaishen-michael/no-vain-years-mono/pull/80) | `scripts/ci/server-boot-smoke.ts` standalone tsx + spec-kit preset 0.2.2 (state_branches optional / Testing Invariants 3 禁令 / T003 模板) + 本 ADR stub Proposed                                                                  |
+| L2 策略 | [#81](https://github.com/xiaocaishen-michael/no-vain-years-mono/pull/81) | `nx.json` namedInputs.sharedGlobals 4 核弹 + targetDefaults strict DAG + 5 projects scope tag + api-client implicitDeps + mobile static-export runtime-smoke (5/5 Playwright in 3.6s) + ESLint default-deny boundary               |
+| L3 门禁 | PR-T3 (本 PR)                                                            | `.github/pull_request_template.md` 3 checkbox + `lefthook.yml` no-bad-mocks 正则拦 + `.github/workflows/{pr-validation,nightly-sweep}.yml` + spec.zod state_branches required (0.3.0) + spec 001/002 backfill + ruleset gh api PUT |
 
 ## 已关闭的 Open Questions（PR-T2/PR-T3 决策）
 

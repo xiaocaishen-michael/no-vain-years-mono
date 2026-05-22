@@ -1,10 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
-import {
-  SMS_CODE_REPOSITORY,
-  type SmsCodeRepository,
-} from './ports/sms-code.repository.port';
+import { SMS_CODE_REPOSITORY, type SmsCodeRepository } from './ports/sms-code.repository.port';
 import { SMS_GATEWAY, type SmsGateway } from './ports/sms-gateway.port';
 
 const TTL_SEC = 300;

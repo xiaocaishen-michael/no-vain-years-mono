@@ -10,18 +10,18 @@ sunset_trigger: |
 
 # ADR-0039: Performance and Latency Governance — spec frontmatter SSOT + lefthook ≤ 30s + nightly perf IT
 
-* Status: Proposed
-* Deciders: project owner
-* Tags: backend / mobile / performance / governance / cross-cutting
+- Status: Proposed
+- Deciders: project owner
+- Tags: backend / mobile / performance / governance / cross-cutting
 
 ## Context
 
 Plan 1 W3 实装 FR-S06 (single-endpoint enumeration defense IT) 时实证:
 
-* 性能预算无 SSOT — `FR-S06` 写 P95 ≤ 50ms 在 spec.md 文字段,但 IT 测试硬编码 `EXPECTED_P95_MS = 50` 未关联
-* lefthook 慢: 全包 typecheck 在 commit 时跑 ~50s,频繁触发反复破纪律(memory `feedback_avoid_slow_pre_commit_or_pre_push`)
-* CI 长: 全包 build + test + lint + perf IT 串行 ~ 8min, 还在上升轨道
-* perf IT 是否每 CI 跑 — 慢测试拖累 fast feedback
+- 性能预算无 SSOT — `FR-S06` 写 P95 ≤ 50ms 在 spec.md 文字段,但 IT 测试硬编码 `EXPECTED_P95_MS = 50` 未关联
+- lefthook 慢: 全包 typecheck 在 commit 时跑 ~50s,频繁触发反复破纪律(memory `feedback_avoid_slow_pre_commit_or_pre_push`)
+- CI 长: 全包 build + test + lint + perf IT 串行 ~ 8min, 还在上升轨道
+- perf IT 是否每 CI 跑 — 慢测试拖累 fast feedback
 
 memory `feedback_env_gated_perf_it_pattern` 已确立 `RUN_PERF_IT + PERF_IT_REPS` env-gate pattern, 但缺统一 frontmatter SSOT 喂数据。
 
@@ -36,16 +36,16 @@ perf_budgets:
     p95_ms: 200
     p99_ms: 500
     timing_defense:
-      diff_p95_ms: 50    # 反枚举不同路径 P95 wall-clock 差 ≤ 50ms
+      diff_p95_ms: 50 # 反枚举不同路径 P95 wall-clock 差 ≤ 50ms
   - endpoint: GET /api/v1/accounts/me
     p95_ms: 50
     p99_ms: 100
 ---
 ```
 
-* 每 endpoint 显式 p95/p99 (毫秒)
-* timing-defense 类(反枚举)显式 `diff_p95_ms`
-* spec.md frontmatter 是单一来源,plan.md 不重复写
+- 每 endpoint 显式 p95/p99 (毫秒)
+- timing-defense 类(反枚举)显式 `diff_p95_ms`
+- spec.md frontmatter 是单一来源,plan.md 不重复写
 
 ### 2. plan.md derived (禁手 edit)
 
@@ -59,9 +59,9 @@ perf_budgets:
 
 `pre-commit` total wall-clock ≤ 30s.分而治之:
 
-* `lefthook.yml` `parallel: true`
-* 单 hook 慢操作 (typecheck / prisma generate) 用 `glob:` 限定 staged 文件,nx affected 跑增量
-* `--skip-nx-cache` 仅在 staged 含新文件时强制(per memory `feedback_nx_cache_false_green_on_new_files`)
+- `lefthook.yml` `parallel: true`
+- 单 hook 慢操作 (typecheck / prisma generate) 用 `glob:` 限定 staged 文件,nx affected 跑增量
+- `--skip-nx-cache` 仅在 staged 含新文件时强制(per memory `feedback_nx_cache_false_green_on_new_files`)
 
 ### 5. CI fast ≤ 10min
 
@@ -72,25 +72,25 @@ perf_budgets:
 
 `.github/workflows/nightly-perf.yml`:
 
-* 触发: `cron: '0 19 * * *'` (UTC 19:00 = 北京 3:00)
-* job: `RUN_PERF_IT=1 PERF_IT_REPS=300 pnpm nx run server:test:perf`
-* 结果超 P95 阈值 → 软通知 (PR comment / Slack 接入 Plan 3) 不阻塞 CI
-* 不调 spec frontmatter — 数据驱动 issue 改 spec / 改实现
+- 触发: `cron: '0 19 * * *'` (UTC 19:00 = 北京 3:00)
+- job: `RUN_PERF_IT=1 PERF_IT_REPS=300 pnpm nx run server:test:perf`
+- 结果超 P95 阈值 → 软通知 (PR comment / Slack 接入 Plan 3) 不阻塞 CI
+- 不调 spec frontmatter — 数据驱动 issue 改 spec / 改实现
 
 ## Consequences
 
-* PR-1 amend spec-template.md 加 `perf_budgets` 字段 + spec.zod 校验 (可选字段,有则结构校验)
-* PR-6 ship 完整: spec → plan derived script + vitest setup inject + nightly-perf workflow
-* 现有 spec 001 `FR-S06` 50ms 阈值:PR-1 C5 spec frontmatter backfill 时迁入 `perf_budgets:`
+- PR-1 amend spec-template.md 加 `perf_budgets` 字段 + spec.zod 校验 (可选字段,有则结构校验)
+- PR-6 ship 完整: spec → plan derived script + vitest setup inject + nightly-perf workflow
+- 现有 spec 001 `FR-S06` 50ms 阈值:PR-1 C5 spec frontmatter backfill 时迁入 `perf_budgets:`
 
 ## Trade-offs
 
-* nightly perf IT 不阻塞 = 不能保证 PR 引入回归 — 接受 (perf IT 慢,blocking 会拖累节奏);PR 引入退化由 nightly 24h 内捕
-* spec frontmatter 持续累积可能臃肿 — schema 限定字段集 + lint enforced
+- nightly perf IT 不阻塞 = 不能保证 PR 引入回归 — 接受 (perf IT 慢,blocking 会拖累节奏);PR 引入退化由 nightly 24h 内捕
+- spec frontmatter 持续累积可能臃肿 — schema 限定字段集 + lint enforced
 
 ## References
 
-* memory `feedback_env_gated_perf_it_pattern`
-* memory `feedback_avoid_slow_pre_commit_or_pre_push`
-* memory `feedback_nx_cache_false_green_on_new_files`
-* [ADR-0023](0023-sms-code-storage-hmac.md) (FR-S06 实证起源)
+- memory `feedback_env_gated_perf_it_pattern`
+- memory `feedback_avoid_slow_pre_commit_or_pre_push`
+- memory `feedback_nx_cache_false_green_on_new_files`
+- [ADR-0023](0023-sms-code-storage-hmac.md) (FR-S06 实证起源)

@@ -1,8 +1,5 @@
 import { CanActivate, ExecutionContext } from '@nestjs/common';
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { SwaggerModule, OpenAPIObject } from '@nestjs/swagger';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -43,10 +40,9 @@ describe('OpenAPI document (W4 V8)', () => {
       .useValue(passthroughGuard)
       .compile();
 
-    app = moduleRef.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter(),
-      { logger: false },
-    );
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
+      logger: false,
+    });
     app.setGlobalPrefix('api');
     await app.init();
     document = SwaggerModule.createDocument(app, buildOpenApiConfig());

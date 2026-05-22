@@ -1,8 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import {
-  ACCOUNT_REPOSITORY,
-  type AccountRepository,
-} from './ports/account.repository.port';
+import { ACCOUNT_REPOSITORY, type AccountRepository } from './ports/account.repository.port';
 import { AccountStateMachine } from '../domain/account-state-machine';
 import { DisplayName } from '../domain/display-name.vo';
 import { AccountStatus } from '../domain/account.aggregate';
@@ -23,10 +20,7 @@ export class UpdateDisplayNameUseCase {
     private readonly stateMachine: AccountStateMachine,
   ) {}
 
-  async execute(
-    accountId: bigint,
-    rawDisplayName: string,
-  ): Promise<UpdateDisplayNameResult> {
+  async execute(accountId: bigint, rawDisplayName: string): Promise<UpdateDisplayNameResult> {
     const account = await this.accountRepo.findById(accountId);
 
     if (!account) {

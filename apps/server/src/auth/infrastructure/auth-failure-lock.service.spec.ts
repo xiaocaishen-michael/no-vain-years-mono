@@ -48,9 +48,7 @@ describe('AuthFailureLockService (Testcontainers Redis)', () => {
     for (let i = 0; i < 5; i++) {
       await service.recordFailure(phone);
     }
-    await expect(service.assertNotLocked(phone)).rejects.toBeInstanceOf(
-      AuthAttemptLockedException,
-    );
+    await expect(service.assertNotLocked(phone)).rejects.toBeInstanceOf(AuthAttemptLockedException);
   });
 
   it('exception 实例: retryAfterSeconds > 0 + status 429', async () => {

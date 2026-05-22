@@ -11,11 +11,7 @@ import type { ParsedTask, TaskKind } from './schemas/tasks.js';
 // Minimal ParsedTask factory: only fields the classifier actually reads
 // matter, but Zod-typed ParsedTask is a structural type so we cast through
 // `as unknown as ParsedTask` to keep the test fixture trivial.
-function makeTask(
-  kind: TaskKind,
-  files: string[],
-  opts: { gen_dirs?: string[] } = {},
-): ParsedTask {
+function makeTask(kind: TaskKind, files: string[], opts: { gen_dirs?: string[] } = {}): ParsedTask {
   return {
     id: 'T001',
     workspace: 'ws',
@@ -69,11 +65,9 @@ describe('classifyDrift', () => {
 
   describe('gen kind', () => {
     it('explicit gen_dirs: drift ⊆ gen_scope → gen-fenced', () => {
-      const task = makeTask(
-        'gen',
-        ['packages/api-client/src/index.ts'],
-        { gen_dirs: ['packages/api-client/src/gen'] },
-      );
+      const task = makeTask('gen', ['packages/api-client/src/index.ts'], {
+        gen_dirs: ['packages/api-client/src/gen'],
+      });
       const r = classifyDrift(
         task,
         ['packages/api-client/src/index.ts'],
@@ -94,11 +88,9 @@ describe('classifyDrift', () => {
     });
 
     it('explicit gen_dirs: drift outside scope → needs-ralph (outside-gen-scope)', () => {
-      const task = makeTask(
-        'gen',
-        ['packages/api-client/src/index.ts'],
-        { gen_dirs: ['packages/api-client/src/gen'] },
-      );
+      const task = makeTask('gen', ['packages/api-client/src/index.ts'], {
+        gen_dirs: ['packages/api-client/src/gen'],
+      });
       const r = classifyDrift(
         task,
         ['packages/api-client/src/index.ts'],
@@ -145,10 +137,7 @@ describe('classifyDrift', () => {
       const r = classifyDrift(
         task,
         ['packages/api-client/src/gen/only.ts'],
-        [
-          'packages/api-client/src/gen/only.ts',
-          'packages/api-client/src/gen/extra.ts',
-        ],
+        ['packages/api-client/src/gen/only.ts', 'packages/api-client/src/gen/extra.ts'],
       );
       expect(r.kind).toBe('needs-ralph');
       if (r.kind === 'needs-ralph') expect(r.reason).toBe('no-gen-scope');
@@ -174,11 +163,7 @@ describe('classifyDrift', () => {
       'auto-LCD blacklist: LCD = %s → no-gen-scope (would silently absorb codebase)',
       (_label, fileA, fileB) => {
         const task = makeTask('gen', [fileA, fileB]);
-        const r = classifyDrift(
-          task,
-          [fileA, fileB],
-          [fileA, fileB, 'extra-orphan.ts'],
-        );
+        const r = classifyDrift(task, [fileA, fileB], [fileA, fileB, 'extra-orphan.ts']);
         expect(r.kind).toBe('needs-ralph');
         if (r.kind === 'needs-ralph') expect(r.reason).toBe('no-gen-scope');
       },
@@ -242,9 +227,7 @@ describe('resolveGenScope', () => {
     const task = makeTask('migration', ['x.sql'], {
       gen_dirs: ['ignored/dir'],
     });
-    expect(resolveGenScope(task, ['x.sql'])).toEqual([
-      'apps/server/prisma/migrations/',
-    ]);
+    expect(resolveGenScope(task, ['x.sql'])).toEqual(['apps/server/prisma/migrations/']);
   });
 
   it('explicit gen_dirs honored as-is (no safety valve)', () => {
@@ -289,9 +272,7 @@ describe('__testing internals', () => {
   });
 
   it('MIGRATION_HARDCODED_PREFIX matches stop-signal #3', () => {
-    expect(__testing.MIGRATION_HARDCODED_PREFIX).toBe(
-      'apps/server/prisma/migrations/',
-    );
+    expect(__testing.MIGRATION_HARDCODED_PREFIX).toBe('apps/server/prisma/migrations/');
   });
 
   it('longestCommonDir returns null when paths share no common directory', () => {

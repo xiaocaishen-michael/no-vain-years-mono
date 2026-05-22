@@ -83,9 +83,7 @@ export interface PrintRunReportResult {
 }
 
 /** Public entry point. */
-export async function printRunReport(
-  input: PrintRunReportInput,
-): Promise<PrintRunReportResult> {
+export async function printRunReport(input: PrintRunReportInput): Promise<PrintRunReportResult> {
   const rows: TaskRow[] = [];
   for (const r of input.results) {
     const row = await loadTaskRow(input.archiveBase, r.taskId, input.state);
@@ -152,17 +150,9 @@ async function loadTaskRow(
     }>;
   };
 
-  const totalCost = summary.attempts.reduce(
-    (s, a) => s + (a.llm?.cost_usd ?? 0),
-    0,
-  );
-  const totalTurns = summary.attempts.reduce(
-    (s, a) => s + (a.llm?.num_turns ?? 0),
-    0,
-  );
-  const ralph = summary.attempts.filter(
-    (a) => a.phase === 'verify-ralph',
-  ).length;
+  const totalCost = summary.attempts.reduce((s, a) => s + (a.llm?.cost_usd ?? 0), 0);
+  const totalTurns = summary.attempts.reduce((s, a) => s + (a.llm?.num_turns ?? 0), 0);
+  const ralph = summary.attempts.filter((a) => a.phase === 'verify-ralph').length;
 
   const u0 = summary.attempts[0]?.llm?.usage;
   let cacheHit: number | undefined;
@@ -263,23 +253,15 @@ const STOP_REASON_SHORT: Record<string, string> = {
  * when the map is undefined (no data) or empty. Stable sort: highest
  * count first, ties broken alphabetically so the rendering is deterministic.
  */
-export function formatStopsCell(
-  stops: Record<string, number> | undefined,
-): string {
+export function formatStopsCell(stops: Record<string, number> | undefined): string {
   if (!stops) return '—';
   const entries = Object.entries(stops);
   if (entries.length === 0) return '—';
   entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  return entries
-    .map(([k, n]) => `${STOP_REASON_SHORT[k] ?? k}${n}`)
-    .join('·');
+  return entries.map(([k, n]) => `${STOP_REASON_SHORT[k] ?? k}${n}`).join('·');
 }
 
-function buildTotals(
-  rows: TaskRow[],
-  startedAt: Date,
-  finishedAt: Date,
-): RunTotals {
+function buildTotals(rows: TaskRow[], startedAt: Date, finishedAt: Date): RunTotals {
   const stop_reason_histogram: Record<string, number> = {};
   for (const r of rows) {
     if (!r.stops) continue;
@@ -304,11 +286,7 @@ function buildTotals(
   };
 }
 
-function formatMarkdown(
-  rows: TaskRow[],
-  totals: RunTotals,
-  state: FeatureState,
-): string {
+function formatMarkdown(rows: TaskRow[], totals: RunTotals, state: FeatureState): string {
   const lines: string[] = [];
   lines.push(`# Orchestrator run report — ${state.featureId}`);
   lines.push('');
@@ -325,15 +303,12 @@ function formatMarkdown(
   lines.push(
     '| Task | Title | Wall | Turns | Stops | Cost | Model | Atts | Ralph | OK | Reason | Cache% | Files | Commit |',
   );
-  lines.push(
-    '|---|---|---:|---:|---|---:|---|---:|---:|:---:|---|---:|---|---|',
-  );
+  lines.push('|---|---|---:|---:|---|---:|---|---:|---:|:---:|---|---:|---|---|');
   for (const r of rows) {
     const wall = `${r.wall_min.toFixed(1)}min`;
     const cost = `$${r.cost.toFixed(2)}`;
     const status = r.ok ? '✅' : '❌';
-    const cacheStr =
-      r.cache_hit_pct !== undefined ? `${r.cache_hit_pct.toFixed(0)}%` : '—';
+    const cacheStr = r.cache_hit_pct !== undefined ? `${r.cache_hit_pct.toFixed(0)}%` : '—';
     const filesStr = `${r.files_created}c/${r.files_modified}m`;
     const commitStr = r.commit_sha ? `\`${r.commit_sha}\`` : '—';
     const denialsStr = r.permission_denials > 0 ? ` (denials=${r.permission_denials})` : '';
@@ -346,7 +321,9 @@ function formatMarkdown(
   lines.push('');
   lines.push('## Totals');
   lines.push('');
-  lines.push(`- Tasks: **${totals.task_count}** (ok=${totals.ok_count}, fail=${totals.fail_count})`);
+  lines.push(
+    `- Tasks: **${totals.task_count}** (ok=${totals.ok_count}, fail=${totals.fail_count})`,
+  );
   lines.push(
     `- Model breakdown: sonnet=${totals.sonnet_count}, opus=${totals.opus_count}, ralph-triggered=${totals.ralph_triggered_count}`,
   );
@@ -356,9 +333,7 @@ function formatMarkdown(
   lines.push(
     `- Total LLM wall: **${totals.total_llm_wall_min.toFixed(1)} min** (sum across tasks; serial)`,
   );
-  lines.push(
-    `- Total turns: ${totals.total_turns}`,
-  );
+  lines.push(`- Total turns: ${totals.total_turns}`);
   lines.push(
     `- Run wall-clock: **${totals.run_wall_min.toFixed(1)} min** (overhead = ${(totals.run_wall_min - totals.total_llm_wall_min).toFixed(1)} min for sandbox/graphify/commit)`,
   );
@@ -384,9 +359,7 @@ function formatMarkdown(
     lines.push('');
     lines.push('## Failures');
     for (const r of failures) {
-      lines.push(
-        `- **${r.id}** \`${r.reason}\` after ${r.attempts} attempt(s) — ${r.title}`,
-      );
+      lines.push(`- **${r.id}** \`${r.reason}\` after ${r.attempts} attempt(s) — ${r.title}`);
     }
   }
 
@@ -397,10 +370,7 @@ function formatMarkdown(
   return lines.join('\n');
 }
 
-function appendStopReasonSection(
-  lines: string[],
-  histogram: Record<string, number>,
-): void {
+function appendStopReasonSection(lines: string[], histogram: Record<string, number>): void {
   const entries = Object.entries(histogram);
   if (entries.length === 0) return;
   // Highest count first; ties alphabetical for stable output.
@@ -409,9 +379,7 @@ function appendStopReasonSection(
   lines.push('');
   lines.push('## Stop-reason histogram');
   lines.push('');
-  lines.push(
-    'Aggregate of `attempts[].llm.turns[].stop_reason` across all tasks in this run.',
-  );
+  lines.push('Aggregate of `attempts[].llm.turns[].stop_reason` across all tasks in this run.');
   lines.push('');
   for (const [k, n] of entries) {
     const pct = total > 0 ? ` (${((n / total) * 100).toFixed(0)}%)` : '';
@@ -450,9 +418,7 @@ function appendDriftSection(lines: string[], rows: TaskRow[]): void {
     const d = r.drift!;
     const orphCount = d.orphans.length;
     const scope = d.genScope ? ` scope=\`${d.genScope.join(', ')}\`` : '';
-    lines.push(
-      `- **${r.id}** \`${d.resolution}\` — ${orphCount} orphan file(s)${scope}`,
-    );
+    lines.push(`- **${r.id}** \`${d.resolution}\` — ${orphCount} orphan file(s)${scope}`);
     if (d.orphans.length > 0 && d.orphans.length <= 10) {
       for (const f of d.orphans) lines.push(`    - ${f}`);
     } else if (d.orphans.length > 10) {

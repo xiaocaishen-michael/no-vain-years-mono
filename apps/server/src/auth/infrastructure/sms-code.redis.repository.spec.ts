@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import {
-  RedisContainer,
-  type StartedRedisContainer,
-} from '@testcontainers/redis';
+import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import { Redis } from 'ioredis';
 import { SmsCodeRedisRepository } from './sms-code.redis.repository';
 import { Phone } from '../../account/domain/phone.vo';

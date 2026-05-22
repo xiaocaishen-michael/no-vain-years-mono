@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
 import { PrismaService } from '../../security/prisma.service';
 import { AccountPrismaRepository } from '../../account/infrastructure/account.prisma.repository';
@@ -90,10 +87,7 @@ describe('PhoneSmsAuthUseCase concurrent auto-register race (Testcontainers PG)'
     const phone = Phone.create('+8613900139777');
     const code = SmsCode.create('123456');
 
-    const results = await Promise.all([
-      useCase.execute(phone, code),
-      useCase.execute(phone, code),
-    ]);
+    const results = await Promise.all([useCase.execute(phone, code), useCase.execute(phone, code)]);
 
     expect(results).toHaveLength(2);
     expect(results[0]!.accountId).toBe(results[1]!.accountId);

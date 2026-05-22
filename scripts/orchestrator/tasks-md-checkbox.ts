@@ -53,10 +53,7 @@ export function revertCheckbox(content: string, taskId: string): string {
 }
 
 /** Returns the current state for diagnostics; throws if the task line is missing. */
-export function getCheckboxState(
-  content: string,
-  taskId: string,
-): 'pending' | 'completed' {
+export function getCheckboxState(content: string, taskId: string): 'pending' | 'completed' {
   const r = checkboxRegex(taskId);
   const m = content.match(r);
   if (!m) throw new CheckboxNotFoundError(taskId);

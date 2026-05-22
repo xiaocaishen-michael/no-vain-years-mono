@@ -59,10 +59,7 @@ describe('flipCheckbox', () => {
   });
 
   it('does not match a task id inside prose mentions', () => {
-    const content = [
-      'See task T001 for context.',
-      '- [ ] T001 Real task line',
-    ].join('\n');
+    const content = ['See task T001 for context.', '- [ ] T001 Real task line'].join('\n');
     const out = flipCheckbox(content, 'T001');
     expect(out).toMatch(/See task T001 for context\./); // unchanged
     expect(out).toMatch(/- \[X\] T001 Real task line/);

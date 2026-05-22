@@ -25,8 +25,7 @@ import * as SecureStore from 'expo-secure-store';
 //
 // We probe via `typeof window` rather than `Platform.OS === 'web'` to keep
 // the auth module UI-platform-neutral (no react-native dep).
-const isWebEnv =
-  typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+const isWebEnv = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
 const secureStorage: StateStorage = isWebEnv
   ? {

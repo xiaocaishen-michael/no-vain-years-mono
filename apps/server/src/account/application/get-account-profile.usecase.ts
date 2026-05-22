@@ -1,8 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import {
-  ACCOUNT_REPOSITORY,
-  type AccountRepository,
-} from './ports/account.repository.port';
+import { ACCOUNT_REPOSITORY, type AccountRepository } from './ports/account.repository.port';
 import { AccountStatus } from '../domain/account.aggregate';
 
 export interface AccountProfileResult {

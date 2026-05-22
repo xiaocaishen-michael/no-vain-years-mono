@@ -33,9 +33,7 @@ describe('planFileOps', () => {
 
   it('create: plans create when target missing', () => {
     const cwd = makeCwd();
-    const files: TaskFileOp[] = [
-      { path: 'src/new.ts', op: 'create' },
-    ];
+    const files: TaskFileOp[] = [{ path: 'src/new.ts', op: 'create' }];
     const r = planFileOps(cwd, files, 'T001');
     expect(r.entries).toHaveLength(1);
     expect(r.entries[0].action).toBe('create');
@@ -46,15 +44,11 @@ describe('planFileOps', () => {
 
   it('create: noop when target already exists', () => {
     const cwd = makeCwd({ 'src/already.ts': 'old content' });
-    const files: TaskFileOp[] = [
-      { path: 'src/already.ts', op: 'create' },
-    ];
+    const files: TaskFileOp[] = [{ path: 'src/already.ts', op: 'create' }];
     const r = planFileOps(cwd, files, 'T002');
     expect(r.entries[0].action).toBe('noop');
     expect(r.entries[0].reason).toBe('already exists');
-    expect(fs.readFileSync(path.join(cwd, 'src/already.ts'), 'utf-8')).toBe(
-      'old content',
-    );
+    expect(fs.readFileSync(path.join(cwd, 'src/already.ts'), 'utf-8')).toBe('old content');
   });
 
   it('delete: plans delete when target exists', () => {
@@ -75,9 +69,7 @@ describe('planFileOps', () => {
 
   it('rename: plans rename when source exists', () => {
     const cwd = makeCwd({ 'old/a.ts': 'x' });
-    const files: TaskFileOp[] = [
-      { path: 'old/a.ts', op: 'rename', rename_to: 'new/a.ts' },
-    ];
+    const files: TaskFileOp[] = [{ path: 'old/a.ts', op: 'rename', rename_to: 'new/a.ts' }];
     const r = planFileOps(cwd, files, 'T005');
     expect(r.entries[0].action).toBe('rename');
     expect(r.entries[0].renameTo).toBe(path.join(cwd, 'new/a.ts'));
@@ -114,12 +106,8 @@ describe('planFileOps', () => {
 
   it('throws FileOpPathEscapeError when path escapes base dir', () => {
     const cwd = makeCwd();
-    const files: TaskFileOp[] = [
-      { path: '../outside.ts', op: 'create' },
-    ];
-    expect(() => planFileOps(cwd, files, 'T009')).toThrow(
-      FileOpPathEscapeError,
-    );
+    const files: TaskFileOp[] = [{ path: '../outside.ts', op: 'create' }];
+    expect(() => planFileOps(cwd, files, 'T009')).toThrow(FileOpPathEscapeError);
   });
 
   it('resolves repo-root-relative task paths inside nested workspace dirs', () => {
@@ -141,12 +129,8 @@ describe('planFileOps', () => {
 
   it('throws FileOpPathEscapeError when rename_to escapes workspace cwd', () => {
     const cwd = makeCwd({ 'inside.ts': 'x' });
-    const files: TaskFileOp[] = [
-      { path: 'inside.ts', op: 'rename', rename_to: '../outside.ts' },
-    ];
-    expect(() => planFileOps(cwd, files, 'T010')).toThrow(
-      FileOpPathEscapeError,
-    );
+    const files: TaskFileOp[] = [{ path: 'inside.ts', op: 'rename', rename_to: '../outside.ts' }];
+    expect(() => planFileOps(cwd, files, 'T010')).toThrow(FileOpPathEscapeError);
   });
 
   it('accumulates entries and warnings across multiple files in one task', () => {
@@ -181,9 +165,7 @@ describe('planFileOps', () => {
     expect(fs.existsSync(path.join(cwd, 'new.ts'))).toBe(false);
     expect(fs.existsSync(path.join(cwd, 'keep.ts'))).toBe(true);
     expect(fs.existsSync(path.join(cwd, 'renamed.ts'))).toBe(false);
-    expect(fs.readFileSync(path.join(cwd, 'keep.ts'), 'utf-8')).toBe(
-      'untouched',
-    );
+    expect(fs.readFileSync(path.join(cwd, 'keep.ts'), 'utf-8')).toBe('untouched');
   });
 });
 
@@ -277,9 +259,7 @@ describe('applyFileOpPlan', () => {
   it('modify-missing: skips silently when strict=false', () => {
     const cwd = makeCwd();
     const plan = planFileOps(cwd, [{ path: 'absent.ts', op: 'modify' }], 'T107');
-    expect(() =>
-      applyFileOpPlan(plan, { strictModifyMissing: false }),
-    ).not.toThrow();
+    expect(() => applyFileOpPlan(plan, { strictModifyMissing: false })).not.toThrow();
   });
 
   it('mixed plan applies in order', () => {

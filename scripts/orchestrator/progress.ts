@@ -1,10 +1,6 @@
 import { Listr } from 'listr2';
 import type { ParsedTask } from './schemas/tasks.js';
-import type {
-  TaskProgressHandle,
-  TaskProgressSink,
-  TaskRunResult,
-} from './run-feature.js';
+import type { TaskProgressHandle, TaskProgressSink, TaskRunResult } from './run-feature.js';
 
 // listr2 v10's ListrTaskWrapper generics are strict; we only need the
 // surface that mutates .output and calls .skip(), so an opaque shape lets
@@ -61,9 +57,7 @@ export class ListrProgressSink implements TaskProgressSink {
             return listrTask.skip('skipped — upstream failure');
           }
           if (!r.ok) {
-            throw new Error(
-              `${r.reason}${r.message ? ': ' + r.message : ''}`,
-            );
+            throw new Error(`${r.reason}${r.message ? ': ' + r.message : ''}`);
           }
         },
       })),

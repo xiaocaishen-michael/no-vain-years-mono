@@ -10,10 +10,7 @@ export const PlanFrontmatterSchema = z.object({
   adr_refs: z.array(z.string().regex(/^\d{4}$/)),
   orchestrator_compat: z.string(),
   context7_verified: z.array(
-    z.union([
-      z.string(),
-      z.object({ lib: z.string(), version: z.string(), source: z.string() }),
-    ]),
+    z.union([z.string(), z.object({ lib: z.string(), version: z.string(), source: z.string() })]),
   ),
 });
 
@@ -56,13 +53,9 @@ export const OrchestratorConfigSchema = z.object({
   }),
 });
 
-const ResponseSchemaRef = z.string().regex(
-  /^(E\d+|array\(E\d+\)|union\(E\d+(,\s*E\d+)*\))$/,
-  {
-    message:
-      'response_schema_ref must be E<n> / array(E<n>) / union(E<n>, E<m>, ...) form',
-  },
-);
+const ResponseSchemaRef = z.string().regex(/^(E\d+|array\(E\d+\)|union\(E\d+(,\s*E\d+)*\))$/, {
+  message: 'response_schema_ref must be E<n> / array(E<n>) / union(E<n>, E<m>, ...) form',
+});
 
 export const EndpointSchema = z.object({
   id: z.string().regex(/^EP\d+$/),

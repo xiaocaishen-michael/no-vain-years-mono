@@ -67,9 +67,7 @@ describe('loadFeature', () => {
   });
 
   it('throws when feature dir does not exist', () => {
-    expect(() => loadFeature('/nonexistent/feature/dir')).toThrow(
-      FeatureFileMissingError,
-    );
+    expect(() => loadFeature('/nonexistent/feature/dir')).toThrow(FeatureFileMissingError);
   });
 
   it('throws when spec.md / plan.md / tasks.md missing', () => {
@@ -96,9 +94,7 @@ describe('loadFeature', () => {
     );
     // tasks parser fires first (it checks both spec + plan feature_id);
     // either error path is acceptable as long as the drift is caught.
-    expect(() => loadFeature(dir)).toThrowError(
-      /feature_id|003-divergent-feature/,
-    );
+    expect(() => loadFeature(dir)).toThrowError(/feature_id|003-divergent-feature/);
   });
 });
 

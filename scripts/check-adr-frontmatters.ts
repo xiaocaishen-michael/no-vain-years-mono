@@ -20,14 +20,14 @@
  *
  * Deps (mono root devDeps): zod, gray-matter, tsx
  */
-import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { basename, join } from "node:path";
-import matter from "gray-matter";
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { basename, join } from 'node:path';
+import matter from 'gray-matter';
 // @ts-expect-error preset-install layout — resolved post-install in mono repo
-import { AdrFrontmatterSchema } from "../.specify/schemas/adr-governance/adr.zod.ts";
+import { AdrFrontmatterSchema } from '../.specify/schemas/adr-governance/adr.zod.ts';
 
 function findAllAdrFiles(): string[] {
-  const adrDir = "docs/adr";
+  const adrDir = 'docs/adr';
   if (!existsSync(adrDir)) return [];
   return readdirSync(adrDir)
     .filter((f) => /^\d{4}-.+\.md$/.test(f))
@@ -41,20 +41,20 @@ const files =
     : findAllAdrFiles();
 
 if (files.length === 0) {
-  console.log("[check-adr-frontmatters] no docs/adr/*.md files to check (skip)");
+  console.log('[check-adr-frontmatters] no docs/adr/*.md files to check (skip)');
   process.exit(0);
 }
 
 let failed = 0;
 for (const file of files) {
-  const raw = readFileSync(file, "utf-8");
+  const raw = readFileSync(file, 'utf-8');
   const { data } = matter(raw);
   const result = AdrFrontmatterSchema.safeParse(data);
   if (!result.success) {
     failed += 1;
     console.error(`❌ ${file}`);
     for (const issue of result.error.issues) {
-      const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
+      const path = issue.path.length > 0 ? issue.path.join('.') : '(root)';
       console.error(`   - ${path}: ${issue.message}`);
     }
     continue;

@@ -363,9 +363,7 @@ function previewToolArg(input: Record<string, unknown> | undefined): string {
 function tail(s: string | undefined): string {
   if (!s) return '';
   const clean = s.replace(/\s+/g, ' ').trim();
-  return clean.length <= HEARTBEAT_TAIL_CHARS
-    ? clean
-    : '…' + clean.slice(-HEARTBEAT_TAIL_CHARS);
+  return clean.length <= HEARTBEAT_TAIL_CHARS ? clean : '…' + clean.slice(-HEARTBEAT_TAIL_CHARS);
 }
 
 function truncate(s: string, n: number): string {

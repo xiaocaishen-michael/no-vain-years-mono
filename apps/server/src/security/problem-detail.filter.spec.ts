@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ArgumentsHost, BadRequestException, HttpException, UnauthorizedException } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  HttpException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type { ClsService } from 'nestjs-cls';
 import { ProblemDetailFilter } from './problem-detail.filter';
 
@@ -11,8 +16,13 @@ const mockCls = {
   getId: () => 'test-trace-id',
 } as unknown as ClsService;
 
-function mockHost(): { host: ArgumentsHost; sent: { status?: number; body?: unknown; headers?: Record<string, string> } } {
-  const sent: { status?: number; body?: unknown; headers?: Record<string, string> } = { headers: {} };
+function mockHost(): {
+  host: ArgumentsHost;
+  sent: { status?: number; body?: unknown; headers?: Record<string, string> };
+} {
+  const sent: { status?: number; body?: unknown; headers?: Record<string, string> } = {
+    headers: {},
+  };
   const reply = {
     status: vi.fn((code: number) => {
       sent.status = code;
@@ -57,7 +67,11 @@ describe('ProblemDetailFilter', () => {
     const { host, sent } = mockHost();
     filter.catch(new UnauthorizedException('INVALID_CREDENTIALS'), host);
     expect(sent.status).toBe(401);
-    expect(sent.body).toMatchObject({ status: 401, title: 'Unauthorized', detail: 'INVALID_CREDENTIALS' });
+    expect(sent.body).toMatchObject({
+      status: 401,
+      title: 'Unauthorized',
+      detail: 'INVALID_CREDENTIALS',
+    });
   });
 
   it('maps generic HttpException with custom status', () => {

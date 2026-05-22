@@ -48,9 +48,7 @@ describe('queryGraph', () => {
   });
 
   it('treats trailing slash in scope idempotently', () => {
-    const p = writeGraph([
-      { id: 'a', label: 'A', source_file: 'apps/server/main.ts' },
-    ]);
+    const p = writeGraph([{ id: 'a', label: 'A', source_file: 'apps/server/main.ts' }]);
     expect(queryGraph(p, 'apps/server').nodes).toHaveLength(1);
     expect(queryGraph(p, 'apps/server/').nodes).toHaveLength(1);
   });

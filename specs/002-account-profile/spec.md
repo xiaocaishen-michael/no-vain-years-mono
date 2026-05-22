@@ -1,31 +1,31 @@
 ---
 feature_id: 002-account-profile
 modules: [account]
-owners: ["@xiaocaishen-michael"]
+owners: ['@xiaocaishen-michael']
 status: implemented
-created_at: "2026-05-04"
-updated_at: "2026-05-21"
-spec_kit_version: ">=0.8.5,<0.10.0"
-orchestrator_compat: ">=0.2.0"
+created_at: '2026-05-04'
+updated_at: '2026-05-21'
+spec_kit_version: '>=0.8.5,<0.10.0'
+orchestrator_compat: '>=0.2.0'
 
 # v2 frontmatter fields (per mono-orchestrator-ready 0.2.0 + ADR-0024 amend + ADR-0039)
 web_compat: stub
-web_compat_notes: "A-002 ship 时 mobile 占位 UI 跑通;Expo Web export 路径未冒烟;onboarding 重定向行为未在 Web 验证;packages/auth Web localStorage fallback 缺 (PR #67 部分修)"
+web_compat_notes: 'A-002 ship 时 mobile 占位 UI 跑通;Expo Web export 路径未冒烟;onboarding 重定向行为未在 Web 验证;packages/auth Web localStorage fallback 缺 (PR #67 部分修)'
 agent_friction_observed: true
-agent_friction_notes: "F-001 TS-Bundler-Mismatch (@hey-api/openapi-ts .js 后缀,Issue #68 — ADR-0027 切 Orval 解); F-003 Pnpm-Strict-vs-Expo-Hoist (PR #66 publicHoistPattern 半解 / PR #67 shamefully-hoist 全解,ADR-0028 缓解); F-006 Indirect-Spec-Module-Mapping (ADR-0018 SWC 被误读 mono-wide,ADR-0031 governance + applies_to programmatic filter 缓解)"
+agent_friction_notes: 'F-001 TS-Bundler-Mismatch (@hey-api/openapi-ts .js 后缀,Issue #68 — ADR-0027 切 Orval 解); F-003 Pnpm-Strict-vs-Expo-Hoist (PR #66 publicHoistPattern 半解 / PR #67 shamefully-hoist 全解,ADR-0028 缓解); F-006 Indirect-Spec-Module-Mapping (ADR-0018 SWC 被误读 mono-wide,ADR-0031 governance + applies_to programmatic filter 缓解)'
 perf_budgets:
-  - endpoint: "GET /api/v1/accounts/me"
+  - endpoint: 'GET /api/v1/accounts/me'
     p95_ms: 50
     p99_ms: 100
-  - endpoint: "PATCH /api/v1/accounts/me"
+  - endpoint: 'PATCH /api/v1/accounts/me'
     p95_ms: 100
     p99_ms: 200
 
 state_branches:
-  - "new user auto-created: GET /me → displayName=null, phone present (onboarding trigger state)"
-  - "new user onboarding: PATCH /me {displayName} → 200, persisted, subsequent GET /me returns same"
-  - "existing user with displayName set: GET /me → displayName returns stored value, no onboarding"
-  - "invalid/expired JWT: GET /me or PATCH /me → 401 (boundary, no enumeration leak)"
+  - 'new user auto-created: GET /me → displayName=null, phone present (onboarding trigger state)'
+  - 'new user onboarding: PATCH /me {displayName} → 200, persisted, subsequent GET /me returns same'
+  - 'existing user with displayName set: GET /me → displayName returns stored value, no onboarding'
+  - 'invalid/expired JWT: GET /me or PATCH /me → 401 (boundary, no enumeration leak)'
 ---
 
 # Feature Specification: Account Profile（onboarding 信号 + displayName 维护 + 我的页骨架）
@@ -35,6 +35,7 @@ state_branches:
 **Status**: Clarified（server 业务规则已 impl pending review；client UI 段已完成 /speckit.clarify）
 **Module**: `account`（server `apps/server/src/modules/account` / mobile `apps/mobile/app/(app)/(tabs)/profile`）
 **Input**:
+
 - Server：phoneSmsAuth 不暴露 isNewAccount；客户端 auth 成功后查 `/me` 拿 displayName 决定是否进 onboarding 完善昵称；onboarding 强制不可跳。
 - Client：建一个「我的」页，布局参考网易云音乐 — 顶 nav 三 entry / hero / 关注粉丝占位 / 三 slide tabs（笔记/图谱/知识库）/ 底 tab bar 4 项（首页/搜索/外脑/我的）。底 tab 是当前应用骨架的入口重构，本 spec 是 A → B → C 三步链（我的 → 设置 → 注销/解封 UI）的第一步。
 
@@ -52,7 +53,7 @@ state_branches:
 > - **占位 UI 阶段不引入 packages/ui 新组件**（per FR-022）；现有共享组件（Button / Spinner 等）可复用，新组件等 PHASE 2 mockup 评估
 > - 本 spec 是 SDD 拆分链 A → B → C 的 A；A → B 入口为「我的 → ⚙️ → 设置」，A → C 入口经 B 中转（账号与安全 → 注销账号）；本 spec 仅声明 `router.push('/(app)/settings')`，目标实现是 spec B 范围
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 — [Server] 新用户首登：profile 缺失信号（Priority: P1）
 
@@ -288,7 +289,7 @@ state_branches:
 - **横屏旋转**（M1 仅竖屏）：假设竖屏锁定（per existing app config）；本 spec 不处理横屏
 - **Android hardware back 在 `(tabs)`**：用户在 `(tabs)/profile` 按 back → 沿用 Expo Router Tabs 默认行为（若 tab 内有 navigation history 先 pop；否则 exit app）；跨 tab 切换不计入 back history（默认 `backBehavior: 'firstRoute'` 等行为视 Expo Router 版本）；plan.md / T8 集成测验证默认行为符合预期，若不符再加 `Tabs.Screen` 的 `backBehavior` 配置 (covers FR-013)
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Server Functional Requirements
 
@@ -418,18 +419,14 @@ state_branches:
       "name": "DisplayName",
       "domain": "account",
       "aggregate_root": false,
-      "attrs": [
-        { "name": "value", "type": "string", "max_len": 32 }
-      ],
-      "relations": [
-        { "to": "E1", "kind": "1:1" }
-      ]
+      "attrs": [{ "name": "value", "type": "string", "max_len": 32 }],
+      "relations": [{ "to": "E1", "kind": "1:1" }]
     }
   ]
 }
 ```
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Server Measurable Outcomes
 
@@ -661,17 +658,17 @@ flowchart TD
 
 ## Open Questions（client）
 
-| # | 问 | 决议 |
-| --- | --- | --- |
-| 1 | swipe + sticky tabs 组合实现选型（per CL-005 (b)） | 🟡 plan.md 决，候选：(a) 单 `<ScrollView>` + `stickyHeaderIndices` + **仅 tap 切换**（最简，占位 UI 阶段倾向）；(b) `react-native-collapsible-tab-view`（成熟但第三方，需 prebuild + bundle 增量）；(c) `<ScrollView>` + 内嵌 `react-native-pager-view`（自组合，处理嵌套 scroll 复杂）；**占位 UI 阶段如复杂度 > 收益，先降级 swipe 为 PHASE 2 mockup 后置**，本批次仅 tap 切换 + sticky 滚动 |
-| 2 | 关注 / 粉丝具体假数字 | ✅ **5 关注 / 12 粉丝** |
-| 3 | 头像 / 背景 placeholder 资源选哪张 | 🟡 plan.md 决：中性视觉（灰色 / 中性蓝灰渐变），与未来 mockup 风格不冲突；如有 packages/ui 现成资源复用，否则 apps/mobile/assets/ 新增 |
-| 4 | 顶 nav ≡ / 🔍 disabled 反馈形式 | 🟡 PHASE 1：无 toast / 仅视觉 disabled（opacity 0.5）；PHASE 2 mockup 决定是否加 toast / hover 提示 |
-| 5 | 三 slide tabs 切换是否带过渡动画 | 🟡 PHASE 1：无动画 / 直接切；PHASE 2 mockup 决定 |
-| 6 | 底 tab bar 切换是否带过渡动画 / lazy load 其他 tab | 🟡 PHASE 1：Expo Router 默认行为（lazy=true，不预 mount）；PHASE 2 mockup 决定 |
-| 7 | 用户名长度溢出处理 | ✅ `numberOfLines=1` + `ellipsizeMode='tail'`（per Edge Cases） |
-| 8 | profile screen 是否需 pull-to-refresh | 🟡 PHASE 1：**不**；本 spec 无网络数据展示（displayName 已 in store）；PHASE 2 决定是否加 |
-| 9 | iOS 物理 back / Android hardware back 在 tab 切换时的行为 | 🟡 PHASE 1：沿用 Expo Router Tabs 默认（Android back 退回上一 tab，iOS 无 hardware back）；plan.md 验证默认行为符合预期 |
+| #   | 问                                                        | 决议                                                                                                                                                                                                                                                                                                                                                                                           |
+| --- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | swipe + sticky tabs 组合实现选型（per CL-005 (b)）        | 🟡 plan.md 决，候选：(a) 单 `<ScrollView>` + `stickyHeaderIndices` + **仅 tap 切换**（最简，占位 UI 阶段倾向）；(b) `react-native-collapsible-tab-view`（成熟但第三方，需 prebuild + bundle 增量）；(c) `<ScrollView>` + 内嵌 `react-native-pager-view`（自组合，处理嵌套 scroll 复杂）；**占位 UI 阶段如复杂度 > 收益，先降级 swipe 为 PHASE 2 mockup 后置**，本批次仅 tap 切换 + sticky 滚动 |
+| 2   | 关注 / 粉丝具体假数字                                     | ✅ **5 关注 / 12 粉丝**                                                                                                                                                                                                                                                                                                                                                                        |
+| 3   | 头像 / 背景 placeholder 资源选哪张                        | 🟡 plan.md 决：中性视觉（灰色 / 中性蓝灰渐变），与未来 mockup 风格不冲突；如有 packages/ui 现成资源复用，否则 apps/mobile/assets/ 新增                                                                                                                                                                                                                                                         |
+| 4   | 顶 nav ≡ / 🔍 disabled 反馈形式                           | 🟡 PHASE 1：无 toast / 仅视觉 disabled（opacity 0.5）；PHASE 2 mockup 决定是否加 toast / hover 提示                                                                                                                                                                                                                                                                                            |
+| 5   | 三 slide tabs 切换是否带过渡动画                          | 🟡 PHASE 1：无动画 / 直接切；PHASE 2 mockup 决定                                                                                                                                                                                                                                                                                                                                               |
+| 6   | 底 tab bar 切换是否带过渡动画 / lazy load 其他 tab        | 🟡 PHASE 1：Expo Router 默认行为（lazy=true，不预 mount）；PHASE 2 mockup 决定                                                                                                                                                                                                                                                                                                                 |
+| 7   | 用户名长度溢出处理                                        | ✅ `numberOfLines=1` + `ellipsizeMode='tail'`（per Edge Cases）                                                                                                                                                                                                                                                                                                                                |
+| 8   | profile screen 是否需 pull-to-refresh                     | 🟡 PHASE 1：**不**；本 spec 无网络数据展示（displayName 已 in store）；PHASE 2 决定是否加                                                                                                                                                                                                                                                                                                      |
+| 9   | iOS 物理 back / Android hardware back 在 tab 切换时的行为 | 🟡 PHASE 1：沿用 Expo Router Tabs 默认（Android back 退回上一 tab，iOS 无 hardware back）；plan.md 验证默认行为符合预期                                                                                                                                                                                                                                                                        |
 
 ---
 

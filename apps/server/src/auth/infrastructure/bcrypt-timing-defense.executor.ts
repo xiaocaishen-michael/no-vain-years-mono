@@ -17,9 +17,7 @@ const DUMMY_INPUT = '__timing_defense_pad_input__';
 const BCRYPT_COST = 10;
 
 @Injectable()
-export class BcryptTimingDefenseExecutor
-  implements TimingDefenseExecutor, OnModuleInit
-{
+export class BcryptTimingDefenseExecutor implements TimingDefenseExecutor, OnModuleInit {
   private dummyHash = '';
 
   async onModuleInit(): Promise<void> {

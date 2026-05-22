@@ -47,9 +47,7 @@ export class AccountSmsCodeController {
     description: 'Rate limit exceeded (FR-S07 #1-3)',
     type: ProblemDetailResponse,
   })
-  async request(
-    @Body() body: RequestSmsCodeRequest,
-  ): Promise<RequestSmsCodeResponse> {
+  async request(@Body() body: RequestSmsCodeRequest): Promise<RequestSmsCodeResponse> {
     return this.useCase.execute(Phone.create(body.phone));
   }
 }

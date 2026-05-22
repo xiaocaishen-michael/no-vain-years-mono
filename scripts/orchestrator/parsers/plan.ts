@@ -25,9 +25,7 @@ export class ConstitutionViolationError extends Error {
     public readonly featureId: string,
     public readonly violations: ConstitutionCheck['violations'],
   ) {
-    super(
-      `Constitution check failed for ${featureId}: ${violations.length} violation(s)`,
-    );
+    super(`Constitution check failed for ${featureId}: ${violations.length} violation(s)`);
     this.name = 'ConstitutionViolationError';
   }
 }
@@ -44,24 +42,16 @@ export class PlanAnalyzer {
 
     const configRaw = this.extractJsonBlock(body, 'orchestrator_config');
     const config = OrchestratorConfigSchema.parse(configRaw);
-    const contracts = ApiContractsSchema.parse(
-      this.extractJsonBlock(body, 'api_contracts'),
-    );
+    const contracts = ApiContractsSchema.parse(this.extractJsonBlock(body, 'api_contracts'));
     const constitution = ConstitutionCheckSchema.parse(
       this.extractJsonBlock(body, 'constitution_check'),
     );
 
     if (!constitution.passed) {
-      throw new ConstitutionViolationError(
-        frontmatter.feature_id,
-        constitution.violations,
-      );
+      throw new ConstitutionViolationError(frontmatter.feature_id, constitution.violations);
     }
 
-    const architectureNotes = this.extractMarkdownSection(
-      body,
-      'Architecture Notes',
-    );
+    const architectureNotes = this.extractMarkdownSection(body, 'Architecture Notes');
 
     return {
       frontmatter,
@@ -73,9 +63,7 @@ export class PlanAnalyzer {
   }
 
   private extractJsonBlock(body: string, blockId: string): unknown {
-    const regex = new RegExp(
-      `\`\`\`json\\s+${blockId}\\s*\\n([\\s\\S]*?)\\n\`\`\``,
-    );
+    const regex = new RegExp(`\`\`\`json\\s+${blockId}\\s*\\n([\\s\\S]*?)\\n\`\`\``);
     const match = body.match(regex);
     if (!match) {
       throw new Error(`Missing mandatory fenced JSON block: ${blockId}`);

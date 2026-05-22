@@ -41,9 +41,7 @@ export type AuthAttemptLockedProblem = ProblemWithCode<
  * Returns null when the error is not an axios error or carries no
  * ProblemDetail-shaped body (network failure / non-JSON / etc.).
  */
-export function extractProblemDetail(
-  err: unknown,
-): ProblemDetailResponse | null {
+export function extractProblemDetail(err: unknown): ProblemDetailResponse | null {
   if (
     isAxiosError(err) &&
     err.response?.data &&
@@ -56,34 +54,16 @@ export function extractProblemDetail(
   return null;
 }
 
-export function isFormValidationError(
-  p: ProblemDetailResponse | null,
-): p is FormValidationProblem {
-  return (
-    p !== null &&
-    p.code === 'FORM_VALIDATION' &&
-    Array.isArray(p.invalidAttributes)
-  );
+export function isFormValidationError(p: ProblemDetailResponse | null): p is FormValidationProblem {
+  return p !== null && p.code === 'FORM_VALIDATION' && Array.isArray(p.invalidAttributes);
 }
 
-export function isFreezePeriod(
-  p: ProblemDetailResponse | null,
-): p is FreezePeriodProblem {
-  return (
-    p !== null &&
-    p.code === 'ACCOUNT_IN_FREEZE_PERIOD' &&
-    typeof p.freezeUntil === 'string'
-  );
+export function isFreezePeriod(p: ProblemDetailResponse | null): p is FreezePeriodProblem {
+  return p !== null && p.code === 'ACCOUNT_IN_FREEZE_PERIOD' && typeof p.freezeUntil === 'string';
 }
 
-export function isAuthLocked(
-  p: ProblemDetailResponse | null,
-): p is AuthAttemptLockedProblem {
-  return (
-    p !== null &&
-    p.code === 'AUTH_ATTEMPT_LOCKED' &&
-    typeof p.retryAfterSeconds === 'number'
-  );
+export function isAuthLocked(p: ProblemDetailResponse | null): p is AuthAttemptLockedProblem {
+  return p !== null && p.code === 'AUTH_ATTEMPT_LOCKED' && typeof p.retryAfterSeconds === 'number';
 }
 
 /**
@@ -105,8 +85,7 @@ export function isRetryable(err: unknown): boolean {
  */
 export function extractTraceId(err: unknown): string {
   if (isAxiosError(err)) {
-    const fromBody = (err.response?.data as { traceId?: string } | undefined)
-      ?.traceId;
+    const fromBody = (err.response?.data as { traceId?: string } | undefined)?.traceId;
     if (fromBody) return fromBody;
     const fromHeader = err.response?.headers?.['x-trace-id'];
     if (typeof fromHeader === 'string') return fromHeader;

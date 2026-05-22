@@ -8,7 +8,8 @@ import { ApiProperty } from '@nestjs/swagger';
  */
 export class PhoneSmsAuthResponse {
   @ApiProperty({
-    description: 'Account ID (serialized as string to remain JSON-safe vs BigInt; matches JWT sub claim)',
+    description:
+      'Account ID (serialized as string to remain JSON-safe vs BigInt; matches JWT sub claim)',
     example: '1234567890',
   })
   accountId!: string;

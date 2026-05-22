@@ -28,10 +28,7 @@ const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** Live impl. Runs the command via `/bin/sh -c`. */
 export class RealShell implements Shell {
-  async run(
-    command: string,
-    opts: ShellRunOptions,
-  ): Promise<ShellRunResult> {
+  async run(command: string, opts: ShellRunOptions): Promise<ShellRunResult> {
     const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const start = Date.now();
 
@@ -55,9 +52,7 @@ export class RealShell implements Shell {
 
       const timer = setTimeout(() => {
         child.kill('SIGKILL');
-        reject(
-          new Error(`shell command timed out after ${timeoutMs}ms: ${command}`),
-        );
+        reject(new Error(`shell command timed out after ${timeoutMs}ms: ${command}`));
       }, timeoutMs);
 
       child.on('error', (err) => {
@@ -96,16 +91,11 @@ export class FakeShell implements Shell {
     this.queue.push(r);
   }
 
-  async run(
-    command: string,
-    opts: ShellRunOptions,
-  ): Promise<ShellRunResult> {
+  async run(command: string, opts: ShellRunOptions): Promise<ShellRunResult> {
     this.calls.push({ command, opts });
     const next = this.queue.shift();
     if (next === undefined) {
-      throw new Error(
-        `FakeShell: run() called for "${command}" but no scripted response left`,
-      );
+      throw new Error(`FakeShell: run() called for "${command}" but no scripted response left`);
     }
     return typeof next === 'function' ? next(command, opts) : next;
   }

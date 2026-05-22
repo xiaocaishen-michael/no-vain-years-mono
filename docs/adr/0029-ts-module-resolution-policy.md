@@ -10,20 +10,20 @@ sunset_trigger: |
 
 # ADR-0029: TS Module Resolution Policy — base = `bundler`, apps/server override = `nodenext`
 
-* Status: Accepted (2026-05-21) — shipped via PR-2 (tsconfig swap)
-* Deciders: project owner
-* Tags: build / typescript / cross-cutting
+- Status: Accepted (2026-05-21) — shipped via PR-2 (tsconfig swap)
+- Deciders: project owner
+- Tags: build / typescript / cross-cutting
 
 ## Context
 
 A-002 ship (PR #65/#66/#67) 暴露 `tsconfig.base.json` 用 `moduleResolution: nodenext` + `module: nodenext` 与前端生态对抗:
 
-| 工具 | 期望 resolution | 与 nodenext 冲突 |
-|---|---|---|
-| Vite (Web) | `bundler` (no extension) | `.js` 后缀 import 在 .ts source 编辑期 IDE 报错 |
-| Metro (Expo) | implicit relative | `.js` 后缀解析失败 (`.ts` source 找不到) |
-| Webpack | `bundler` 或自定义 | 同 Vite |
-| **Node.js ESM** | `nodenext` (强制 `.js` 后缀) | 唯一真需要的栈 |
+| 工具            | 期望 resolution              | 与 nodenext 冲突                                |
+| --------------- | ---------------------------- | ----------------------------------------------- |
+| Vite (Web)      | `bundler` (no extension)     | `.js` 后缀 import 在 .ts source 编辑期 IDE 报错 |
+| Metro (Expo)    | implicit relative            | `.js` 后缀解析失败 (`.ts` source 找不到)        |
+| Webpack         | `bundler` 或自定义           | 同 Vite                                         |
+| **Node.js ESM** | `nodenext` (强制 `.js` 后缀) | 唯一真需要的栈                                  |
 
 **packages/api-client** (前轮 PR #67 包内加 bundler override 半补) + **packages/auth** (`.js` 后缀强加被 PR #67 sweep) 实证 nodenext 是 mono 默认 wrong 选择。
 
@@ -39,7 +39,7 @@ A-002 ship (PR #65/#66/#67) 暴露 `tsconfig.base.json` 用 `moduleResolution: n
     "moduleResolution": "bundler",
     "module": "esnext",
     // ... 其余不变
-  }
+  },
 }
 ```
 
@@ -50,12 +50,12 @@ A-002 ship (PR #65/#66/#67) 暴露 `tsconfig.base.json` 用 `moduleResolution: n
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "moduleResolution": "nodenext",
-    "module": "nodenext"
-  }
+    "module": "nodenext",
+  },
 }
 ```
 
-### apps/mobile / packages/* — 继承 base (`bundler` / `esnext`),不 override
+### apps/mobile / packages/\* — 继承 base (`bundler` / `esnext`),不 override
 
 ### PR-2 切换步骤
 
@@ -67,17 +67,17 @@ A-002 ship (PR #65/#66/#67) 暴露 `tsconfig.base.json` 用 `moduleResolution: n
 
 ## Consequences
 
-* **apps/server import 仍需 `.js` 后缀**(Node.js ESM 硬规则) — 不影响 dev 体验,IDE auto-import 配 nodenext 即自动加
-* **apps/mobile / packages/* import 写 `import x from './y'`**(无后缀) — 与 Vite/Metro/RN 社区一致
-* **dist 输出** server 走 nodenext (`.js` 后缀),mobile 走 esnext (bundler 处理) — 物理隔离,无 cross-contamination
+- **apps/server import 仍需 `.js` 后缀**(Node.js ESM 硬规则) — 不影响 dev 体验,IDE auto-import 配 nodenext 即自动加
+- **apps/mobile / packages/\* import 写 `import x from './y'`**(无后缀) — 与 Vite/Metro/RN 社区一致
+- **dist 输出** server 走 nodenext (`.js` 后缀),mobile 走 esnext (bundler 处理) — 物理隔离,无 cross-contamination
 
 ## Trade-offs
 
-* server 与 mobile/packages 两套 import 风格 — 但物理边界清晰(`apps/server/**` vs 其余),AI agent 易识别
-* nodenext-only override 在 server,未来切 Bun 可一次性删 override (Bun 不要求 `.js` 后缀)
+- server 与 mobile/packages 两套 import 风格 — 但物理边界清晰(`apps/server/**` vs 其余),AI agent 易识别
+- nodenext-only override 在 server,未来切 Bun 可一次性删 override (Bun 不要求 `.js` 后缀)
 
 ## References
 
-* memory `reference_pnpm_C_does_not_propagate_child_cwd` (相关 build tool cwd 不一致问题)
-* PR #67 (`shamefully-hoist` ship 同时 sweep packages/auth `.js` 后缀)
-* https://www.typescriptlang.org/docs/handbook/modules/reference.html#bundler
+- memory `reference_pnpm_C_does_not_propagate_child_cwd` (相关 build tool cwd 不一致问题)
+- PR #67 (`shamefully-hoist` ship 同时 sweep packages/auth `.js` 后缀)
+- https://www.typescriptlang.org/docs/handbook/modules/reference.html#bundler

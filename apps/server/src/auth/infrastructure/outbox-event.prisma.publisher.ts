@@ -49,11 +49,7 @@ const PRODUCER_CONTEXT = 'auth';
 export class OutboxEventPrismaPublisher implements OutboxPublisher {
   constructor(@Optional() private readonly cls?: ClsService) {}
 
-  async publish(
-    client: unknown,
-    eventType: string,
-    data: Record<string, unknown>,
-  ): Promise<void> {
+  async publish(client: unknown, eventType: string, data: Record<string, unknown>): Promise<void> {
     const envelope: OutboxEventEnvelope = OutboxEventEnvelopeSchema.parse({
       metadata: {
         trace_id: this.resolveTraceId(),

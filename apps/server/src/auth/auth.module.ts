@@ -68,9 +68,7 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
               ttl: 86_400_000,
               getTracker: (req: Record<string, unknown>) => {
                 const ip = req['ip'];
-                return Promise.resolve(
-                  `ip:${typeof ip === 'string' ? ip : 'unknown'}`,
-                );
+                return Promise.resolve(`ip:${typeof ip === 'string' ? ip : 'unknown'}`);
               },
             },
             // FR-008: GET /me 60s 60 次, tracker = accountId (JwtAuthGuard 先行，req.user 已填)
@@ -106,10 +104,7 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
       // SMS_CODE_HMAC_SECRET fail-fast,与 AUTH_JWT_SECRET 同管理面.
       provide: SMS_CODE_REPOSITORY,
       useFactory: (redis: Redis, config: ConfigService) =>
-        new SmsCodeRedisRepository(
-          redis,
-          config.getOrThrow<string>('SMS_CODE_HMAC_SECRET'),
-        ),
+        new SmsCodeRedisRepository(redis, config.getOrThrow<string>('SMS_CODE_HMAC_SECRET')),
       inject: [REDIS_CLIENT, ConfigService],
     },
     {
@@ -119,28 +114,17 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
       useFactory: (config: ConfigService, retryExecutor: RetryExecutor) => {
         const gatewayKind = config.get<string>('SMS_GATEWAY', 'mock');
         if (gatewayKind === 'aliyun') {
-          const accessKeyId = config.getOrThrow<string>(
-            'ALIYUN_ACCESS_KEY_ID',
-          );
-          const accessKeySecret = config.getOrThrow<string>(
-            'ALIYUN_ACCESS_KEY_SECRET',
-          );
+          const accessKeyId = config.getOrThrow<string>('ALIYUN_ACCESS_KEY_ID');
+          const accessKeySecret = config.getOrThrow<string>('ALIYUN_ACCESS_KEY_SECRET');
           const signName = config.getOrThrow<string>('ALIYUN_SMS_SIGN_NAME');
-          const templateCode = config.getOrThrow<string>(
-            'ALIYUN_SMS_TEMPLATE_CODE',
-          );
+          const templateCode = config.getOrThrow<string>('ALIYUN_SMS_TEMPLATE_CODE');
           const client = AliyunSmsGateway.createClient({
             accessKeyId,
             accessKeySecret,
             signName,
             templateCode,
           });
-          return new AliyunSmsGateway(
-            client,
-            signName,
-            templateCode,
-            retryExecutor,
-          );
+          return new AliyunSmsGateway(client, signName, templateCode, retryExecutor);
         }
         return new MockSmsGateway();
       },

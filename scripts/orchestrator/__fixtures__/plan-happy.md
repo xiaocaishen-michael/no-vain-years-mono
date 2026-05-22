@@ -4,8 +4,8 @@ spec_ref: ./spec.md
 status: approved
 created_at: 2026-05-20
 updated_at: 2026-05-20
-adr_refs: ["0018","0019","0020","0024"]
-orchestrator_compat: ">=0.1.0"
+adr_refs: ['0018', '0019', '0020', '0024']
+orchestrator_compat: '>=0.1.0'
 context7_verified: []
 ---
 
@@ -73,9 +73,7 @@ GET / PATCH `/v1/account/profile` 两个 endpoint。
     "cleanup_on_failure": false
   },
   "tech_constraints": {
-    "versions": [
-      { "lib": "@nestjs/core", "version": "^11.0.0" }
-    ],
+    "versions": [{ "lib": "@nestjs/core", "version": "^11.0.0" }],
     "perf_budget": [
       { "metric": "P95 GET /v1/account/profile", "target": "<200ms", "trace_sc": ["SC-001"] }
     ],

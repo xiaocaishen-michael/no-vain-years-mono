@@ -44,20 +44,11 @@ import 'reflect-metadata';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import {
-  RedisContainer,
-  type StartedRedisContainer,
-} from '@testcontainers/redis';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import { ValidationError, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import {
-  FastifyAdapter,
-  type NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 
 interface ProblemDetail {
   type?: string;
@@ -85,18 +76,13 @@ function log(msg: string): void {
 }
 
 // Mirrors apps/server/src/main.ts flattenValidationErrors — keep in sync.
-function flattenValidationErrors(
-  errors: ValidationError[],
-  parentPath = '',
-): InvalidAttribute[] {
+function flattenValidationErrors(errors: ValidationError[], parentPath = ''): InvalidAttribute[] {
   return errors.flatMap((err) => {
     const field = parentPath ? `${parentPath}.${err.property}` : err.property;
     const own: InvalidAttribute[] = err.constraints
       ? [{ field, messages: Object.values(err.constraints) }]
       : [];
-    const nested = err.children?.length
-      ? flattenValidationErrors(err.children, field)
-      : [];
+    const nested = err.children?.length ? flattenValidationErrors(err.children, field) : [];
     return [...own, ...nested];
   });
 }
@@ -110,15 +96,14 @@ async function runSmokeTest(): Promise<void> {
   });
 
   log('[2/6] booting Testcontainers (Postgres + Redis)…');
-  const pgContainer: StartedPostgreSqlContainer =
-    await new PostgreSqlContainer('postgres:16-alpine')
-      .withDatabase('smoke')
-      .withUsername('smoke')
-      .withPassword('smoke')
-      .start();
-  const redisContainer: StartedRedisContainer = await new RedisContainer(
-    'redis:7-alpine',
-  ).start();
+  const pgContainer: StartedPostgreSqlContainer = await new PostgreSqlContainer(
+    'postgres:16-alpine',
+  )
+    .withDatabase('smoke')
+    .withUsername('smoke')
+    .withPassword('smoke')
+    .start();
+  const redisContainer: StartedRedisContainer = await new RedisContainer('redis:7-alpine').start();
 
   let app: NestFastifyApplication | undefined;
 
@@ -127,10 +112,8 @@ async function runSmokeTest(): Promise<void> {
     // ConfigService.getOrThrow checks run at module-init time.
     process.env['DATABASE_URL'] = pgContainer.getConnectionUri();
     process.env['REDIS_URL'] = redisContainer.getConnectionUrl();
-    process.env['AUTH_JWT_SECRET'] =
-      'smoke-test-jwt-secret-min-32-bytes-pad-abcdef';
-    process.env['SMS_CODE_HMAC_SECRET'] =
-      'smoke-test-hmac-secret-min-32-bytes-pad-zzzzzz';
+    process.env['AUTH_JWT_SECRET'] = 'smoke-test-jwt-secret-min-32-bytes-pad-abcdef';
+    process.env['SMS_CODE_HMAC_SECRET'] = 'smoke-test-hmac-secret-min-32-bytes-pad-zzzzzz';
     process.env['SMS_GATEWAY'] = 'mock';
 
     log('[3/6] applying Prisma migrations against smoke Postgres…');
@@ -141,9 +124,7 @@ async function runSmokeTest(): Promise<void> {
     });
 
     log('[4/6] dynamic-importing compiled AppModule + FormValidationException…');
-    const appModuleUrl = pathToFileURL(
-      path.resolve(SERVER_DIST, 'app/app.module.js'),
-    ).href;
+    const appModuleUrl = pathToFileURL(path.resolve(SERVER_DIST, 'app/app.module.js')).href;
     const fveUrl = pathToFileURL(
       path.resolve(SERVER_DIST, 'security/form-validation.exception.js'),
     ).href;
@@ -156,11 +137,10 @@ async function runSmokeTest(): Promise<void> {
 
     log('[5/6] booting NestFastifyApplication (mirrors main.ts)…');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    app = await NestFactory.create<NestFastifyApplication>(
-      AppModule as any,
-      new FastifyAdapter(),
-      { logger: ['error', 'warn'], bufferLogs: true },
-    );
+    app = await NestFactory.create<NestFastifyApplication>(AppModule as any, new FastifyAdapter(), {
+      logger: ['error', 'warn'],
+      bufferLogs: true,
+    });
     app.useGlobalPipes(
       new ValidationPipe({
         transform: true,
@@ -180,9 +160,7 @@ async function runSmokeTest(): Promise<void> {
     const url = `http://127.0.0.1:${address.port}/api/v1/accounts/me`;
     log(`         listening on http://127.0.0.1:${address.port}`);
 
-    log(
-      `[6/6] probing ${url} with invalid bearer (expect 401 ProblemDetail)…`,
-    );
+    log(`[6/6] probing ${url} with invalid bearer (expect 401 ProblemDetail)…`);
     const res = await fetch(url, {
       method: 'GET',
       headers: {
@@ -196,9 +174,7 @@ async function runSmokeTest(): Promise<void> {
 
     // (a) Must not be 500 — Guard/Filter must catch invalid bearer cleanly.
     if (res.status === 500) {
-      throw new Error(
-        `[ASSERT-A] server crashed with 500; body=${JSON.stringify(body)}`,
-      );
+      throw new Error(`[ASSERT-A] server crashed with 500; body=${JSON.stringify(body)}`);
     }
 
     // (b) RFC 9457 ProblemDetail shape: type+title+status all present.
@@ -265,10 +241,7 @@ async function runSmokeTest(): Promise<void> {
     }
 
     // (f) invalidAttributes must be non-empty array per ADR-0038 contract.
-    if (
-      !Array.isArray(postBody.invalidAttributes) ||
-      postBody.invalidAttributes.length === 0
-    ) {
+    if (!Array.isArray(postBody.invalidAttributes) || postBody.invalidAttributes.length === 0) {
       throw new Error(
         `[ASSERT-F] ProblemDetail missing invalidAttributes — ADR-0038 contract broken; body=${JSON.stringify(postBody)}`,
       );

@@ -1,8 +1,8 @@
 ---
 paths:
-  - "specs/**/spec.md"
-  - "apps/server/src/**/*.usecase.ts"
-  - "apps/server/src/**/*.module.ts"
+  - 'specs/**/spec.md'
+  - 'apps/server/src/**/*.usecase.ts'
+  - 'apps/server/src/**/*.module.ts'
 ---
 
 # Server Bounded Context 决策（path-triggered，触及 server use case / module / spec 自动加载）

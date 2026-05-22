@@ -44,12 +44,7 @@ export class AuthFailureLockService {
       await this.redis.expire(failKey, FAIL_WINDOW_SECONDS);
     }
     if (count >= FAIL_THRESHOLD) {
-      await this.redis.set(
-        LOCK_KEY(phone.value),
-        '1',
-        'EX',
-        LOCK_DURATION_SECONDS,
-      );
+      await this.redis.set(LOCK_KEY(phone.value), '1', 'EX', LOCK_DURATION_SECONDS);
       await this.redis.del(failKey);
     }
   }

@@ -171,7 +171,12 @@ describe('FakeLlmClient', () => {
   it('supports function responses receiving prompt + opts', async () => {
     const fake = new FakeLlmClient([
       (prompt, opts) =>
-        ({ exitCode: 0, stdout: `${prompt}@${opts.cwd}`, stderr: '', durationMs: 0 }) satisfies LlmInvokeResult,
+        ({
+          exitCode: 0,
+          stdout: `${prompt}@${opts.cwd}`,
+          stderr: '',
+          durationMs: 0,
+        }) satisfies LlmInvokeResult,
     ]);
     const r = await fake.invoke('hi', { cwd: '/z' });
     expect(r.stdout).toBe('hi@/z');
@@ -187,9 +192,7 @@ describe('FakeLlmClient', () => {
   it('throws LlmInvokeError when queue is exhausted', async () => {
     const fake = new FakeLlmClient([ok('only')]);
     await fake.invoke('p1', BASE_OPTS);
-    await expect(fake.invoke('p2', BASE_OPTS)).rejects.toBeInstanceOf(
-      LlmInvokeError,
-    );
+    await expect(fake.invoke('p2', BASE_OPTS)).rejects.toBeInstanceOf(LlmInvokeError);
   });
 });
 
@@ -222,15 +225,11 @@ describe('buildSpawnEnv', () => {
 
 describe('isClaudeJsonError', () => {
   it('returns true for {is_error: true} payloads', () => {
-    expect(isClaudeJsonError({ is_error: true, result: 'Not logged in' })).toBe(
-      true,
-    );
+    expect(isClaudeJsonError({ is_error: true, result: 'Not logged in' })).toBe(true);
   });
 
   it('returns false for success payloads', () => {
-    expect(
-      isClaudeJsonError({ is_error: false, subtype: 'success', result: 'ok' }),
-    ).toBe(false);
+    expect(isClaudeJsonError({ is_error: false, subtype: 'success', result: 'ok' })).toBe(false);
   });
 
   it('returns false when parsed is missing / not an object', () => {
@@ -292,9 +291,7 @@ describe('extractClaudeMetrics', () => {
       cache_creation_input_tokens: 52972,
       server_tool_use: { web_search_requests: 0 },
     },
-    permission_denials: [
-      { tool_name: 'Bash', tool_use_id: 'toolu_x', tool_input: {} },
-    ],
+    permission_denials: [{ tool_name: 'Bash', tool_use_id: 'toolu_x', tool_input: {} }],
   };
 
   it('extracts cost / num_turns / denials count / usage', () => {
@@ -339,10 +336,11 @@ describe('ClaudeCliClient (live; env-gated)', () => {
   const enabled = process.env.LIVE_LLM === '1';
   it.skipIf(!enabled)('spawns claude -p and returns its output', async () => {
     const client = new ClaudeCliClient();
-    const r = await client.invoke(
-      'reply with the single word "ok" and nothing else',
-      { cwd: process.cwd(), maxTurns: 1, timeoutMs: 60_000 },
-    );
+    const r = await client.invoke('reply with the single word "ok" and nothing else', {
+      cwd: process.cwd(),
+      maxTurns: 1,
+      timeoutMs: 60_000,
+    });
     expect(r.exitCode).toBe(0);
     expect(r.stdout.length).toBeGreaterThan(0);
   });

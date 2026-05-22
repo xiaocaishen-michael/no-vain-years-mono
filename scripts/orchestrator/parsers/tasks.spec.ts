@@ -10,10 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(__dirname, '..', '__fixtures__');
 const happySpec = fs.readFileSync(path.join(FIXTURES, 'spec-happy.md'), 'utf-8');
 const happyPlan = fs.readFileSync(path.join(FIXTURES, 'plan-happy.md'), 'utf-8');
-const happyTasks = fs.readFileSync(
-  path.join(FIXTURES, 'tasks-happy.md'),
-  'utf-8',
-);
+const happyTasks = fs.readFileSync(path.join(FIXTURES, 'tasks-happy.md'), 'utf-8');
 
 describe('TasksAnalyzer', () => {
   const analyzer = new TasksAnalyzer();
@@ -52,9 +49,7 @@ describe('TasksAnalyzer', () => {
       'feature_id: 002-account-profile-base',
       'feature_id: 999-other-feature',
     );
-    expect(() => analyzer.parseContent(bad, plan, spec)).toThrowError(
-      /feature_id .* plan\.md/,
-    );
+    expect(() => analyzer.parseContent(bad, plan, spec)).toThrowError(/feature_id .* plan\.md/);
   });
 
   it('throws when task-meta id ≠ checkbox id', () => {

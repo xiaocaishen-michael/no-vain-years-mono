@@ -50,9 +50,7 @@ export function queryGraph(
   try {
     raw = JSON.parse(fs.readFileSync(graphJsonPath, 'utf-8'));
   } catch (e) {
-    warnings.push(
-      `failed to parse ${graphJsonPath}: ${(e as Error).message}`,
-    );
+    warnings.push(`failed to parse ${graphJsonPath}: ${(e as Error).message}`);
     return {
       scope,
       graphPath: graphJsonPath,
@@ -62,11 +60,7 @@ export function queryGraph(
     };
   }
 
-  if (
-    !raw ||
-    typeof raw !== 'object' ||
-    !Array.isArray((raw as { nodes?: unknown }).nodes)
-  ) {
+  if (!raw || typeof raw !== 'object' || !Array.isArray((raw as { nodes?: unknown }).nodes)) {
     warnings.push(`${graphJsonPath} missing .nodes[] array`);
     return {
       scope,

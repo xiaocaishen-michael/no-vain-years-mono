@@ -9,6 +9,15 @@ extends:
 pre-commit:
   parallel: true
   commands:
+    format:
+      tags: format
+      # Prettier 重写 staged 文件并 re-stage (stage_fixed: true)。
+      # 与其他 pre-commit 命令并行运行 — Prettier 仅改格式（空白/换行/引号），
+      # tasks-md-drift / no-bad-mocks / docs-organization-drift 都不读会变的内容。
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,md,yml,yaml}'
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true
+
     tasks-md-drift:
       tags: sdd
       # 三段检查:

@@ -12,19 +12,19 @@ production-only LoC ratio = **0.119**（680 / 5705）→ mono TS/NestJS 是 Java
 
 工具：`cloc 2.08`（`brew install cloc`）
 
-| 端 | scope | files | code LoC | blank | comment |
-|---|---|---|---|---|---|
-| **Mono production** | `apps/server/src/auth/` 排 `*.spec.ts` | 27 | 680 | 100 | 233 |
-| Mono tests（参考） | `apps/server/src/auth/**/*.spec.ts` | 13 | 973 | 153 | 12 |
-| Mono total（cloc raw） | `apps/server/src/auth/` 全部 | 40 | 1653 | 253 | 245 |
-| **Java production** | `mbw-account/src/main/java/com/mbw/account/{domain,application,infrastructure,web}` | 192 | 5705 | 1131 | 3480 |
+| 端                     | scope                                                                               | files | code LoC | blank | comment |
+| ---------------------- | ----------------------------------------------------------------------------------- | ----- | -------- | ----- | ------- |
+| **Mono production**    | `apps/server/src/auth/` 排 `*.spec.ts`                                              | 27    | 680      | 100   | 233     |
+| Mono tests（参考）     | `apps/server/src/auth/**/*.spec.ts`                                                 | 13    | 973      | 153   | 12      |
+| Mono total（cloc raw） | `apps/server/src/auth/` 全部                                                        | 40    | 1653     | 253   | 245     |
+| **Java production**    | `mbw-account/src/main/java/com/mbw/account/{domain,application,infrastructure,web}` | 192   | 5705     | 1131  | 3480    |
 
 ## Ratio
 
-| Metric | Value | Threshold | Verdict |
-|---|---|---|---|
-| Mono production / Java production | 680 / 5705 = **0.119** | ≤ 1.5 | ✅ PASS |
-| 反向（Java / Mono） | 5705 / 680 = **8.4x** | n/a | TS/NestJS 紧凑度 8.4 倍 |
+| Metric                            | Value                  | Threshold | Verdict                 |
+| --------------------------------- | ---------------------- | --------- | ----------------------- |
+| Mono production / Java production | 680 / 5705 = **0.119** | ≤ 1.5     | ✅ PASS                 |
+| 反向（Java / Mono）               | 5705 / 680 = **8.4x**  | n/a       | TS/NestJS 紧凑度 8.4 倍 |
 
 ## Caveats（透明说明）
 
@@ -36,11 +36,11 @@ production-only LoC ratio = **0.119**（680 / 5705）→ mono TS/NestJS 是 Java
 
 ## 比较定性观察
 
-| 维度 | Java mbw-account | Mono auth | 差异原因 |
-|---|---|---|---|
-| 平均 files / use case | ~38（多 use case / 192 files） | 27 / W2 phone-sms-auth | TS/NestJS 单 file 容多类；Java 强制 1 class 1 file |
-| comment / code | 3480 / 5705 = 61% | 233 / 680 = 34% | Java JavaDoc 文化 + Spring annotation 注释密度；TS interface + JSDoc 比例低 |
-| blank / code | 1131 / 5705 = 20% | 100 / 680 = 15% | 类似量级 |
+| 维度                  | Java mbw-account               | Mono auth              | 差异原因                                                                    |
+| --------------------- | ------------------------------ | ---------------------- | --------------------------------------------------------------------------- |
+| 平均 files / use case | ~38（多 use case / 192 files） | 27 / W2 phone-sms-auth | TS/NestJS 单 file 容多类；Java 强制 1 class 1 file                          |
+| comment / code        | 3480 / 5705 = 61%              | 233 / 680 = 34%        | Java JavaDoc 文化 + Spring annotation 注释密度；TS interface + JSDoc 比例低 |
+| blank / code          | 1131 / 5705 = 20%              | 100 / 680 = 15%        | 类似量级                                                                    |
 
 ## 结论
 

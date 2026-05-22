@@ -22,9 +22,7 @@ const MAX_CP = 32;
 // FR-005 must reject from user input (raw control bytes corrupt downstream
 // rendering / logs).
 /* eslint-disable no-control-regex */
-const FORBIDDEN_CHARS = new RegExp(
-  '[\\x00-\\x1F\\x7F\\u200B-\\u200F\\uFEFF\\u2028\\u2029]',
-);
+const FORBIDDEN_CHARS = new RegExp('[\\x00-\\x1F\\x7F\\u200B-\\u200F\\uFEFF\\u2028\\u2029]');
 /* eslint-enable no-control-regex */
 
 export class DisplayName {

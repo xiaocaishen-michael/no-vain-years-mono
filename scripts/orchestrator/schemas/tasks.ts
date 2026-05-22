@@ -40,9 +40,7 @@ export const TaskMetaSchema = z.object({
   id: z.string().regex(/^T\d{3}$/),
   workspace: z.string(),
   deps: z.array(z.string().regex(/^T\d{3}$/)),
-  trace_us: z.array(
-    z.union([z.string().regex(/^US\d+$/), z.literal('GLOBAL')]),
-  ),
+  trace_us: z.array(z.union([z.string().regex(/^US\d+$/), z.literal('GLOBAL')])),
   trace_fr: z.array(z.string().regex(/^FR-\d{3}$/)),
   trace_ep: z.array(z.string().regex(/^EP\d+$/)).optional(),
   trace_sc: z.array(z.string().regex(/^SC-\d{3}$/)).optional(),
