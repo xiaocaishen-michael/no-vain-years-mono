@@ -1,10 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import { Module, OnModuleDestroy } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { Redis } from 'ioredis';
 import { ClsModule } from 'nestjs-cls';
+import {
+  appConfig,
+  authConfig,
+  dbConfig,
+  redisConfig,
+  smsConfig,
+  type AuthConfig,
+  type DbConfig,
+  type RedisConfig,
+} from '../config/index.js';
 import { JwtTokenService } from './jwt-token.service.js';
 import { PrismaService } from './prisma.service.js';
 import { ProblemDetailFilter } from './problem-detail.filter.js';
@@ -48,11 +58,19 @@ class RedisLifecycle implements OnModuleDestroy {
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // ConfigModule loads all 5 namespaced configs at boot. Each registerAs()
+    // factory runs Zod parse → fail-fast on missing/invalid env *before* any
+    // module initializes (no listen, no DB connect). cache: true memoizes
+    // parsed values so the schema runs only once per process.
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [appConfig, authConfig, dbConfig, redisConfig, smsConfig],
+      cache: true,
+    }),
     JwtModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.getOrThrow<string>('AUTH_JWT_SECRET'),
+      inject: [authConfig.KEY],
+      useFactory: (cfg: AuthConfig) => ({
+        secret: cfg.jwtSecret,
         signOptions: { expiresIn: '15m' },
       }),
     }),
@@ -81,15 +99,13 @@ class RedisLifecycle implements OnModuleDestroy {
     JwtTokenService,
     {
       provide: PrismaService,
-      useFactory: (config: ConfigService) =>
-        new PrismaService(config.getOrThrow<string>('DATABASE_URL')),
-      inject: [ConfigService],
+      useFactory: (cfg: DbConfig) => new PrismaService(cfg.url),
+      inject: [dbConfig.KEY],
     },
     {
       provide: REDIS_LIFECYCLE,
-      useFactory: (config: ConfigService) =>
-        new RedisLifecycle(config.getOrThrow<string>('REDIS_URL')),
-      inject: [ConfigService],
+      useFactory: (cfg: RedisConfig) => new RedisLifecycle(cfg.url),
+      inject: [redisConfig.KEY],
     },
     {
       provide: REDIS_CLIENT,
