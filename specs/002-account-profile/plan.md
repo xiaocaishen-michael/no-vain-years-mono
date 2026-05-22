@@ -304,3 +304,16 @@ A-002 = 2 endpoints (`GET /api/v1/accounts/me` returning profile + `PATCH /api/v
 ---
 
 **Plan Version**: 1.0.0 | **Created**: 2026-05-20 | **Spec ID-namespace**: US1-12 / FR-001..030 / CL-001..009 / SC-001..017 (per spec.md schema-compat merge)
+
+<!-- BEGIN auto-generated: performance-budget (from spec.md frontmatter; do not edit) -->
+
+## Performance Budget
+
+| Endpoint | P95 (ms) | P99 (ms) |
+| --- | ---: | ---: |
+| `GET /api/v1/accounts/me` | 50 | 100 |
+| `PATCH /api/v1/accounts/me` | 100 | 200 |
+
+_Edit `perf_budgets:` in spec.md frontmatter to change. Regenerate this block with `pnpm tsx scripts/orchestrator/plan-compiler.ts <spec-dir>`._
+
+<!-- END auto-generated: performance-budget -->
