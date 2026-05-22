@@ -71,4 +71,4 @@ gh pr merge <pr-num> --auto --squash --delete-branch
 - PR 标记为 draft
 - 改动涉及不可逆 / 高风险（DB 不可逆变更 / secrets / 删除大量代码）— AI 在 PR 描述里 flag "建议人工合并"
 - 本对话内 user 早前说过"先停一下让我看看"
-- **release-please Release PR**（标签 `autorelease: pending`）— 发版时机由维护者控制，永远手动 merge
+- **release-please Release PR**（标签 `autorelease: pending`）— 发版时机由维护者控制，永远手动 merge；组件化 tag `server-vX.Y.Z` / `mobile-vX.Y.Z` 由 release-please 自动打，手工里程碑 tag (`m<x.y>-<status>`) 已废弃（per [ADR-0042](../adr/0042-monorepo-release-strategy.md) §2）
