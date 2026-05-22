@@ -41,7 +41,11 @@ async function bootstrap() {
     }),
   );
   const globalPrefix = 'api';
-  app.setGlobalPrefix(globalPrefix);
+  // /healthz/* and /metrics are k8s probe + Prometheus scrape conventions
+  // and must be exposed at the root, not behind /api.
+  app.setGlobalPrefix(globalPrefix, {
+    exclude: ['healthz/(.*)', 'metrics'],
+  });
 
   const document = SwaggerModule.createDocument(app, buildOpenApiConfig());
   SwaggerModule.setup('docs', app, document, {

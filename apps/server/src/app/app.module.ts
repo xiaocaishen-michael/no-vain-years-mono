@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { ClsModule, ClsService } from 'nestjs-cls';
 import { AuthModule } from '../auth/auth.module.js';
+import { HealthModule } from '../observability/health.module.js';
+import { MetricsModule } from '../observability/metrics.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -30,6 +32,8 @@ import { AppService } from './app.service.js';
 @Module({
   imports: [
     AuthModule,
+    HealthModule,
+    MetricsModule,
     LoggerModule.forRootAsync({
       // ClsModule is registered global by SecurityModule; ClsService is
       // injectable anywhere without explicit ClsModule import. Still listed
