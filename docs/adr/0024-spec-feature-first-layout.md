@@ -189,3 +189,4 @@ pnpm nx run repo:spec-by-module auth
 - [`docs/conventions/business-naming.md`](../conventions/business-naming.md)（modules 值域来源）
 - [`.specify/integrations/speckit.manifest.json`](../../.specify/integrations/speckit.manifest.json) — spec-kit 0.8.7 vendored hash
 - [`.specify/scripts/bash/create-new-feature.sh`](../../.specify/scripts/bash/create-new-feature.sh) — 自动编号 + branch 创建脚本
+- [AI Friction Catalog · F-006 Indirect-Spec-Module-Mapping](../conventions/ai-friction-catalog.md#f-006--indirect-spec-module-mapping) — frontmatter `modules:` SSOT 是缓解此 friction 的核心机制
