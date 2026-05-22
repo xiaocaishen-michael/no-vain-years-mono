@@ -38,11 +38,11 @@
 
 遵循 Conventional Commits：`<type>(<scope>): <subject>`
 
-| 字段      | 说明                                                                                                                             |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `type`    | `feat / fix / docs / chore / refactor / style / test / perf / build / ci`；`feat!` 或加 `BREAKING CHANGE:` 表示 breaking         |
-| `scope`   | 业务模块名（`account / pkm / ...`），跨模块用 `core`，整仓配置/工具用 `repo`，packages 共享包用 `api-client` / `shared-types` 等 |
-| `subject` | 一句话描述本次改动；现在时；首字母小写；不加句号                                                                                 |
+| 字段      | 说明                                                                                                                              |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `type`    | `feat / fix / docs / chore / refactor / style / test / perf / build / ci / revert`；`feat!` 或加 `BREAKING CHANGE:` 表示 breaking |
+| `scope`   | 业务模块名（`account / pkm / ...`），跨模块用 `core`，整仓配置/工具用 `repo`，packages 共享包用 `api-client` / `shared-types` 等  |
+| `subject` | 一句话描述本次改动；现在时；首字母小写；不加句号                                                                                  |
 
 示例：
 
