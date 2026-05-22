@@ -62,5 +62,8 @@
         "targetName": "lint"
       }
     }
-  ]
+  ],
+  "sync": {
+    "disabledTaskSyncGenerators": ["@nx/js:typescript-sync"]
+  }
 }
