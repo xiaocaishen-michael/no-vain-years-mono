@@ -67,5 +67,12 @@ USER node
 
 EXPOSE 3000
 
+# Liveness probe — `/healthz/live` only asserts the Node process is alive
+# (no Prisma/Redis check, per gap-audit A1). Lets docker/k8s restart a wedged
+# container even when its dependency layer is intermittently down. Readiness
+# (`/healthz/ready`) is exercised by orchestrator probes, not this HEALTHCHECK.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget --quiet --spider --tries=1 http://localhost:3000/healthz/live || exit 1
+
 # `docker run --init` recommended for proper PID 1 signal handling.
 CMD ["node", "dist/main.js"]
