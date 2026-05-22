@@ -118,6 +118,31 @@ Single JSON block, language tag MUST be `json api_contracts`.
 }
 ```
 
+## Dependencies & Defensive Additions *(Cargo-cult 防火墙)*
+
+<!--
+Per ADR-0040 multi-layer test gate (P5 follow-up). Cargo-cult anti-pattern:
+AI agent (含人类) 倾向从泛 RN / NestJS 教程 copy-paste "防御性" polyfill /
+import / config 而不验证当前栈是否真需要 (PR #79 retro Pattern F 实证:
+review plan L185 要求 `react-native-get-random-values` polyfill, 事后
+fact-check 发现 expo-crypto 当前版本不需要, 纯 cargo-cult bundle 膨胀)。
+
+本表强制每个 plan 阶段填写: 引入的新依赖或防御性 import 必须有 fact-
+check 锚点 (官方 docs / GitHub issue / 源码位置)。无锚点的 cargo-cult 会
+在 spec-kit /implement 阶段被 reviewer 抓包, OR LLM 在 Ralph-loop 自审
+环节主动删除冗余引入。
+
+填写规则:
+- 真有新依赖 / polyfill / shamefully-hoist 等防御性配置 → 必须列 + 锚点 URL
+- 无新引入 → 填一行 `None | N/A | N/A` 作为 explicit no-op 声明
+- 锚点不能是 "我觉得需要" / "教程说要" — 必须可点击的 docs / source 位置
+-->
+
+| 引入的依赖 / Polyfill / Defensive Import | 目的 | Fact-check 锚点 |
+|---|---|---|
+| (例) react-native-get-random-values | Polyfill globalThis.crypto.getRandomValues 给 uuid v9+ | [Link to upstream Expo docs OR specific commit verifying need on current SDK] |
+| None | N/A | N/A |
+
 ## Constitution Check *(mandatory)*
 
 <!--

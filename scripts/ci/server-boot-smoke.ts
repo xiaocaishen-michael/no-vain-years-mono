@@ -8,9 +8,12 @@
  *   3. 镜像 apps/server/src/main.ts bootstrap (Fastify + ValidationPipe
  *      with FormValidationException exceptionFactory + setGlobalPrefix('api'))
  *   4. 真 HTTP fetch (NOT app.inject) — 跨 process boundary 串联 trace_id
- *   5. 断言：(a) no 500 crash  (b) RFC 9457 ProblemDetail shape
+ *   5. 401 路径断言：(a) no 500 crash  (b) RFC 9457 ProblemDetail shape
  *      (c) traceId 字段非空 (CLS middleware → ProblemDetailFilter 链路活)
  *      (c+) x-trace-id response header ≡ body.traceId (双链路同步)
+ *   6. 400 FORM_VALIDATION 路径断言 (P4 extension per ADR-0040 follow-up):
+ *      (d) status === 400  (e) body.code === 'FORM_VALIDATION'
+ *      (f) invalidAttributes 非空数组 (g) traceId 仍非空
  *
  * Why dist import (not src): NestJS DI 依赖 `emitDecoratorMetadata` 输出的
  * `design:paramtypes` 反射元数据. tsx 默认 esbuild transform 不 emit metadata,
@@ -64,6 +67,7 @@ interface ProblemDetail {
   instance?: string;
   traceId?: string;
   code?: string;
+  invalidAttributes?: InvalidAttribute[];
 }
 
 interface InvalidAttribute {
@@ -188,7 +192,7 @@ async function runSmokeTest(): Promise<void> {
     });
     const body = (await res.json()) as ProblemDetail;
 
-    log(`       received status=${res.status}, asserting contract…`);
+    log(`       received status=${res.status}, asserting 401 contract…`);
 
     // (a) Must not be 500 — Guard/Filter must catch invalid bearer cleanly.
     if (res.status === 500) {
@@ -219,8 +223,66 @@ async function runSmokeTest(): Promise<void> {
       );
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // [P4 extension] POST 400 FORM_VALIDATION probe (per ADR-0040 follow-up)
+    // ─────────────────────────────────────────────────────────────────────
+    // Asserts that ValidationPipe + FormValidationException chain is
+    // wired end-to-end. Without this probe, smoke would pass even if the
+    // ValidationPipe drops out (returning vanilla 400 BadRequestException
+    // instead of code:FORM_VALIDATION + invalidAttributes[]) — exactly
+    // the Bug #2 cascade PR #79 retro flagged.
+    //
+    // Endpoint: POST /api/v1/accounts/sms-codes with empty body — the
+    // ValidationPipe must trigger phone-field validation, throw
+    // FormValidationException, which ProblemDetailFilter formats into the
+    // expected shape.
+    const validateUrl = `http://127.0.0.1:${address.port}/api/v1/accounts/sms-codes`;
+    log(`       probing ${validateUrl} with empty body (expect 400 FORM_VALIDATION)…`);
+    const postRes = await fetch(validateUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/problem+json',
+      },
+      body: JSON.stringify({}),
+    });
+    const postBody = (await postRes.json()) as ProblemDetail;
+    log(`       received status=${postRes.status}, asserting 400 contract…`);
+
+    // (d) status must be 400 — ValidationPipe must trigger.
+    if (postRes.status !== 400) {
+      throw new Error(
+        `[ASSERT-D] ValidationPipe missing or misconfigured — expected 400, got ${postRes.status}; body=${JSON.stringify(postBody)}`,
+      );
+    }
+
+    // (e) body.code must equal 'FORM_VALIDATION' — FormValidationException
+    //     must be the exceptionFactory result of ValidationPipe.
+    if (postBody.code !== 'FORM_VALIDATION') {
+      throw new Error(
+        `[ASSERT-E] FormValidationException not wired — expected body.code='FORM_VALIDATION', got '${postBody.code}'; body=${JSON.stringify(postBody)}`,
+      );
+    }
+
+    // (f) invalidAttributes must be non-empty array per ADR-0038 contract.
+    if (
+      !Array.isArray(postBody.invalidAttributes) ||
+      postBody.invalidAttributes.length === 0
+    ) {
+      throw new Error(
+        `[ASSERT-F] ProblemDetail missing invalidAttributes — ADR-0038 contract broken; body=${JSON.stringify(postBody)}`,
+      );
+    }
+
+    // (g) traceId still present on the 400 path (same CLS chain).
+    if (typeof postBody.traceId !== 'string' || postBody.traceId.length === 0) {
+      throw new Error(
+        `[ASSERT-G] 400 response missing traceId — CLS middleware not covering ValidationPipe → Filter path; body=${JSON.stringify(postBody)}`,
+      );
+    }
+
     log(
-      `✅ ALL ASSERTIONS PASSED — status=${res.status} traceId=${body.traceId}`,
+      `✅ ALL ASSERTIONS PASSED — 401 traceId=${body.traceId}, 400 code=${postBody.code} invalidAttributes=${postBody.invalidAttributes.length} entries`,
     );
   } catch (err) {
     console.error('[smoke] ❌ FAILED:', err);
