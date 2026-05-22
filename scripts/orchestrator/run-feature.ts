@@ -663,6 +663,11 @@ export async function detectLlmNoOp(
       continue;
     }
     if (stat.mtimeMs < llmStartedAt) {
+      const skew = llmStartedAt - stat.mtimeMs;
+      // eslint-disable-next-line no-console
+      console.error(
+        `[#95-DEBUG detectLlmNoOp] ${f.path}: mtimeMs=${stat.mtimeMs} llmStartedAt=${llmStartedAt} skew=+${skew}ms (size=${stat.size})`,
+      );
       offenders.push(`${f.path} (untouched after LLM)`);
     }
   }
