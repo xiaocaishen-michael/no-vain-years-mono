@@ -14,7 +14,9 @@ mono 仓双线发版:`apps/server` + `apps/mobile` 各自独立 SemVer 版本线
 | `apps/mobile` | iOS buildNumber / Android versionCode | 整数单调递增                | EAS Build 自动递增,release-please 不动                                           |
 | `apps/mobile` | Expo `runtimeVersion`                 | 仅 native 代码变化时 bump   | 手动;用于 OTA 热更边界                                                           |
 
-**起步版本**:server `0.0.1` / mobile `0.0.0`(均 pre-1.0,未正式上线)。第一个 `feat(*)` commit 触发 minor bump 到 `0.1.0`。M4 正式上架应用商店时 server + mobile 同步手动 `release-as: 1.0.0`,之后破坏兼容变更走 `v2.0.0` 和 `/api/v2/...`。
+**起步版本**:server `0.0.1` / mobile `0.0.1`(均 pre-1.0,未正式上线)。第一个 `feat(*)` commit 触发 minor bump 到 `0.1.0`。M4 正式上架应用商店时 server + mobile 同步手动 `release-as: 1.0.0`,之后破坏兼容变更走 `v2.0.0` 和 `/api/v2/...`。
+
+> ⚠ **manifest 起步值不能用 `0.0.0`**:release-please 把 `0.0.0` 当 "uninitialized" → 首次 release 直接跳 `1.0.0`(绕过 pre-major minor bump 默认)。`apps/{server,mobile}/package.json` 的 `version` 字段同样起步 `0.0.1`,保持与 manifest cross-consistency。详见 [ADR-0042 §Postmortem](../adr/0042-monorepo-release-strategy.md)。
 
 ## 发版流程
 
