@@ -1,11 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { Test } from '@nestjs/testing';
 import {
   ArgumentsHost,
   BadRequestException,
   HttpException,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { ClsService } from 'nestjs-cls';
+import { ClsService } from 'nestjs-cls';
 import { ProblemDetailFilter } from './problem-detail.filter';
 
 /**
@@ -47,7 +48,14 @@ function mockHost(): {
 }
 
 describe('ProblemDetailFilter', () => {
-  const filter = new ProblemDetailFilter(mockCls);
+  let filter: ProblemDetailFilter;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [ProblemDetailFilter, { provide: ClsService, useValue: mockCls }],
+    }).compile();
+    filter = moduleRef.get(ProblemDetailFilter);
+  });
 
   it('maps BadRequestException to RFC 9457 problem+json with 400', () => {
     const { host, sent } = mockHost();

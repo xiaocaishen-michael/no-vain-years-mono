@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Test } from '@nestjs/testing';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
 import { PrismaService } from '../../security/prisma.service';
@@ -30,7 +31,11 @@ describe('AccountPrismaRepository (Testcontainers PG)', () => {
     });
 
     prisma = new PrismaService(url);
-    repo = new AccountPrismaRepository(prisma);
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [{ provide: PrismaService, useValue: prisma }, AccountPrismaRepository],
+    }).compile();
+    repo = moduleRef.get(AccountPrismaRepository);
   }, 120_000);
 
   afterAll(async () => {

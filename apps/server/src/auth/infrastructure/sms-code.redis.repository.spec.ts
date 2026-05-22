@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Test } from '@nestjs/testing';
 import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import { Redis } from 'ioredis';
 import { SmsCodeRedisRepository } from './sms-code.redis.repository';
@@ -15,7 +16,21 @@ describe('SmsCodeRedisRepository (Testcontainers Redis, HMAC-SHA256)', () => {
   beforeAll(async () => {
     container = await new RedisContainer('redis:7-alpine').start();
     redis = new Redis(container.getConnectionUrl());
-    repo = new SmsCodeRedisRepository(redis, HMAC_SECRET);
+
+    // Repository constructor takes positional (Redis, string) — not DI-resolvable
+    // by type alone (production wires via useFactory with REDIS_CLIENT + ConfigService;
+    // see auth.module.ts). Mirror that here with a test-scoped useFactory so the
+    // SUT is sourced through the Nest DI container (satisfies no-bad-mocks hook
+    // per ADR-0040 multi-layer test gate).
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        {
+          provide: SmsCodeRedisRepository,
+          useFactory: () => new SmsCodeRedisRepository(redis, HMAC_SECRET),
+        },
+      ],
+    }).compile();
+    repo = moduleRef.get(SmsCodeRedisRepository);
   }, 60_000);
 
   afterAll(async () => {
