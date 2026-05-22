@@ -51,6 +51,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Playwright browsers required by mobile runtime-smoke target (nx affected
+      # cascades into mobile when api-client or shared types touched). `pnpm install`
+      # does not auto-fetch browsers; without this step nx affected runtime-smoke
+      # fails with "Executable doesn't exist at .cache/ms-playwright/chromium_headless_shell".
+      # `--with-deps` adds system libs (libnss3 / libnspr4 / ...) required by Linux runner.
+      # Limit to `chromium` — runtime-smoke config only targets Desktop Chrome.
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Enforce PR Checkboxes
         uses: actions/github-script@v7
         with:
