@@ -103,3 +103,4 @@ spec 加 `migration_refs: [20260520_1430_add_phone_to_account]` (可选字段,�
 - memory obs `Lefthook hard gate for schema changes` (3950)
 - memory obs `idempotent 3-layer seed architecture` (3951)
 - [ADR-0019](0019-orm-prisma.md)
+- [AI Friction Catalog · F-004 Interactive-CLI-Block](../conventions/ai-friction-catalog.md#f-004--interactive-cli-block) — `db:migrate` wrapper 强制 `--name` flag 缓解 LLM 撞 interactive prompt
