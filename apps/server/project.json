@@ -76,7 +76,7 @@
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "eslint src --max-warnings=0",
+        "command": "eslint src",
         "cwd": "apps/server"
       }
     },

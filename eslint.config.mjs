@@ -1,4 +1,5 @@
 import nx from '@nx/eslint-plugin';
+import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default [
   ...nx.configs['flat/base'],
@@ -102,7 +103,41 @@ export default [
       '**/*.cjs',
       '**/*.mjs',
     ],
-    // Override or add rules here
-    rules: {},
+    // Checkstyle-equivalent semantic lint (per docs/plans/2026-05/
+    // 05-22-meta-config-mono-migration.md § 2.2). 全 warn 不 error 避免
+    // AI 协作场景下 PR 被小驼峰错误硬卡;M3 部署前看 baseline 数据决定收紧。
+    rules: {
+      // CyclomaticComplexity: Java Checkstyle 默认 10 / meta 12;TS 略宽 15
+      // 因 React 声明式代码 + 状态机分支多。
+      complexity: ['warn', 15],
+      // MethodLength: Java Checkstyle meta 80;TS 150 因 React component
+      // 整页常态。skipBlankLines + skipComments 减噪音。
+      'max-lines-per-function': ['warn', { max: 150, skipBlankLines: true, skipComments: true }],
+    },
   },
+  {
+    // Naming convention — TS-only (@typescript-eslint/naming-convention 需类型上下文)
+    files: ['**/*.ts', '**/*.tsx', '**/*.cts', '**/*.mts'],
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'warn',
+        { selector: 'default', format: ['camelCase'] },
+        // 变量允许 camelCase / UPPER_CASE / PascalCase (React component / namespace)
+        { selector: 'variable', format: ['camelCase', 'UPPER_CASE', 'PascalCase'] },
+        // typeLike (class / interface / type / enum) → PascalCase
+        { selector: 'typeLike', format: ['PascalCase'] },
+        // 枚举成员 → UPPER_CASE (Java enum / DDD 状态机惯例,e.g. AccountStatus.ACTIVE)
+        { selector: 'enumMember', format: ['UPPER_CASE'] },
+        // 参数允许 _-prefix 表示 unused
+        { selector: 'parameter', format: ['camelCase'], leadingUnderscore: 'allow' },
+        // property null — 放过 API 返回的 snake_case 字段 + 配置对象 kebab-case
+        { selector: 'property', format: null },
+        // import name null — 第三方 lib 导出名不可控 (e.g. Dysmsapi/Tea SDK)
+        { selector: 'import', format: null },
+      ],
+    },
+  },
+  // 关掉与 Prettier 冲突的 ESLint 风格规则 — 必须放最后
+  // (per https://github.com/prettier/eslint-config-prettier)
+  eslintConfigPrettier,
 ];
