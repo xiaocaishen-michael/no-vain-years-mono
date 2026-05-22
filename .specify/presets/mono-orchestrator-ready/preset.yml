@@ -1,5 +1,5 @@
 id: mono-orchestrator-ready
-version: 0.3.0
+version: 0.3.1
 description: |
   mono-repo spec-kit 自动编排 + 执行支持。把 spec / plan / tasks 三大 template
   升级到 orchestrator-friendly 形态:
@@ -47,6 +47,12 @@ description: |
     - 配合 PR template (.github/pull_request_template.md) + lefthook
       no-bad-mocks + .github/workflows/pr-validation.yml + nightly-sweep.yml
       形成完整 L3 门禁体系
+
+  0.3.1 增量 (PR-T3 follow-up P5 / Cargo-cult 防火墙):
+    - plan-template.md 加 ## Dependencies & Defensive Additions 段, 强制
+      列出所有新依赖 / polyfill / defensive import + fact-check 锚点 URL,
+      防 PR #79 retro Pattern F (defensive cargo-cult, 抄过时教程的
+      polyfill / config)
 
   配合 scripts/orchestrator/*.ts 使用。仅适用于 monorepo (nx workspaces),
   因为 orchestrator 需要在单仓内同时调度 server / api-client / mobile 多 workspace。
