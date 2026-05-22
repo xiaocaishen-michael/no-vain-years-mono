@@ -113,34 +113,7 @@ describe('runFeature (integration with fakes)', () => {
     void repoRoot;
     const state = loadFeature(featureDir);
 
-    const deps = defaultDeps(state);
-    const result = await runFeature(state, deps);
-
-    // ISSUE #95 DEBUG — capture full failure shape when assertion would fail.
-    // Remove once root cause identified.
-    if (!result.ok) {
-      const debug = {
-        ok: result.ok,
-        failedAt: result.failedAt,
-        results_count: result.results.length,
-        results: result.results.map((r) => ({
-          taskId: r.taskId,
-          ok: r.ok,
-          reason: r.reason,
-          message: 'message' in r ? r.message : undefined,
-          ralphRounds: 'ralphRounds' in r ? r.ralphRounds : undefined,
-        })),
-        platform: process.platform,
-        tmpdir: os.tmpdir(),
-        repoRoot,
-        nodeVersion: process.version,
-        env_keys_ci: Object.keys(process.env).filter((k) =>
-          /^(CI|GITHUB|RUNNER|ORCHESTRATOR)/.test(k),
-        ),
-      };
-      // eslint-disable-next-line no-console
-      console.error('[#95-DEBUG happy-path]', JSON.stringify(debug, null, 2));
-    }
+    const result = await runFeature(state, defaultDeps(state));
 
     expect(result.ok).toBe(true);
     expect(result.results).toHaveLength(8);
