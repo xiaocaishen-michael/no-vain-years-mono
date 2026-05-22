@@ -1,0 +1,46 @@
+---
+paths:
+  - "specs/**/spec.md"
+  - "apps/server/src/**/*.usecase.ts"
+  - "apps/server/src/**/*.module.ts"
+---
+
+# Server Bounded Context 决策（path-triggered，触及 server use case / module / spec 自动加载）
+
+## 硬性规则
+
+**改 / 新建 server use case / module / spec 前必读**：[`docs/conventions/server-bounded-context-catalog.md`](../../docs/conventions/server-bounded-context-catalog.md) — 3 传播规则 + 7 决策问题 + Operation 清单。
+
+## 简版决策路径（catalog.md 是详版权威）
+
+1. **Q1**：use case 直改 aggregate root state? → 放该 aggregate 所在 context (`account` / `security` / `auth` 之一)
+2. **Q2**：编排多 context user-facing 流程? → 放 `auth/`（编排层）
+3. **Q3**：纯 platform infra (token / pwd hash / generic crypto)? → 放 `security/`
+4. **Q4**：完全新业务领域? → **STOP，走 [ADR-0032](../../docs/adr/0032-backend-bounded-context.md) sunset trigger 评估新 bounded context**
+5. **Q5-Q7**（跨 ctx 传播）：
+   - callee fail rollback caller? → **R2 CROSS-CTX-SYNC** (同 tx)
+   - side-effect notification? → **R3 CROSS-CTX-ASYNC** (Outbox)
+   - 跨 ctx 读? → SecurityModule 共享读服务 OR Outbox event replay，**禁** cross-ctx use case 直 DI
+
+## 强制注释（PR review 拒缺失）
+
+任何跨 bounded context 的 import 上方 1-3 行必有：
+
+- `// CROSS-CONTEXT-SYNC: <reason>` (R2)
+- `// CROSS-CONTEXT-ASYNC: <event-type>` (R3)
+- `// CROSS-CONTEXT-READ: <data scope + 只读>` (Q7-B 临时路径)
+
+Platform infra 例外（`PrismaService` / `REDIS_CLIENT` / `ProblemDetailFilter` 等从 `SecurityModule` export 的 base layer infra）— 无注释要求，per [ADR-0041](../../docs/adr/0041-server-common-directory-policy.md)。
+
+## 新 use case ship 必带
+
+1. **改** `docs/conventions/server-bounded-context-catalog.md` § Operation Catalog 加一行（operation / context / propagation / source PR）
+2. **spec.md `modules:` frontmatter** 与 catalog 该 operation 的 context 字段一致
+3. cross-context import — 注释齐全
+4. tasks.md 对应 task `[X]` 翻
+
+## 不该用本文件 path 触发的场景
+
+- 修改 `apps/mobile/`、`packages/`、根级 config — 与 server bounded context 无关
+- spec.md 改 frontmatter 字段（如 `status` 翻 `draft → implementing`）— 改单字段不触发新 use case 评估
+- 修 use case bug fix（不动 cross-context 边界）— catalog 不需要改，但仍建议扫一眼确认未踩雷

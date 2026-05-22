@@ -1,16 +1,17 @@
 ---
 adr_id: ADR-0034
-status: Proposed
+status: Accepted
 applies_to: [apps/server]
 sunset_trigger: |
   - 业务 < 5 use case (catalog 反而 overhead)
   - LLM agent 演化到能 derive 传播规则不需要显式 decision tree
   - bounded context 合并回单 context (per [ADR-0032](0032-backend-bounded-context.md) sunset)
+  - 跨 context 操作 > 30 entries (catalog 维护成本超过 LLM 命中率收益, 拆 sub-catalog 或转 codegen)
 ---
 
 # ADR-0034: Auth/Account Operation Catalog — 3 传播规则 + LLM decision tree
 
-* Status: Proposed
+* Status: Accepted (2026-05-22) — shipped via [05-22 bounded context governance plan](../plans/2026-05/05-22-server-bounded-context-governance.md) **O2 work unit**
 * Deciders: project owner
 * Tags: backend / architecture / llm-ergonomics / cross-cutting
 
@@ -37,52 +38,29 @@ sunset_trigger: |
 | **R2: CROSS-CTX-SYNC** | 必同 tx 强需求 (e.g. phone-sms-auth → account.autoCreate-or-get) | 编排型 use case 内组合,**必加注释** `// CROSS-CONTEXT-SYNC: <reason>` |
 | **R3: CROSS-CTX-ASYNC** | side effect / 通知 / audit / 风控 (default 跨 context 路径) | Outbox event,**必加注释** `// CROSS-CONTEXT-ASYNC: <event-type>` |
 
-### LLM decision tree (YAML, 落在 `docs/conventions/`)
+### LLM decision tree + Operation Catalog
 
-```yaml
-new_use_case_decision_tree:
-  - q: "use case 是否直接改某 context 的 aggregate root state?"
-    yes: "放该 context (account / security / auth)"
-    no: "进 q2"
-  - q: "use case 是否编排多 context 共同完成 user-facing 业务?"
-    yes: "放 auth context (编排层),内部按 R2/R3 区分"
-    no: "进 q3"
-  - q: "use case 是否纯技术/底层 (token issue / pwd hash)?"
-    yes: "放 security context"
-    no: "ask user — 可能需新 bounded context"
+完整 **7-question decision tree** + **Operation Catalog** + **维护流程** 落在 [`docs/conventions/server-bounded-context-catalog.md`](../conventions/server-bounded-context-catalog.md)。本 ADR 仅保留决策骨架，不重复实施细节（避免 ADR-impl drift）。
 
-cross_ctx_propagation_decision_tree:
-  - q: "callee 失败必须回滚 caller?"
-    yes: "R2 CROSS-CTX-SYNC (同 tx 内调用)"
-    no: "R3 CROSS-CTX-ASYNC (Outbox event)"
-```
-
-### Operation Catalog (`docs/conventions/operation-catalog.md` — PR-7 写)
-
-列已知跨 context 操作 + 应用规则:
-
-| Operation | Context | Side effects (传播规则) |
-|---|---|---|
-| phone-sms-auth | auth | R2 → account.autoCreate-or-get;R2 → security.issueTokens |
-| changePhone | account | R3 → security.revokeAllSessionsForAccount |
-| freezeAccount | account | R3 → security.revokeAllSessionsForAccount;R3 → audit.recordFreeze |
-| refreshToken | auth | R2 → security.rotateRefreshToken |
-
-新 use case ship 时必加一行进 catalog (PR review check)。
+`.claude/rules/server-bounded-context-decision.md` 是 path-triggered 自动加载摘要，在 LLM agent 触及 `specs/**/spec.md` / `apps/server/src/**/*.usecase.ts` / `apps/server/src/**/*.module.ts` 时自动 surface 简版决策路径 + 注释规则。
 
 ## Consequences
 
-* LLM agent prompt 加 decision tree 摘要 → 新 use case 上手时定位准
-* ESLint custom rule (PR-1 / PR-4 可选):cross-context import 必须前 1-3 行有 `CROSS-CONTEXT-(SYNC|ASYNC):` 注释
-* PR-7 写 operation-catalog.md v1 + 4 已知 operations
+* LLM agent 触及 server use case / module / spec 时, `.claude/rules/server-bounded-context-decision.md` 自动 surface 简版决策树 + 注释规则
+* `docs/conventions/server-bounded-context-catalog.md` 是 PR review 单一权威 — 4 现有 use case 已 backfill; Plan 2 anticipated 4 候选预占位
+* ESLint custom rule (defer 到 hexagonal layer ESLint re-add PR, per 05-22 governance plan O3): cross-context import 必前 1-3 行有 `CROSS-CONTEXT-(SYNC|ASYNC|READ):` 注释 — 当前 PR review 人工兜底, 未来上 lint rule
 
 ## Trade-offs
 
 * 注释 overhead — 但 LLM 命中率 + 人脑追踪 side effect 链收益大
-* Catalog 维护需 PR review 配合 — 由 PR template checklist 兜底
+* Catalog 维护需 PR review 配合 — 由 PR template checklist + path-triggered rule 双层兜底
+* 决策树 7 questions 比原 2 questions 长 — 但覆盖 cross-context 读 + 新 bounded context evaluation 两个原版漏洞
 
 ## References
 
-* [ADR-0032](0032-backend-bounded-context.md)
-* [ADR-0033](0033-outbox-cross-context-comm.md)
+* [ADR-0032](0032-backend-bounded-context.md) bounded context 拆分本体
+* [ADR-0033](0033-outbox-cross-context-comm.md) Outbox envelope (R3 实装基础)
+* [ADR-0041](0041-server-common-directory-policy.md) `src/common/` 不引入 / Platform infra 例外
+* [`docs/conventions/server-bounded-context-catalog.md`](../conventions/server-bounded-context-catalog.md) — 本 ADR 的运营文档落地
+* `.claude/rules/server-bounded-context-decision.md` — path-triggered LLM 摘要
 * memory `feedback_orchestrator_llm_cwd_must_match_target_paths` (LLM ergonomics 同源思考)
