@@ -43,7 +43,7 @@ LLM agent 加新 use case (e.g. "加 changePhone")时错向放在 `auth/`,因为
 - token revocation (Redis jti whitelist)
 - **不依赖** account / auth
 
-```
+```text
 src/security/
   security.module.ts
   jwt.strategy.ts
@@ -58,7 +58,7 @@ src/security/
 - GetProfile / UpdateDisplayName / auto-create use cases
 - **依赖** security (验 JWT) — 但通过 SecurityModule 公开 guard,不直接 import 内部
 
-```
+```text
 src/account/
   account.module.ts
   domain/Account.ts (从 src/auth/domain/ 移)
@@ -77,7 +77,7 @@ src/account/
 - refresh-token use case (per ADR-0037)
 - **依赖** security + account (编排,组合两者)
 
-```
+```text
 src/auth/
   auth.module.ts
   domain/SmsCode.ts
@@ -88,7 +88,7 @@ src/auth/
 
 ### 依赖方向(强制 ESLint boundaries)
 
-```
+```text
 auth → account → security
 auth → security
 ```

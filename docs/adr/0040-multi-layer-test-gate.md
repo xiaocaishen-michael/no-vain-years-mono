@@ -53,7 +53,7 @@ PR #79 (PR-5 tail) retro 显示 PR #65 / PR-5a/5b/5c 共 8 处 cascade bug 中 6
 
 3 个 PR 严格串行：
 
-```
+```text
 PR-T1 (机制层 — docs/plans/2026-05/05-22-test-infra-p1-runtime-smoke.md)
   ├─ scripts/ci/server-boot-smoke.ts standalone tsx
   ├─ spec-kit preset 0.2.1 → 0.2.2 (3 模板插桩 + state_branches 字段)

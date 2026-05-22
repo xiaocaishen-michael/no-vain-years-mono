@@ -18,7 +18,7 @@ sunset_trigger: |
 
 A-002 ship 前 packages 树:
 
-```
+```text
 packages/
   api-client/      (跨 mobile + server-types 共享,真共享)
   types/           (跨 mobile + server-types 共享,真共享)
@@ -53,7 +53,7 @@ YAGNI 判断:**1 consumer + < 2 月项目历史 = 应该内联**。第二个 con
 
 ### apps/mobile/src/ 顶层目录(amend)
 
-```
+```text
 apps/mobile/src/
   auth/        从 packages/auth/src/ 内联
   ui/          从 packages/ui/src/ 内联
@@ -63,7 +63,7 @@ apps/mobile/src/
 
 ### 保留 packages/
 
-```
+```text
 packages/
   api-client/   跨 mobile + server-types 共享,真共享 (Orval 生成 per ADR-0027)
   types/        跨 mobile + server-types 共享,真共享

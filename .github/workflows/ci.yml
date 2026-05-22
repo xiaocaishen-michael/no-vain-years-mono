@@ -48,6 +48,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  markdownlint:
+    name: Markdownlint (docs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DavidAnson/markdownlint-cli2-action@v18
+        with:
+          config: .markdownlint-cli2.jsonc
+          globs: '**/*.md'
+
+  commitlint:
+    name: Commitlint (conventional commits)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: commitlint.config.mjs
+
   # V9 acceptance gate (Plan 1 § E.3): Docker build + Trivy image scan.
   # Trigger strategy: PR skip / main push run.
   # Rationale: image scan ~3-5min, no PR-time value (Dockerfile rarely changes
