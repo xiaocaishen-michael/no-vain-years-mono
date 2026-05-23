@@ -138,19 +138,25 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
   - **翻页约定** → **DEFER 第一个 paginated use case spec 阶段决策**（cursor-based vs offset+limit；ad-hoc 锁定违 evergreen 原则）
 - **Cross-link**：mono 已有 `server-bounded-context-catalog.md`（业务 Operation 决策导向）+ `ADR-0038`（错误响应）+ `sdd.md`（OpenAPI 同步链）— api-contract 是 HTTP wire format 单源，与三者分工显式（见文件 § 与其他约定的分工 表）
 
-### Sub-PR 1.6 — 新建 fe-directory-structure.md
+### Sub-PR 1.6 — 新建 fe-directory-structure.md（聚焦操作纪律 3 段，物理布局 cross-ref ADR）
 
-- **跨仓 read**：meta-app CLAUDE.md § 一（目录约定）+ § 五（AI 协作约束）
-- **MIGRATE 原则**：
-  - `apps/*` vs `packages/*` 边界（业务逻辑 in packages/，平台 UI in apps/）
-  - `packages/*` 不得反向依赖 `apps/*`（ESLint enforce-module-boundaries 配合，per ADR-0020 + master plan 提及的 P2 ESLint 边界电网）
-  - 跨 package 禁止 deep-import（仅 entry point）
-  - token / secrets 安全（不进 git，env 注入）
-  - OpenAPI client 包装位置（`packages/api-client/`，per mono 现状）
-- **DROP**：
-  - `apps/native/` 命名 → 改用 `apps/mobile/`（mono 实际路径）
-  - Expo / pnpm install 实操命令 → cross-link mono `business-naming.md` 已覆盖的模块路径
-- **Cross-link**：mono 已有 `business-naming.md` 列了 `apps/*` 和 `packages/*` 三层位置；fe-directory-structure.md 强化跨 package 边界 invariant
+> ⚠️ 走 read meta + 对比 mono ADR/conventions 后 **物理目录布局 + 包边界 + pnpm + TS 解析 4 大块全部 DROP: mono-already-superior**（ADR-0020/0028/0029/0030 三层保险 + 反向"5 包减 2"实证 strictly superior）；文件 scope 收窄到 frontend coding 操作约束 3 段（API client 单源 / Expo SDK 引入 / 客户端 token 存储）+ § 目录与边界 cross-ref 表。
+
+- **跨仓 read**：meta-app CLAUDE.md § 一（目录约定）+ § 二（跨端差异）+ § 五（AI 协作约束）
+- **MIGRATE 段**：
+  - 「禁绕过 `@nvy/api-client` 手写 fetch」一段（mono 实证 `apps/mobile/package.json` 含 `@nvy/api-client: workspace:*`）
+  - Expo SDK / RN 生态包必走 `cd apps/mobile && pnpm exec expo install <pkg>`（vs `pnpm add` 撞 SDK 兼容版本错位）+ 非 Expo 纯 JS lib 走 `pnpm add --filter mobile` + 漂移修复 `expo install --fix`
+  - 客户端 `refresh_token` / `access_token` 走 `expo-secure-store`，禁 MMKV / AsyncStorage（实证 `apps/mobile/src/auth/device-store.ts` 用 `SecureStore`）
+- **DROP 段（全 mono-already-superior + vacuous）**：
+  - `apps/*` vs `packages/*` 物理边界 → **DROP: mono-already-superior**（[ADR-0020](../../adr/0020-module-boundary-nestjs.md) NestJS + ESLint boundaries v6 + Nx `@nx/enforce-module-boundaries` 三层保险）
+  - `packages/*` 不反向依赖 `apps/*` → 同上 DROP
+  - 跨 package 禁 deep-import → **DROP: mono-already-superior**（ADR-0020 + [ADR-0029](../../adr/0029-ts-module-resolution-policy.md) bundler resolution）
+  - 业务逻辑 / 共享 UI 抽 `packages/` → **DROP: 反向决策矛盾**（[ADR-0030](../../adr/0030-package-decomposition.md) "5 包减 2" 实证 over-engineered → 收回 mono 内部）
+  - 平台特定 UI 写 `apps/<target>` → **DROP: vacuous**（mono 0 `apps/web`，单 apps/mobile）
+  - NativeWind className 跨栈共用 → **DROP: vacuous**（mono 0 packages/ui，per ADR-0030）
+  - 文件后缀约定 `.web.tsx` / `.ios.tsx` → **DROP: vacuous + 框架默认**（Metro / Expo Router 默认支持，mono 0 apps/web）
+  - `apps/native/` 命名 → DROP（mono 路径已是 `apps/mobile/`）
+- **Cross-link**：[ADR-0020](../../adr/0020-module-boundary-nestjs.md) / [ADR-0028](../../adr/0028-monorepo-pnpm-policy.md) / [ADR-0029](../../adr/0029-ts-module-resolution-policy.md) / [ADR-0030](../../adr/0030-package-decomposition.md) + [ADR-0027](../../adr/0027-frontend-data-test-layer.md) (Orval) + [ADR-0037](../../adr/0037-security-credentials-governance.md) (token 后端) + [business-naming.md](../../conventions/business-naming.md) + [sdd.md](../../conventions/sdd.md) (OpenAPI 同步链) + [api-contract.md](../../conventions/api-contract.md) (HTTP wire format)
 
 ### Sub-PR 1.7（收尾）— CLAUDE.md @import 链 + 按需 read 表 + token 预算验证
 
