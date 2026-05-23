@@ -111,6 +111,27 @@ jobs:
         working-directory: apps/server
         run: npx prisma generate
 
+      - name: Enforce migration immutability (per ADR-0035 + .claude/rules/migration-rules.md)
+        # Per ADR-0035 § 1 + .claude/rules/migration-rules.md § 1 — 已合 main migration
+        # is immutable; fix via new migration not modify existing. lefthook
+        # migration-naming-check only catches diff-filter=A (new); this CI step
+        # catches diff-filter=MD (modified/deleted) vs origin/main, complementary.
+        # Requires fetch-depth: 0 (already set in actions/checkout above).
+        run: |
+          modified=$(git diff origin/main --diff-filter=MD --name-only \
+            | grep -E '^apps/server/prisma/migrations/[^/]+/migration\.sql$' \
+            || true)
+          if [ -n "$modified" ]; then
+            echo "❌ Migration immutability violation: existing migration(s) modified/deleted vs origin/main"
+            # Use awk instead of `sed 's/^/  - /'` per shellcheck SC2001 +
+            # actionlint. awk handles per-line prefix without invoking sed regex.
+            echo "$modified" | awk '{print "  - " $0}'
+            echo ""
+            echo "Per ADR-0035 § 1 + .claude/rules/migration-rules.md § 1 — 已合 main migration 禁修改；纠正以 new migration 实现。"
+            exit 1
+          fi
+          echo "✅ No prisma migration immutability violation."
+
       - name: Run Nx Affected Pipeline
         # base=origin/main for PR diff; nx affected computes which projects'
         # cache hashes change, triggers lint/typecheck/test/build/runtime-smoke
