@@ -32,7 +32,7 @@
 
 示例：`fix/prisma-migrate-drift` / `docs/adr-0024-spec-layout` / `chore/repo-init-skeleton`
 
-**注**：`feature/` 类型在 A 出现后退役 — 新 feature 一律走 spec-kit 自动 `NNN-<slug>`；Plan 1 期间合入的 `feature/phone-sms-auth-<usX>` 系列 PR 历史不追溯。
+**注**：`feature/` 类型在 A 出现后退役 — 新 feature 一律走 spec-kit 自动 `NNN-<slug>`；
 
 ## Commit 消息
 
