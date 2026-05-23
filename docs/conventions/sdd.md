@@ -59,6 +59,22 @@ status: implemented # draft | planned | implementing | implemented | superseded 
 
 **plan.md UI 段**：phase 1 写 `## UI 结构（占位版，pending mockup）`；phase 2 mockup 落地后回填完整版
 
+### Mockup 留迹路径（per [ADR-0024](../adr/0024-spec-feature-first-layout.md)）
+
+Mockup 与 spec / plan / tasks 同位于 feature 目录 `design/` 子目录：
+
+```text
+specs/NNN-<feature-slug>/
+├── spec.md
+├── plan.md
+├── tasks.md
+└── design/          # PNG / handoff bundle / 设计 notes
+```
+
+适用 § 类 1（mockup 阶段回填）/ § 类 2（设计先行）/ § 类 3（图表 mockup）。
+
+**代码是真相源**：mockup drift 不算 bug — `design/` 是历史决策留痕，不要求与最终 RN 代码逐 pixel 同步。
+
 ## `spec.md` 内部结构
 
 走 spec-kit 官方 3 段模板（`.specify/templates/spec-template.md`）：User Scenarios & Testing / Functional Requirements / Success Criteria。**不自创子层**（如"业务规则 / API / 测试"等）—— [Martin Fowler 2024 三工具对比](https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html) 明确："there is not a general definition of what constitutes a specification"。

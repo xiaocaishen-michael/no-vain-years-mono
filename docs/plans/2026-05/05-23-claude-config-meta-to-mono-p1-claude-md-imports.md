@@ -41,7 +41,7 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
 | 1.1 | 新建 `claude-config-layout.md` + 含 master+P1 git mv | #1 | `docs(repo): migrate claude-config-layout convention from meta` | **是** |
 | 1.2 | 新建 `github-ruleset.md` (convention) + `.claude/rules/github-ruleset-sync.md` (path-scoped, **跨 P1→P2 边界**) + 顺手清 git-workflow.md 3 finding | #2 | `docs(repo): extract github-ruleset to standalone convention + add path-scoped rule + clean git-workflow dups` | 否 |
 | 1.3 | **workflow amendment + finding 报告**（meta versioning 0 段可迁 → master plan 加第 5 类淘汰 + .gitignore 删 backup glob）；**不动 mono versioning.md** | #3 (DROP) | `docs(repo): simplify migration workflow + add 5th disposal class (mono-superior)` | 否 |
-| 1.4 | 并入 sdd.md（TDD 强调 + UI mockup path 澄清） | #4 | `docs(repo): deepen sdd convention with tdd + ui-mockup-path` | 否 |
+| 1.4 | 并入 sdd.md mockup 路径深化（TDD 段 DROP: mono-already-superior 实证） | #4 | `docs(repo): deepen sdd convention with mockup-colocation-path` | 否 |
 | 1.5 | 新建 api-contract.md（RFC 9457 + HTTP 体例） | #5 | `docs(repo): add api-contract convention (rfc9457 + url + error code + pagination)` | 否 |
 | 1.6 | 新建 fe-directory-structure.md | #6 | `docs(repo): add fe-directory-structure convention` | 否 |
 | 1.7 | 收尾：mono CLAUDE.md @import 链 + 按需 read 表 + token 预算验证 | 整合 | `docs(repo): wire phase1 conventions into CLAUDE.md import chain` | 否 |
@@ -103,13 +103,19 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
   6. 新 memory: `feedback_convention_migration_mono_already_superior`
 - **claude-md-audit § 3.2 auto-trigger 重审 finding**: mono versioning.md 85 行 命中 3 条 trigger（体积 > 50 / 触发可路径化 / reference-content 主导）→ Step 1 画像建议 Hybrid 拆 `.claude/rules/release-please-versioning.md`。**本 sub-PR 不执行重审拆分**（scope creep），列入 Phase 2 sub-plan 候选
 
-### Sub-PR 1.4 — sdd.md 深化（TDD 强调 + UI mockup 路径澄清）
+### Sub-PR 1.4 — sdd.md mockup 路径深化（TDD 段 DROP）
+
+> ⚠️ 走 read meta + 对比 mono 后 **TDD 段命中 mono-already-superior 整段 DROP**（per master plan 5 类淘汰 + Sub-PR 1.3 先例），仅 mockup 路径段产生净增。
 
 - **跨仓 read**：meta-server CLAUDE.md § 一 TDD + meta-app CLAUDE.md § 三 UI 工作流
 - **MIGRATE 段**：
-  - TDD 强调（server 业务模块强制红绿循环）→ 并入 mono sdd.md § /implement 闭环 6 步 前的「## 标准流程」段补一句
-  - UI mockup colocation 路径澄清：meta 用 `apps/native/specs/<page>/design/`，mono 用 `specs/NNN-<feature>/design/`（feature-first per ADR-0024）→ 并入 mono sdd.md § 前端 UI 工作流变体 § 类 1 占位 UI 4 边界 之后，明示 mono 路径
-- **DROP 段**：meta-server § 一 关于 JUnit/Mockito 工具的实操（mono 走 Vitest+NestJS Test module，工具差异 DROP）→ `<!-- DROP: stack-specific -->`
+  - UI mockup colocation 路径澄清：meta 用 `apps/native/specs/<page>/design/`，mono 用 `specs/NNN-<feature-slug>/design/`（feature-first per ADR-0024）→ 新增 `### Mockup 留迹路径` H3 段挂在 § 前端 UI 工作流变体 § 类 1 占位 UI 4 边界 之后；同段并入 meta-app 「代码是真相源, mockup drift 不算 bug」原则
+- **DROP 段**：
+  - meta-server § 一 TDD 整段（Red→Green→Refactor / 测试绑定实现 / 不削弱测试）→ **DROP: mono-already-superior**（mono sdd.md L17 任务绑定 + L19 红绿循环 + L93-94 6 步闭环 step 1 红 step 2 绿 + L125 反模式跳过 TDD 已四处覆盖；增量「不削弱测试让实现通过」已被反模式段隐含）
+  - meta-server § 一 Claude 协作 prompt 模板（Java/Spring UseCase 例）→ `<!-- DROP: stack-specific -->`
+  - meta-server § 一 例外清单（`@Configuration` / Lombok / MapStruct / Spring Data JPA 接口 等）→ `<!-- DROP: stack-specific -->`
+  - meta-app § 三 token 优先 / design-tokens 单源 → DEFER Sub-PR 1.6 fe-directory-structure scope
+  - meta-app § 三 `.claude/nativewind-mapping.md` 5 条规则 → DEFER Phase 2 `.claude/rules/` scope
 
 ### Sub-PR 1.5 — 新建 api-contract.md
 
