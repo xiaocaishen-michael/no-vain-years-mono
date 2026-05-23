@@ -175,7 +175,7 @@ pnpm nx run repo:spec-by-module auth
 - `git mv` 后 `git log --follow specs/001-phone-sms-auth/spec.md` 仍能追溯到 W1.4 起源 commit（preserve history）
 - `pnpm nx graph` / `pnpm nx run server:lint` / `pnpm nx run server:test` 不依赖 specs 路径，0 回归
 - 模块倒查烟测：`rg -l '^modules:.*\bauth\b' specs/` 命中 `specs/001-phone-sms-auth/spec.md`
-- 跨文档 ref 全量更新（sdd.md / ADR-0023 / ADR-0018 / experiences/v10-claude-agent-loop.md / specs/001-phone-sms-auth/{tasks,plan,spec}.md），PR diff 内 review
+- 跨文档 ref 全量更新（sdd.md / ADR-0023 / ADR-0018 / experience/2026-05/05-18-v10-claude-agent-loop.md / specs/001-phone-sms-auth/{tasks,plan,spec}.md），PR diff 内 review
 
 ## References
 

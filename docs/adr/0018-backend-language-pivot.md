@@ -26,7 +26,7 @@ sunset_trigger: |
 
 Plan 1 § B 8 候选 × 10 维度加权评分,**TS / NestJS+Fastify+Prisma+Nx** 排名 #1;Python/FastAPI 第 #3 但备选(§ D 触发条件);raw Fastify 第 #2 但 NestJS+Fastify 性能损失可接受换 DDD 范式契合度。
 
-Plan 1 4-5 周 PoC(`phone-sms-auth` use case full port,V1-V10 验收门)实际 ~2 天 wall time 全过,V10 主观体感 ≥ Java baseline(详 [`../experiences/v10-claude-agent-loop.md`](../experiences/v10-claude-agent-loop.md))。
+Plan 1 4-5 周 PoC(`phone-sms-auth` use case full port,V1-V10 验收门)实际 ~2 天 wall time 全过,V10 主观体感 ≥ Java baseline(详 [`../experience/2026-05/05-18-v10-claude-agent-loop.md`](../experience/2026-05/05-18-v10-claude-agent-loop.md))。
 
 ## Decision
 
@@ -94,7 +94,7 @@ packages/                   # 共享包(api-client / shared-types / ...)
 ## References
 
 - [Plan 1 — Claude+Java vs Claude+AI meta-repo 推倒重来选型](../plans/2026-05/05-18-plan1-backend-stack-poc.md)
-- [V10 验收 — Claude Code agent loop 体感](../experiences/v10-claude-agent-loop.md)
+- [V10 验收 — Claude Code agent loop 体感](../experience/2026-05/05-18-v10-claude-agent-loop.md)
 - [V1 LoC 验收 — mono 0.119 / Java 5705](../../specs/001-phone-sms-auth/v1-loc-report.md)
 - [ADR-0019: ORM = Prisma](0019-orm-prisma.md)
 - [ADR-0020: 模块边界 = NestJS Module + ESLint boundaries](0020-module-boundary-nestjs.md)
