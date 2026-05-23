@@ -83,8 +83,10 @@ EXPOSE 3000
 # (no Prisma/Redis check, per gap-audit A1). Lets docker/k8s restart a wedged
 # container even when its dependency layer is intermittently down. Readiness
 # (`/healthz/ready`) is exercised by orchestrator probes, not this HEALTHCHECK.
+# Use 127.0.0.1 (not localhost): alpine /etc/hosts maps localhost to ::1 first,
+# but the app binds IPv4 only -> wget localhost is refused, flapping unhealthy.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget --quiet --spider --tries=1 http://localhost:3000/healthz/live || exit 1
+  CMD wget --quiet --spider --tries=1 http://127.0.0.1:3000/healthz/live || exit 1
 
 # Entrypoint runs `prisma migrate deploy` then `exec node dist/main.js`.
 # `docker run --init` recommended for proper PID 1 signal handling.

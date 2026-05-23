@@ -9,7 +9,7 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
-    "postinstall": "lefthook install",
+    "postinstall": "if command -v git >/dev/null 2>&1; then lefthook install; fi",
     "orchestrate": "tsx scripts/orchestrator/index.ts",
     "db:migrate": "tsx scripts/prisma-migrate.ts"
   },
