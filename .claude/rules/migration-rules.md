@@ -18,7 +18,7 @@ migration **命名** (`<yyyymmddhhmm>_<verb>_<obj>`) + **prisma generate hard ga
 
 已合 main 的 `apps/server/prisma/migrations/*/migration.sql` **禁止修改**；纠正以新 migration 实现。
 
-强制层：当前靠 PR review 纪律（无 CI immutability check —— 候选加 `git diff origin/main --diff-filter=MD apps/server/prisma/migrations/` 在 PR validation 步骤，列入 P3 lefthook/CI 强制层 scope）。
+强制层：PR review 纪律 + **CI immutability check**（`.github/workflows/pr-validation.yml` 的 `Enforce migration immutability` step：`git diff origin/main --diff-filter=MD` 扫到改 / 删既有 `migration.sql` → 红，per #133）。lefthook `migration-naming-check` 仅校验新增（`--diff-filter=A`），二者互补。
 
 ### 2. 破坏性变更走 expand-migrate-contract 三步法
 
