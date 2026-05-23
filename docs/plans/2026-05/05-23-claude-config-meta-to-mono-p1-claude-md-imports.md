@@ -160,15 +160,19 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
 
 ### Sub-PR 1.7（收尾）— CLAUDE.md @import 链 + 按需 read 表 + token 预算验证
 
+> ⚠️ 走 token budget audit 后 pre-1.7 already 5029t（Sub-PR 1.4 sdd.md +155t 跨过 5000 红线我 audit 漏算），触发 master plan § Risk 第 1 行预案「超限即停 1.7 触发段级再深挖 / 转 on-demand」。**决策应用**：(a) claude-config-layout.md 改 on-demand（不进 always-load）(b) pr-creation-protocol.md 降 on-demand 释 659t → 最终 always-load 4370t ✓。
+
 - **改 mono CLAUDE.md**：
-  - 新增 always-load `@import`：`@docs/conventions/claude-config-layout.md`
-  - 「按需 read」表新增 3 entries：
+  - **DELETE always-load `@import`**：`@docs/conventions/pr-creation-protocol.md`（降 on-demand 释 659t）
+  - **「按需 read」表新增 5 entries（不再是原写的 3 个）**：
 
     | 操作 | 必读文档 |
-    |---|---|
+    | --- | --- |
+    | 执行 `gh pr create` / `gh pr edit` body 改写 | `docs/conventions/pr-creation-protocol.md` |
+    | 改 `.claude/` 目录任何内容 / 新建 commands / skills / rules / settings 调整 | `docs/conventions/claude-config-layout.md` |
     | 改 GitHub repo 设置 / ruleset / CI workflow 改名 / 加 required check / 引第二人收紧 | `docs/conventions/github-ruleset.md` |
-    | server 新增 API / mobile API client 改动 | `docs/conventions/api-contract.md` |
-    | Plan 2 mobile 迁入 / 新增 package | `docs/conventions/fe-directory-structure.md` |
+    | 新增 / 改动 server endpoint (controller / DTO / OpenAPI 装饰器) / packages/api-client 重新 gen | `docs/conventions/api-contract.md` |
+    | 改 `apps/mobile/src/**` / 加 frontend dependency / 处理客户端凭证存储 | `docs/conventions/fe-directory-structure.md` |
 
 - **token 预算验证**（per master plan § 终局验收 § 1）：
 
@@ -176,7 +180,8 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
   for f in $(grep -oE '@\S+\.md' CLAUDE.md | sed 's/@//'); do wc -c "$f"; done | awk '{s+=$1} END {print s/4, "tokens"}'
   ```
 
-  目标 < 5000；超限 → 触发段级再深挖 + 二轮裁剪 / 转 on-demand
+  - **实测结果**：always-load 4 文件（business-naming 194t + git-workflow 857t + sdd 2849t + docs-organization 468t）= **4370t < 5000 budget ✓**，headroom 630t
+  - 单文件最大 = sdd.md 2849t（超 1500/file 红线但 Sub-PR 1.4 audit 已 pass + Phase 2 拆 `.claude/rules/implement-tasks-closure.md` + `.claude/rules/server-mobile-types-sync.md` 候选已识别）
 
 ## Phase 1 验收（per master plan § 终局验收 § 1-3，§ 4 sanity 留 3 phase 全 ship 后）
 
