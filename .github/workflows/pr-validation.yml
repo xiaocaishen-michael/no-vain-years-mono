@@ -123,7 +123,9 @@ jobs:
             || true)
           if [ -n "$modified" ]; then
             echo "❌ Migration immutability violation: existing migration(s) modified/deleted vs origin/main"
-            echo "$modified" | sed 's/^/  - /'
+            # Use awk instead of `sed 's/^/  - /'` per shellcheck SC2001 +
+            # actionlint. awk handles per-line prefix without invoking sed regex.
+            echo "$modified" | awk '{print "  - " $0}'
             echo ""
             echo "Per ADR-0035 § 1 + .claude/rules/migration-rules.md § 1 — 已合 main migration 禁修改；纠正以 new migration 实现。"
             exit 1
