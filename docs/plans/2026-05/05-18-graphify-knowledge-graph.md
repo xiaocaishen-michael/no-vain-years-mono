@@ -210,7 +210,7 @@ graphify hook install
 
 ## 实施 log（2026-05-18，Phase 1）
 
-> 原计划写到 `docs/experience/2026-05-18-graphify-bootstrap.md`，但该目录是 Plan 3 才迁入的 iCloud symlink 占位，**未创建**。bootstrap log 临时落本 plan 文件；Plan 3 设好 symlink 后可迁出。
+> 原计划写到 `docs/experience/2026-05-18-graphify-bootstrap.md`，但当时该目录未创建，bootstrap log 临时落本 plan 文件。（2026-05-23 更新：`docs/experience/` 已 mono-native 起步，原 Plan 3 iCloud symlink 迁入计划作废；本 bootstrap log 留此 plan 即可，不迁出。）
 
 ### 命令清单（已执行）
 

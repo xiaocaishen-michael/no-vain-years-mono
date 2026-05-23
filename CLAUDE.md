@@ -6,7 +6,7 @@
 
 Nx mono-repo。`apps/server/`（NestJS + Fastify adapter + Prisma）；`apps/mobile/`（Expo，含 `auth/` / `core/` / `theme/` / `ui/` 内联子目录，per [ADR-0030](docs/adr/0030-package-decomposition.md) 「5 包减 2」）；`packages/`（仅 `api-client` + `types`，跨 mobile + server-types 真共享；其他单 consumer 候选已内联到 `apps/mobile/src/`）。
 
-Doc 文件组织 per [docs/conventions/docs-organization.md](docs/conventions/docs-organization.md)；`docs/experience/` 已起步（`2026-05/` 子目录），`docs/daily/` 待 Plan 3 阶段从旧 meta-repo 迁入（iCloud symlink + 跨设备同步形态由 Plan 3 决定）。
+Doc 文件组织 per [docs/conventions/docs-organization.md](docs/conventions/docs-organization.md)；`docs/experience/` 已起步（`2026-05/` 子目录），`docs/daily/` 同为 mono-native（一日一文体例 per docs-organization.md）。旧 meta-repo 的 daily/experience 历史不迁入（2026-05-23 决定作废 Plan 3 迁入 + iCloud symlink 跨设备同步形态）。
 
 ## 跨仓公共约定
 

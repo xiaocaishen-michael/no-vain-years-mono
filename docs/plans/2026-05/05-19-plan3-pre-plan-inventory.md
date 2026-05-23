@@ -166,7 +166,7 @@ apps/server/src/
 | `.claude/commands/speckit-link-spec.md` | meta-only | 弃 |
 | `.claude/rules/plan-lifecycle-rules.md` | governance | 推荐迁(plan 命名/归档规则跨栈) |
 | `lefthook.yml`(meta `spec-only-in-meta` 规则) | mono 已有自己 lefthook | meta 规则单仓不必 |
-| `docs/experience/ + docs/daily/` iCloud symlink | 已有等价链(per memory `feedback-docs-daily-symlink-after-checkout`)| ✅ |
+| `docs/experience/ + docs/daily/` | mono-native git-tracked（iCloud symlink 跨设备同步形态 2026-05-23 作废；meta 历史不迁入）| ✅ 不迁 |
 
 ## 7. 新增风险点(Plan 1 § H 未列出,Plan 3 plan 需收纳)
 

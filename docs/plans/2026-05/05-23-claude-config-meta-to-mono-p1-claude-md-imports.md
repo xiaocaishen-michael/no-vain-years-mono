@@ -23,8 +23,8 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
 - `api-contract.md`（meta-root）→ `DROP: stack-specific`（Springdoc 链条；mono 版重写不复用 meta 内容；落点同名但内容来源是 meta-server § 六 而非 meta-root api-contract）
 - `worktree.md`（meta-root）→ `DROP: three-repo-only`（与 mono-worktree skill 体例完全不同）
 - `README.md`（meta-root）→ 跳过（per claude-md-audit § 6「README 默认路标删」原则；user Q1 confirmed）
-- `daily-logs.md`（meta-root）→ `DEFER: 与 plan3 iCloud symlink 物理迁入同步`（mono CLAUDE.md 已明示 `docs/daily/` 在 Plan 3 阶段从 meta 迁入；user push back: 提前迁 convention 描述但物理目录未启用 → 文档 drift；同 PR 物理 + convention 一起做）
-- `experience-docs.md`（meta-root）→ `DEFER: 与 plan3 iCloud symlink 物理迁入同步`（同上理由）
+- `daily-logs.md`（meta-root）→ ~~`DEFER: 与 plan3 iCloud symlink 物理迁入同步`~~ → **`DROP: 不迁`**（2026-05-23 user 决定：daily/experience 物理迁入作废，后续不从 meta 迁入；与 [05-19-plan3-pre-plan-inventory](05-19-plan3-pre-plan-inventory.md) L161「不迁(personal workflow)」一致。mono `docs/daily` + `docs/experience` 走 mono-native per docs-organization.md，无 iCloud symlink）
+- `experience-docs.md`（meta-root）→ ~~`DEFER: 与 plan3 iCloud symlink 物理迁入同步`~~ → **`DROP: 不迁`**（同上，2026-05-23 作废；与 plan3-pre-plan-inventory L162「不迁(personal playbook)」一致）
 - `versioning.md`（meta-root）→ `DROP: mono-already-superior`（meta 29 行 vs mono 85 行；mono 已含 manifest 0.0.0 bug Postmortem + separate-pull-requests + path routing 表 + 手工里程碑 tag 废弃文档化；meta 三仓 row 全 DROP-three-repo-only；起步 v0.1.0 已被 mono 0.0.1 evolution 替代）
 - meta-server § 二（包/类命名 DDD 层）→ `DEFER: P2`（NestJS 层结构不同，P2 落地时新写）
 - meta-server § 四（日志纪律）→ `DEFER: P2`（适合 `.claude/rules/server-logging.md` path-triggered）
