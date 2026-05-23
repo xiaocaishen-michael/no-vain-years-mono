@@ -5,7 +5,7 @@
 - 日期: 2026-05-18
 - PoC use case: `phone-sms-auth`(Plan 1 § E.1)
 - 数据 scope: mono 仓 commit #1-#19 + Java baseline `my-beloved-server` mbw-account
-- Path 体例: 本文件路径 `docs/experiences/`(复数)是 Plan 1 一次性 git-tracked 验收记录,与 Plan 3 阶段才迁入的 `docs/experience/`(单数,iCloud symlink,.gitignore 排除)路径**不同**,避免与未来 convention 冲突
+- Path 体例: 原存于 `docs/experiences/`(复数,Plan 1 一次性 git-tracked 验收 vs 当时设想的 `docs/experience/` 单数 iCloud symlink)；后 `docs/conventions/docs-organization.md` 统一 canonical 为 `docs/experience/`(单数,git-tracked YYYY-MM/ 体例),本文件 2026-05-23 git mv 整合 + 按 `MM-DD-<kebab-slug>` 加日期前缀
 
 ---
 
