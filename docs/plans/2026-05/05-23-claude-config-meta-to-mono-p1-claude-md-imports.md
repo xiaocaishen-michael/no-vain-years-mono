@@ -119,19 +119,24 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
 
 ### Sub-PR 1.5 — 新建 api-contract.md
 
+> ⚠️ 走 read meta + 对比 mono 后 **§ 三 错误处理整段 + RFC 9457 ProblemDetail + error code 命名 全 DROP: mono-already-superior**（ADR-0038 strictly superior 严格 superior）；**翻页约定 DEFER**（mono 0 paginated endpoint，evergreen 原则 + 第一个 use case spec 阶段决策更合理）。
+
 - **跨仓 read**：meta-server CLAUDE.md § 三 错误处理 + § 六 API 设计
-- **MIGRATE 原则**：
-  - URL 体例 `/api/v{n}/<resource>`（与 sub-PR 1.4 versioning.md cross-link，但 api-contract.md 是 HTTP contract 单源）
-  - HTTP method 语义（GET 幂等 / POST 创建 / PATCH 部分更新 / PUT 整体替换 / DELETE）
-  - kebab-case URL path
-  - Pagination 体例（cursor-based / limit）
-  - ISO 8601 timestamp 体例
-  - RFC 9457 ProblemDetail 响应格式 + `application/problem+json` content-type
-  - Error code 命名（`PHONE_ALREADY_REGISTERED` 全大写 + 下划线）
-- **DROP**：
-  - Spring `setProperty()` / `@RestControllerAdvice` 实现细节 → `<!-- DROP: stack-specific -->`
-  - JSR 303 等 validation annotation 细节 → `<!-- DROP: stack-specific -->`（mono 走 class-validator / zod）
-- **Cross-link**：mono 已有 `server-bounded-context-catalog.md`（业务 Operation 决策导向）— api-contract 是 HTTP wire format 单源，两者分工不重叠
+- **MIGRATE 段**：
+  - URL 体例 `/api/v{n}/<resource>`（`setGlobalPrefix('api')` + `@Controller('v{n}/<resource>')` 实证）
+  - 资源命名 = **复数 kebab-case**
+  - HTTP method 语义（仅锁 `PUT vs PATCH` 易混歧义点，其余 default Claude 知 HTTP 标准）
+  - 时间字段 ISO 8601 UTC（DB `TIMESTAMP WITH TIME ZONE` 落库）
+  - 枚举值大写 `SNAKE_CASE`（与 Prisma enum / DB ENUM 一致 + Orval typed 穷举）
+  - 鉴权 `Authorization: Bearer <access_token>`（`jwt-auth.guard.ts` + `@ApiBearerAuth()` 实证）
+- **DROP 段**：
+  - meta § 三 错误处理整段（Domain/Application/Web 分层 + ProblemDetail + 错误码命名） → **DROP: mono-already-superior**（[ADR-0038](../../adr/0038-error-handling-ux-contract.md) 端到端 ProblemDetail + 6 业务扩展 + trace_id 串联 + Orval typed + log level 分流 + ERROR_DISPLAY_MAP；[server-bounded-context-catalog.md](../../conventions/server-bounded-context-catalog.md) 覆盖 context 分层）
+  - meta § 三 Spring `pd.setProperty()` / `@RestControllerAdvice` / `@Order` → `<!-- DROP: stack-specific -->`
+  - meta § 三 单体阶段不强制模块前缀 / 拆服务后加 `<MODULE>_` 前缀 → DROP（mono 不走 Spring Modulith 模块前缀机制，per ADR-0032 bounded context）
+  - meta § 六 错误响应 RFC 9457 → cross-ref ADR-0038（DROP，不重复）
+  - meta § 六 OpenAPI = SoT（Springdoc） → cross-ref sdd.md § server impl mobile types 同步（DROP，sdd.md L86 + L113-117 已覆盖 NestJS 替代）
+  - **翻页约定** → **DEFER 第一个 paginated use case spec 阶段决策**（cursor-based vs offset+limit；ad-hoc 锁定违 evergreen 原则）
+- **Cross-link**：mono 已有 `server-bounded-context-catalog.md`（业务 Operation 决策导向）+ `ADR-0038`（错误响应）+ `sdd.md`（OpenAPI 同步链）— api-contract 是 HTTP wire format 单源，与三者分工显式（见文件 § 与其他约定的分工 表）
 
 ### Sub-PR 1.6 — 新建 fe-directory-structure.md
 
