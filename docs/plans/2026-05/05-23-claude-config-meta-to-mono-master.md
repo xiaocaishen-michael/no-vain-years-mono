@@ -49,6 +49,8 @@ P2 消费：
 - P2 中新建的 `.claude/rules/*.md`（path-triggered）与 P1 的 conventions 文件 cross-link 一致 — 不重复内容、不矛盾
 - P2 不应再迁出 conventions 内容（避免重复）
 
+**跨阶段例外（允许，user 显式批准时）**：当 P1 sub-PR 的 convention 内容**主要触发条件可路径化**时，允许同 PR 配套创建 `.claude/rules/<rule>.md`（P2 加载层 artifact）以提供 path-scoped 强触发，避免「P1 仅按需 read 表 → 触发 mechanism 太弱」中间态。先例：Sub-PR 1.2 同 PR ship `docs/conventions/github-ruleset.md` (convention) + `.claude/rules/github-ruleset-sync.md` (`paths: .github/workflows/*.yml + .github/CODEOWNERS`)；Phase 2 sub-plan 起手必须 inventory mono 已有 `.claude/rules/` 避免重建。
+
 ### P2 → P3 接口
 
 P2 输出：
@@ -92,7 +94,7 @@ P3 消费：
 
 任一答案为「不能 / 是 / 有 drift / 没实证」→ 不迁，或迁入时整段重写为单源 cross-ref。
 
-## 迁移操作流程（每个候选文件统一走 4 步）
+## 迁移操作流程（每个候选文件统一走 6 步）
 
 1. **备份当前 mono 文件**: `cp <mono-path>.md <mono-path>.before-migration.md`；`*.before-migration.md` 加入 `.gitignore`，**不进仓**；与 mono 正式文件**同目录**便于 diff 工具直接对比
 2. **3-way diff**：用 vim/VSCode/Beyond Compare 同时打开
@@ -102,7 +104,9 @@ P3 消费：
 3. **决策 + 改 mono 正式文件**：每个 meta-only 段过 4 类淘汰 + 9 步 checklist + 4 killer questions
    - 迁的 → 直接写入 mono 正式文件合适位置（按现有结构定位，不新增章节）
    - 不迁的 → 在 PR description 记录 drop 注释，并在临时 diff 文件该段顶部标注（review 时方便检视）
-4. **删 backup 副本**：sub-PR ship 前删 `<mono-path>.before-migration.md`；同 PR 内从 `.gitignore` 移除条目（避免长期残留）
+4. **Post-edit self-audit**（per memory `feedback_post_edit_self_audit_against_acceptance_criteria`）：对改完的 mono 源文件 **完整全文** 每个 H2/H3 段（**含未改动段，确认整体仍 pass**）再跑一次 9 步 checklist 第 6 步「删后犯啥具体错」+ 4 killer questions；输出 self-audit 报告 (a) per-段 命中场景 (b) per-段 4Q 答案 (c) fail 段怎么改 / 拆 / 转 cross-ref；若 self-audit 检出问题 → agent 主动修 + 二轮 self-audit 收敛后再进 step 5
+5. **🛑 人肉 review pause**（per memory `feedback_human_review_pause_before_backup_delete`）：step 4 self-audit 报告输出后 **强制 pause 等 user 反馈**（即使 audit 全 pass 也必停，不预设 user 一定 OK）；agent 把 self-audit 报告 + 源文件改动 + backup 路径 + diff summary 一并给 user；user 可能：(a) 显式 OK 继续 / (b) 在源文件直接补 / 改 / (c) 回滚；user 给绿灯前 agent 不进 step 6
+6. **删 backup 副本**：sub-PR ship 前删 `<mono-path>.before-migration.md`；最后一个 sub-PR ship 时从 `.gitignore` 移除条目（避免长期残留）
 
 ## Sequencing + Dependency Graph
 

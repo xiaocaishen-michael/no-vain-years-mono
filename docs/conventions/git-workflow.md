@@ -1,15 +1,5 @@
 # Git 工作流
 
-> Minimal-adapt copy from meta-repo Plan 1 W1.3。"三仓一致"措辞已删 (mono 单仓适用)，其余规约 (分支策略 / 命名 / Commit message / PR / auto-merge) 全部仍生效。
-
-## 分支策略
-
-- main 分支启用分支保护 (GitHub Ruleset, Plan 2 阶段加固 required_status_checks)
-- 所有改动通过 **Pull Request** 合并
-- 采用 **Squash merge**，保持 main 线性历史
-- 合并后**删除** feature 分支
-- 禁止直接 push 或 force push 到 main
-
 ## 分支命名
 
 两套并行，根据改动类型选其一：
@@ -32,7 +22,7 @@
 
 示例：`fix/prisma-migrate-drift` / `docs/adr-0024-spec-layout` / `chore/repo-init-skeleton`
 
-**注**：`feature/` 类型在 A 出现后退役 — 新 feature 一律走 spec-kit 自动 `NNN-<slug>`；
+**注**：`feature/` 类型在 A 出现后退役 — 新 feature 一律走 spec-kit 自动 `NNN-<slug>`。
 
 ## Commit 消息
 
