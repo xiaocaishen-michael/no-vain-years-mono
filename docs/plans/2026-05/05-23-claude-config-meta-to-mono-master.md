@@ -1,6 +1,6 @@
 # Master Plan: meta → mono Claude Config 规范单向迁移
 
-> **统领 3 个独立子 plan**：CLAUDE.md + @import 链 → `.claude/` 目录 → PR/CI/lefthook 自动化层；本文件**不下钻子 plan 内部**，只锁单向迁移原则、4 类淘汰标准、跨阶段契约、终局验收。
+> **统领 3 个独立子 plan**：CLAUDE.md + @import 链 → `.claude/` 目录 → PR/CI/lefthook 自动化层；本文件**不下钻子 plan 内部**，只锁单向迁移原则、5 类淘汰标准、跨阶段契约、终局验收。
 
 ## Context
 
@@ -71,7 +71,7 @@ P3 消费：
 **对比方向**：meta 三仓有 → mono 没（或不完整）一律纳入候选  
 **反方向（mono 有 meta 没）一律不动**：mono 独家增量保留现状不回滚
 
-### 4 类淘汰标准（master 锁定，子 plan 不重复决策）
+### 5 类淘汰标准（master 锁定，子 plan 不重复决策；原 4 类 + Sub-PR 1.3 反推加 `mono 已 superior`）
 
 | 类型 | 判定信号（关键词） | 处理 | 临时 diff 文件 drop 注释 |
 |---|---|---|---|
@@ -79,6 +79,7 @@ P3 消费：
 | **三仓相关淘汰** | spec-symlink / 跨仓 mirror / cross-repo PR / 三仓一致 / meta canonical / impl 仓 mirror | 直接淘汰，mono 单仓不需要 | `<!-- DROP: three-repo-only -->` |
 | **已被 hook 替代** | meta 描述「请记得 X」的规则，mono 已在 `lefthook.yml` / `workflows/*.yml` 实现强制 | 直接淘汰，不冗余写 CLAUDE.md（per memory `feedback_hook_before_claude_md`） | `<!-- DROP: hook-replaced -->` |
 | **mono 阶段未到** | Plan 3 部署 / release / Docker 相关（`docker-rules` / `migration-rules` Flyway 部分 / `build-image` / `deploy` workflow / release-please component config） | defer 不迁，等 Plan 3 启动时再迁；在 Plan 2/3 master plan 加 cross-link | `<!-- DEFER: plan3 -->` |
+| **mono 已 superior**（per memory `feedback_convention_migration_mono_already_superior`，Sub-PR 1.3 反推加入） | mono 同主题文件已 strictly 优于 meta（更完整 / 已 evolve / 已主动废弃过时机制并文档化）| 直接淘汰，**不动 mono**（强行迁 meta 会倒退 mono evolution / 引入冗余）；执行: read meta + read mono 同主题文件 → 段级对比 → 若 mono 已覆盖 + superior → 全段 DROP | `<!-- DROP: mono-already-superior -->` |
 
 ## 接受标准（master 锁定）
 
@@ -94,19 +95,17 @@ P3 消费：
 
 任一答案为「不能 / 是 / 有 drift / 没实证」→ 不迁，或迁入时整段重写为单源 cross-ref。
 
-## 迁移操作流程（每个候选文件统一走 6 步）
+## 迁移操作流程（每个候选文件统一走 4 步）
 
-1. **备份当前 mono 文件**: `cp <mono-path>.md <mono-path>.before-migration.md`；`*.before-migration.md` 加入 `.gitignore`，**不进仓**；与 mono 正式文件**同目录**便于 diff 工具直接对比
-2. **3-way diff**：用 vim/VSCode/Beyond Compare 同时打开
-   - meta 原文（绝对路径，跨仓 read-only）
-   - `<mono-path>.before-migration.md`（mono 改动前快照）
-   - `<mono-path>.md`（mono 正在编辑的正式文件）
-3. **决策 + 改 mono 正式文件**：每个 meta-only 段过 4 类淘汰 + 9 步 checklist + 4 killer questions
+> **从 6 步缩为 4 步（Sub-PR 1.3 起生效）**：删去原 step 1「备份 mono 文件」+ 原 step 6「删 backup 副本」 — 因 git 已无成本跟踪「改前 vs 改后」（`git diff <file>` / `git show HEAD:<file>` / VSCode SCM 面板），手写 `*.before-migration.md` 是「手写镜像 git 状态」反模式 + 引入 .gitignore 维护 + 误 commit 风险。Sub-PR 1.1 / 1.2 仍按旧 6 步 ship 留痕，不追溯。
+
+1. **跨仓 read meta 原文**（meta 仓绝对路径，read-only）
+2. **决策 + 改 mono 正式文件**：每个 meta-only 段过 5 类淘汰 + 9 步 checklist + 4 killer questions
    - 迁的 → 直接写入 mono 正式文件合适位置（按现有结构定位，不新增章节）
-   - 不迁的 → 在 PR description 记录 drop 注释，并在临时 diff 文件该段顶部标注（review 时方便检视）
-4. **Post-edit self-audit**（per memory `feedback_post_edit_self_audit_against_acceptance_criteria`）：对改完的 mono 源文件 **完整全文** 每个 H2/H3 段（**含未改动段，确认整体仍 pass**）再跑一次 9 步 checklist 第 6 步「删后犯啥具体错」+ 4 killer questions；输出 self-audit 报告 (a) per-段 命中场景 (b) per-段 4Q 答案 (c) fail 段怎么改 / 拆 / 转 cross-ref；若 self-audit 检出问题 → agent 主动修 + 二轮 self-audit 收敛后再进 step 5
-5. **🛑 人肉 review pause**（per memory `feedback_human_review_pause_before_backup_delete`）：step 4 self-audit 报告输出后 **强制 pause 等 user 反馈**（即使 audit 全 pass 也必停，不预设 user 一定 OK）；agent 把 self-audit 报告 + 源文件改动 + backup 路径 + diff summary 一并给 user；user 可能：(a) 显式 OK 继续 / (b) 在源文件直接补 / 改 / (c) 回滚；user 给绿灯前 agent 不进 step 6
-6. **删 backup 副本**：sub-PR ship 前删 `<mono-path>.before-migration.md`；最后一个 sub-PR ship 时从 `.gitignore` 移除条目（避免长期残留）
+   - 不迁的 → 在 PR description 记录 drop 注释
+   - 看「改前 vs 改后」用 `git diff <mono-path>` 或 VSCode SCM 面板（无需手动备份）
+3. **Post-edit 全文 self-audit**（per memory `feedback_post_edit_self_audit_against_acceptance_criteria`）：对改完的 mono 源文件 **完整全文** 每个 H2/H3 段（**含未改动段，确认整体仍 pass**）跑一次 9 步 checklist 第 6 步「删后犯啥具体错」+ 4 killer questions；输出 self-audit 报告 (a) per-段 命中场景 (b) per-段 4Q 答案 (c) fail 段怎么改 / 拆 / 转 cross-ref；若检出问题 → agent 主动修 + 二轮 self-audit 收敛后再进 step 4。**段 > 50 行 / 触发可路径化 / reference-content 主导** 命中任一 → 强制跑 claude-md-audit § 3.2 auto-trigger 4-mechanism 重审（可能触发 Hybrid 拆 canonical + `.claude/rules/`）
+4. **🛑 人肉 review pause**（per memory `feedback_human_review_pause_before_backup_delete`）：step 3 self-audit 报告输出后 **强制 pause 等 user 反馈**（即使 audit 全 pass 也必停，不预设 user 一定 OK）；agent 把 self-audit 报告 + 源文件改动 + diff summary（用 `git diff` 输出）一并给 user；user 可能：(a) 显式 OK 继续 → commit + push + PR / (b) 在源文件直接补 / 改 → 二轮 audit / (c) 回滚 (`git restore <file>`)
 
 ## Sequencing + Dependency Graph
 
@@ -150,9 +149,9 @@ Phase 3 (PR / CI / lefthook 强制层)
 **Master 锁定**（sub-plan 不得改）：
 - 3 阶段顺序 + scope 边界（内容层 / 加载层 / 强制层）
 - Sub-plan 之间的接口契约（上面 § 跨阶段契约 部分）
-- 4 类淘汰标准 + 4 个 drop 注释 token
+- 5 类淘汰标准 + 5 个 drop 注释 token
 - 接受标准（9 步 checklist 第 6 步 + 4 killer questions）
-- 迁移操作 4 步流程 + `.before-migration.md` 后缀约定 + `.gitignore` 纪律
+- 迁移操作 4 步流程（read meta → 改 mono + git diff 看改动 → post-edit 全文 self-audit → 🛑 pause 等 user 反馈）
 - 终局验收方法（claude-md-audit 4 项）
 
 **留给 sub-plan 决策**（master 不锁）：
@@ -188,19 +187,16 @@ Phase 3 (PR / CI / lefthook 强制层)
 - ☐ Phase 3 全部 sub-PR merge
 - ☐ 终局验收 4 项全过
 - ☐ 本主 plan + 3 sub-plans 全部 `git mv` 到 `docs/plans/2026-05/` 约定路径
-- ☐ 所有 `.before-migration.md` backup 副本已删 + `.gitignore` entry 已清
 
 ## Risk + Rollback
 
 | 风险 | 缓解 |
 |---|---|
-| 4 类淘汰标准在子 plan 内 ad-hoc 偏移（栈相关 → 转化迁移频次过高） | 子 plan 内每个 `TRANSLATED-TO` 注释必须显式列 Java→TS 映射理由；master plan reviewer 抽审；优先 DROP 而非 TRANSLATED-TO（per memory `feedback_pivot_skip_old_adr_binding`） |
-| `.before-migration.md` backup 副本被误 commit | `.gitignore` 立 PR 前先加 `*.before-migration.md` glob；每 sub-PR 起手 `git status -s | grep before-migration` 自查 |
+| 5 类淘汰标准在子 plan 内 ad-hoc 偏移（栈相关 → 转化迁移频次过高） | 子 plan 内每个 `TRANSLATED-TO` 注释必须显式列 Java→TS 映射理由；master plan reviewer 抽审；优先 DROP 而非 TRANSLATED-TO（per memory `feedback_pivot_skip_old_adr_binding`） |
 | Phase 1 段级迁移后 always-load token 超 5000（claude-md-audit 红线） | Phase 1 收尾必跑 token 估算；超限触发段级再深挖 + 二轮裁剪（不进 phase 2）；optional：拆 always-load → trigger-read |
-| 子 plan 内发现 master plan 4 类淘汰标准不合理（如发现第 5 类） | 允许子 plan 反推改 master plan 4 类清单（显式 commit message + amend master plan + 在子 plan 顶部留 `<!-- AMENDS-MASTER -->` HTML 注释） |
+| 子 plan 内发现 master plan 5 类淘汰标准不合理（如发现第 6 类） | 允许子 plan 反推改 master plan 5 类清单（显式 commit message + amend master plan + 在子 plan 顶部留 `<!-- AMENDS-MASTER -->` HTML 注释）。**先例**：Sub-PR 1.3 反推加第 5 类「mono 已 superior」|
 | Phase 间 main drift 累积导致下一 phase sub-PR conflict | 每 phase 全 merged 后下一 phase 起手强制 `git rebase main`；并发开 sub-PR 时本地 `git pull --rebase` |
 | Sub-plan 落细节时发现 master plan 接口契约不合理 | 子 plan 通过修改本主 plan「跨阶段契约」段反推（不允许默默偏离） |
-| 临时 `.before-migration.md` 留存超 1 周不删 | 每 sub-PR 起手 find 整仓 `find . -name '*.before-migration.md' -mtime +7`，alert 后强制清 |
 
 ## On Ship 备注
 
@@ -226,7 +222,7 @@ docs/plans/2026-05/05-23-claude-config-meta-to-mono-p3-automation.md
 本 plan 基于 2026-05-23 mono vs meta 三仓 Claude cwd 配置对比报告（chat 上一轮节点 + 2 个 Explore agent 输出）。每个子 plan 起手应：
 
 1. 重跑该 dimension 的 Explore agent inventory（验证 chat context 中的数据仍 fresh）
-2. 用本主 plan 的 4 类淘汰标准 + 接受标准做候选清单过滤
+2. 用本主 plan 的 5 类淘汰标准 + 接受标准做候选清单过滤
 3. 逐文件走 4 步迁移操作流程
 
-子 plan 不需要重复主 plan 的 4 类淘汰 / 接受标准 / 操作流程 — 直接引用即可。
+子 plan 不需要重复主 plan 的 5 类淘汰 / 接受标准 / 操作流程 — 直接引用即可。

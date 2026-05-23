@@ -31,9 +31,6 @@ pnpm-debug.log*
 # Claude Code local overrides
 .claude/settings.local.json
 
-# Meta → mono migration scratch (per 05-23-claude-config-meta-to-mono-master plan; backup副本 ≠ 进仓产物)
-*.before-migration.md
-
 
 
 .nx/cache
