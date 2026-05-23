@@ -219,3 +219,17 @@ pre-commit:
         echo "存量豁免: 已有文件不受约束 (hook 只查 status=A 新增)"
         echo "紧急出口: git commit --no-verify"
         exit 1
+
+    markdownlint:
+      tags: lint
+      # Per memory feedback_markdownlint_preflight — pre-flight catches
+      # MD028/MD031/MD040/MD025 etc. before push 省 CI cycle.
+      # Config single source: .markdownlint-cli2.jsonc (MD032 disabled per
+      # 47-error research — markdownlint 自创防御规则 prettier preset 默认 disable).
+      # CI mirror: .github/workflows/ci.yml markdownlint job runs same config
+      # (DavidAnson/markdownlint-cli2-action@v18). Hook uses npx -y to skip
+      # devDep install + match meta-server lefthook pattern; first-run downloads
+      # ~10s, subsequent npm cache hit ~1-2s (within feedback_avoid_slow_pre_commit_or_pre_push budget).
+      # Emergency exit: git commit --no-verify (typo / 紧急 hotfix only).
+      glob: '*.md'
+      run: npx -y markdownlint-cli2 {staged_files}
