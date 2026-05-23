@@ -50,3 +50,6 @@ graphify-out/
 # Playwright artifacts
 playwright-report/
 playwright-test-results/
+
+# Production secrets (per ADR-0026 + ADR-0037 § secrets — volumes mount only)
+.env.production

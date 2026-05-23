@@ -1,0 +1,167 @@
+name: Deploy
+
+# Per ADR-0026 § Cutover. Triggered when build-image.yml succeeds (auto
+# deploy after a server-vX.Y.Z release tag), or manually via
+# workflow_dispatch (hotfix path; pick a tag to deploy).
+#
+# Steps run on the production SWAS via SSH (per ADR-0026 § D6):
+#   1. (optional) git pull main on SWAS (refresh compose configs / runbook)
+#   2. Update .env.production: set MBW_VERSION to target image tag
+#      → docker-compose.tight.yml's image: ${MBW_APP_IMAGE:-crpi-.../mbw-app}
+#        :${MBW_VERSION:-latest} resolves to ACR with the right tag
+#   3. docker login ACR → pull → up -d --force-recreate app
+#   4. Wait up to 120s for healthcheck to flip to "healthy"
+#   5. Final smoke via public HTTPS (api.xiaocaishen.me, 复用 meta 备案)
+#
+# Per ADR-0026 § Cutover: 首次 mono cutover 时 user 手动 drop+recreate PG/Redis
+# 数据 (zero data preservation) + 停 meta-server compose → 起 mono compose,
+# 不在本 workflow 内自动化 (避免 destructive op CI 触发风险)。
+#
+# No automatic rollback — solo dev re-triggers with previous tag if needed.
+
+on:
+  workflow_run:
+    workflows: [Build & Push Image]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag to deploy (e.g. v0.1.5; mono server-vX.Y.Z 已 strip server- prefix)'
+        required: true
+        type: string
+      skip_git_fetch:
+        description: 'Bypass git fetch + reset on SWAS (use when orchestration files unchanged + SWAS → GitHub flaky)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to production SWAS
+    runs-on: ubuntu-latest
+    # workflow_run only deploys on success; workflow_dispatch always runs.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag }}"
+          else
+            # workflow_run triggered by tag push; head_branch is the tag name.
+            # For mono per ADR-0042 component-in-tag, git tag = server-vX.Y.Z;
+            # image tag in ACR = vX.Y.Z (build-image.yml stripped server-).
+            RAW="${{ github.event.workflow_run.head_branch }}"
+            TAG="${RAW#server-}"
+          fi
+          if [[ -z "$TAG" ]]; then
+            echo "::error::Could not resolve tag from trigger"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying image tag: $TAG"
+
+      - name: Configure SSH agent
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.APP_SSH_KEY }}
+
+      - name: Deploy via SSH
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+          APP_HOST: ${{ secrets.APP_HOST }}
+          APP_SSH_USER: ${{ secrets.APP_SSH_USER }}
+          SKIP_GIT_FETCH: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_git_fetch || 'false' }}
+        run: |
+          # Pass secrets as positional args to remote bash so the heredoc can be
+          # quoted (no client-side $-expansion → no SC2087, no accidental local
+          # leak). Remote bash binds $1..$4 to TAG/ACR_USERNAME/ACR_PASSWORD/SKIP_GIT_FETCH.
+          ssh -o StrictHostKeyChecking=accept-new "$APP_SSH_USER@$APP_HOST" \
+              bash -s "$TAG" "$ACR_USERNAME" "$ACR_PASSWORD" "$SKIP_GIT_FETCH" <<'REMOTE'
+          set -e
+          TAG="$1"
+          ACR_USERNAME="$2"
+          ACR_PASSWORD="$3"
+          SKIP_GIT_FETCH="$4"
+          ACR_REGISTRY="crpi-uy44w7zpjef3f9w1.cn-shanghai.personal.cr.aliyuncs.com"
+
+          # mono SWAS clone path (per ADR-0026 § Cutover; user side prep).
+          cd /home/admin/no-vain-years-mono
+
+          # Refresh compose configs / runbook (in case main moved while build ran).
+          # SWAS → GitHub goes via international link — TLS抖 is common. Retry 3 × 5s
+          # before giving up. Pass skip_git_fetch=true via workflow_dispatch when
+          # GFW is being aggressive AND orchestration files didn't change in this
+          # release (image-only fix); the local working tree on SWAS keeps being used.
+          if [ "$SKIP_GIT_FETCH" = "true" ]; then
+            echo "::warning::git fetch skipped — using orchestration files currently on SWAS disk"
+          else
+            GIT_OK=false
+            for i in 1 2 3; do
+              if git fetch --tags origin main; then
+                GIT_OK=true
+                break
+              fi
+              echo "git fetch attempt $i/3 failed (likely international link blip), retrying in 5s..."
+              sleep 5
+            done
+            if [ "$GIT_OK" != "true" ]; then
+              echo "::error::git fetch failed after 3 retries — re-trigger via workflow_dispatch with skip_git_fetch=true if orchestration files unchanged"
+              exit 1
+            fi
+            git reset --hard origin/main
+          fi
+
+          # Update .env.production to point to target ACR image tag.
+          # docker-compose.tight.yml app service resolves image as
+          # ${MBW_APP_IMAGE:-crpi-.../mbw_xcs/mbw-app:${MBW_VERSION:-latest}}.
+          # We override MBW_VERSION to pin to release tag; clear any local
+          # MBW_APP_IMAGE override (e.g. dev dry-run leftover).
+          sed -i 's|^MBW_APP_IMAGE=.*|# MBW_APP_IMAGE= (disabled by deploy.yml)|' .env.production
+          if grep -q '^MBW_VERSION=' .env.production; then
+            sed -i "s|^MBW_VERSION=.*|MBW_VERSION=$TAG|" .env.production
+          else
+            echo "MBW_VERSION=$TAG" >> .env.production
+          fi
+
+          # Login to Aliyun ACR (intranet pull, ~5s for 180MB).
+          echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" \
+              -u "$ACR_USERNAME" --password-stdin
+
+          # Pull new image + recreate app container only (postgres / redis / nginx untouched).
+          docker compose -f docker-compose.tight.yml --env-file .env.production pull app
+          docker compose -f docker-compose.tight.yml --env-file .env.production up -d --force-recreate app
+
+          # Wait up to 120s for app healthcheck (mono uses /healthz/live per
+          # apps/server/Dockerfile HEALTHCHECK + ADR-0040 liveness endpoint).
+          HEALTHY=false
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            sleep 10
+            STATE=$(docker inspect nvy-tight-app-1 --format='{{.State.Health.Status}}' 2>/dev/null || echo none)
+            echo "[t+$((i*10))s] app health = $STATE"
+            if [ "$STATE" = "healthy" ]; then
+              HEALTHY=true
+              break
+            fi
+          done
+
+          if [ "$HEALTHY" != "true" ]; then
+            echo "::error::App did not become healthy within 120s — last logs:"
+            docker compose -f docker-compose.tight.yml --env-file .env.production logs --tail=80 app
+            exit 1
+          fi
+
+          # Final smoke via public HTTPS (validates nginx + Let's Encrypt + reverse-proxy + DNS).
+          # 复用 meta 域名 api.xiaocaishen.me per ADR-0026 § D7.
+          curl -fsS --retry 3 https://api.xiaocaishen.me/healthz/live
+
+          # Cleanup: remove docker login creds from SWAS user home.
+          docker logout "$ACR_REGISTRY" >/dev/null 2>&1 || true
+
+          echo "✅ Deploy of $TAG completed."
+          REMOTE
