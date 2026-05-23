@@ -1,8 +1,6 @@
 # Spec-Driven Development（SDD）工作流
 
-> Minimal-adapt copy from meta-repo Plan 1 W1.3。已删 cross-repo (`meta canonical` / `impl 仓 symlink` / `三仓 lefthook spec-must-be-symlink`) 概念，6 步流程 cwd 统一在 mono root；server-app types 同步由跨仓 PR 拆分简化为 mono 内单 PR。前端 UI 变体、`/implement` 6 步闭环、反模式段落与栈无关，全部保留。Plan 2 阶段视 ADR-0020 完整重写。
-
-mono-repo 单仓共享。M1.1 起业务模块按此流程开发。基于 [GitHub Spec-Kit](https://github.com/github/spec-kit)（2025-2026 事实标准）；选型决策见 [`../adr/0010-sdd-with-spec-kit.md`](../adr/0010-sdd-with-spec-kit.md)（Plan 3 阶段迁入）。
+mono-repo 单仓共享。M1.1 起业务模块按此流程开发。基于 [GitHub Spec-Kit](https://github.com/github/spec-kit)（2025-2026 事实标准）；选型决策见 `docs/adr/0010-sdd-with-spec-kit.md`（Plan 3 阶段迁入）。
 
 ## 标准流程（每个 feature 走一遍）
 
@@ -39,7 +37,7 @@ status: implemented # draft | planned | implementing | implemented | superseded 
 
 ## 前端 UI 工作流变体（per ADR-0017）
 
-前端 UI 业务模块的 SDD 流程**按 UI 类别分支**（per [ADR-0017](../adr/0017-sdd-business-flow-first-then-mockup.md)，amends [ADR-0015](../adr/0015-claude-design-from-m1-2.md)）：
+前端 UI 业务模块的 SDD 流程**按 UI 类别分支**（per `docs/adr/0017-sdd-business-flow-first-then-mockup.md`，amends `docs/adr/0015-claude-design-from-m1-2.md`；两 ADR 均 Plan 3 阶段从 meta 迁入）：
 
 | UI 类别              | 例子                                                             | 流程                                                                                                                                                                                                                                     |
 | -------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -102,7 +100,7 @@ specs/NNN-<feature-slug>/
 **强制层**（双层兜底）：
 
 - prompt-time 软提醒：`task-closure` preset 通过 `after_implement` hook 触发 `/speckit-tasks-verify` slash command，扫近 2h commit 报告 `[X]` 状态与 impl 是否 drift（per [michael-speckit-presets](https://github.com/xiaocaishen-michael/michael-speckit-presets)）
-- commit-time 硬拦：mono 仓 lefthook `tasks-md-drift` 拒「commit 含 impl 代码但 tasks.md 未 staged」（单仓 lefthook，不再三仓 mirror）；`--no-verify` 仅限格式化 / typo / 紧急 hotfix 出口
+- commit-time 硬拦：mono 仓 lefthook `tasks-md-drift` 拒「commit 含 impl 代码但 tasks.md 未 staged」；`--no-verify` 仅限格式化 / typo / 紧急 hotfix 出口
 
 **常见反模式**：写完 impl 喊 /commit、事后再开 PR 改 tasks.md → 应 impl PR 内**同 commit** stage tasks.md `[X]`。
 
