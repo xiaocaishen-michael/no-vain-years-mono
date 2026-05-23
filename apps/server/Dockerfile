@@ -63,6 +63,18 @@ COPY --from=builder --chown=node:node /deploy /app
 # copy explicitly. dist/ already contains generated/prisma compiled JS.
 COPY --from=builder --chown=node:node /workspace/apps/server/dist /app/dist
 
+# Prisma schema + migrations for `prisma migrate deploy` at container start.
+# Copied explicitly because pnpm deploy may skip them (same gitignore reason as
+# dist/ above); migrate deploy needs schema + migrations/ + DATABASE_URL only.
+COPY --from=builder --chown=node:node /workspace/apps/server/prisma /app/prisma
+# prisma.config.ts supplies migrate's datasource url (process.env.DATABASE_URL)
+# + schema/migrations paths; it imports dotenv (also a prod dep) at load.
+COPY --from=builder --chown=node:node /workspace/apps/server/prisma.config.ts /app/prisma.config.ts
+
+# Entrypoint: idempotent `prisma migrate deploy`, then exec the server.
+COPY --chown=node:node apps/server/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 USER node
 
 EXPOSE 3000
@@ -74,5 +86,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget --quiet --spider --tries=1 http://localhost:3000/healthz/live || exit 1
 
+# Entrypoint runs `prisma migrate deploy` then `exec node dist/main.js`.
 # `docker run --init` recommended for proper PID 1 signal handling.
-CMD ["node", "dist/main.js"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
