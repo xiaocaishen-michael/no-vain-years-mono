@@ -1,12 +1,12 @@
 # 「不虚此生」/ no-vain-years-mono
 
-跨端内容工具型应用 mono-repo，由单人开发。从 Java meta-repo 推倒重来（[Plan 1](docs/plans/2026-05/05-18-plan1-backend-stack-poc.md)），新栈 NestJS + Fastify + Prisma + Nx + Expo。
+跨端内容工具型应用 mono-repo，由单人开发。栈：NestJS + Fastify + Prisma + Nx + Expo（[Plan 1](docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) 已 ship，从旧 Java meta-repo 推倒重来；[Plan 2/3](docs/plans/2026-05/05-19-plan2-plan3-migration-deploy.md) 业务迁移 / 部署上线进行中）。
 
 ## 工作区结构
 
-Nx mono-repo。`apps/server/`（NestJS + Fastify adapter + Prisma，Plan 1 PoC 范围）；`apps/mobile/`（Expo，Plan 2 阶段从旧 `no-vain-years-app` 迁入）；`packages/shared-types/` / `packages/api-client/` 等共享包随 Plan 2 充实。
+Nx mono-repo。`apps/server/`（NestJS + Fastify adapter + Prisma）；`apps/mobile/`（Expo，含 `auth/` / `core/` / `theme/` / `ui/` 内联子目录，per [ADR-0030](docs/adr/0030-package-decomposition.md) 「5 包减 2」）；`packages/`（仅 `api-client` + `types`，跨 mobile + server-types 真共享；其他单 consumer 候选已内联到 `apps/mobile/src/`）。
 
-`docs/daily/` 与 `docs/experience/` 在 Plan 3 阶段从旧 meta-repo 迁入（iCloud symlink，跨设备同步，`.gitignore` 排除）。
+Doc 文件组织 per [docs/conventions/docs-organization.md](docs/conventions/docs-organization.md)；`docs/experience/` 已起步（`2026-05/` 子目录），`docs/daily/` 待 Plan 3 阶段从旧 meta-repo 迁入（iCloud symlink + 跨设备同步形态由 Plan 3 决定）。
 
 ## 跨仓公共约定
 
