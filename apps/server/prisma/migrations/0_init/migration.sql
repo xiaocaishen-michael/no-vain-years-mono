@@ -1,4 +1,5 @@
 -- CreateSchema
+-- [TEST PR — Phase 3 P3 验收 #4 migration immutability check dry-run; expects CI fail]
 CREATE SCHEMA IF NOT EXISTS "account";
 
 -- CreateSchema
