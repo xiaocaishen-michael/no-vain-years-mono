@@ -1,0 +1,155 @@
+# Production compose for M1 A-Tight v2 (per ADR-0026) — single SWAS 2c4g
+# hosting NestJS app + PostgreSQL + Redis + Nginx. Replaces meta-server
+# docker-compose.tight.yml (project name `mbw-tight`) when mono cuts over.
+#
+# Usage on the production SWAS:
+#   docker compose -f docker-compose.tight.yml --env-file .env.production up -d
+#   docker compose -f docker-compose.tight.yml --env-file .env.production ps
+#   docker compose -f docker-compose.tight.yml --env-file .env.production logs -f app
+#
+# Local dry-run with a self-built image:
+#   docker build -t nvy-server:dev -f apps/server/Dockerfile .
+#   MBW_APP_IMAGE=nvy-server:dev \
+#     docker compose -f docker-compose.tight.yml --env-file .env.production up -d
+#
+# Memory budget on 2c4g (per ADR-0026 § A-Tight v2 继承 内存预算):
+#   OS + Docker daemon                ~280 MB
+#   Node (NestJS, no -Xmx cap)        ~500MB-1GB
+#   PostgreSQL (shared_buffers=256)   ~350 MB
+#   Redis (maxmemory=256mb)           ~280 MB
+#   Nginx                             ~50  MB
+#   ------------------------------------------
+#   committed                         ~1.46 GB-1.96 GB (vs meta 2.86 GB)
+#   free for page cache + spike       ~2.04-2.54 GB (vs meta 1.14 GB)
+#
+# 不挂数据盘 (per ADR-0026): PG/Redis data 落 SWAS 系统盘 (named volume),
+# 保护机制 = pg_dump → mbw-oss daily 备份。
+
+name: nvy-tight
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # No public port — accessible to app via docker network only (service
+    # name "postgres"). Single-node A-Tight has no cross-host comms.
+    environment:
+      POSTGRES_DB: mbw
+      POSTGRES_USER: ${DB_USERNAME:-mbw}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    command:
+      # Single 4GB SWAS shared with Node + Redis + nginx + OS,
+      # can't afford 384MB shared_buffers.
+      - 'postgres'
+      - '-c'
+      - 'shared_buffers=256MB'
+      - '-c'
+      - 'work_mem=4MB'
+      - '-c'
+      - 'max_connections=50'
+    volumes:
+      - nvy-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-mbw} -d mbw']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # No public port — accessible via docker network only.
+    command:
+      - 'redis-server'
+      - '--maxmemory'
+      - '256mb'
+      - '--maxmemory-policy'
+      - 'allkeys-lru'
+      - '--protected-mode'
+      - 'yes'
+      - '--requirepass'
+      - '${REDIS_PASSWORD}'
+      - '--appendonly'
+      - 'yes'
+    volumes:
+      - nvy-redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', '--no-auth-warning', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  app:
+    # Default registry is Aliyun ACR (cn-shanghai) intranet pull ~5s/180MB.
+    # 复用 meta-server image location per ADR-0026 § D5 drop-in image
+    # replacement (mbw_xcs/mbw-app namespace + repo 全复用,mono push 同 repo).
+    # Override MBW_APP_IMAGE for local dry-run with self-built image.
+    image: ${MBW_APP_IMAGE:-crpi-uy44w7zpjef3f9w1.cn-shanghai.personal.cr.aliyuncs.com/mbw_xcs/mbw-app:${MBW_VERSION:-latest}}
+    restart: unless-stopped
+    # No public port — nginx talks to app:3000 via docker network.
+    environment:
+      # App (per apps/server/src/config/app.config.ts)
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      # Datastore — service names resolve via docker network.
+      DATABASE_URL: 'postgresql://${DB_USERNAME:-mbw}:${DB_PASSWORD}@postgres:5432/mbw'
+      REDIS_URL: 'redis://default:${REDIS_PASSWORD}@redis:6379'
+      # Auth (per apps/server/src/config/auth.config.ts)
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
+      SMS_CODE_HMAC_SECRET: ${SMS_CODE_HMAC_SECRET}
+      # SMS gateway (per apps/server/src/config/sms.config.ts; ADR-0013)
+      # 'mock' (default) | 'aliyun'. Aliyun requires 4 keys below.
+      SMS_GATEWAY: ${SMS_GATEWAY:-mock}
+      ALIYUN_ACCESS_KEY_ID: ${ALIYUN_ACCESS_KEY_ID:-}
+      ALIYUN_ACCESS_KEY_SECRET: ${ALIYUN_ACCESS_KEY_SECRET:-}
+      ALIYUN_SMS_SIGN_NAME: ${ALIYUN_SMS_SIGN_NAME:-}
+      ALIYUN_SMS_TEMPLATE_CODE: ${ALIYUN_SMS_TEMPLATE_CODE:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # Per apps/server/Dockerfile HEALTHCHECK + ADR-0040 liveness endpoint.
+      test:
+        [
+          'CMD',
+          'wget',
+          '--no-verbose',
+          '--tries=1',
+          '--spider',
+          'http://localhost:3000/healthz/live',
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 60s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      # Reverse proxy config + Let's Encrypt cert dirs on SWAS host.
+      # User-side prep: copy meta-server's ops/nginx/conf.d/ + certbot
+      # /etc/letsencrypt/ to mono SWAS path (per ADR-0026 § A-Tight v2 继承
+      # Nginx 复用 meta nginx 配 + 证书).
+      - ./ops/nginx/conf.d:/etc/nginx/conf.d:ro
+      - nvy-letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/healthz']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  nvy-pgdata:
+  nvy-redisdata:
+  nvy-letsencrypt:
