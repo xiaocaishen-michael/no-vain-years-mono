@@ -120,7 +120,7 @@ services:
           '--no-verbose',
           '--tries=1',
           '--spider',
-          'http://localhost:3000/healthz/live',
+          'http://127.0.0.1:3000/healthz/live',
         ]
       interval: 10s
       timeout: 3s
