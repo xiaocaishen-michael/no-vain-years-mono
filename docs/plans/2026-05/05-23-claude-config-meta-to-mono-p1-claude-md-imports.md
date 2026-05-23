@@ -2,17 +2,17 @@
 
 ## Context
 
-Phase 1 of master plan（meta → mono 单向迁移），scope = CLAUDE.md + @import 链 **内容层**。基于 2026-05-23 两个 Explore agent 对 11 个候选（9 meta-root conventions + meta-server CLAUDE.md 9 sections + meta-app CLAUDE.md 5 sections）应用 master plan 锁定的 4 类淘汰标准的评估结果 + user 直接 push back 2 项（daily-logs / experience-docs 与 mono Plan 3 iCloud symlink 同步迁入），最终 6 项内容进入迁移 + 1 项收尾整合 = **7 个 sub-PR**。
+Phase 1 of master plan（meta → mono 单向迁移），scope = CLAUDE.md + @import 链 **内容层**。基于 2026-05-23 两个 Explore agent 对 11 个候选（9 meta-root conventions + meta-server CLAUDE.md 9 sections + meta-app CLAUDE.md 5 sections）应用 master plan 锁定的 5 类淘汰标准的评估结果 + user 直接 push back 2 项（daily-logs / experience-docs 与 mono Plan 3 iCloud symlink 同步迁入），最终 6 项内容进入迁移 + 1 项收尾整合 = **7 个 sub-PR**。
 
 P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（conventions/*.md + CLAUDE.md 段）迁入 mono，让 mono 的 always-load 链路在不超 5000 token 红线前提下补齐 meta 时代积累的稳定规范。
 
-## 候选决策表（per master plan 4 类淘汰已锁，此处仅 per-file 决策）
+## 候选决策表（per master plan 5 类淘汰已锁，此处仅 per-file 决策）
 
 | # | 候选 | 来源（绝对路径） | 目标位置 | 处置 | always-load |
 |---|---|---|---|---|---|
 | 1 | claude-config-layout | meta-root `docs/conventions/claude-config-layout.md` | 新建 mono `docs/conventions/claude-config-layout.md` | MIGRATE-AS-IS | **是**（@import） |
 | 2 | git-workflow-reference | meta-root `docs/conventions/git-workflow-reference.md` | 新建独立文件 mono `docs/conventions/github-ruleset.md` + 顺手清 mono `git-workflow.md` 3 finding（删顶部 stale blockquote / 删 § 分支策略 prose 摘要 prose 同源重复 / fix L35 typo） | MIGRATE-CONDENSED + EXTRACT-TO-NEW-FILE | 否（按需 read 表，触发：改 GitHub repo 设置 / ruleset / CI workflow 改名） |
-| 3 | versioning | meta-root `docs/conventions/versioning.md` | 并入 mono `docs/conventions/versioning.md` | MIGRATE-CONDENSED | 否 |
+| 3 | versioning | meta-root `docs/conventions/versioning.md` | ~~并入 mono `versioning.md`~~ → **0 段可迁**（meta 29 行 vs mono 85 行 strictly superior，per Sub-PR 1.3 实证） | **DROP-mono-already-superior**（新增第 5 类淘汰，本 sub-PR 反推 master plan） | n/a |
 | 4 | TDD + UI mockup colocation 路径 | meta-server § 一 + meta-app § 三 | 并入 mono `docs/conventions/sdd.md`（已 @import） | KEEP-PRINCIPLE | （already always-load） |
 | 5 | RFC 9457 + HTTP API 体例 | meta-server § 三 + § 六 | 新建 mono `docs/conventions/api-contract.md` | KEEP-PRINCIPLE | 否（按需 read 表） |
 | 6 | FE monorepo cross-package 边界 | meta-app § 一 + § 五 | 新建 mono `docs/conventions/fe-directory-structure.md` | KEEP-PRINCIPLE | 否（按需 read 表） |
@@ -25,6 +25,7 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
 - `README.md`（meta-root）→ 跳过（per claude-md-audit § 6「README 默认路标删」原则；user Q1 confirmed）
 - `daily-logs.md`（meta-root）→ `DEFER: 与 plan3 iCloud symlink 物理迁入同步`（mono CLAUDE.md 已明示 `docs/daily/` 在 Plan 3 阶段从 meta 迁入；user push back: 提前迁 convention 描述但物理目录未启用 → 文档 drift；同 PR 物理 + convention 一起做）
 - `experience-docs.md`（meta-root）→ `DEFER: 与 plan3 iCloud symlink 物理迁入同步`（同上理由）
+- `versioning.md`（meta-root）→ `DROP: mono-already-superior`（meta 29 行 vs mono 85 行；mono 已含 manifest 0.0.0 bug Postmortem + separate-pull-requests + path routing 表 + 手工里程碑 tag 废弃文档化；meta 三仓 row 全 DROP-three-repo-only；起步 v0.1.0 已被 mono 0.0.1 evolution 替代）
 - meta-server § 二（包/类命名 DDD 层）→ `DEFER: P2`（NestJS 层结构不同，P2 落地时新写）
 - meta-server § 四（日志纪律）→ `DEFER: P2`（适合 `.claude/rules/server-logging.md` path-triggered）
 - meta-server § 五（migration expand-migrate-contract）→ `DEFER: plan3`（DDL 部署策略）
@@ -39,7 +40,7 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
 |---|---|---|---|---|
 | 1.1 | 新建 `claude-config-layout.md` + 含 master+P1 git mv | #1 | `docs(repo): migrate claude-config-layout convention from meta` | **是** |
 | 1.2 | 新建 `github-ruleset.md` (convention) + `.claude/rules/github-ruleset-sync.md` (path-scoped, **跨 P1→P2 边界**) + 顺手清 git-workflow.md 3 finding | #2 | `docs(repo): extract github-ruleset to standalone convention + add path-scoped rule + clean git-workflow dups` | 否 |
-| 1.3 | 并入 versioning.md（SemVer 原则） | #3 | `docs(repo): merge semver principle into versioning convention` | 否 |
+| 1.3 | **workflow amendment + finding 报告**（meta versioning 0 段可迁 → master plan 加第 5 类淘汰 + .gitignore 删 backup glob）；**不动 mono versioning.md** | #3 (DROP) | `docs(repo): simplify migration workflow + add 5th disposal class (mono-superior)` | 否 |
 | 1.4 | 并入 sdd.md（TDD 强调 + UI mockup path 澄清） | #4 | `docs(repo): deepen sdd convention with tdd + ui-mockup-path` | 否 |
 | 1.5 | 新建 api-contract.md（RFC 9457 + HTTP 体例） | #5 | `docs(repo): add api-contract convention (rfc9457 + url + error code + pagination)` | 否 |
 | 1.6 | 新建 fe-directory-structure.md | #6 | `docs(repo): add fe-directory-structure convention` | 否 |
@@ -87,31 +88,31 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
 - **post-edit self-audit**：完整 git-workflow.md（精简后）+ github-ruleset.md（新建）双文件每个 H2/H3 段过 9 步 + 4Q
 - **删 backup**：sub-PR ship 前 `rm docs/conventions/git-workflow.md.before-migration.md`
 
-### Sub-PR 1.3 — versioning.md 并入
+### Sub-PR 1.3 — workflow amendment + meta versioning 0-段可迁 finding 报告
 
-- **备份**：`cp docs/conventions/versioning.md docs/conventions/versioning.md.before-migration.md`
-- **3-way diff** with meta `versioning.md`
-- **DROP 段**：
-  - release-please 具体 SOP（meta 三仓体例 + Plan 3 待重写）→ `<!-- DEFER: plan3 -->`
-  - meta 里程碑 tags（v0.x M1.1 等）→ `<!-- DROP: three-repo-only -->`
-- **MIGRATE 段**：
-  - SemVer principle（MAJOR/MINOR/PATCH 语义）→ mono versioning.md 顶部「## SemVer 体例」段（mono 现状未明示）
-  - API versioning `/api/v{n}/<resource>` 模式 → mono versioning.md 新章节（mono 现状未明示；与 sub-PR 1.6 api-contract.md cross-link 防重复）
-- **删 backup**
+> ⚠️ **Sub-PR 1.3 走 read meta + 对比 mono 后发现 0 段可迁（mono superior）→ scope 重定义为 workflow amendment + finding**；本 sub-PR 不动 `docs/conventions/versioning.md`。
+
+- **跨仓 read**：meta `docs/conventions/versioning.md`（29 行）+ **先 read mono `docs/conventions/versioning.md`（85 行）** 建立 mono 基线 — per [[feedback_convention_migration_mono_already_superior]]
+- **段级对比**：meta 4 段全部 mono 已 strictly superior（详见 § 已淘汰候选 versioning 条目）
+- **scope 实际产出**：
+  1. master plan § 迁移操作流程 6 → 4 步（删原 step 1 备份 + 原 step 6 删 backup；改用 `git diff` / `git restore` 替代）
+  2. master plan § 5 类淘汰 → **5 类**（加 `mono 已 superior`，per memory [[feedback_convention_migration_mono_already_superior]]）
+  3. master plan § Risk + Verification 删 backup 相关条目
+  4. P1 sub-plan 候选决策表 row 3 + 已淘汰候选 + Sub-PR 拆分表 row 1.3 + Sub-PR 1.4-1.7 detail 全部对齐新 4 步流程
+  5. mono `.gitignore` 删 `*.before-migration.md` glob（死代码 — 4 步流程不再生成 backup）
+  6. 新 memory: `feedback_convention_migration_mono_already_superior`
+- **claude-md-audit § 3.2 auto-trigger 重审 finding**: mono versioning.md 85 行 命中 3 条 trigger（体积 > 50 / 触发可路径化 / reference-content 主导）→ Step 1 画像建议 Hybrid 拆 `.claude/rules/release-please-versioning.md`。**本 sub-PR 不执行重审拆分**（scope creep），列入 Phase 2 sub-plan 候选
 
 ### Sub-PR 1.4 — sdd.md 深化（TDD 强调 + UI mockup 路径澄清）
 
-- **备份**：`cp docs/conventions/sdd.md docs/conventions/sdd.md.before-migration.md`
 - **跨仓 read**：meta-server CLAUDE.md § 一 TDD + meta-app CLAUDE.md § 三 UI 工作流
 - **MIGRATE 段**：
   - TDD 强调（server 业务模块强制红绿循环）→ 并入 mono sdd.md § /implement 闭环 6 步 前的「## 标准流程」段补一句
   - UI mockup colocation 路径澄清：meta 用 `apps/native/specs/<page>/design/`，mono 用 `specs/NNN-<feature>/design/`（feature-first per ADR-0024）→ 并入 mono sdd.md § 前端 UI 工作流变体 § 类 1 占位 UI 4 边界 之后，明示 mono 路径
 - **DROP 段**：meta-server § 一 关于 JUnit/Mockito 工具的实操（mono 走 Vitest+NestJS Test module，工具差异 DROP）→ `<!-- DROP: stack-specific -->`
-- **删 backup**
 
 ### Sub-PR 1.5 — 新建 api-contract.md
 
-- mono 无此文件，跳过 backup
 - **跨仓 read**：meta-server CLAUDE.md § 三 错误处理 + § 六 API 设计
 - **MIGRATE 原则**：
   - URL 体例 `/api/v{n}/<resource>`（与 sub-PR 1.4 versioning.md cross-link，但 api-contract.md 是 HTTP contract 单源）
@@ -128,7 +129,6 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
 
 ### Sub-PR 1.6 — 新建 fe-directory-structure.md
 
-- mono 无此文件，跳过 backup
 - **跨仓 read**：meta-app CLAUDE.md § 一（目录约定）+ § 五（AI 协作约束）
 - **MIGRATE 原则**：
   - `apps/*` vs `packages/*` 边界（业务逻辑 in packages/，平台 UI in apps/）
@@ -143,7 +143,6 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
 
 ### Sub-PR 1.7（收尾）— CLAUDE.md @import 链 + 按需 read 表 + token 预算验证
 
-- **备份**：`cp CLAUDE.md CLAUDE.md.before-migration.md`
 - **改 mono CLAUDE.md**：
   - 新增 always-load `@import`：`@docs/conventions/claude-config-layout.md`
   - 「按需 read」表新增 3 entries：
@@ -161,8 +160,6 @@ P1 目标：把 meta 中**对 mono 仍有价值的内容层规范**（convention
   ```
 
   目标 < 5000；超限 → 触发段级再深挖 + 二轮裁剪 / 转 on-demand
-
-- **删 backup**
 
 ## Phase 1 验收（per master plan § 终局验收 § 1-3，§ 4 sanity 留 3 phase 全 ship 后）
 
@@ -199,7 +196,6 @@ Phase 1 全 ship → Phase 2 /plan 会话开启
 |---|---|
 | Sub-PR 1.7 验证 token 超 5000 红线 | sub-PR 1.1 起手就估算 claude-config-layout 加入后总量；超限即停 1.7 触发段级再深挖 / 转 on-demand |
 | Sub-PR 1.2 改 git-workflow.md + Sub-PR 1.7 改 CLAUDE.md 都改公共文件 → main drift conflict | sub-PR 1.2 ship 后强制 sub-PR 1.7 起手 `git pull --rebase origin main` |
-| `.before-migration.md` backup 误 commit | sub-PR 1.1 起手 `echo '*.before-migration.md' >> .gitignore`；每 sub-PR 起手 `git status -s \| grep before-migration` 自查 |
 | meta-server / meta-app CLAUDE.md 跨仓 read 路径漂移（如 user 临时改 meta 目录布局） | 1.4 / 1.5 / 1.6 起手 `ls -la /Users/butterfly/Documents/projects/no-vain-years/{my-beloved-server,no-vain-years-app}/CLAUDE.md` 实证 |
 | sub-PR 1.5 api-contract.md 与 sub-PR 1.3 versioning.md 在 API versioning `/api/v{n}/` 段重复 | sub-PR 1.3 仅保留版本号 bump 语义，URL 体例完整 single-source 在 1.5 api-contract.md；1.3 用 cross-link 引用 1.5 |
 | sub-PR 1.4 sdd.md 改动与 mono 现行 sdd.md UI 工作流变体段冲突（mono ADR-0017 amends ADR-0015 已稳定） | 1.4 只「附加路径澄清」不改 UI 类 1/2/3 分类决策；保守附加段落，不重写 |
