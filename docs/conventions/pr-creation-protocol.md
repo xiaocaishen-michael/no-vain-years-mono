@@ -30,7 +30,3 @@ gh pr edit <N> --body-file <fixed.md>
 ```
 
 完事。`.github/workflows/pr-validation.yml` 已配 `types: [..., edited]` → `gh pr edit` 自动唤醒新 workflow run;`Enforce PR Checkboxes` step 用 `github.rest.pulls.get` **live fetch** 当前 PR body 而非 webhook 快照 → 新 run 读到刚修好的 body → 绿。
-
-### Legacy fallback（base 分支上 pr-validation.yml 还是老版本时）
-
-老版本读 `context.payload.pull_request.body` 冻结快照 + 不监听 `edited` event → 此时唯一恢复路径是 **`gh pr close <N> && gh pr reopen <N>`** 触发全新 `pull_request.reopened` event → 全新 payload 快照。`gh run rerun` 无效（复用同一 stored payload)。
