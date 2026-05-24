@@ -54,7 +54,7 @@ Expo Router web 输出是 SPA，需 CF Pages 把所有未匹配路由回退到 `
 
 **验证**：bootstrap 后浏览器访问 `https://<branch>.no-vain-years-mono.pages.dev/login` 直接刷新，应返回 200 + login UI（而非 CF Pages 默认 404 页）。
 
-> **现状**：`apps/mobile/public/_redirects` 尚未创建。第一次实际 deploy 前 PR 加该文件，与 `app.json` `web.bundler: metro` 配套。
+> **现状**：`apps/mobile/public/_redirects` 已创建（2026-05-24 客户端部署子 plan 1 PR），内容 `/*    /index.html   200`，与 `app.json` `web.bundler: metro` 配套；`pnpm -C apps/mobile build:web` 已验证拷入 `dist/_redirects`。
 
 ## Cross-origin CORS checklist（跨 origin 必查）
 
