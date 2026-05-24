@@ -236,6 +236,21 @@ pre-commit:
       glob: 'docs/adr/*.md'
       run: pnpm tsx scripts/check-adr-index.ts
 
+    server-moat-check:
+      tags: server architecture
+      # Per Plan 05-24 R-6 (合并 ADR-0034 Stage C) — ts-morph AST 护城河探针。
+      # 把 ADR-0043 §5「当前仅约定」的两条边界转机器强制:
+      #   1. 跨 bounded context 的 Prisma model 访问 (写永远禁 / 读需
+      #      // CROSS-CONTEXT-READ 逃生口 per catalog Q7-B);
+      #   2. 跨业务 ctx 的构造器注入参数需 // CROSS-CONTEXT-{SYNC,ASYNC,READ} 注释
+      #      (注入点 = 行为耦合点 per ADR-0034 Stage C / R2)。
+      # boundaries ESLint 只管 import 方向、看不见 Prisma 调用 — 此探针正交补位。
+      # glob 仅决定是否跑;脚本忽略 args 始终全量扫描 (护城河是 holistic invariant,
+      # 同 adr-index-check)。CI mirror: pr-validation.yml validate-and-test 同名 step
+      # (--no-verify 绕得过 lefthook,绕不过云端门禁)。Emergency exit: git commit --no-verify.
+      glob: 'apps/server/src/**/*.ts'
+      run: pnpm tsx scripts/check-server-moat.ts
+
     markdownlint:
       tags: lint
       # Per memory feedback_markdownlint_preflight — pre-flight catches

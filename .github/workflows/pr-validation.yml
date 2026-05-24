@@ -132,6 +132,15 @@ jobs:
           fi
           echo "✅ No prisma migration immutability violation."
 
+      - name: Enforce server bounded-context moat (per Plan 05-24 R-6 / ADR-0043 §5 + ADR-0034 Stage C)
+        # ts-morph AST 探针, 机器强制两条 boundaries-ESLint 看不见的边界:
+        #   1. 跨 bounded context 的 Prisma model 访问 (写禁 / 读需 // CROSS-CONTEXT-READ);
+        #   2. 跨业务 ctx 构造器注入参数需 // CROSS-CONTEXT-{SYNC,ASYNC,READ} 注释。
+        # lefthook server-moat-check 的云端镜像 (--no-verify 绕不过这里)。Full-scan,
+        # 不依赖 nx affected — 护城河是 holistic invariant。Not a new ruleset context:
+        # runs inside the required validate-and-test job, no ruleset change needed.
+        run: pnpm tsx scripts/check-server-moat.ts
+
       - name: Run Nx Affected Pipeline
         # base=origin/main for PR diff; nx affected computes which projects'
         # cache hashes change, triggers lint/typecheck/test/build/runtime-smoke
