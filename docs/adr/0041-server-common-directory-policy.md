@@ -98,7 +98,7 @@ JWT 相关 (`jwt-token.service.ts` + `security.module.ts` 本体) 不计入 suns
 ## Open Questions
 
 - **是否给 `security/` 改名为 `platform/` 或 `infra/`**?defer。当前 5 个成员未到混乱阈值;rename 成本高,且 ADR-0032 + 本 ADR 已把"security 是 platform base"写死,LLM 命中率上不会因字面纠结
-- **Business-domain shared type 出现时是 "新 bounded context" 还是 "packages/" workspace 包**?当前 mono 已有 `packages/api-client` / `packages/shared-types`(Plan 2 阶段充实),后者天然适合跨 server / mobile 的纯类型共享。Plan 2 第一个该类需求 surface 时再细化(per [05-22 bounded context governance plan](../plans/2026-05/05-22-server-bounded-context-governance.md) O2 Operation Catalog 工作单元)
+- **Business-domain shared type 出现时是 "新 bounded context" 还是 "packages/" workspace 包**?当前 mono 已有 `packages/api-client` / `packages/types`(Plan 2 阶段充实),后者天然适合跨 server / mobile 的纯类型共享。Plan 2 第一个该类需求 surface 时再细化(per [05-22 bounded context governance plan](../plans/2026-05/05-22-server-bounded-context-governance.md) O2 Operation Catalog 工作单元)
 
 ## References
 

@@ -8,7 +8,7 @@ sunset_trigger: |
   - Drizzle / Kysely 等在 LLM 命中率显著超越
 ---
 
-# ADR-0019: ORM — Prisma v7+ with `@nestjs/prisma`
+# ADR-0019: ORM — Prisma v7+
 
 - Status: Accepted (2026-05-18)
 - Deciders: project owner
@@ -30,9 +30,9 @@ sunset_trigger: |
 - **ORM**: `prisma ^7.8.0` + `@prisma/client ^7.8.0`(Plan 1 § C.1 写 v6+,PoC 实装 v7.8 — Prisma 7 系列稳定且 `db pull` 行为与 v6 兼容)
 - **PG driver adapter**: `@prisma/adapter-pg ^7.8.0`(Prisma 7 driver adapter API,替代旧 `prisma-pg` 模式)
 - **NestJS 集成**: `PrismaService extends PrismaClient` 模式 + `OnModuleInit` 钩子 + DI 注入(不强依赖 `nestjs-prisma` 第三方包,避免 v7 driver adapter API 与 wrapper 包升级时差)
-- **Migration 工具**: `prisma migrate dev` / `prisma migrate deploy` 接管 PoC 之后所有 schema 演进;Plan 1 PoC 阶段 **不写新 migration**,只用 `db pull` 同步 baseline
+- **Migration 工具**: `prisma migrate dev` / `prisma migrate deploy` 接管 PoC 之后所有 schema 演进;Plan 1 PoC 阶段 **不写新 migration**,只用 `db pull` 同步 baseline(Plan 2 起已正常落 `apps/server/prisma/migrations/`)
 - **Schema source of truth**: `apps/server/prisma/schema.prisma`(`db pull` 反推后 commit + 手工维护)
-- **Repository 边界**: 沿用 DDD `repository.interface.ts` 纯接口 + infrastructure 层 Prisma impl(详 [ADR-0020 § Decision](0020-module-boundary-nestjs.md#decision));不再用 Java MapStruct 双向映射,改 Prisma row type → domain model 1:1 手写映射
+- **数据访问边界**: per [ADR-0043](0043-server-flat-module-paradigm.md) 扁平范式 — UseCase 直注 `PrismaService` 读写本 context 表,**不引入** repository port 抽象;数据用 Prisma 原始 POJO(贫血),不变量校验走纯函数 `*.rules.ts`,**不做** Prisma row → domain class 映射(避免 Entity Mapper 复活 Hexagonal);仍不用 Java MapStruct 双向映射
 
 ## Consequences
 
@@ -65,4 +65,5 @@ sunset_trigger: |
 - [V3 验收(`db pull` 反推 V1-V14)— V10 retro § 3.1](../experience/2026-05/05-18-v10-claude-agent-loop.md#31-一击中目标0-round-trip)
 - [Prisma 7 driver adapters](https://www.prisma.io/docs/orm/overview/databases/database-drivers)
 - [ADR-0018: 后端 stack root pivot](0018-backend-language-pivot.md)
+- [ADR-0043: Server 扁平范式](0043-server-flat-module-paradigm.md) — amend 本 ADR 的 repository 边界为 PrismaService 直连
 - 旧 meta 仓 Spring Data JPA + MapStruct 持久化决策(superseded by [ADR-0020](0020-module-boundary-nestjs.md) with DDD 思想保留 / 实现差异说明)

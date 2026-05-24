@@ -98,4 +98,4 @@ PR-T3 (门禁层 — docs/plans/2026-05/05-22-test-infra-p3-ci-gates.md)
 
 - 主 plan：[`docs/plans/2026-05/05-22-test-infra-master.md`](../plans/2026-05/05-22-test-infra-master.md)
 - PR #79 retro：see 主 plan § Context
-- spec-kit preset：`.specify/presets/mono-orchestrator-ready/preset.yml` (version 0.2.2)
+- spec-kit preset：`.specify/presets/mono-orchestrator-ready/preset.yml`（版本以该文件 `version:` 字段为准）

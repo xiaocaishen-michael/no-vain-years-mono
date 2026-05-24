@@ -31,13 +31,13 @@ Meta 仓时代 release-please 装在 `my-beloved-server` (Maven, v0.3.1) + `no-v
 
 ### 1. 发版单元 = `apps/server` + `apps/mobile` 双线
 
-| 路径                    | 发版 | release-type | 理由                                      |
-| ----------------------- | ---- | ------------ | ----------------------------------------- |
-| `apps/server`           | ✅   | `node`       | NestJS 后端 — 独立部署 + 独立版本线       |
-| `apps/mobile`           | ✅   | `expo`       | Expo 前端 — 独立发版上架 + 独立版本线     |
-| `packages/api-client`   | ❌   | —            | `private: true` + `workspace:*` 软链,内部 |
-| `packages/shared-types` | ❌   | —            | 同上                                      |
-| `scripts/orchestrator`  | ❌   | —            | 同上                                      |
+| 路径                   | 发版 | release-type | 理由                                      |
+| ---------------------- | ---- | ------------ | ----------------------------------------- |
+| `apps/server`          | ✅   | `node`       | NestJS 后端 — 独立部署 + 独立版本线       |
+| `apps/mobile`          | ✅   | `expo`       | Expo 前端 — 独立发版上架 + 独立版本线     |
+| `packages/api-client`  | ❌   | —            | `private: true` + `workspace:*` 软链,内部 |
+| `packages/types`       | ❌   | —            | 同上                                      |
+| `scripts/orchestrator` | ❌   | —            | 同上                                      |
 
 排除 `packages/*` + `scripts/*` 的根因:**workspace 内部依赖走 `workspace:*` 协议**,运行时由 pnpm resolve 到 monorepo 内的具体路径,**外部不可见**。给它们发版本号 = 制造无消费者的 SemVer 噪声。
 

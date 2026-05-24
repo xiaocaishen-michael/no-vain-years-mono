@@ -39,14 +39,14 @@ Plan 1 4-5 周 PoC(`phone-sms-auth` use case full port,V1-V10 验收门)实际 ~
 | ORM            | **Prisma**(详 [ADR-0019](0019-orm-prisma.md))                                        | `prisma ^7.8.0` + `@prisma/client ^7.8.0`                               |
 | 模块边界       | **NestJS Module + ESLint boundaries**(详 [ADR-0020](0020-module-boundary-nestjs.md)) | `eslint-plugin-boundaries ^6.0.2`(v6 object-selector syntax)            |
 | Validation     | **class-validator + class-transformer**                                              | `class-validator ^0.15.1` + `class-transformer ^0.5.1`                  |
-| Auth           | **Passport.js + @nestjs/passport** + JWT via `@nestjs/jwt` + `jose`                  | `@nestjs/jwt ^11.0.2`                                                   |
+| Auth           | **Passport.js + @nestjs/passport** + JWT via `@nestjs/jwt`                           | `@nestjs/jwt ^11.0.2`                                                   |
 | Hash           | **bcrypt**(PoC 阶段;Argon2id 迁移延后到 Plan 2/3)                                    | `bcrypt ^6.0.0`                                                         |
 | Rate limit     | **@nestjs/throttler + Redis storage**                                                | `@nestjs/throttler ^6.5.0` + `@nest-lab/throttler-storage-redis ^1.2.0` |
 | Resilience     | **cockatiel**(retry + circuit breaker)                                               | `^3.2.1`                                                                |
 | Logger         | **pino via `nestjs-pino`**                                                           | `nestjs-pino ^4.6.1` + `pino ^10.3.1`                                   |
-| OpenAPI        | **@nestjs/swagger** → `@hey-api/openapi-ts` codegen                                  | `@nestjs/swagger ^11.4.3`                                               |
+| OpenAPI        | **@nestjs/swagger** → `orval` codegen                                                | `@nestjs/swagger ^11.4.3`                                               |
 | Aliyun SMS     | `@alicloud/dysmsapi20170525`(官方 npm)                                               | `^4.5.1`                                                                |
-| Test           | **Vitest + Testcontainers Node + `@nestjs/testing`**                                 | Vitest 2 + Testcontainers Node 11                                       |
+| Test           | **Vitest + Testcontainers Node + `@nestjs/testing`**                                 | Vitest 4 + Testcontainers Node 11                                       |
 | Monorepo       | **Nx** + pnpm workspaces                                                             | `nx 22.7.2`                                                             |
 | Package mgr    | **pnpm 10**(2026-05-17 Plan 1 amend,原 pnpm 9)                                       | `pnpm@10.33.2`                                                          |
 | TS dev runtime | **@nx/js:swc + .swcrc**(2026-05-17 W2.0 amend,原 NestJS 内置 SWC)                    | `@swc/core ~1.15.5`                                                     |
@@ -61,7 +61,7 @@ apps/server/                # NestJS + Fastify + Prisma
     infrastructure/
     web/
     <module>.module.ts
-packages/                   # 共享包(api-client / shared-types / ...)
+packages/                   # 共享包(api-client / types / ...)
 ```
 
 **旧 meta 仓 Java/Spring ADR cross-ref**:整套旧 meta ADR 已被本 mono ADR 体系取代或独立继承(限流续 [ADR-0022](0022-throttler-nestjs-redis.md);模块边界续 [ADR-0020](0020-module-boundary-nestjs.md))。逐条映射矩阵留档 [Plan 1 § G.1](../plans/2026-05/05-18-plan1-backend-stack-poc.md);mono 自 ADR-0018 起独立编号。
