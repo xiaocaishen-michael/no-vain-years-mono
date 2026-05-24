@@ -22,34 +22,36 @@
  *
  * Deps (mono root devDeps): zod, gray-matter, tsx
  */
-import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
-import { join } from 'node:path';
-import matter from 'gray-matter';
+import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+import matter from "gray-matter";
 // @ts-expect-error preset-install layout — resolved post-install in mono repo
-import { SpecFrontmatterSchema } from '../.specify/schemas/mono-orchestrator-ready/spec.zod.ts';
+import { SpecFrontmatterSchema } from "../.specify/schemas/mono-orchestrator-ready/spec.zod.ts";
 
 function findAllSpecFiles(): string[] {
-  const specsDir = 'specs';
+  const specsDir = "specs";
   if (!existsSync(specsDir)) return [];
   return readdirSync(specsDir)
     .map((d) => join(specsDir, d))
     .filter((p) => statSync(p).isDirectory())
-    .map((d) => join(d, 'spec.md'))
+    .map((d) => join(d, "spec.md"))
     .filter(existsSync);
 }
 
 const args = process.argv.slice(2);
 const files =
-  args.length > 0 ? args.filter((f) => f.endsWith('spec.md') && existsSync(f)) : findAllSpecFiles();
+  args.length > 0
+    ? args.filter((f) => f.endsWith("spec.md") && existsSync(f))
+    : findAllSpecFiles();
 
 if (files.length === 0) {
-  console.log('[check-spec-frontmatters] no spec.md files to check (skip)');
+  console.log("[check-spec-frontmatters] no spec.md files to check (skip)");
   process.exit(0);
 }
 
 let failed = 0;
 for (const file of files) {
-  const raw = readFileSync(file, 'utf-8');
+  const raw = readFileSync(file, "utf-8");
   const { data } = matter(raw);
   const result = SpecFrontmatterSchema.safeParse(data);
   if (result.success) {
@@ -58,7 +60,7 @@ for (const file of files) {
     failed += 1;
     console.error(`❌ ${file}`);
     for (const issue of result.error.issues) {
-      const path = issue.path.length > 0 ? issue.path.join('.') : '(root)';
+      const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
       console.error(`   - ${path}: ${issue.message}`);
     }
   }
