@@ -30,3 +30,9 @@ scripts/orchestrator/__fixtures__/
 .specify/
 .claude/commands/speckit-*.md
 .claude/skills/speckit-*/
+
+# preset 装到 .specify/ 之外的产物（install.sh → scripts/ + repo root）：
+# prettier 单引号化会与 canonical 双引号 diverge，使 verify.sh 误报 drift
+# (per memory reference_preset_reinstall_prettier_quote_drift)。保持 as-installed。
+scripts/check-spec-frontmatters.ts
+lefthook.preset-*.yml

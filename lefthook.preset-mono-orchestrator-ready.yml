@@ -6,7 +6,7 @@ pre-commit:
   commands:
     spec-frontmatter-check:
       tags: spec-kit
-      glob: 'specs/*/spec.md'
+      glob: "specs/*/spec.md"
       # Why this hook (per mono-orchestrator-ready 0.2.0):
       #   spec frontmatter is SSOT for module ownership, perf budgets,
       #   web_compat, agent_friction observations. Zod schema enforces
