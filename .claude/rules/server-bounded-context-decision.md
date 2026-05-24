@@ -13,14 +13,14 @@ paths:
 
 ## 简版决策路径（catalog.md 是详版权威）
 
-1. **Q1**：use case 直改 aggregate root state? → 放该 aggregate 所在 context (`account` / `security` / `auth` 之一)
+1. **Q1**：use case 直改某 context 核心表（`account` / `credential` 等）row state? → 放该表所属 context (`account` / `security` / `auth` 之一)。数据 = 贫血 Prisma row（无充血 aggregate class,per [ADR-0043](../../docs/adr/0043-server-flat-module-paradigm.md)）
 2. **Q2**：编排多 context user-facing 流程? → 放 `auth/`（编排层）
 3. **Q3**：纯 platform infra (token / pwd hash / generic crypto)? → 放 `security/`
 4. **Q4**：完全新业务领域? → **STOP，走 [ADR-0032](../../docs/adr/0032-backend-bounded-context.md) sunset trigger 评估新 bounded context**
 5. **Q5-Q7**（跨 ctx 传播）：
-   - callee fail rollback caller? → **R2 CROSS-CTX-SYNC** (同 tx)
+   - callee fail rollback caller? → **R2 CROSS-CTX-SYNC** (同 tx)；编排同请求内读+写 callee 生命周期 → DI callee 的 use case（读半段 = `Inspect*UseCase` 只读 / 写半段 = `Commit*UseCase`,**两段式委托** per [ADR-0043](../../docs/adr/0043-server-flat-module-paradigm.md) §3a）
    - side-effect notification? → **R3 CROSS-CTX-ASYNC** (Outbox)
-   - 跨 ctx 读? → SecurityModule 共享读服务 OR Outbox event replay，**禁** cross-ctx use case 直 DI
+   - **独立**只读查询（非编排,caller 只为自己的 response 读 callee 数据）? → SecurityModule 共享读服务 OR Outbox replay 物化视图，**禁** cross-ctx use case 直 DI（与上面编排读区分:编排读是 R2 同请求驱动 callee 生命周期,走 `Inspect*UseCase`）
 
 ## 跨上下文注释引导（PR Review 建议项）
 
