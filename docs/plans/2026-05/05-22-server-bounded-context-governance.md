@@ -84,6 +84,8 @@ PR-5 链（#73 / #74 / #75）2026-05-21 全部 merged 但**从未跑过真后端
 
 ### O3 — Hexagonal layer ESLint rules reintroduce
 
+> ⚠️ **VOID（2026-05-24）** — 本 carry-over 工作项已**正式作废**：hexagonal 四层永久退役，全仓以 Bounded Context（module 级）为唯一最高物理红线。见 [ADR-0032 §架构历史决议对齐](../../adr/0032-backend-bounded-context.md)。下文保留作历史留痕，**勿执行**。
+
 **现状**：PR-4 把 boundaries elements 由 layer 切到 module，hexagonal layer 单向规则（domain ← application ← infra/web）**暂时**移除。
 
 **触发**：跨 context 落地 ≥ 2 个新 use case 后，或 `grep` 出 ≥ 1 处 layer 反向 import 实证。

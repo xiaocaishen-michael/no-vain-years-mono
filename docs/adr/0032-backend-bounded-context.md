@@ -126,6 +126,15 @@ auth → security
 - 3 context 物理拆分 = 早期 over-engineering 风险 — 但 LLM agent 命中率收益 > 该成本(已实证 A-002 错向)
 - 编排型 use case (auth) 引入跨 context import — 由 ESLint boundaries 单向白名单 contained
 
+## 架构历史决议对齐 (Historical Realignment)
+
+### 关于 Hexagonal Layer 永久退役的决定 (Anti-Overengineering)
+
+本仓彻底、永久性退役原有的 Hexagonal（Domain/Application/Infrastructure/Web）四层六边形分层架构。
+
+- **历史文档作废声明**：原历史规划文档 `05-22-server-bounded-context-governance.md` 中关于【O3: 暂时移除分层架构并在未来重引】的 carry-over 工作项**正式宣告作废与退役**。
+- **最终架构意图**：全仓放弃纵向分层，全面倒向以 **Bounded Context (横向模块化切片)** 为最高物理红线的架构形态。模块内部提倡扁平内聚（UseCase 驱动），严禁重新引入复杂的四层目录和重型 Adapter 接口，以维持对 LLM Agent 最优的上下文聚焦和极简的开发体验（DevX）。
+
 ## References
 
 - memory `project_plan_pivot_nestjs_mono` (Plan 1 NestJS module 边界设计起源)
