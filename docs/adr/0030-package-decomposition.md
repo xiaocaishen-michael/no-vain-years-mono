@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0030
-status: Proposed
+status: Accepted
 applies_to: [mono-wide]
 sunset_trigger: |
   - 加入第二个 frontend consumer (admin-web / VSCode extension / desktop-electron) → 抽回 packages/{auth,ui,theme}
@@ -10,7 +10,7 @@ sunset_trigger: |
 
 # ADR-0030: Package Decomposition — 5 包减 2 (apps/mobile/src/{auth,ui,theme,core}/)
 
-- Status: Proposed
+- Status: Accepted
 - Deciders: project owner
 - Tags: repo / architecture / cross-cutting
 

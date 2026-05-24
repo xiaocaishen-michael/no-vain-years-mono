@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0039
-status: Proposed
+status: Accepted
 applies_to: [mono-wide]
 sunset_trigger: |
   - 引入 SLO 框架 (Linkerd / Istio SLO / Datadog SLO) — perf budget 走外部工具
@@ -10,7 +10,7 @@ sunset_trigger: |
 
 # ADR-0039: Performance and Latency Governance — spec frontmatter SSOT + lefthook ≤ 30s + nightly perf IT
 
-- Status: Proposed
+- Status: Accepted
 - Deciders: project owner
 - Tags: backend / mobile / performance / governance / cross-cutting
 

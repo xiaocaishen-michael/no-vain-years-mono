@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0028
-status: Proposed
+status: Accepted
 applies_to: [mono-wide]
 sunset_trigger: |
   - Expo SDK 内部解决 pnpm strict 兼容 (官方支持 nodeLinker=isolated 等)
@@ -11,7 +11,7 @@ sunset_trigger: |
 
 # ADR-0028: Monorepo pnpm Policy — `shamefully-hoist=true` + publicHoistPattern (Expo 兼容)
 
-- Status: Proposed (PR #67 已 ship `.npmrc`,本 ADR 追溯文档化)
+- Status: Accepted (PR #67 已 ship `.npmrc`,本 ADR 追溯文档化)
 - Deciders: project owner
 - Tags: repo / build / dependency / cross-cutting
 

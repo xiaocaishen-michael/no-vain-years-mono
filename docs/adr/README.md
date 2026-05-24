@@ -49,18 +49,18 @@
 | 0025 | 前端部署 — Expo Web → Cloudflare Pages                          | apps/mobile                                      | Accepted |
 | 0026 | Backend Deployment Topology                                     | apps/server, infrastructure                      | Accepted |
 | 0027 | Frontend Data + Test Layer (Orval + RQ + Maestro)               | apps/mobile, packages/api-client                 | Accepted |
-| 0028 | Monorepo pnpm Policy (shamefully-hoist)                         | mono-wide                                        | Proposed |
+| 0028 | Monorepo pnpm Policy (shamefully-hoist)                         | mono-wide                                        | Accepted |
 | 0029 | TS Module Resolution Policy (bundler base)                      | mono-wide                                        | Accepted |
-| 0030 | Package Decomposition (5→2)                                     | mono-wide                                        | Proposed |
-| 0031 | ADR Governance & Programmatic Filtering                         | mono-wide                                        | Proposed |
+| 0030 | Package Decomposition (5→2)                                     | mono-wide                                        | Accepted |
+| 0031 | ADR Governance & Programmatic Filtering                         | mono-wide                                        | Accepted |
 | 0032 | Backend Bounded Context Split (security + account + auth)       | apps/server                                      | Accepted |
 | 0033 | Cross-Context Communication via Outbox                          | apps/server                                      | Accepted |
 | 0034 | Auth/Account Operation Catalog (3 传播规则 + LLM decision tree) | apps/server                                      | Accepted |
-| 0035 | Data Layer Governance (migrate + naming + seed + types regen)   | apps/server                                      | Proposed |
+| 0035 | Data Layer Governance (migrate + naming + seed + types regen)   | apps/server                                      | Accepted |
 | 0036 | Observability and Logging Governance                            | apps/server, apps/mobile                         | Accepted |
 | 0037 | Security and Credentials Governance                             | apps/server, apps/mobile, security               | Proposed |
 | 0038 | Full-Stack Error Handling and UX Contract                       | apps/server, apps/mobile, packages/api-client    | Accepted |
-| 0039 | Performance and Latency Governance                              | mono-wide                                        | Proposed |
+| 0039 | Performance and Latency Governance                              | mono-wide                                        | Accepted |
 | 0040 | Multi-layer Test Gate (机制 / 策略 / 门禁 三段渐进)             | mono-wide                                        | Accepted |
 | 0041 | Server `src/common/` Policy — 不引入,平台 infra 进 security/    | apps/server                                      | Accepted |
 | 0042 | Monorepo Release Strategy — release-please 双线 + 内部包零版本  | mono-wide                                        | Accepted |
