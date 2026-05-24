@@ -2,24 +2,24 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RequestSmsCodeUseCase } from './request-sms-code.usecase';
 import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
-import type { SmsCodeRepository } from './ports/sms-code.repository.port';
+import type { SmsCodeStore } from '../infrastructure/sms-code.store';
 import type { SmsGateway } from './ports/sms-gateway.port';
 
 describe('RequestSmsCodeUseCase', () => {
-  let smsCodeRepo: SmsCodeRepository;
+  let smsCodeStore: SmsCodeStore;
   let smsGateway: SmsGateway;
   let useCase: RequestSmsCodeUseCase;
 
   beforeEach(() => {
-    smsCodeRepo = {
+    smsCodeStore = {
       store: vi.fn().mockResolvedValue(undefined),
       verify: vi.fn().mockResolvedValue(null),
       clear: vi.fn().mockResolvedValue(undefined),
-    };
+    } as unknown as SmsCodeStore;
     smsGateway = {
       sendCode: vi.fn().mockResolvedValue(undefined),
     };
-    useCase = new RequestSmsCodeUseCase(smsCodeRepo, smsGateway);
+    useCase = new RequestSmsCodeUseCase(smsCodeStore, smsGateway);
   });
 
   it('returns ttlSec=300 (FR-S02 default)', async () => {
@@ -32,10 +32,10 @@ describe('RequestSmsCodeUseCase', () => {
     const phone = Phone.create('+8613800138302');
     await useCase.execute(phone);
 
-    expect(smsCodeRepo.store).toHaveBeenCalledTimes(1);
+    expect(smsCodeStore.store).toHaveBeenCalledTimes(1);
     expect(smsGateway.sendCode).toHaveBeenCalledTimes(1);
 
-    const [storedPhone, storedCode, storedTtl] = vi.mocked(smsCodeRepo.store).mock.calls[0];
+    const [storedPhone, storedCode, storedTtl] = vi.mocked(smsCodeStore.store).mock.calls[0];
     expect(storedPhone.value).toBe('+8613800138302');
     expect(storedCode).toBeInstanceOf(SmsCode);
     expect(storedCode.value).toMatch(/^\d{6}$/);
@@ -46,7 +46,7 @@ describe('RequestSmsCodeUseCase', () => {
     const phone = Phone.create('+8613800138303');
     await useCase.execute(phone);
 
-    const storedCode = vi.mocked(smsCodeRepo.store).mock.calls[0][1];
+    const storedCode = vi.mocked(smsCodeStore.store).mock.calls[0][1];
     const sentCode = vi.mocked(smsGateway.sendCode).mock.calls[0][1];
     expect(storedCode.value).toBe(sentCode.value);
   });
@@ -56,6 +56,6 @@ describe('RequestSmsCodeUseCase', () => {
     const phone = Phone.create('+8613800138304');
 
     await expect(useCase.execute(phone)).rejects.toThrow('gateway timeout');
-    expect(smsCodeRepo.store).toHaveBeenCalledTimes(1);
+    expect(smsCodeStore.store).toHaveBeenCalledTimes(1);
   });
 });

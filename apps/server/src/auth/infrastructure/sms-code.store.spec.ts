@@ -2,16 +2,16 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import { Redis } from 'ioredis';
-import { SmsCodeRedisRepository } from './sms-code.redis.repository';
+import { SmsCodeStore } from './sms-code.store';
 import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
 
 const HMAC_SECRET = 'spec-hmac-secret-min-32-bytes-padding-zzzz';
 
-describe('SmsCodeRedisRepository (Testcontainers Redis, HMAC-SHA256)', () => {
+describe('SmsCodeStore (Testcontainers Redis, HMAC-SHA256)', () => {
   let container: StartedRedisContainer;
   let redis: Redis;
-  let repo: SmsCodeRedisRepository;
+  let repo: SmsCodeStore;
 
   beforeAll(async () => {
     container = await new RedisContainer('redis:7-alpine').start();
@@ -25,12 +25,12 @@ describe('SmsCodeRedisRepository (Testcontainers Redis, HMAC-SHA256)', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         {
-          provide: SmsCodeRedisRepository,
-          useFactory: () => new SmsCodeRedisRepository(redis, HMAC_SECRET),
+          provide: SmsCodeStore,
+          useFactory: () => new SmsCodeStore(redis, HMAC_SECRET),
         },
       ],
     }).compile();
-    repo = moduleRef.get(SmsCodeRedisRepository);
+    repo = moduleRef.get(SmsCodeStore);
   }, 60_000);
 
   afterAll(async () => {
@@ -105,10 +105,7 @@ describe('SmsCodeRedisRepository (Testcontainers Redis, HMAC-SHA256)', () => {
     const phone = Phone.create('+8613800138210');
     await repo.store(phone, SmsCode.create('123456'), 300);
 
-    const newSecretRepo = new SmsCodeRedisRepository(
-      redis,
-      'rotated-secret-min-32-bytes-padding-yyyy',
-    );
+    const newSecretRepo = new SmsCodeStore(redis, 'rotated-secret-min-32-bytes-padding-yyyy');
     const result = await newSecretRepo.verify(phone, SmsCode.create('123456'));
     expect(result).toBe(false);
   });

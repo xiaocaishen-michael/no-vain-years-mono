@@ -8,8 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
-import { SmsCodeRedisRepository } from '../../src/auth/infrastructure/sms-code.redis.repository';
-import { SMS_CODE_REPOSITORY } from '../../src/auth/application/ports/sms-code.repository.port';
+import { SmsCodeStore } from '../../src/auth/infrastructure/sms-code.store';
 import { REDIS_CLIENT } from '../../src/security/redis.token';
 import { Phone } from '../../src/account/domain/phone.vo';
 import { SmsCode } from '../../src/auth/domain/sms-code.vo';
@@ -46,7 +45,7 @@ const WRONG_CODE = '999999';
  *   - 阈值 ≤ 50ms (HTTP wall-clock variance > in-process 5ms)
  *
  * **机制说明** (per ADR-0023, 2026-05-18 切换):
- *   - SmsCodeRedisRepository 用 HMAC-SHA256 + crypto.timingSafeEqual 替换 bcrypt cost=12
+ *   - SmsCodeStore 用 HMAC-SHA256 + crypto.timingSafeEqual 替换 bcrypt cost=12
  *   - verify <1ms,3 个反枚举路径(ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED) 时延均一
  *   - BcryptTimingDefenseExecutor.pad(cost=10) ~80ms 保留作纵深防御抹平 redis.get
  *     抖动 / Phone VO 构造等残余微差
@@ -73,7 +72,7 @@ describe.skipIf(!RUN_PERF)(
     let redisContainer: StartedRedisContainer;
     let app: NestFastifyApplication;
     let prisma: PrismaService;
-    let smsCodeRepo: SmsCodeRedisRepository;
+    let smsCodeStore: SmsCodeStore;
     let redis: Redis;
 
     beforeAll(async () => {
@@ -106,7 +105,7 @@ describe.skipIf(!RUN_PERF)(
       await app.getHttpAdapter().getInstance().ready();
 
       prisma = moduleRef.get(PrismaService);
-      smsCodeRepo = moduleRef.get<SmsCodeRedisRepository>(SMS_CODE_REPOSITORY);
+      smsCodeStore = moduleRef.get(SmsCodeStore);
       redis = moduleRef.get<Redis>(REDIS_CLIENT);
 
       // Preseed: ACTIVE_WRONG + ACTIVE_EXPIRED + ANONYMIZED accounts.
@@ -121,9 +120,9 @@ describe.skipIf(!RUN_PERF)(
       });
 
       // ACTIVE_WRONG: pre-store correct SMS code (1h TTL). 1000 reps send WRONG_CODE → 401.
-      await smsCodeRepo.store(Phone.create(ACTIVE_PHONE_WRONG), SmsCode.create(STORED_CODE), 3600);
+      await smsCodeStore.store(Phone.create(ACTIVE_PHONE_WRONG), SmsCode.create(STORED_CODE), 3600);
       // ACTIVE_EXPIRED: NEVER store SMS code → verify returns null → 码过期 path.
-      await smsCodeRepo.clear(Phone.create(ACTIVE_PHONE_EXPIRED));
+      await smsCodeStore.clear(Phone.create(ACTIVE_PHONE_EXPIRED));
       // ANONYMIZED: code state irrelevant (ANONYMIZED throws before verify).
     }, 180_000);
 

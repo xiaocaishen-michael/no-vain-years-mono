@@ -3,21 +3,24 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
-import type { SmsCodeRepository } from '../application/ports/sms-code.repository.port';
 
 const KEY_PREFIX = 'sms_code:';
 
 /**
- * SmsCodeRedisRepository — HMAC-SHA256 + crypto.timingSafeEqual.
+ * SmsCodeStore — Redis-backed SMS code store (自有非 DB 基建, per ADR-0043 §4:
+ * concrete service, 无 interface)。HMAC-SHA256 + crypto.timingSafeEqual。
  *
  * Per ADR-0023 (2026-05-18 切换): bcrypt cost=12 → HMAC,根因 = FR-S06 P95 ≤ 50ms
  * 实测违反 (mono PR #23 200-rep diff ≈ 193ms,单边 bcrypt.compare verify ~150ms).
  *
  * HMAC verify <1ms 让 3 个反枚举 401 路径(ACTIVE+码错 / ACTIVE+码过期 /
  * ANONYMIZED+任意码) 时延自然均一;BcryptTimingDefenseExecutor.pad 保留作纵深防御.
+ *
+ * verify() 返回: true=匹配(caller 应立即 clear) / false=stored 存在但码不符 /
+ * null=过期或从未 store。
  */
 @Injectable()
-export class SmsCodeRedisRepository implements SmsCodeRepository {
+export class SmsCodeStore {
   constructor(
     private readonly redis: Redis,
     private readonly hmacSecret: string,

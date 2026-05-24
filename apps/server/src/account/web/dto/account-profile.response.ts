@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AccountStatus } from '../../domain/account.aggregate';
+import { AccountStatus } from '../../domain/account.rules';
 
 /**
  * GET /api/v1/accounts/me response body (FR-001).

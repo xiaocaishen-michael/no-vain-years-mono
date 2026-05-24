@@ -14,7 +14,6 @@ import { SecurityModule } from '../security/security.module.js';
 import { AccountModule } from '../account/account.module.js';
 import { REDIS_CLIENT } from '../security/redis.token.js';
 import { RETRY_EXECUTOR, type RetryExecutor } from './application/ports/retry-executor.port.js';
-import { SMS_CODE_REPOSITORY } from './application/ports/sms-code.repository.port.js';
 import { SMS_GATEWAY } from './application/ports/sms-gateway.port.js';
 import { TIMING_DEFENSE_EXECUTOR } from './application/ports/timing-defense.port.js';
 import { PhoneSmsAuthUseCase } from './application/phone-sms-auth.usecase.js';
@@ -24,7 +23,7 @@ import { AuthFailureLockService } from './infrastructure/auth-failure-lock.servi
 import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor.js';
 import { CockatielRetryExecutor } from './infrastructure/cockatiel-retry.executor.js';
 import { MockSmsGateway } from './infrastructure/mock-sms.gateway.js';
-import { SmsCodeRedisRepository } from './infrastructure/sms-code.redis.repository.js';
+import { SmsCodeStore } from './infrastructure/sms-code.store.js';
 import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller.js';
 import { AccountSmsCodeController } from './web/account-sms-code.controller.js';
 import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
@@ -37,11 +36,11 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
  * (login = register, SMS-code based, anti-enumeration timing defense).
  *
  * Owns:
- *   - SMS code domain (sms-code.vo) + ports + infra (Redis-backed repository,
- *     Aliyun/mock gateway, bcrypt-timing-defense)
- *   - phone-sms-auth + request-sms-code use cases (编排 — calls
- *     AccountRepository (via DI from AccountModule) + JwtTokenService
- *     (via SecurityModule))
+ *   - SMS code domain (sms-code.vo) + SmsCodeStore (Redis-backed concrete
+ *     service per ADR-0043 §4) + Aliyun/mock gateway + bcrypt-timing-defense
+ *   - phone-sms-auth + request-sms-code use cases (编排 — 直注 PrismaService
+ *     读写 account 表 + JwtTokenService (via SecurityModule), per ADR-0043
+ *     扁平贫血: 无 repository port)
  *   - phone/sms throttler guards (FR-S07)
  *   - ProblemDetailFilter (global APP_FILTER; PR-5 will refactor with
  *     traceId / invalidAttributes per ADR-0038)
@@ -104,9 +103,9 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
     {
       // Per ADR-0023: HMAC-SHA256 + timingSafeEqual 替换 bcrypt cost=12.
       // SMS_CODE_HMAC_SECRET fail-fast at boot via authConfig Zod schema.
-      provide: SMS_CODE_REPOSITORY,
-      useFactory: (redis: Redis, cfg: AuthConfig) =>
-        new SmsCodeRedisRepository(redis, cfg.smsCodeHmacSecret),
+      // Concrete service (no port) per ADR-0043 §4 — 自有非 DB 基建。
+      provide: SmsCodeStore,
+      useFactory: (redis: Redis, cfg: AuthConfig) => new SmsCodeStore(redis, cfg.smsCodeHmacSecret),
       inject: [REDIS_CLIENT, authConfig.KEY],
     },
     {
