@@ -35,7 +35,12 @@ export function setupAxios(): void {
   if (booted) return;
   booted = true;
 
-  const baseURL = process.env['EXPO_PUBLIC_API_BASE_URL'] ?? 'http://localhost:3000';
+  // Dot access (not `process.env['…']`) is REQUIRED: Expo/metro only static-
+  // inlines `process.env.EXPO_PUBLIC_*` member access at build; bracket access
+  // is left as a runtime lookup → `undefined` on web → silent localhost
+  // fallback even when EXPO_PUBLIC_API_BASE_URL is set. (TS allows dot here:
+  // noPropertyAccessFromIndexSignature is off.)
+  const baseURL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
   axios.defaults.baseURL = baseURL;
 
   // Fire-and-forget device hydrate so x-device-name / x-device-type are
