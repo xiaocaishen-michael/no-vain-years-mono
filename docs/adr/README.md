@@ -1,6 +1,12 @@
 # Architecture Decision Records (ADRs)
 
-记录架构 / 工具 / 流程层的关键决策。每条 ADR 是不可变的（superseded 时立新 ADR 链接覆盖,不删旧）。
+记录架构 / 工具 / 流程层的关键决策。
+
+**修订策略（分层不可变，per [ADR-0031](0031-adr-governance.md) § ADR 修订策略）**：
+
+- `Proposed` — 尚未冻结，自由 in-place 改 / 删，无需 supersede 仪式。
+- `Accepted` — 原则上 supersede-not-delete（**决策本身**变更时立新 ADR、旧标 `Superseded` 留史链接覆盖）；但「不改变决策」的修订（meta 导入纠错 / anchor typo / 版本号更新 / 路径名更正）**豁免**，允许 in-place 改。
+- `Deprecated` / `Superseded` — 终态留史，不再 in-place 改。
 
 ## 新立 ADR 模板
 
@@ -30,6 +36,8 @@
 
 ## ADR 现状索引
 
+> status 列由各文件 frontmatter 反推，机械防护见下「索引一致性校验」。
+
 | ADR  | 主题                                                            | applies_to                                       | status   |
 | ---- | --------------------------------------------------------------- | ------------------------------------------------ | -------- |
 | 0018 | Backend Language Pivot — TypeScript on NestJS+Fastify+Prisma+Nx | apps/server                                      | Accepted |
@@ -39,22 +47,30 @@
 | 0023 | SMS code 存储 — HMAC-SHA256 + constant-time                     | apps/server                                      | Accepted |
 | 0024 | Specs feature-first 布局 + frontmatter modules 反查             | mono-wide                                        | Accepted |
 | 0025 | 前端部署 — Expo Web → Cloudflare Pages                          | apps/mobile                                      | Accepted |
-| 0026 | Backend Deployment Topology (stub, Plan 3 Phase 1 决)           | apps/server, infrastructure                      | Proposed |
-| 0027 | Frontend Data + Test Layer (Orval + RQ + Maestro)               | apps/mobile, packages/api-client                 | Proposed |
+| 0026 | Backend Deployment Topology                                     | apps/server, infrastructure                      | Accepted |
+| 0027 | Frontend Data + Test Layer (Orval + RQ + Maestro)               | apps/mobile, packages/api-client                 | Accepted |
 | 0028 | Monorepo pnpm Policy (shamefully-hoist)                         | mono-wide                                        | Proposed |
-| 0029 | TS Module Resolution Policy (bundler base)                      | mono-wide                                        | Proposed |
+| 0029 | TS Module Resolution Policy (bundler base)                      | mono-wide                                        | Accepted |
 | 0030 | Package Decomposition (5→2)                                     | mono-wide                                        | Proposed |
 | 0031 | ADR Governance & Programmatic Filtering                         | mono-wide                                        | Proposed |
-| 0032 | Backend Bounded Context Split (security + account + auth)       | apps/server                                      | Proposed |
-| 0033 | Cross-Context Communication via Outbox                          | apps/server                                      | Proposed |
-| 0034 | Auth/Account Operation Catalog (3 传播规则 + LLM decision tree) | apps/server                                      | Proposed |
+| 0032 | Backend Bounded Context Split (security + account + auth)       | apps/server                                      | Accepted |
+| 0033 | Cross-Context Communication via Outbox                          | apps/server                                      | Accepted |
+| 0034 | Auth/Account Operation Catalog (3 传播规则 + LLM decision tree) | apps/server                                      | Accepted |
 | 0035 | Data Layer Governance (migrate + naming + seed + types regen)   | apps/server                                      | Proposed |
-| 0036 | Observability and Logging Governance                            | apps/server, apps/mobile                         | Proposed |
+| 0036 | Observability and Logging Governance                            | apps/server, apps/mobile                         | Accepted |
 | 0037 | Security and Credentials Governance                             | apps/server, apps/mobile, security               | Proposed |
-| 0038 | Full-Stack Error Handling and UX Contract                       | apps/server, apps/mobile, packages/api-client    | Proposed |
+| 0038 | Full-Stack Error Handling and UX Contract                       | apps/server, apps/mobile, packages/api-client    | Accepted |
 | 0039 | Performance and Latency Governance                              | mono-wide                                        | Proposed |
+| 0040 | Multi-layer Test Gate (机制 / 策略 / 门禁 三段渐进)             | mono-wide                                        | Accepted |
+| 0041 | Server `src/common/` Policy — 不引入,平台 infra 进 security/    | apps/server                                      | Accepted |
+| 0042 | Monorepo Release Strategy — release-please 双线 + 内部包零版本  | mono-wide                                        | Accepted |
+| 0043 | Server 模块内构范式 — 扁平 + 贫血数据 + 纯函数 Helper + 跨界    | apps/server                                      | Proposed |
 
-(0021 历史空缺,跳过编号 — 详 PR #N+1 commit 历史)
+(0021 历史空缺,跳过编号 — 详 commit 历史)
+
+### 索引一致性校验
+
+`scripts/check-adr-index.ts`（lefthook `adr-index-check` 自动跑;手动 `pnpm tsx scripts/check-adr-index.ts`）机械校验上表与各文件 frontmatter 一致：每篇 ADR ↔ 恰一行（无漏 / 无幻影），且 status 列 == frontmatter `status`。改 status 或新增 ADR 后须同步本表，否则 commit 被拒。
 
 ## 反查与过滤
 

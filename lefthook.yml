@@ -220,6 +220,20 @@ pre-commit:
         echo "紧急出口: git commit --no-verify"
         exit 1
 
+    adr-index-check:
+      tags: adr governance docs
+      # Per ADR-0031 § ADR 修订策略 / realign-P1 PR-1 — docs/adr/README.md
+      # 「现状索引」table must stay in sync with each ADR's frontmatter `status`.
+      # Complements the preset's adr-frontmatter-check (which validates each file
+      # in isolation) with a holistic README↔frontmatter consistency gate.
+      # Lives here, not in lefthook.preset-adr-governance.yml — that preset file
+      # is auto-generated ("do not edit by hand"); this gate is mono-local.
+      # glob fires on ANY docs/adr/*.md change (new ADR, status flip, README
+      # edit); the script ignores args and always full-scans (consistency is
+      # holistic). Local-only gate like adr-frontmatter-check; --no-verify exits.
+      glob: 'docs/adr/*.md'
+      run: pnpm tsx scripts/check-adr-index.ts
+
     markdownlint:
       tags: lint
       # Per memory feedback_markdownlint_preflight — pre-flight catches

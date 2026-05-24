@@ -59,7 +59,7 @@ sunset_trigger: | # multiline string,列触发本 ADR 重审的具体条件
 
 可组合 list (e.g. `[apps/server, packages/types]`)。
 
-### Zod schema 校验 (`.specify/schemas/adr.zod.ts`)
+### Zod schema 校验 (`.specify/schemas/adr-governance/adr.zod.ts`)
 
 ```ts
 import { z } from 'zod';
@@ -75,6 +75,19 @@ export const AdrFrontmatterSchema = z.object({
 ### Lefthook hard gate
 
 `lefthook.yml` `pre-commit` 加 `adr-frontmatter-check`:扫 staged `docs/adr/*.md`,gray-matter 解 frontmatter,对每个 file 跑 Zod schema → fail 拒 commit。
+
+### ADR 修订策略（分层不可变）
+
+ADR 是否可 in-place 改、还是必须 supersede 立新篇，按 `status` 分层（不是「一律不可变」的一刀切）。理由：当前整套 ADR 是 **pre-1.0 greenfield post-meta-pivot** 的未冻结基线（含大量从旧 meta 仓迁入、anchor / 包名 / 类名 stale 的正文），对其行「不可变」仪式只会把纠错成本无意义放大。
+
+| status                       | 修订规则                                                                                                                                            |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Proposed`                   | 尚未冻结 — 自由 in-place 改 / 删，无需 supersede。                                                                                                  |
+| `Accepted`                   | 默认 **supersede-not-delete**：**决策本身**变更时立新 ADR、旧篇标 `Superseded` 并链接覆盖，留住「代码为何长这样」的 rationale。                     |
+| `Accepted`（非决策变更豁免） | 「不改变决策」的修订 **允许 in-place 改**：meta 导入纠错 / anchor typo / 版本号更新 / 路径名更正 / README 索引同步。判据 = 改后决策结论是否仍等价。 |
+| `Deprecated` / `Superseded`  | 终态留史 — 不再 in-place 改。                                                                                                                       |
+
+`docs/adr/README.md` L3 的修订声明是本规则的面向读者摘要，二者保持一致。
 
 ### Orchestrator programmatic filter
 
