@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Phone } from '../account/phone.vo';
+import { normalizePhone } from '../account/account.rules';
 import { RequestSmsCodeUseCase } from './request-sms-code.usecase';
 import { RequestSmsCodeRequest } from './request-sms-code.request';
 import { RequestSmsCodeResponse } from './request-sms-code.response';
@@ -48,6 +48,6 @@ export class AccountSmsCodeController {
     type: ProblemDetailResponse,
   })
   async request(@Body() body: RequestSmsCodeRequest): Promise<RequestSmsCodeResponse> {
-    return this.useCase.execute(Phone.create(body.phone));
+    return this.useCase.execute(normalizePhone(body.phone));
   }
 }

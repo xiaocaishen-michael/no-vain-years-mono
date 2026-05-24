@@ -10,8 +10,6 @@ import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
 import { SmsCodeStore } from '../../src/auth/sms-code.store';
 import { REDIS_CLIENT } from '../../src/security/redis.token';
-import { Phone } from '../../src/account/phone.vo';
-import { SmsCode } from '../../src/auth/sms-code.vo';
 import type { Redis } from 'ioredis';
 
 const SERVER_DIR = process.cwd();
@@ -120,9 +118,9 @@ describe.skipIf(!RUN_PERF)(
       });
 
       // ACTIVE_WRONG: pre-store correct SMS code (1h TTL). 1000 reps send WRONG_CODE → 401.
-      await smsCodeStore.store(Phone.create(ACTIVE_PHONE_WRONG), SmsCode.create(STORED_CODE), 3600);
+      await smsCodeStore.store(ACTIVE_PHONE_WRONG, STORED_CODE, 3600);
       // ACTIVE_EXPIRED: NEVER store SMS code → verify returns null → 码过期 path.
-      await smsCodeStore.clear(Phone.create(ACTIVE_PHONE_EXPIRED));
+      await smsCodeStore.clear(ACTIVE_PHONE_EXPIRED);
       // ANONYMIZED: code state irrelevant (ANONYMIZED throws before verify).
     }, 180_000);
 

@@ -1,6 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Phone } from '../account/phone.vo';
-import { SmsCode } from './sms-code.vo';
 import type { SmsGateway } from './sms-gateway.port';
 
 /**
@@ -16,13 +14,13 @@ export class MockSmsGateway implements SmsGateway {
   private readonly logger = new Logger(MockSmsGateway.name);
   private readonly lastCode = new Map<string, string>();
 
-  async sendCode(phone: Phone, code: SmsCode): Promise<void> {
-    this.lastCode.set(phone.value, code.value);
-    this.logger.log(`[MOCK SMS] sent ${code.value} to ${phone.value}`);
+  async sendCode(phone: string, code: string): Promise<void> {
+    this.lastCode.set(phone, code);
+    this.logger.log(`[MOCK SMS] sent ${code} to ${phone}`);
   }
 
-  getLastCode(phone: Phone): string | undefined {
-    return this.lastCode.get(phone.value);
+  getLastCode(phone: string): string | undefined {
+    return this.lastCode.get(phone);
   }
 
   clearAll(): void {

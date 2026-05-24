@@ -8,7 +8,6 @@ import { execFileSync } from 'node:child_process';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
 import { MockSmsGateway } from '../../src/auth/mock-sms.gateway';
-import { Phone } from '../../src/account/phone.vo';
 import { SMS_GATEWAY } from '../../src/auth/sms-gateway.port';
 
 const SERVER_DIR = process.cwd();
@@ -79,7 +78,7 @@ describe('US4 e2e — FROZEN / ANONYMIZED + valid token → 401 (FR-009)', () =>
       url: '/api/v1/accounts/sms-codes',
       payload: { phone },
     });
-    const code = mockSms.getLastCode(Phone.create(phone));
+    const code = mockSms.getLastCode(phone);
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/accounts/phone-sms-auth',

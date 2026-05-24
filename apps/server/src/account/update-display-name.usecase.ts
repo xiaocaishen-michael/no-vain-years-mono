@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../security/prisma.service';
-import { DisplayName } from './display-name.vo';
-import { AccountStatus, isActive } from './account.rules';
+import { AccountStatus, isActive, normalizeDisplayName } from './account.rules';
 
 export interface UpdateDisplayNameResult {
   accountId: bigint;
@@ -23,9 +22,9 @@ export class UpdateDisplayNameUseCase {
       throw new NotFoundException('ACCOUNT_NOT_FOUND');
     }
 
-    let displayName: DisplayName;
+    let displayName: string;
     try {
-      displayName = DisplayName.create(rawDisplayName);
+      displayName = normalizeDisplayName(rawDisplayName);
     } catch (err) {
       if (err instanceof Error && err.message.startsWith('INVALID_DISPLAY_NAME')) {
         throw new BadRequestException(err.message);
@@ -40,13 +39,13 @@ export class UpdateDisplayNameUseCase {
 
     await this.prisma.account.update({
       where: { id: accountId },
-      data: { displayName: displayName.value },
+      data: { displayName },
     });
 
     return {
       accountId: account.id,
       phone: account.phone,
-      displayName: displayName.value,
+      displayName,
       status: account.status as AccountStatus,
       createdAt: account.createdAt,
     };

@@ -2,8 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import type Dysmsapi from '@alicloud/dysmsapi20170525';
 import { AliyunSmsGateway } from './aliyun-sms.gateway';
 import type { RetryExecutor } from './retry-executor.port';
-import { Phone } from '../account/phone.vo';
-import { SmsCode } from './sms-code.vo';
 
 /**
  * T051 unit spec for AliyunSmsGateway — mock Aliyun SDK + RetryExecutor。
@@ -12,8 +10,8 @@ import { SmsCode } from './sms-code.vo';
  * (per 2026-05-17 W3 起手 user choice "Skeleton-only")。
  */
 describe('AliyunSmsGateway', () => {
-  const phone = Phone.create('+8613800138999');
-  const code = SmsCode.create('123456');
+  const phone = '+8613800138999';
+  const code = '123456';
   const SIGN_NAME = 'TestSign';
   const TEMPLATE_CODE = 'SMS_TEST_001';
 
@@ -82,7 +80,7 @@ describe('AliyunSmsGateway', () => {
       buildPassThroughRetryMock(),
     );
 
-    const intlPhone = { value: '8521234567890' } as unknown as Phone;
+    const intlPhone = '8521234567890';
     await gateway.sendCode(intlPhone, code);
 
     expect(sendSms.mock.calls[0]![0].phoneNumbers).toBe('8521234567890');

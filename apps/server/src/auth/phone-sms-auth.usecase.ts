@@ -1,6 +1,4 @@
 import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
-import { Phone } from '../account/phone.vo';
-import { SmsCode } from './sms-code.vo';
 import { SmsCodeStore } from './sms-code.store';
 import { InspectAccountStatusUseCase } from '../account/inspect-account-status.usecase';
 import { CommitPhoneLoginUseCase } from '../account/commit-phone-login.usecase';
@@ -38,7 +36,7 @@ export class PhoneSmsAuthUseCase {
     private readonly authFailureLock: AuthFailureLockService,
   ) {}
 
-  async execute(phone: Phone, code: SmsCode): Promise<PhoneSmsAuthResult> {
+  async execute(phone: string, code: string): Promise<PhoneSmsAuthResult> {
     // FR-S07 #4: lock check — locked phone 直接 throw 429 + Retry-After。
     await this.authFailureLock.assertNotLocked(phone);
     try {
@@ -53,9 +51,9 @@ export class PhoneSmsAuthUseCase {
     }
   }
 
-  private async executeInternal(phone: Phone, code: SmsCode): Promise<PhoneSmsAuthResult> {
+  private async executeInternal(phone: string, code: string): Promise<PhoneSmsAuthResult> {
     // 状态判定必须先于 verifyCode (反枚举时序,per CL-006)。
-    const inspection = await this.inspectAccountStatus.execute(phone.value);
+    const inspection = await this.inspectAccountStatus.execute(phone);
 
     // CL-006 FROZEN disclosure — 403 + freezeUntil, NOT in timing pad scope.
     if (inspection.kind === 'FROZEN') {
@@ -79,7 +77,7 @@ export class PhoneSmsAuthUseCase {
     await this.smsCodeStore.clear(phone);
 
     // 验证通过 → 委托 account context 落地 (login 更新 lastLoginAt / 注册 create+event)。
-    const { accountId } = await this.commitPhoneLogin.execute(phone.value);
+    const { accountId } = await this.commitPhoneLogin.execute(phone);
 
     const accessToken = this.jwtTokenService.signAccessToken({ accountId });
     const refreshToken = this.jwtTokenService.generateRefreshToken();

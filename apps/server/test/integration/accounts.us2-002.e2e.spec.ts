@@ -7,7 +7,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
 import { AppModule } from '../../src/app/app.module';
 import { MockSmsGateway } from '../../src/auth/mock-sms.gateway';
-import { Phone } from '../../src/account/phone.vo';
 import { SMS_GATEWAY } from '../../src/auth/sms-gateway.port';
 
 const SERVER_DIR = process.cwd();
@@ -74,7 +73,7 @@ describe('US2-002 e2e — Onboarding PATCH /me 设置 displayName (FR-003, FR-00
       url: '/api/v1/accounts/sms-codes',
       payload: { phone },
     });
-    const code = mockSms.getLastCode(Phone.create(phone));
+    const code = mockSms.getLastCode(phone);
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/accounts/phone-sms-auth',

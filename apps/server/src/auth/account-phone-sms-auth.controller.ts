@@ -1,7 +1,7 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Phone } from '../account/phone.vo';
-import { SmsCode } from './sms-code.vo';
+import { normalizePhone } from '../account/account.rules';
+import { assertValidSmsCode } from './sms-code.rules';
 import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase';
 import { PhoneSmsAuthRequest } from './phone-sms-auth.request';
 import { PhoneSmsAuthResponse } from './phone-sms-auth.response';
@@ -54,7 +54,9 @@ export class AccountPhoneSmsAuthController {
     type: ProblemDetailResponse,
   })
   async auth(@Body() body: PhoneSmsAuthRequest): Promise<PhoneSmsAuthResponse> {
-    const result = await this.useCase.execute(Phone.create(body.phone), SmsCode.create(body.code));
+    const phone = normalizePhone(body.phone);
+    assertValidSmsCode(body.code);
+    const result = await this.useCase.execute(phone, body.code);
     return {
       accountId: result.accountId.toString(),
       accessToken: result.accessToken,
