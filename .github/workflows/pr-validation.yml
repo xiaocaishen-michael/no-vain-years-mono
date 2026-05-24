@@ -139,7 +139,7 @@ jobs:
         # lefthook server-moat-check 的云端镜像 (--no-verify 绕不过这里)。Full-scan,
         # 不依赖 nx affected — 护城河是 holistic invariant。Not a new ruleset context:
         # runs inside the required validate-and-test job, no ruleset change needed.
-        run: pnpm tsx scripts/check-server-moat.ts
+        run: pnpm tsx scripts/checks/check-server-moat.ts
 
       - name: Run Nx Affected Pipeline
         # base=origin/main for PR diff; nx affected computes which projects'

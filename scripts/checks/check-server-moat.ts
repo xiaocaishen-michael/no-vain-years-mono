@@ -23,10 +23,10 @@
  * 的 glob 只决定**是否**跑, 不决定**扫什么**。语法级遍历 (不做类型解析) → 快,
  * 不依赖 `prisma generate` 是否跑过。
  *
- * Usage: pnpm tsx scripts/check-server-moat.ts
+ * Usage: pnpm tsx scripts/checks/check-server-moat.ts
  * Exit:  0 全过 / 1 ≥1 违规
  *
- * Deps (mono root devDeps): ts-morph, tsx
+ * Deps (@nvy/checks): ts-morph; run via root tsx。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -153,6 +153,7 @@ function paramTypeName(param: ParameterDeclaration): string | null {
   return m ? m[0] : null;
 }
 
+/** FS-driven 全量扫描 (CLI 入口): 从 glob 装载 + 读 schema.prisma 锚。 */
 export function scanServerMoat(opts?: { srcGlobs?: string[]; schemaPath?: string }): Violation[] {
   const schemaAccessors = readSchemaAccessors(opts?.schemaPath ?? SCHEMA_PATH);
   const project = new Project({
@@ -160,91 +161,114 @@ export function scanServerMoat(opts?: { srcGlobs?: string[]; schemaPath?: string
     compilerOptions: { allowJs: false },
   });
   project.addSourceFilesAtPaths(opts?.srcGlobs ?? SRC_GLOBS);
+  return scanSourceFiles(project.getSourceFiles(), schemaAccessors);
+}
 
+/**
+ * 纯扫描核心 (语法级遍历 SourceFile[])。schemaAccessors = 真 Prisma model 锚集合。
+ * 与 FS / glob 解耦 → 单测可喂 in-memory ts-morph fixture (见 check-server-moat.spec.ts)。
+ */
+export function scanSourceFiles(
+  sourceFiles: SourceFile[],
+  schemaAccessors: Set<string>,
+): Violation[] {
   const violations: Violation[] = [];
+  for (const sf of sourceFiles) {
+    const fileCtx = ctxOfFile(sf.getFilePath());
+    checkDataMoat(sf, fileCtx, schemaAccessors, violations);
+    checkInjectionAnnotations(sf, fileCtx, violations);
+  }
+  return violations.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+}
 
-  for (const sf of project.getSourceFiles()) {
-    const filePath = sf.getFilePath();
-    const fileCtx = ctxOfFile(filePath);
+/** Check 1 — 跨 bounded context 的 Prisma model 访问 (写禁 / 读需 CROSS-CONTEXT-READ)。 */
+function checkDataMoat(
+  sf: SourceFile,
+  fileCtx: string | null,
+  schemaAccessors: Set<string>,
+  violations: Violation[],
+): void {
+  const filePath = sf.getFilePath();
+  for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+    const callee = call.getExpression();
+    if (!Node.isPropertyAccessExpression(callee)) continue;
+    const op = callee.getName();
+    if (!PRISMA_OPS.has(op)) continue;
+    const inner = callee.getExpression();
+    if (!Node.isPropertyAccessExpression(inner)) continue;
+    const accessor = inner.getName();
+    if (!schemaAccessors.has(accessor)) continue; // 非 Prisma model, 跳过
 
-    // ── Check 1: 数据护城河 ──────────────────────────────────────────────
-    for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-      const callee = call.getExpression();
-      if (!Node.isPropertyAccessExpression(callee)) continue;
-      const op = callee.getName();
-      if (!PRISMA_OPS.has(op)) continue;
-      const inner = callee.getExpression();
-      if (!Node.isPropertyAccessExpression(inner)) continue;
-      const accessor = inner.getName();
-      if (!schemaAccessors.has(accessor)) continue; // 非 Prisma model, 跳过
-
-      const line = inner.getNameNode().getStartLineNumber();
-      const owner = MODEL_OWNERSHIP[accessor];
-      if (!owner) {
-        violations.push({
-          file: filePath,
-          line,
-          rule: 'moat-unmapped',
-          message: `Prisma model '${accessor}' 被访问但 MODEL_OWNERSHIP 未声明 owner — 接线新表时必须在 check-server-moat.ts 声明其所属 context`,
-        });
-        continue;
-      }
-      if (fileCtx === owner) continue; // 自有表, 合法
-
-      if (WRITE_OPS.has(op)) {
-        violations.push({
-          file: filePath,
-          line,
-          rule: 'moat-write',
-          message: `${fileCtx} 跨 ctx **写** ${owner} 的表 '${accessor}.${op}()' — 禁; 委托 ${owner} 的 Commit*UseCase (R2, per ADR-0043 §3)`,
-        });
-        continue;
-      }
-      // 读: 允许带 // CROSS-CONTEXT-READ: 的只读逃生口 (catalog Q7-B)
-      const stmt = call.getFirstAncestor((a) => Node.isStatement(a)) ?? call;
-      if (!/CROSS-CONTEXT-READ\b/.test(contiguousCommentAbove(sf, stmt))) {
-        violations.push({
-          file: filePath,
-          line,
-          rule: 'moat-read',
-          message: `${fileCtx} 跨 ctx **读** ${owner} 的表 '${accessor}.${op}()' 缺 // CROSS-CONTEXT-READ: 注释 (catalog Q7-B 只读逃生口) — 或优先走 Outbox replay 本地副本 (Q7-A)`,
-        });
-      }
+    const line = inner.getNameNode().getStartLineNumber();
+    const owner = MODEL_OWNERSHIP[accessor];
+    if (!owner) {
+      violations.push({
+        file: filePath,
+        line,
+        rule: 'moat-unmapped',
+        message: `Prisma model '${accessor}' 被访问但 MODEL_OWNERSHIP 未声明 owner — 接线新表时必须在 scripts/checks/check-server-moat.ts 声明其所属 context`,
+      });
+      continue;
     }
+    if (fileCtx === owner) continue; // 自有表, 合法
 
-    // ── Check 2: 跨业务 ctx 注入注释 ─────────────────────────────────────
-    if (fileCtx !== null && BUSINESS_CTX.has(fileCtx)) {
-      for (const ctor of sf.getDescendantsOfKind(SyntaxKind.Constructor)) {
-        for (const param of ctor.getParameters()) {
-          const typeName = paramTypeName(param);
-          if (!typeName) continue;
-          const imp = sf
-            .getImportDeclarations()
-            .find((d) =>
-              d
-                .getNamedImports()
-                .some((ni) => (ni.getAliasNode() ?? ni.getNameNode()).getText() === typeName),
-            );
-          if (!imp) continue; // 本 ctx 局部类型, 非跨 ctx
-          const targetCtx = ctxOfSpecifier(filePath, imp.getModuleSpecifierValue());
-          if (targetCtx === null || targetCtx === PLATFORM_CTX) continue; // 平台基座豁免
-          if (targetCtx === fileCtx) continue; // 同 ctx
-          if (!BUSINESS_CTX.has(targetCtx)) continue; // 仅业务 ctx 互调要求注释
+    if (WRITE_OPS.has(op)) {
+      violations.push({
+        file: filePath,
+        line,
+        rule: 'moat-write',
+        message: `${fileCtx} 跨 ctx **写** ${owner} 的表 '${accessor}.${op}()' — 禁; 委托 ${owner} 的 Commit*UseCase (R2, per ADR-0043 §3)`,
+      });
+      continue;
+    }
+    // 读: 允许带 // CROSS-CONTEXT-READ: 的只读逃生口 (catalog Q7-B)
+    const stmt = call.getFirstAncestor((a) => Node.isStatement(a)) ?? call;
+    if (!/CROSS-CONTEXT-READ\b/.test(contiguousCommentAbove(sf, stmt))) {
+      violations.push({
+        file: filePath,
+        line,
+        rule: 'moat-read',
+        message: `${fileCtx} 跨 ctx **读** ${owner} 的表 '${accessor}.${op}()' 缺 // CROSS-CONTEXT-READ: 注释 (catalog Q7-B 只读逃生口) — 或优先走 Outbox replay 本地副本 (Q7-A)`,
+      });
+    }
+  }
+}
 
-          if (!/CROSS-CONTEXT-(SYNC|ASYNC|READ)\b/.test(contiguousCommentAbove(sf, param))) {
-            violations.push({
-              file: filePath,
-              line: param.getStartLineNumber(),
-              rule: 'cross-ctx-annotation',
-              message: `${fileCtx} 注入跨 ctx ${targetCtx} 的 '${typeName}' 缺 // CROSS-CONTEXT-{SYNC,ASYNC,READ}: 注释 (注入点 = 行为耦合点, per ADR-0034 Stage C / R2)`,
-            });
-          }
-        }
+/** Check 2 — 跨业务 ctx 的构造器注入参数需 CROSS-CONTEXT-{SYNC,ASYNC,READ} 注释 (R2 / ADR-0034 Stage C)。 */
+function checkInjectionAnnotations(
+  sf: SourceFile,
+  fileCtx: string | null,
+  violations: Violation[],
+): void {
+  if (fileCtx === null || !BUSINESS_CTX.has(fileCtx)) return;
+  const filePath = sf.getFilePath();
+  for (const ctor of sf.getDescendantsOfKind(SyntaxKind.Constructor)) {
+    for (const param of ctor.getParameters()) {
+      const typeName = paramTypeName(param);
+      if (!typeName) continue;
+      const imp = sf
+        .getImportDeclarations()
+        .find((d) =>
+          d
+            .getNamedImports()
+            .some((ni) => (ni.getAliasNode() ?? ni.getNameNode()).getText() === typeName),
+        );
+      if (!imp) continue; // 本 ctx 局部类型, 非跨 ctx
+      const targetCtx = ctxOfSpecifier(filePath, imp.getModuleSpecifierValue());
+      if (targetCtx === null || targetCtx === PLATFORM_CTX) continue; // 平台基座豁免
+      if (targetCtx === fileCtx) continue; // 同 ctx
+      if (!BUSINESS_CTX.has(targetCtx)) continue; // 仅业务 ctx 互调要求注释
+
+      if (!/CROSS-CONTEXT-(SYNC|ASYNC|READ)\b/.test(contiguousCommentAbove(sf, param))) {
+        violations.push({
+          file: filePath,
+          line: param.getStartLineNumber(),
+          rule: 'cross-ctx-annotation',
+          message: `${fileCtx} 注入跨 ctx ${targetCtx} 的 '${typeName}' 缺 // CROSS-CONTEXT-{SYNC,ASYNC,READ}: 注释 (注入点 = 行为耦合点, per ADR-0034 Stage C / R2)`,
+        });
       }
     }
   }
-
-  return violations.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
 }
 
 // ── CLI ────────────────────────────────────────────────────────────────────

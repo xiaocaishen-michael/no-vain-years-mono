@@ -10,7 +10,7 @@
  *   5. K_referenced ⊄ K_example ∪ ALLOWLIST → fail
  *
  * Usage:
- *   pnpm tsx scripts/check-env-sync.ts             # scan all configured pairs
+ *   pnpm tsx scripts/checks/check-env-sync.ts       # scan all configured pairs
  *   lefthook pre-commit hook triggers on staged .env* changes
  */
 
@@ -19,7 +19,8 @@ import { readdir } from 'node:fs/promises';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// Script lives at scripts/checks/ → repo root is two levels up.
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 const ENV_PAIRS: Array<{ example: string; env: string }> = [
   { example: 'apps/server/.env.example', env: 'apps/server/.env' },
@@ -135,7 +136,7 @@ async function main(): Promise<void> {
       '  - Keep .env and .env.example keys aligned (values may differ; .env is gitignored).',
     );
     console.error(
-      '  - For new process.env.<KEY>: add a placeholder to apps/<app>/.env.example, OR add to ALLOWLIST in scripts/check-env-sync.ts (only for runtime/framework vars, not app config).',
+      '  - For new process.env.<KEY>: add a placeholder to apps/<app>/.env.example, OR add to ALLOWLIST in scripts/checks/check-env-sync.ts (only for runtime/framework vars, not app config).',
     );
     process.exit(1);
   }

@@ -15,9 +15,9 @@
  * lefthook hook's glob only decides *whether* to run, never *what* to scan.
  * Mirrors check-adr-frontmatters.ts conventions (exit 0 pass / 1 fail).
  *
- * Usage: pnpm tsx scripts/check-adr-index.ts
+ * Usage: pnpm tsx scripts/checks/check-adr-index.ts
  *
- * Deps (mono root devDeps): gray-matter, tsx
+ * Deps (@nvy/checks): gray-matter; run via root tsx.
  */
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';

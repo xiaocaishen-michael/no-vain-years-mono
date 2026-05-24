@@ -91,7 +91,7 @@ export const isAnonymized = (a: Account): boolean => a.status === 'ANONYMIZED';
 ### 5. 强制层级（诚实声明）
 
 - 跨 module **import 方向**（`account ↛ auth`、`security ↛ 业务`）→ ESLint `boundaries` 机器硬卡。
-- **「只碰自己 owns 的 Prisma model」**（禁 `tx.account.*` in auth）→ boundaries 看不见 Prisma 调用，**已由 `ts-morph` AST 探针 `scripts/check-server-moat.ts` 机器强制**（Plan 05-24 R-6，与 [ADR-0034](0034-auth-account-operation-catalog.md) Evolutionary Path Stage C 注释扫描器合并；挂 lefthook + pr-validation CI）：跨 ctx 写永远禁、读需 `// CROSS-CONTEXT-READ:` 逃生口。
+- **「只碰自己 owns 的 Prisma model」**（禁 `tx.account.*` in auth）→ boundaries 看不见 Prisma 调用，**已由 `ts-morph` AST 探针 `scripts/checks/check-server-moat.ts` 机器强制**（Plan 05-24 R-6，与 [ADR-0034](0034-auth-account-operation-catalog.md) Evolutionary Path Stage C 注释扫描器合并；挂 lefthook + pr-validation CI）：跨 ctx 写永远禁、读需 `// CROSS-CONTEXT-READ:` 逃生口。
 
 ## Consequences
 
@@ -103,7 +103,7 @@ export const isAnonymized = (a: Account): boolean => a.status === 'ANONYMIZED';
 ## Trade-offs
 
 - 贫血失去编译期不变量封装 → 由纯函数 helper + 单测补偿；不变量集中在 `*.rules.ts` 不散落。
-- 数据护城河已由 R-6 AST 探针（`scripts/check-server-moat.ts`）机器强制；R2「调 UseCase 不碰表」从 CR 引导转 CI 硬卡（跨 ctx 写禁、读需 `CROSS-CONTEXT-READ` 逃生口）。
+- 数据护城河已由 R-6 AST 探针（`scripts/checks/check-server-moat.ts`）机器强制；R2「调 UseCase 不碰表」从 CR 引导转 CI 硬卡（跨 ctx 写禁、读需 `CROSS-CONTEXT-READ` 逃生口）。
 - 扁平在单 context use case 暴增时会失焦 → sunset trigger 兜底。
 
 ## References

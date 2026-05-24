@@ -44,7 +44,7 @@ pre-commit:
       # Per ADR-0037 § 2 — trigger only on .env / .env.example diffs to keep
       # the typical commit fast (script walks apps/**/*.ts once). Algorithm:
       # K_example == K_env per pair + process.env refs ⊆ K_example ∪ ALLOWLIST.
-      run: pnpm tsx scripts/check-env-sync.ts
+      run: pnpm tsx scripts/checks/check-env-sync.ts
 
     prisma-generate-gate:
       tags: data
@@ -234,7 +234,7 @@ pre-commit:
       # edit); the script ignores args and always full-scans (consistency is
       # holistic). Local-only gate like adr-frontmatter-check; --no-verify exits.
       glob: 'docs/adr/*.md'
-      run: pnpm tsx scripts/check-adr-index.ts
+      run: pnpm tsx scripts/checks/check-adr-index.ts
 
     server-moat-check:
       tags: server architecture
@@ -249,7 +249,7 @@ pre-commit:
       # 同 adr-index-check)。CI mirror: pr-validation.yml validate-and-test 同名 step
       # (--no-verify 绕得过 lefthook,绕不过云端门禁)。Emergency exit: git commit --no-verify.
       glob: 'apps/server/src/**/*.ts'
-      run: pnpm tsx scripts/check-server-moat.ts
+      run: pnpm tsx scripts/checks/check-server-moat.ts
 
     markdownlint:
       tags: lint

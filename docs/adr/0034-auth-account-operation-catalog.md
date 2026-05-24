@@ -38,7 +38,7 @@ sunset_trigger: |
 | **R2: CROSS-CTX-SYNC**  | 必同 tx 强需求 (e.g. phone-sms-auth → account.autoCreate-or-get) | 编排型 use case 内组合,**建议添加**注释 `// CROSS-CONTEXT-SYNC: <reason>` |
 | **R3: CROSS-CTX-ASYNC** | side effect / 通知 / audit / 风控 (default 跨 context 路径)      | Outbox event,**建议添加**注释 `// CROSS-CONTEXT-ASYNC: <event-type>`      |
 
-> **渐进式强制定位**（per § 落地演进路径）：Stage C 已落地（R-6）—— 物理越界由 `eslint-plugin-boundaries` 硬卡；**R2 CROSS-CTX-SYNC 注入点注释 + 跨 ctx 只读逃生口 `CROSS-CONTEXT-READ`** 由独立 `ts-morph` 探针（`scripts/check-server-moat.ts`）**机器强制（MUST）**。R3 CROSS-CTX-ASYNC（Outbox publish 调用处）无跨 ctx import 可锚，仍为 **SHOULD**（CR 引导）。
+> **渐进式强制定位**（per § 落地演进路径）：Stage C 已落地（R-6）—— 物理越界由 `eslint-plugin-boundaries` 硬卡；**R2 CROSS-CTX-SYNC 注入点注释 + 跨 ctx 只读逃生口 `CROSS-CONTEXT-READ`** 由独立 `ts-morph` 探针（`scripts/checks/check-server-moat.ts`）**机器强制（MUST）**。R3 CROSS-CTX-ASYNC（Outbox publish 调用处）无跨 ctx import 可锚，仍为 **SHOULD**（CR 引导）。
 
 ### LLM decision tree + Operation Catalog
 
@@ -50,7 +50,7 @@ sunset_trigger: |
 
 - LLM agent 触及 server use case / module / spec 时, `.claude/rules/server-bounded-context-decision.md` 自动 surface 简版决策树 + 注释规则
 - `docs/conventions/server-bounded-context-catalog.md` 是 PR review 单一权威 — 4 现有 use case 已 backfill; Plan 2 anticipated 4 候选预占位
-- 注释门禁分阶段（详 § 落地演进路径）已走完：R2 SYNC 注入点注释 + 跨 ctx `CROSS-CONTEXT-READ` 只读逃生口由**独立 `ts-morph` 探针**（`scripts/check-server-moat.ts`，与已退役的 hexagonal layer ESLint **完全解耦、正交**）挂 lefthook + pr-validation CI，已从 **SHOULD** 升 **MUST**（机器强制）。本 ADR frontmatter status 仍 `Accepted`（status 枚举无 `Enforced via CI` 值，门禁达成记在本节与 § 落地演进路径）
+- 注释门禁分阶段（详 § 落地演进路径）已走完：R2 SYNC 注入点注释 + 跨 ctx `CROSS-CONTEXT-READ` 只读逃生口由**独立 `ts-morph` 探针**（`scripts/checks/check-server-moat.ts`，与已退役的 hexagonal layer ESLint **完全解耦、正交**）挂 lefthook + pr-validation CI，已从 **SHOULD** 升 **MUST**（机器强制）。本 ADR frontmatter status 仍 `Accepted`（status 枚举无 `Enforced via CI` 值，门禁达成记在本节与 § 落地演进路径）
 
 ## Trade-offs
 
@@ -64,7 +64,7 @@ CROSS-CONTEXT 注释从 SHOULD 渐进到 MUST，避免 0 Golden Sample 下开 CI
 
 1. **Stage A（M1.1 现在）→ SHOULD**：物理边界（`account ↛ auth` 等 import 方向）由 Nx 标签电网 `@nx/enforce-module-boundaries` 硬卡；`// CROSS-CONTEXT-*` 注释为建议项，靠人工 / AI CR 引导，不阻 merge。
 2. **Stage B（Plan 2 首个跨域 feature）→ 锚 Golden Samples**：人类 / AI 手写 3 个 Golden Sample（R2 / R3 / R-READ 各一），让全仓长出 few-shot 模仿对象。
-3. **Stage C（已落地，Plan 05-24 R-6）→ MUST**：上线**独立 `ts-morph` 探针** `scripts/check-server-moat.ts`（与已退役的 hexagonal layer ESLint **完全解耦、正交** —— 不以其为活跃前提），挂 lefthook（`server-moat-check`）+ pr-validation CI（`validate-and-test` job 内 step，不新增 ruleset context）。探针机器强制两条 boundaries-ESLint 看不见的边界：(a) **数据护城河**——跨 ctx 的 `<x>.<model>.<op>()` 写永远禁 / 读需 `// CROSS-CONTEXT-READ:` 逃生口（catalog Q7-B），合并 [ADR-0043](0043-server-flat-module-paradigm.md) § 5；(b) **R2 CROSS-CTX-SYNC**——跨业务 ctx 构造器注入参数上方必有 `// CROSS-CONTEXT-{SYNC,ASYNC,READ}:` 注释。注释从 SHOULD 翻 **MUST**。R3 CROSS-CTX-ASYNC（Outbox publish 调用）无跨 ctx import 可锚，留 SHOULD。
+3. **Stage C（已落地，Plan 05-24 R-6）→ MUST**：上线**独立 `ts-morph` 探针** `scripts/checks/check-server-moat.ts`（与已退役的 hexagonal layer ESLint **完全解耦、正交** —— 不以其为活跃前提），挂 lefthook（`server-moat-check`）+ pr-validation CI（`validate-and-test` job 内 step，不新增 ruleset context）。探针机器强制两条 boundaries-ESLint 看不见的边界：(a) **数据护城河**——跨 ctx 的 `<x>.<model>.<op>()` 写永远禁 / 读需 `// CROSS-CONTEXT-READ:` 逃生口（catalog Q7-B），合并 [ADR-0043](0043-server-flat-module-paradigm.md) § 5；(b) **R2 CROSS-CTX-SYNC**——跨业务 ctx 构造器注入参数上方必有 `// CROSS-CONTEXT-{SYNC,ASYNC,READ}:` 注释。注释从 SHOULD 翻 **MUST**。R3 CROSS-CTX-ASYNC（Outbox publish 调用）无跨 ctx import 可锚，留 SHOULD。
 
 ## References
 

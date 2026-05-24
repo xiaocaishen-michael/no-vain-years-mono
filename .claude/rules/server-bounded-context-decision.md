@@ -26,7 +26,7 @@ paths:
 
 按规范在**跨 ctx 注入点（构造器 DI 参数）上方**写注释（不是 import 上方 —— Golden Sample `auth/phone-sms-auth.usecase.ts` 把注释挂注入点，因为注入参数才是行为耦合点）：
 
-- `// CROSS-CONTEXT-SYNC: <reason>` (R2) —— **MUST**：跨业务 ctx 注入 UseCase/Service 缺此注释 → `scripts/check-server-moat.ts` 拒（lefthook + CI）
+- `// CROSS-CONTEXT-SYNC: <reason>` (R2) —— **MUST**：跨业务 ctx 注入 UseCase/Service 缺此注释 → `scripts/checks/check-server-moat.ts` 拒（lefthook + CI）
 - `// CROSS-CONTEXT-READ: <data scope + 只读>` (Q7-B 临时路径) —— **MUST**：跨 ctx `prisma.<otherTable>.find*` 缺此注释 → 探针拒；跨 ctx **写**永远禁（无逃生口）
 - `// CROSS-CONTEXT-ASYNC: <event-type>` (R3) —— **SHOULD**：标在 Outbox `publish(...)` 调用上方；无跨 ctx import 可锚，探针不扫，靠 CR 引导
 
