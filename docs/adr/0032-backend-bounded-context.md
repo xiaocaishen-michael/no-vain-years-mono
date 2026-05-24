@@ -28,7 +28,7 @@ LLM agent 加新 use case (e.g. "加 changePhone")时错向放在 `auth/`,因为
 
 模型边界混乱症状:
 
-1. `src/auth/domain/Account.ts` (account 实体) — name 与 module 不符
+1. account 实体曾置于 `src/auth/domain/`（命名与 module 不符）— 拆分后迁 `src/account/domain/account.aggregate.ts`
 2. `src/auth/web/jwt-auth.guard.ts` (security 关注点) — 应跨 module 复用,但物理在 auth/ 里
 3. 单 module 测试覆盖广,fail 时定位慢
 
@@ -46,44 +46,52 @@ LLM agent 加新 use case (e.g. "加 changePhone")时错向放在 `auth/`,因为
 ```text
 src/security/
   security.module.ts
-  jwt.strategy.ts
-  jwt-auth.guard.ts
-  token-issuer.service.ts
-  token-revocation.service.ts
+  jwt-token.service.ts            # JWT 签发/验证(token-issuer + revocation 合一,非拆两 service)
+  prisma.service.ts               # 共享 PrismaService(平台基座,per ADR-0041)
+  problem-detail.filter.ts        # 全局异常 filter(per ADR-0038)
+  form-validation.exception.ts
+  redis.token.ts                  # REDIS_CLIENT DI token
 ```
 
 ### 2. `src/account/`
 
 - Account 实体 + Repository
-- GetProfile / UpdateDisplayName / auto-create use cases
+- GetProfile / UpdateDisplayName use case（account auto-create 内联在 auth 的 `phone-sms-auth.usecase`，per [ADR-0033](0033-outbox-cross-context-comm.md)，非独立 service）
 - **依赖** security (验 JWT) — 但通过 SecurityModule 公开 guard,不直接 import 内部
 
 ```text
 src/account/
   account.module.ts
-  domain/Account.ts (从 src/auth/domain/ 移)
-  domain/AccountRepository.port.ts
-  application/get-profile.usecase.ts
+  domain/account.aggregate.ts          # (原计划 Account.ts)
+  domain/account-state-machine.ts
+  domain/phone.vo.ts / display-name.vo.ts
+  domain/account-in-freeze-period.exception.ts
+  application/get-account-profile.usecase.ts
   application/update-display-name.usecase.ts
-  application/auto-create.service.ts
-  infrastructure/account.repository.prisma.ts
-  web/account.controller.ts
+  application/ports/account.repository.port.ts
+  infrastructure/account.prisma.repository.ts
+  web/account-profile.controller.ts
+  web/jwt-auth.guard.ts                # JWT 守卫落消费侧 account/web(非 security/)
 ```
 
 ### 3. `src/auth/`
 
 - phone-sms-auth use case (编排 security + account)
 - SMS code domain (SmsCodeRepository / verify)
-- refresh-token use case (per ADR-0037)
+- refresh-token use case（per [ADR-0037](0037-security-credentials-governance.md)）— **未实装**（0037 Proposed，future）
 - **依赖** security + account (编排,组合两者)
 
 ```text
 src/auth/
   auth.module.ts
-  domain/SmsCode.ts
-  application/phone-sms-auth.usecase.ts  ← 编排:验码 → account.autoCreate / get → security.issueTokens
-  application/refresh-token.usecase.ts   ← 编排:security.verify → security.rotate
-  ...
+  domain/sms-code.vo.ts                  # (原计划 SmsCode.ts)
+  domain/auth-attempt-locked.exception.ts
+  application/phone-sms-auth.usecase.ts  ← 编排:验码 → account autoCreate/get → security issueTokens
+  application/request-sms-code.usecase.ts
+  application/ports/*.port.ts            # sms-gateway / sms-code.repository / timing-defense / retry-executor / outbox-publisher
+  infrastructure/*                       # aliyun-sms.gateway / sms-code.redis.repository / outbox-event.prisma.publisher / ...
+  web/account-phone-sms-auth.controller.ts / account-sms-code.controller.ts
+  # refresh-token.usecase.ts — 未实装(future,per ADR-0037 Proposed)
 ```
 
 ### 依赖方向(强制 ESLint boundaries)
