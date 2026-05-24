@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { SecurityModule } from '../security/security.module.js';
 import { GetAccountProfileUseCase } from './application/get-account-profile.usecase.js';
 import { UpdateDisplayNameUseCase } from './application/update-display-name.usecase.js';
+import { InspectAccountStatusUseCase } from './application/inspect-account-status.usecase.js';
+import { CommitPhoneLoginUseCase } from './application/commit-phone-login.usecase.js';
 import { AccountProfileController } from './web/account-profile.controller.js';
 import { AccountIdThrottlerGuard } from './web/account-id-throttler.guard.js';
 import { JwtAuthGuard } from './web/jwt-auth.guard.js';
@@ -20,7 +22,9 @@ import { JwtAuthGuard } from './web/jwt-auth.guard.js';
  * directly) and JwtModule (JwtAuthGuard injects JwtService).
  *
  * Exports JwtAuthGuard + AccountIdThrottlerGuard so AuthModule (the编排 layer)
- * can reuse the guards on its own controllers.
+ * can reuse the guards on its own controllers; also exports the two cross-ctx
+ * login use cases (Inspect read + Commit write, per ADR-0043 两段式委托) so
+ * AuthModule's phone-sms-auth orchestrator never touches `prisma.account.*`.
  */
 @Module({
   imports: [SecurityModule],
@@ -28,9 +32,16 @@ import { JwtAuthGuard } from './web/jwt-auth.guard.js';
   providers: [
     GetAccountProfileUseCase,
     UpdateDisplayNameUseCase,
+    InspectAccountStatusUseCase,
+    CommitPhoneLoginUseCase,
     JwtAuthGuard,
     AccountIdThrottlerGuard,
   ],
-  exports: [JwtAuthGuard, AccountIdThrottlerGuard],
+  exports: [
+    JwtAuthGuard,
+    AccountIdThrottlerGuard,
+    InspectAccountStatusUseCase,
+    CommitPhoneLoginUseCase,
+  ],
 })
 export class AccountModule {}
