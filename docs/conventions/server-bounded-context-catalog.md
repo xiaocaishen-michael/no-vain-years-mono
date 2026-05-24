@@ -21,11 +21,11 @@
 **实现**：直接 `@Inject()` 或 import；无注释要求。
 
 ```ts
-// account/application/update-display-name.usecase.ts
+// account/update-display-name.usecase.ts (R1: 同 ctx 自己的表 → 直注 PrismaService,无 repository port)
 @Injectable()
 export class UpdateDisplayNameUseCase {
-  constructor(@Inject(ACCOUNT_REPOSITORY) private readonly repo: AccountRepository) {}
-  // 调 same-context AccountRepository, R1, 无注释
+  constructor(private readonly prisma: PrismaService) {}
+  // 直查/写自己 ctx 的 account 表 (this.prisma.account.*),贫血 row + *.rules.ts 纯函数,无注释
 }
 ```
 
@@ -35,11 +35,19 @@ export class UpdateDisplayNameUseCase {
 
 **实现**：编排型 use case 物理放 `auth/`（编排层），跨 context import 上方 **建议（Should）加注释**（沉淀模式，人工 / AI CR 抽检；达收网里程碑后经自动化脚本升级为 Must，per [ADR-0034](../adr/0034-auth-account-operation-catalog.md) § 落地演进路径）：
 
+编排层**不碰** `tx.<otherTable>.*`（护城河，per [ADR-0043](../adr/0043-server-flat-module-paradigm.md) § 5）—— 委托 callee 的 UseCase；callee 自持 tx 写自己的表 + 发自己的 event。必要时拆两段（Inspect 读 + Commit 写，per ADR-0043 § 3a）：
+
 ```ts
-// auth/application/phone-sms-auth.usecase.ts
-await prisma.$transaction(async (tx) => {
-  // CROSS-CONTEXT-SYNC: 同 tx 注册 account + 发 outbox event,失败时整 tx rollback
+// auth/phone-sms-auth.usecase.ts (编排层,零 tx.account.*)
+// CROSS-CONTEXT-SYNC: 委托 account ctx 落地登录/注册 (两段式 Saga)
+const inspection = await this.inspectAccountStatus.execute(phone); // 第1段: 只读, 反枚举分支
+// ...auth 自己校验短信码 (必须夹在读与写之间)...
+const { accountId } = await this.commitPhoneLogin.execute(phone); // 第2段: account 自持 tx 写
+
+// account/commit-phone-login.usecase.ts (callee 写自己的表 R1 + 发自己的 event R3)
+await this.prisma.$transaction(async (tx) => {
   const created = await tx.account.create({ ... });
+  // CROSS-CONTEXT-ASYNC: auth.account.created → 下游消费方
   await this.outboxPublisher.publish(tx, ACCOUNT_CREATED_EVENT_TYPE, event.payload);
 });
 ```
@@ -53,9 +61,9 @@ await prisma.$transaction(async (tx) => {
 **实现**：通过 `OutboxPublisher.publish(tx, eventType, data)` 写 outbox event。trace_id / occurred_at / event_version / producer_context 由 publisher 自动封 envelope（per ADR-0033）。caller 上方 **建议（Should）加注释**：
 
 ```ts
-// account/application/change-phone.usecase.ts (anticipated)
+// account/change-phone.usecase.ts (anticipated; account 改自己的表,直注 PrismaService)
 await this.prisma.$transaction(async (tx) => {
-  await this.accountRepo.updatePhone(tx, accountId, newPhone);
+  await tx.account.update({ where: { id: accountId }, data: { phone: newPhone } });
   // CROSS-CONTEXT-ASYNC: account.phone-changed → security 撤旧 session + audit 留痕
   await this.outboxPublisher.publish(tx, 'account.phone-changed', { accountId, newPhone });
 });
@@ -85,19 +93,22 @@ await this.prisma.$transaction(async (tx) => {
 
 ### 决策树死角
 
-- **同时是 R2 + R3 的 case** — 编排 use case 在 `$transaction` 内同时 `account.create()` (R2) + `outboxPublisher.publish('auth.account.created')` (R3)。这是正常的，两条注释都写。参 `phone-sms-auth.usecase.ts`。
-- **跨 ctx 但不在 use case 层** — 比如 Guard / Filter 跨 module 引用。这是 platform infra 例外的扩展场景，看 [ADR-0032](../adr/0032-backend-bounded-context.md) 实装注 — guards/filters 大多归 `security/` 或 `account/web/`。
+- **同时是 R2 + R3 的 case** — R2 写 + R3 publish 归**被调 context 自己的 use case**（高内聚生命周期委托，per [ADR-0043](../adr/0043-server-flat-module-paradigm.md) § 3a）：`CommitPhoneLoginUseCase`（account ctx）在 `$transaction` 内 find-or-create（R2，account 写自己的表）+ `outboxPublisher.publish('auth.account.created')`（R3，account 发自己的事件）。编排层 `auth` 不碰 `tx.account.*`，只委托。注意反枚举时序需求时 R2 要拆**两段式**（`InspectAccountStatusUseCase` 只读 + `CommitPhoneLoginUseCase` 写），见 ADR-0043 § 3a。
+- **跨 ctx 读做决策**（caller 校验前需 callee 状态）— 走 callee 的只读 `Inspect*UseCase`（R2 的读半段，返回贫血 discriminated 状态），**不**直 `prisma.<otherTable>` 读（护城河）。这是 Q7 的强一致实时版（Q7-A 物化视图是最终一致版）。
+- **跨 ctx 但不在 use case 层** — 比如 Guard / Filter 跨 module 引用。这是 platform infra 例外的扩展场景，看 [ADR-0032](../adr/0032-backend-bounded-context.md) 实装注 — guards/filters 大多归 `security/` 或 `account/`（扁平后无 `web/` 层,per ADR-0043 § 1）。
 
 ## Operation Catalog
 
-### 已实装（截至 2026-05-22）
+### 已实装（截至 2026-05-24）
 
-| Operation             | Context | Side effects / Propagation                                                                                                                                                | Source PR           |
-| --------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| `request-sms-code`    | auth    | (intra; sms gateway external infra; no cross-context)                                                                                                                     | PR #7 (Plan 1 W2.4) |
-| `phone-sms-auth`      | auth    | **R2** → `account.autoCreate-or-get`（示意；真实落地 inline `tx.account.create`，同 tx）; **R2** → `security.issueTokens`; **R3** → outbox publish `auth.account.created` | PR #7               |
-| `get-account-profile` | account | (intra; read-only)                                                                                                                                                        | PR #65 (A-002)      |
-| `update-display-name` | account | (intra; write Account.display_name)                                                                                                                                       | PR #65              |
+| Operation                | Context | Side effects / Propagation                                                                                                                                                                                                     | Source PR             |
+| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| `request-sms-code`       | auth    | (intra; sms gateway external infra; no cross-context)                                                                                                                                                                          | PR #7 (Plan 1 W2.4)   |
+| `phone-sms-auth`         | auth    | 编排（两段式委托，per ADR-0043 § 3a）：**R2 读** → `account.inspect-account-status`（状态探查，反枚举分支先于验码）; **R2 写** → `account.commit-phone-login`; `security.issueTokens`。auth 内零 `tx.account.*`（护城河 #160） | PR #7 → 改 #160 (R-4) |
+| `inspect-account-status` | account | 跨 ctx **只读**（被 auth 委托）— 返回贫血 `{ kind: NOT_FOUND\|ACTIVE\|FROZEN\|ANONYMIZED }`，不改数据（两段式 Saga 读半段）                                                                                                    | PR #160 (R-4)         |
+| `commit-phone-login`     | account | 跨 ctx **写**（被 auth 委托）— **R2** find-or-create + record lastLoginAt（account 写自己的表）+ **R3** outbox publish `auth.account.created`（account 发自己的事件）；FR-S08 P2002 race fallback                              | PR #160 (R-4)         |
+| `get-account-profile`    | account | (intra; read-only)                                                                                                                                                                                                             | PR #65 (A-002)        |
+| `update-display-name`    | account | (intra; write Account.display_name)                                                                                                                                                                                            | PR #65                |
 
 ### Plan 2 anticipated（示例，非实装承诺）
 

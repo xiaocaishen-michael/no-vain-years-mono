@@ -20,7 +20,7 @@ sunset_trigger: |
 
 PR-4 (#72, Server bounded context split) 实装时 [ADR-0032](0032-backend-bounded-context.md) 设计的 `src/security/` 范围被现实需求**扩展**:不仅 JWT,还容纳了 `PrismaService` / `REDIS_CLIENT` / `ProblemDetailFilter` / `ProblemDetailResponse` DTO / `FormValidationException` 等**平台层基础设施**(per [ADR-0032 实装注](0032-backend-bounded-context.md#L17))。
 
-设计依据 — `account/AccountPrismaRepository` 需注入 `PrismaService`,但**不能反向 import auth/**(违反单向 `auth → account → security` 边界);若放 `src/common/` 又需新建一个完全独立的目录 + module + ESLint element + tsconfig path,增加心智负担。**取消 src/common/**,security/ 充当 platform base 是最少额外结构的解。
+设计依据 — `account` ctx（PR-4 时为 `AccountPrismaRepository`;[ADR-0043](0043-server-flat-module-paradigm.md) R-2+3 后该 repository 删除,改 use case 直注）需注入 `PrismaService`,但**不能反向 import auth/**(违反单向 `auth → account → security` 边界);若放 `src/common/` 又需新建一个完全独立的目录 + module + ESLint element + tsconfig path,增加心智负担。**取消 src/common/**,security/ 充当 platform base 是最少额外结构的解。
 
 但这个选择当时是 **PR-4 scope 边界 round 的 implicit 决策**(user 在多轮 scope 收口时明示 "PR-4 不引入 src/common"),**未文档化为 baseline**。隐患:
 
