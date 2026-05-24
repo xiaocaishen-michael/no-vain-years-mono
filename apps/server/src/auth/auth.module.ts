@@ -13,20 +13,20 @@ import {
 import { SecurityModule } from '../security/security.module.js';
 import { AccountModule } from '../account/account.module.js';
 import { REDIS_CLIENT } from '../security/redis.token.js';
-import { RETRY_EXECUTOR, type RetryExecutor } from './application/ports/retry-executor.port.js';
-import { SMS_GATEWAY } from './application/ports/sms-gateway.port.js';
-import { TIMING_DEFENSE_EXECUTOR } from './application/ports/timing-defense.port.js';
-import { PhoneSmsAuthUseCase } from './application/phone-sms-auth.usecase.js';
-import { RequestSmsCodeUseCase } from './application/request-sms-code.usecase.js';
-import { AliyunSmsGateway } from './infrastructure/aliyun-sms.gateway.js';
-import { AuthFailureLockService } from './infrastructure/auth-failure-lock.service.js';
-import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor.js';
-import { CockatielRetryExecutor } from './infrastructure/cockatiel-retry.executor.js';
-import { MockSmsGateway } from './infrastructure/mock-sms.gateway.js';
-import { SmsCodeStore } from './infrastructure/sms-code.store.js';
-import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller.js';
-import { AccountSmsCodeController } from './web/account-sms-code.controller.js';
-import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
+import { RETRY_EXECUTOR, type RetryExecutor } from './retry-executor.port.js';
+import { SMS_GATEWAY } from './sms-gateway.port.js';
+import { TIMING_DEFENSE_EXECUTOR } from './timing-defense.port.js';
+import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase.js';
+import { RequestSmsCodeUseCase } from './request-sms-code.usecase.js';
+import { AliyunSmsGateway } from './aliyun-sms.gateway.js';
+import { AuthFailureLockService } from './auth-failure-lock.service.js';
+import { BcryptTimingDefenseExecutor } from './bcrypt-timing-defense.executor.js';
+import { CockatielRetryExecutor } from './cockatiel-retry.executor.js';
+import { MockSmsGateway } from './mock-sms.gateway.js';
+import { SmsCodeStore } from './sms-code.store.js';
+import { AccountPhoneSmsAuthController } from './account-phone-sms-auth.controller.js';
+import { AccountSmsCodeController } from './account-sms-code.controller.js';
+import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
 
 /**
  * Auth bounded context (per ADR-0032 + post-A-002 retro).

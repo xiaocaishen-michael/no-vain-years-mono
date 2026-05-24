@@ -8,10 +8,10 @@ import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
-import { SmsCodeStore } from '../../src/auth/infrastructure/sms-code.store';
+import { SmsCodeStore } from '../../src/auth/sms-code.store';
 import { REDIS_CLIENT } from '../../src/security/redis.token';
-import { Phone } from '../../src/account/domain/phone.vo';
-import { SmsCode } from '../../src/auth/domain/sms-code.vo';
+import { Phone } from '../../src/account/phone.vo';
+import { SmsCode } from '../../src/auth/sms-code.vo';
 import type { Redis } from 'ioredis';
 
 const SERVER_DIR = process.cwd();

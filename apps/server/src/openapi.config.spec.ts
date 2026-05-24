@@ -3,11 +3,11 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { SwaggerModule, OpenAPIObject } from '@nestjs/swagger';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PhoneSmsAuthUseCase } from './auth/application/phone-sms-auth.usecase';
-import { RequestSmsCodeUseCase } from './auth/application/request-sms-code.usecase';
-import { AccountPhoneSmsAuthController } from './auth/web/account-phone-sms-auth.controller';
-import { AccountSmsCodeController } from './auth/web/account-sms-code.controller';
-import { SmsPhoneThrottlerGuard } from './auth/web/sms-phone-throttler.guard';
+import { PhoneSmsAuthUseCase } from './auth/phone-sms-auth.usecase';
+import { RequestSmsCodeUseCase } from './auth/request-sms-code.usecase';
+import { AccountPhoneSmsAuthController } from './auth/account-phone-sms-auth.controller';
+import { AccountSmsCodeController } from './auth/account-sms-code.controller';
+import { SmsPhoneThrottlerGuard } from './auth/sms-phone-throttler.guard';
 import { buildOpenApiConfig } from './openapi.config';
 
 /**

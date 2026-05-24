@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { SecurityModule } from '../security/security.module.js';
-import { GetAccountProfileUseCase } from './application/get-account-profile.usecase.js';
-import { UpdateDisplayNameUseCase } from './application/update-display-name.usecase.js';
-import { InspectAccountStatusUseCase } from './application/inspect-account-status.usecase.js';
-import { CommitPhoneLoginUseCase } from './application/commit-phone-login.usecase.js';
-import { AccountProfileController } from './web/account-profile.controller.js';
-import { AccountIdThrottlerGuard } from './web/account-id-throttler.guard.js';
-import { JwtAuthGuard } from './web/jwt-auth.guard.js';
+import { GetAccountProfileUseCase } from './get-account-profile.usecase.js';
+import { UpdateDisplayNameUseCase } from './update-display-name.usecase.js';
+import { InspectAccountStatusUseCase } from './inspect-account-status.usecase.js';
+import { CommitPhoneLoginUseCase } from './commit-phone-login.usecase.js';
+import { AccountProfileController } from './account-profile.controller.js';
+import { AccountIdThrottlerGuard } from './account-id-throttler.guard.js';
+import { JwtAuthGuard } from './jwt-auth.guard.js';
 
 /**
  * Account bounded context (per ADR-0032 + post-A-002 retro + ADR-0043 扁平贫血).
