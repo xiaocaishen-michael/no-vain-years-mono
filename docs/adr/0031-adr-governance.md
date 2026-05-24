@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0031
-status: Proposed
+status: Accepted
 applies_to: [mono-wide]
 sunset_trigger: |
   - ADR 总数 < 15 (governance overhead > benefit)
@@ -10,7 +10,7 @@ sunset_trigger: |
 
 # ADR-0031: ADR Governance — frontmatter 强制 + Zod schema + programmatic filtering
 
-- Status: Proposed
+- Status: Accepted
 - Deciders: project owner
 - Tags: repo / governance / adr / cross-cutting
 

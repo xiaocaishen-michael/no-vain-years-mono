@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0035
-status: Proposed
+status: Accepted
 applies_to: [apps/server]
 sunset_trigger: |
   - 切 SQL-first migration tool (Atlas / Bytebase / Sqitch) — 整套迁移机制走外部工具
@@ -10,7 +10,7 @@ sunset_trigger: |
 
 # ADR-0035: Data Layer Governance — migrate + naming + seed + types regen gate
 
-- Status: Proposed
+- Status: Accepted
 - Deciders: project owner
 - Tags: backend / data / prisma / governance / cross-cutting
 
