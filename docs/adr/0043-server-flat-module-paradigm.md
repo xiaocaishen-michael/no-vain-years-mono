@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0043
-status: Proposed
+status: Accepted
 applies_to: [apps/server]
 sunset_trigger: |
   - 单个 bounded context use case 数 > 20（扁平单层开始失焦，需内部再分组）
@@ -10,7 +10,7 @@ sunset_trigger: |
 
 # ADR-0043: Server 模块内构范式 — 扁平 + 贫血数据 + 纯函数 Helper + UseCase 跨界
 
-- Status: Proposed
+- Status: Accepted
 - Deciders: project owner
 - Tags: server / architecture / module-internal / llm-ergonomics
 

@@ -64,7 +64,7 @@
 | 0040 | Multi-layer Test Gate (机制 / 策略 / 门禁 三段渐进)             | mono-wide                                        | Accepted   |
 | 0041 | Server `src/common/` Policy — 不引入,平台 infra 进 security/    | apps/server                                      | Accepted   |
 | 0042 | Monorepo Release Strategy — release-please 双线 + 内部包零版本  | mono-wide                                        | Accepted   |
-| 0043 | Server 模块内构范式 — 扁平 + 贫血数据 + 纯函数 Helper + 跨界    | apps/server                                      | Proposed   |
+| 0043 | Server 模块内构范式 — 扁平 + 贫血数据 + 纯函数 Helper + 跨界    | apps/server                                      | Accepted   |
 
 (0021 历史空缺,跳过编号 — 详 commit 历史)
 
