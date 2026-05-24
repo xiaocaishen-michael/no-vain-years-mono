@@ -13,11 +13,11 @@ sunset_trigger: |
 - Status: Accepted (2026-05-19) — **backfill**(实装已落,本 ADR 追溯立)
 - Deciders: project owner
 - Tags: backend / security / cross-cutting
-- Supersedes: [ADR-0011 rate-limit-jcache-then-redis](https://github.com/xiaocaishen-michael/no-vain-years-meta/blob/main/docs/adr/0011-rate-limit-jcache-then-redis.md)(meta-repo Java/Spring Bucket4j 方案)
+- Supersedes: meta-repo [rate-limit-jcache-then-redis 决策](https://github.com/xiaocaishen-michael/no-vain-years-meta/blob/main/docs/adr/0011-rate-limit-jcache-then-redis.md)(Java/Spring Bucket4j 方案)
 
 ## Context
 
-mono Plan 1 起立栈即决定 ditch Java/Spring → NestJS + Fastify + Prisma + Nx(per [ADR-0018](0018-backend-language-pivot.md))。其中 ADR-0018 § 57 + Plan 1 § G.1 ADR cross-ref 矩阵明确:meta-repo ADR-0011(JCache→Redis Bucket4j) **留待 Plan 2 立 ADR-0022** 替代为 NestJS-friendly 方案。
+mono Plan 1 起立栈即决定 ditch Java/Spring → NestJS + Fastify + Prisma + Nx(per [ADR-0018](0018-backend-language-pivot.md))。其中 ADR-0018 § 57 + Plan 1 § G.1 ADR cross-ref 矩阵明确:meta-repo 的 JCache→Redis Bucket4j 限流方案 **留待 Plan 2 立本 ADR** 替代为 NestJS-friendly 方案。
 
 W3 阶段(2026-05-17 ~ 18) US1 A1/A2 task 实装 `/sms-codes` 限流:
 
@@ -56,7 +56,7 @@ mono 限流栈固化为:
 - **Atomic Redis INCR + TTL** — 多 server pod / 弹性扩缩时限流计数共享,无 split-brain;`@nest-lab/throttler-storage-redis` 内部 INCR+EXPIRE atomic Lua,符合 redis-rate-limit 共识
 - **职责分离** — throttler(请求频率)与 `AuthFailureLockService`(重复失败 → 锁定)各管一层;mono FR-S07 #4 不绕 throttler,符合"业务语义 ≠ 频率限流"原则,长期可演化(锁定语义 + 解锁 + freeze 期协同)
 - **测试体例** — Testcontainers Redis 实证(`account-sms-code.rate-limit.it.spec.ts`)而非 mock storage,IT 跑真 INCR / TTL 行为,catch upstream library 行为回归
-- **Bucket4j 概念迁移成本 0** — meta ADR-0011 时代 Bucket4j 已 ditch,无遗留 token-bucket vs sliding-window 算法差异迁移负担;@nestjs/throttler 内置 sliding-window 等价(实为 fixed window with reset,对 SMS 这种秒级 / 小时级阈值精度无影响)
+- **Bucket4j 概念迁移成本 0** — meta Bucket4j 时代已 ditch,无遗留 token-bucket vs sliding-window 算法差异迁移负担;@nestjs/throttler 内置 sliding-window 等价(实为 fixed window with reset,对 SMS 这种秒级 / 小时级阈值精度无影响)
 
 ### Negative / Trade-offs
 
@@ -74,7 +74,7 @@ mono 限流栈固化为:
 - **`bottleneck`** — 拒绝:client-side rate-limit / job queue 工具,scope 是"出向限速",不是"入向请求计数",场景不匹配
 - **Bucket4j-js port** — 拒绝:meta-repo 时代 Bucket4j(Java) 用 token-bucket 算法精度高,但 JS 生态无 first-class port;@nestjs/throttler fixed-window 对 SMS 阈值精度已够
 - **NestJS interceptor 实现限流** — 拒绝:interceptor 跑在 route handler 之前 + Guard 之后,但 Guard 是 NestJS 设计中"准入控制"语义层(返 403/429 而非 transformer);用 Guard 符合 NestJS 心智
-- **保留 ADR-0011 (Bucket4j + Redis)** — 不适用:Plan 1 ADR-0018 已 ditch Java/Spring 栈,Bucket4j(Java only)无路可走;此为"超出选型范围"而非"被拒绝"
+- **保留 meta Bucket4j + Redis 限流** — 不适用:Plan 1 ADR-0018 已 ditch Java/Spring 栈,Bucket4j(Java only)无路可走;此为"超出选型范围"而非"被拒绝"
 
 ## Validation
 
@@ -88,7 +88,7 @@ mono 限流栈固化为:
 - **deferred 验证**:
   - FR-S07 #2 (phone 24h 10x) + #3 (ip 24h 50x) 完整 e2e IT — Plan 2 SC-S04 落
   - FR-S07 #4 (auth:<phone> 5x lock 30min) — 独立 `AuthFailureLockService`,不在本 ADR 范围,IT 由 `phone-sms-auth.usecase.spec.ts` 覆盖
-- **meta ADR-0011 supersede 标记**:[Plan 1 § G.1 ADR matrix](../plans/2026-05/05-18-plan1-backend-stack-poc.md) line 385 已先标 superseded → ADR-0022(本文件);ADR-0018 § 57 reference 同步生效
+- **meta 仓 Bucket4j 限流方案 supersede 标记**:[Plan 1 § G.1 ADR matrix](../plans/2026-05/05-18-plan1-backend-stack-poc.md) line 385 已先标 superseded → 本 ADR;ADR-0018 § 57 reference 同步生效
 
 ## References
 
@@ -97,4 +97,4 @@ mono 限流栈固化为:
 - [spec FR-S07](../../specs/001-phone-sms-auth/spec.md) line 154-158
 - [@nestjs/throttler v6 docs](https://docs.nestjs.com/security/rate-limiting) — module config / decorator / guard / storage adapter
 - [@nest-lab/throttler-storage-redis](https://github.com/nest-lab/throttler-storage-redis) — Redis adapter for @nestjs/throttler
-- meta ADR-0011(rate-limit-jcache-then-redis,JCache→Redis Bucket4j)— superseded
+- meta rate-limit-jcache-then-redis 决策(JCache→Redis Bucket4j)— superseded
