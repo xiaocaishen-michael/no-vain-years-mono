@@ -22,13 +22,13 @@ paths:
    - side-effect notification? → **R3 CROSS-CTX-ASYNC** (Outbox)
    - **独立**只读查询（非编排,caller 只为自己的 response 读 callee 数据）? → SecurityModule 共享读服务 OR Outbox replay 物化视图，**禁** cross-ctx use case 直 DI（与上面编排读区分:编排读是 R2 同请求驱动 callee 生命周期,走 `Inspect*UseCase`）
 
-## 跨上下文注释引导（PR Review 建议项）
+## 跨上下文注释（R-6 探针机器强制 / ADR-0034 Stage C）
 
-触及跨 context 调用时请尽量按规范在 import 上方 1-3 行写注释；当前主干无刚性 CI 拦截，旨在为后续自动化门禁沉淀样本：
+按规范在**跨 ctx 注入点（构造器 DI 参数）上方**写注释（不是 import 上方 —— Golden Sample `auth/phone-sms-auth.usecase.ts` 把注释挂注入点，因为注入参数才是行为耦合点）：
 
-- `// CROSS-CONTEXT-SYNC: <reason>` (R2)
-- `// CROSS-CONTEXT-ASYNC: <event-type>` (R3)
-- `// CROSS-CONTEXT-READ: <data scope + 只读>` (Q7-B 临时路径)
+- `// CROSS-CONTEXT-SYNC: <reason>` (R2) —— **MUST**：跨业务 ctx 注入 UseCase/Service 缺此注释 → `scripts/check-server-moat.ts` 拒（lefthook + CI）
+- `// CROSS-CONTEXT-READ: <data scope + 只读>` (Q7-B 临时路径) —— **MUST**：跨 ctx `prisma.<otherTable>.find*` 缺此注释 → 探针拒；跨 ctx **写**永远禁（无逃生口）
+- `// CROSS-CONTEXT-ASYNC: <event-type>` (R3) —— **SHOULD**：标在 Outbox `publish(...)` 调用上方；无跨 ctx import 可锚，探针不扫，靠 CR 引导
 
 Platform infra 例外（`PrismaService` / `REDIS_CLIENT` / `ProblemDetailFilter` 等从 `SecurityModule` export 的 base layer infra）— 无注释要求，per [ADR-0041](../../docs/adr/0041-server-common-directory-policy.md)。
 
