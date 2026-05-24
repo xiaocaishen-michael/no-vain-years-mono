@@ -23,7 +23,7 @@
 
 | # | 子 plan 文件 | 轨 | 依赖 | 核心交付 | 状态 |
 |---|---|---|---|---|---|
-| 1 | [`…-p1-cloudflare-web.md`](05-24-client-deploy-p1-cloudflare-web.md) | A（Web，独立） | 无 | `_redirects` + server CORS + CF console bootstrap + 自定义域 + smoke test | 🚧 执行中 |
+| 1 | [`…-p1-cloudflare-web.md`](05-24-client-deploy-p1-cloudflare-web.md) | A（Web，独立） | 无 | `_redirects` + server CORS + CF console bootstrap + 自定义域 + smoke test | ✅ 已上线 `app.xiaocaishen.me` |
 | 2 | `…-p2-mobile-foundation.md` | B（Mobile 地基） | 无 | `assets/` 图标 + `eas.json` 全 profile + `eas init` + version 对齐 + ADR-0044 | ☐ 待起 |
 | 3 | `…-p3-android-apk.md` | B | **子 plan 2** | EAS preview profile → 签名 APK → 直接分发 + smoke test | ☐ 待起 |
 | 4 | `…-p4-ios-simulator-testflight.md` | B | **子 plan 2** | 阶段1 simulator build（now）→ 阶段2 TestFlight（账号就绪后） | ☐ 待起 |
@@ -80,7 +80,7 @@ Track B（Mobile）
 
 ### 子 plan 1 — Cloudflare Pages Web 部署
 
-详见 [`05-24-client-deploy-p1-cloudflare-web.md`](05-24-client-deploy-p1-cloudflare-web.md)。要点：repo 侧仅新增 `apps/mobile/public/_redirects`（CORS 接线已就位）；其余 CF console bootstrap + SWAS `.env.production` CORS + 自定义域为 user 手动步骤；smoke test 走 playbook 3 条 curl + 浏览器登录主流程。
+✅ **DONE（2026-05-24 已上线 `https://app.xiaocaishen.me`）**。详见 [`05-24-client-deploy-p1-cloudflare-web.md`](05-24-client-deploy-p1-cloudflare-web.md)。落地：repo 侧 `apps/mobile/public/_redirects`（CORS 接线 + allowlist 实测已就位）+ EXPO_PUBLIC 点号 fix（#175，否则 web 打 localhost）；CF Pages 项目 `no-vain-years-mono`（direct-upload）+ 自定义域 `app.xiaocaishen.me`（外部阿里云 DNS CNAME，per ADR-0025 Note：Workers 不支持外部 DNS 子域故维持 Pages）；smoke 全过（首页/深链 200 + CORS + bundle 命中 prod API）。
 
 ### 子 plan 2 — Mobile binary 共享地基（Phase 0，子 plan 3+4 硬前置）
 
