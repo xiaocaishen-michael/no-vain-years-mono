@@ -2,6 +2,7 @@
 
 > 评估对象：[thedotmack/claude-mem](https://github.com/thedotmack/claude-mem) v13.2.0（2026-05-12 release，main HEAD `37d2494` 2026-05-13，pushed_at 2026-05-17）
 > **Status**：已完成调研 + plan 编写；**实际启动延后到 Plan 1 PoC 完全收尾后**（具体触发条件见 § 1）
+> **处置（2026-05-24 状态追进）**：deferred — Plan 1 已收尾，但被 Plan 2 业务优先级挤后；重启窗口 = Plan 2 业务迁移告一段落。与 [W1 子 plan](05-19-claude-mem-w1-openrouter.md) 捆绑启动。
 > 决策范围：是否在 Plan 1 PoC 之后引入，作为后续所有项目 memory 管理候选
 
 ---

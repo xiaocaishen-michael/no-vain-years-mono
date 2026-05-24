@@ -1,5 +1,7 @@
 # Plan: 技术架构 + 技术栈 + 技术框架 全面 Review (post-A-002 retro)
 
+> **Status（2026-05-24 闭合追进）**：PR-1~PR-5 ship（#69-79）。**PR-6 infra 拆成 3 个按钢钉切的 chore PR 落地** — #100 安全（gitleaks / check-env-sync / secrets stub，ADR-0037）/ #101 数据（prisma generate gate + migration naming + 3 层 seed，ADR-0035）/ #102 性能（perf-budget SSOT + nightly-perf + plan-compiler，ADR-0039）。**PR-7 收口** = #103（Maestro testID + PR template spec sync + ADR↔catalog backlinks）；ADR-0026 stub 已建（later #131 Accepted）；catalog 6 entries 见 #93。**注**：PR-6 清单内「SecurityModule JWT 双 token / refresh rotation / refresh-token usecase」属 Plan 2 batch B `003-tokens` 业务，未随 infra 落地，归 Plan 2 跟踪。
+
 ## Context
 
 A-002 (account-profile + mobile bootstrap) 已 ship (PR #65/#66/#67)，但 ship 过程踩了 5 类集成坑：

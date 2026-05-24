@@ -1,5 +1,7 @@
 # Plan 3 Pre-Plan Inventory(2026-05-19 存档,Plan 3 启动暂停)
 
+> **Status**: archived(参考档,无执行剩余 — 2026-05-24 状态追进确认)
+>
 > **存档说明**:本文是 Plan 3(旧 Java/Expo 资产迁移到 mono)起手前的综合 inventory + drift 分析。2026-05-19 session 在准备 Plan 3 plan 文件阶段,user 提出"对计划有新想法 大变动",Plan 3 起手暂停。本文档保留作未来 Plan 3 / 其他迁移决策的参考输入。
 >
 > **数据源**:3 个并行 Explore subagent + mono 现状本地 reconcile。
