@@ -48,7 +48,7 @@ sunset_trigger: |
 
 - LLM agent 触及 server use case / module / spec 时, `.claude/rules/server-bounded-context-decision.md` 自动 surface 简版决策树 + 注释规则
 - `docs/conventions/server-bounded-context-catalog.md` 是 PR review 单一权威 — 4 现有 use case 已 backfill; Plan 2 anticipated 4 候选预占位
-- ESLint custom rule (defer 到 hexagonal layer ESLint re-add PR, per 05-22 governance plan O3): cross-context import 必前 1-3 行有 `CROSS-CONTEXT-(SYNC|ASYNC|READ):` 注释 — 当前 PR review 人工兜底, 未来上 lint rule
+- ESLint/AST custom rule（**独立的 `ts-morph`/regex 注释扫描项，从已废弃的 hexagonal layer ESLint 重引计划完全解耦** — 该 hexagonal 前提已被 [ADR-0032](0032-backend-bounded-context.md) 在 PR-4 retired，注释扫描与 hexagonal 层正交，不再 defer 到它）: cross-context import 必前 1-3 行有 `CROSS-CONTEXT-(SYNC|ASYNC|READ):` 注释 — 当前 PR review 人工兜底, 未来独立上线该扫描器
 
 ## Trade-offs
 
