@@ -1,5 +1,18 @@
 # Plan: 生产 cutover — mono server drop-in 替换 meta server（Aliyun SWAS）
 
+> ✅ **EXECUTED 2026-05-24** — mono server 已上线 `https://api.xiaocaishen.me`，meta 完全退役。
+> 全 5 phase 完成 + 端到端验证通过（4 容器 healthy / migrate 应用 3 migration / public HTTPS smoke / phone-sms-auth mock 一条龙 200）。Hand-on 复跑步骤见 [`ops/runbook/prod-cutover.md`](../../../ops/runbook/prod-cutover.md)。
+>
+> **执行中实际偏差（plan 外发现，已处理）**：
+>
+> 1. **dry-run 抓出 2 个 CI 漏网 bug**（PR validation 的 Docker build job 是 skipping，从不真 build 镜像）→ 修复合入 #145：(a) 根 `postinstall` 的 `lefthook install` 在无 git 的 alpine builder 失败 → 加 git guard；(b) healthcheck 用 `localhost` 撞 alpine IPv6 `::1` → app 只绑 IPv4 → 永 unhealthy → 改 `127.0.0.1`。
+> 2. **Prisma migrate URL**：Prisma 7 禁 schema 内 `url`（P1012）→ 走既有 `prisma.config.ts`（`datasource.url=process.env.DATABASE_URL`）；`prisma`+`dotenv` 转 prod dep。
+> 3. **ACR 用户名格式**：个人版 docker login 用户名是 `mbw-server@<accountID>`（**无** `.onaliyun.com` 后缀），密码是访问凭证「固定密码」非控制台登录密码。
+> 4. **镜像传输**：build-image 只产 `linux/amd64`；SWAS clone 撞 GFW（TLS termination）→ 用 `docker save | ssh | docker load` 从已登录的本机推镜像，绕开 box ACR login + GFW。
+> 5. **cron 接管**：meta 的 backup-pg / certbot-renew cron 改指 mono（容器名 `nvy-tight-*` + volume `nvy-tight_nvy-letsencrypt`）；backup 实跑验证 OSS 上传通。
+>
+> 关键安全性质：mono 用独立 volume，cutover 只**停** meta 不改 meta 数据 → 回滚 = 起回 meta（数据卷 `mbw-tight_*` 原封不动）。
+
 ## Context
 
 `no-vain-years-mono` 的 NestJS server 要**实际部署到阿里云 SWAS，彻底替换正在跑的 meta server**（`my-beloved-server`，Spring）。这是 4-plan DEFER review 里剩下的「真待办：生产 cutover」，也是 Plan 3 上线的核心一步。决策早已锁定在 [ADR-0026](../adr/0026-backend-deployment-topology.md)（A-Tight v2 复用 + 7 决策 D1-D7），CI 机器（`build-image.yml` / `deploy.yml` / `docker-compose.tight.yml` / `.env.production.example`）也已 ship（#134/#135）。本 plan 把「机器就绪」推进到「真上线」，补齐 3 个 blocker + 跑完 cutover。
