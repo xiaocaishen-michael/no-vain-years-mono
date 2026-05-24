@@ -6,13 +6,13 @@
 
 ## 目录与边界（已由 ADR 治理）
 
-| 关心点                                                               | 单源                                                   |
-| -------------------------------------------------------------------- | ------------------------------------------------------ |
-| apps/\* + packages/\* 物理边界 + ESLint boundaries + Nx project 边界 | [ADR-0020](../adr/0020-module-boundary-nestjs.md)      |
-| Package decomposition（mono 5 包减 2，留 api-client + types）        | [ADR-0030](../adr/0030-package-decomposition.md)       |
-| pnpm policy（shamefully-hoist + Expo 兼容）                          | [ADR-0028](../adr/0028-monorepo-pnpm-policy.md)        |
-| TS module resolution（bundler 基线 + apps/server nodenext override） | [ADR-0029](../adr/0029-ts-module-resolution-policy.md) |
-| 业务模块字符串前后端一致                                             | [business-naming.md](business-naming.md)               |
+| 关心点                                                               | 单源                                                                                                                                                                                       |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| apps/\* + packages/\* 物理边界 + ESLint boundaries + Nx project 边界 | [ADR-0032](../adr/0032-backend-bounded-context.md) + [ADR-0043](../adr/0043-server-flat-module-paradigm.md)（ADR-0020 已 Superseded）；scope-tag depConstraints SoT 在 `eslint.config.mjs` |
+| Package decomposition（mono 5 包减 2，留 api-client + types）        | [ADR-0030](../adr/0030-package-decomposition.md)                                                                                                                                           |
+| pnpm policy（shamefully-hoist + Expo 兼容）                          | [ADR-0028](../adr/0028-monorepo-pnpm-policy.md)                                                                                                                                            |
+| TS module resolution（bundler 基线 + apps/server nodenext override） | [ADR-0029](../adr/0029-ts-module-resolution-policy.md)                                                                                                                                     |
+| 业务模块字符串前后端一致                                             | [business-naming.md](business-naming.md)                                                                                                                                                   |
 
 本文件不重复物理目录布局 / 跨包依赖纪律 / pnpm 配置 / TS 解析策略。
 
