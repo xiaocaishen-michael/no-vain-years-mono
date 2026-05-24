@@ -10,11 +10,11 @@ sunset_trigger: |
 
 # ADR-0025: 前端部署 — Expo Web export → Cloudflare Pages (mobile binary 不在 Plan 3 scope)
 
-- Status: Accepted (2026-05-19) — Plan 2 Phase 0 § 2.2.6; **Amended 2026-05-24**（host: Pages → Workers Static Assets）
+- Status: Accepted (2026-05-19) — Plan 2 Phase 0 § 2.2.6
 - Deciders: project owner
 - Tags: frontend / deployment / cross-cutting
 
-> **Amendment (2026-05-24)**：Host 从 **Cloudflare Pages** pivot 到 **Cloudflare Workers Static Assets**——同 provider、同 Expo Web export build target、同「Web 直走 CORS 调 Aliyun API、不走反代避 525」拓扑，**仅静态托管子形态变**。动因：Cloudflare 2026-02 官方明确「新静态站点从 Workers 起步，今后投入全在 Workers，Pages 转维护模式仍支持」，且合并后 dashboard「Create」向导默认走 Workers（`npx wrangler deploy`）。落地：repo root `wrangler.jsonc`（`assets.directory: ./apps/mobile/dist` + `not_found_handling: "single-page-application"` 取代 Pages 的 `_redirects` SPA 回退，后者已移除）；Git 连接自动构建走 Workers Builds（同 build + `wrangler deploy` 命令）。下方原 Decision § 2「Host: Cloudflare Pages」据此读作 **Workers Static Assets**；其余决策（build target / 直 CORS 避反代 525 / mobile binary OOS）不变。
+> **Note (2026-05-24，host 维持 Pages)**：曾短暂 amend 到 **Cloudflare Workers Static Assets**（动因：CF 2026-02 官方推「新站从 Workers 起步」+ 合并后 dashboard 默认走 Workers），**当日回退**。原因：Workers 的 **Custom Domain / Route 硬要求域名是本账号 active CF zone**（dashboard "Connect domain" 搜 `app.xiaocaishen.me` 返回 "No zones found"），而 `xiaocaishen.me` 的 NS 在**阿里云万网**（`dns9.hichina.com`，外部 DNS）。**Pages 支持外部 DNS 的自定义子域**（dashboard 注册 `app.xiaocaishen.me` → 阿里云加 CNAME `app → <project>.pages.dev` → CF 签 TLS；老 meta 即此形态），Workers 不支持（除非把整域 NS 迁入 CF，牵动 `api` A 记录 / MX / 已 ICP 备案的国内解析，风险大、不值当）。**结论：除非将来 `xiaocaishen.me` 整域迁入 CF，否则不要再 pivot 到 Workers。** 详见 memory `reference_cf_workers_custom_domain_requires_cf_zone`。
 
 ## Context
 

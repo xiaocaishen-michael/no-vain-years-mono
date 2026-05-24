@@ -1,8 +1,6 @@
 # Cloudflare Pages 部署 playbook — apps/mobile (Expo Web)
 
-> ⚠️ **HOST SUPERSEDED (2026-05-24)**：host 已从 CF Pages pivot 到 **Cloudflare Workers Static Assets**（per [ADR-0025](../../adr/0025-frontend-cloudflare-pages-expo-web.md) 2026-05-24 amendment；CF 合并 Workers/Pages + 官方推 Workers）。**新部署看 [子 plan 1](../../plans/2026-05/05-24-client-deploy-p1-cloudflare-web.md) 顶部 pivot banner**（root `wrangler.jsonc` + `not_found_handling: single-page-application` + Workers Builds `npx wrangler deploy`）。本 Pages playbook 保留作 build cmd / CORS / 自定义域 / 排错 cheat-sheet 的历史参考——其中 build command、env vars、CORS allowlist、自定义域绑定逻辑在 Workers 下**仍适用**；仅「Framework preset / output directory / `_redirects` SPA fallback / Pages console 路径」是 Pages 专属、已被 Workers 方案取代。
->
-> Provenance: 由 [`docs/plans/2026-05/05-22-mono-meta-frontend-gap-audit.md`](../../plans/2026-05/05-22-mono-meta-frontend-gap-audit.md) A2 衍生。ADR-0025 原拍板 Cloudflare Pages 作 `apps/mobile` web 形态 host；本文档是 0-to-ship 操作手册。
+> Provenance: 由 [`docs/plans/2026-05/05-22-mono-meta-frontend-gap-audit.md`](../../plans/2026-05/05-22-mono-meta-frontend-gap-audit.md) A2 衍生。ADR-0025 拍板 Cloudflare Pages 作 `apps/mobile` web 形态 host；本文档是 0-to-ship 操作手册。
 >
 > **当前状态**：CORS 预留 + `.env.example` hint + 本 playbook 在 `chore/fe-trivy-fs-cors-device-tracking` PR ship；CF console 项目创建延后到 ADR-0026 backend deployment topology 决出 + Plan 3 Phase 1 入场。playbook 先就位，bootstrap 按需触发。
 
@@ -56,7 +54,7 @@ Expo Router web 输出是 SPA，需 CF Pages 把所有未匹配路由回退到 `
 
 **验证**：bootstrap 后浏览器访问 `https://<branch>.no-vain-years-mono.pages.dev/login` 直接刷新，应返回 200 + login UI（而非 CF Pages 默认 404 页）。
 
-> **现状（2026-05-24 更新）**：host 已 pivot 到 Workers Static Assets（见顶部 banner），`apps/mobile/public/_redirects` **已移除** —— Workers 不处理 `_redirects`，SPA 回退改由 root `wrangler.jsonc` 的 `not_found_handling: "single-page-application"` 承担。本节 `_redirects` 方案仅作 Pages 历史参考。
+> **现状**：`apps/mobile/public/_redirects` 已创建（2026-05-24 客户端部署子 plan 1 PR），内容 `/*    /index.html   200`，与 `app.json` `web.bundler: metro` 配套；`pnpm -C apps/mobile build:web` 已验证拷入 `dist/_redirects`。
 
 ## Cross-origin CORS checklist（跨 origin 必查）
 
