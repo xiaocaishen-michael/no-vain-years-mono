@@ -15,11 +15,11 @@ import boundaries from 'eslint-plugin-boundaries';
  * Boundaries rules (module-level, single direction):
  *   auth → account → security
  *
- * Hexagonal layer enforcement (domain/application/infrastructure/web layer
- * rules) was retired in PR-4 to keep the lint config tractable post-split;
- * a follow-up (PR-7 doc-closure) may reintroduce module × layer = 12 elements
- * if drift surfaces. Until then, hexagonal discipline is conventional + PR
- * review, not lint-enforced.
+ * Hexagonal layer subdirs (domain/application/infrastructure/web) were retired
+ * in PR-4 and permanently removed by ADR-0043 (flat + anemic paradigm) — they
+ * will NOT be reintroduced. Intra-module data-moat discipline (own-table-only)
+ * is enforced by the ts-morph probe scripts/checks/check-server-moat.ts, not by
+ * layer-based lint elements.
  */
 export default [
   ...baseConfig,
