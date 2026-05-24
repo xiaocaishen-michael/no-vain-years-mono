@@ -24,8 +24,8 @@
 | # | 子 plan 文件 | 轨 | 依赖 | 核心交付 | 状态 |
 |---|---|---|---|---|---|
 | 1 | [`…-p1-cloudflare-web.md`](05-24-client-deploy-p1-cloudflare-web.md) | A（Web，独立） | 无 | `_redirects` + server CORS + CF console bootstrap + 自定义域 + smoke test | ✅ 已上线 `app.xiaocaishen.me` |
-| 2 | [`…-p2-mobile-foundation.md`](05-24-client-deploy-p2-mobile-foundation.md) | B（Mobile 地基） | 无 | `assets/` 图标 + `eas.json` 全 profile + `eas init` + version 对齐 + ADR-0044 | 🚧 进行中（本 PR：repo 侧已落，待 `eas login`/`eas init`） |
-| 3 | `…-p3-android-apk.md` | B | **子 plan 2** | EAS preview profile → 签名 APK → 直接分发 + smoke test | ☐ 待起 |
+| 2 | [`…-p2-mobile-foundation.md`](05-24-client-deploy-p2-mobile-foundation.md) | B（Mobile 地基） | 无 | `assets/` 图标 + `eas.json` 全 profile + `eas init` + version 对齐 + ADR-0044 | ✅ 已 ship（#180）— EAS 项目 `@xiaocaishen/no-vain-years-mobile` linked |
+| 3 | [`…-p3-android-apk.md`](05-24-client-deploy-p3-android-apk.md) | B | **子 plan 2** | EAS preview profile → 签名 APK → 直接分发 + smoke test | 🟡 APK 产出（build `facdbc06`）+ 分发就绪；真机登录冒烟 pending user（detour：SDK-54 对齐 #183） |
 | 4 | `…-p4-ios-simulator-testflight.md` | B | **子 plan 2** | 阶段1 simulator build（now）→ 阶段2 TestFlight（账号就绪后） | ☐ 待起 |
 
 ## 跨子 plan 契约（master 锁定，子 plan 不得违反）
