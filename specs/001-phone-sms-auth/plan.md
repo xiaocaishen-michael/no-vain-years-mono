@@ -1,5 +1,10 @@
 # Implementation Plan: Phone SMS Auth (W2 server scope)
 
+> ⚠️ **[ARCHITECTURE GOVERNANCE NOTE (2026-05-24)]**
+> This plan was implemented under the legacy Hexagonal/DDD architecture.
+> The narrative (e.g., "domain / application / infrastructure layers", "hexagonal") is preserved for historical record.
+> However, future implementations MUST follow the **Flat + Anemic + Moat** paradigm defined in **[ADR-0043](../../docs/adr/0043-server-flat-module-paradigm.md)**.
+
 **Branch**: `feature/phone-sms-auth-plan` | **Date**: 2026-05-17 | **Spec**: [`spec.md`](./spec.md)
 **Input**: Feature specification from `specs/001-phone-sms-auth/spec.md`（per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md) feature-first 布局）
 

@@ -34,6 +34,7 @@ export function buildPrompt(input: BuildPromptInput): string {
 
   sections.push(taskHeader(task));
   sections.push(specSection(task, spec));
+  sections.push(paradigmSection());
   sections.push(architectureNotesSection(plan));
   sections.push(techConstraintsSection(plan));
   sections.push(moduleBoundariesSection(plan, workspace));
@@ -106,6 +107,23 @@ function architectureNotesSection(plan: ParsedPlan): string {
     return '## Architecture Notes\n\n(none)';
   }
   return `## Architecture Notes\n\n${notes}`;
+}
+
+// Static ADR-0043 paradigm guardrail injected into every implement prompt.
+// Kept verbatim-identical to the plan-template "General Architecture Notes"
+// banner (mono-orchestrator-ready preset) — single voice, defense-in-depth:
+// the preset banner steers /speckit-plan authoring, this guarantees the
+// paradigm reaches the implement LLM even if the plan author dropped it.
+function paradigmSection(): string {
+  return [
+    '## Architecture Paradigm (ADR-0043 — ENFORCED)',
+    '',
+    '> ⚠️ **CRITICAL — the implementer MUST strictly follow the "Flat + Anemic + Moat" paradigm:**',
+    '> - **Flat Module**: ALL files live flatly in `apps/server/src/<module>/`. NEVER generate `domain/`, `application/`, `infrastructure/`, or `web/` subdirectories.',
+    '> - **Anemic Data & Zero-Class**: Data equals raw Prisma rows (snake_case handled by `@map` in schema.prisma). NEVER generate Domain Classes or Entity Mappers.',
+    '> - **No Repositories**: NEVER create Repository interfaces/adapters for your own tables. Inject `PrismaService` directly into UseCases. Put business invariants in pure functions (`*.rules.ts`).',
+    "> - **The Moat**: NEVER write `tx.<otherTable>.*`. Cross-context access MUST go through the target module's UseCase (use the Two-step Inspect+Commit saga only when caller validation must sit between read and write).",
+  ].join('\n');
 }
 
 function techConstraintsSection(plan: ParsedPlan): string {

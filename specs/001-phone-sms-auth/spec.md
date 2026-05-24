@@ -33,6 +33,11 @@ state_branches:
 
 # Feature Specification: Phone SMS Auth (unified login/register)
 
+> ⚠️ **[ARCHITECTURE GOVERNANCE NOTE (2026-05-24)]**
+> This spec was implemented under the legacy Hexagonal/DDD architecture.
+> The narrative (e.g., "aggregate root", "hexagonal layers") is preserved for historical record.
+> However, future implementations MUST follow the **Flat + Anemic + Moat** paradigm defined in **[ADR-0043](../../docs/adr/0043-server-flat-module-paradigm.md)**.
+
 **Feature Branch**: `001-phone-sms-auth`（per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md)；Plan 1 期间合入的 PR 使用旧命名 `feature/phone-sms-auth-<usX>` 不追溯）
 **Created**: 2026-05-04 / **mono W2 implemented**: 2026-05-17
 **Status**: Server Draft（mono W2 PoC 首个业务 use case，从零实现） / Client 段保留作 W4+ mobile impl reference

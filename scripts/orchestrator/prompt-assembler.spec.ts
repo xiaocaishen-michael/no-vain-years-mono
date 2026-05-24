@@ -17,7 +17,7 @@ function loadFixtures() {
 }
 
 const EMPTY_CODE_CTX: CodeContext = {
-  scope: 'apps/server/src/modules/account',
+  scope: 'apps/server/src/account',
   graphPath: '/fake/graph.json',
   nodes: [],
   warnings: [],
@@ -64,6 +64,8 @@ describe('buildPrompt', () => {
     expect(prompt).toMatch(/### Functional requirements/);
     expect(prompt).toMatch(/### Entities/);
     expect(prompt).toMatch(/## Architecture Notes/);
+    expect(prompt).toMatch(/## Architecture Paradigm \(ADR-0043/);
+    expect(prompt).toMatch(/Flat \+ Anemic \+ Moat/);
     expect(prompt).toMatch(/## Tech constraints/);
     expect(prompt).toMatch(/## Module boundaries \(workspace=server-app\)/);
     expect(prompt).toMatch(/## API contract/);
@@ -104,13 +106,13 @@ describe('buildPrompt', () => {
     const task = tasks.tasks.find((t) => t.id === 'T001')!;
     const workspace = plan.config.workspaces.find((w) => w.id === task.workspace)!;
     const codeCtx: CodeContext = {
-      scope: 'apps/server/src/modules/account',
+      scope: 'apps/server/src/account',
       graphPath: '/x/graph.json',
       nodes: [
         {
           id: 'a',
           label: 'AccountService',
-          source_file: 'apps/server/src/modules/account/account.service.ts',
+          source_file: 'apps/server/src/account/account.service.ts',
           source_location: 'L10',
         },
       ],
@@ -118,9 +120,7 @@ describe('buildPrompt', () => {
       truncated: false,
     };
     const prompt = buildPrompt({ task, spec, plan, workspace, codeCtx });
-    expect(prompt).toMatch(
-      /AccountService @ apps\/server\/src\/modules\/account\/account\.service\.ts:L10/,
-    );
+    expect(prompt).toMatch(/AccountService @ apps\/server\/src\/account\/account\.service\.ts:L10/);
   });
 
   it('falls back gracefully when task has no trace_ep', () => {

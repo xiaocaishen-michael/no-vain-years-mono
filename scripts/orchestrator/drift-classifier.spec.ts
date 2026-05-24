@@ -199,7 +199,7 @@ describe('classifyDrift', () => {
         ['apps/server/prisma/schema.prisma'],
         [
           'apps/server/prisma/schema.prisma',
-          'apps/server/src/modules/account/account.module.ts', // outside
+          'apps/server/src/account/account.module.ts', // outside
         ],
       );
       expect(r.kind).toBe('needs-ralph');

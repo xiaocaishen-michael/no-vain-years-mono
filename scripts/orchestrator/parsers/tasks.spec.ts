@@ -74,8 +74,8 @@ describe('TasksAnalyzer', () => {
 
   it('throws when verify_kind missing from workspace.verify_commands', () => {
     const bad = happyTasks.replace(
-      '"verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/profile.controller.ts","op":"create"}',
-      '"verify_kind":"sniff","files":[{"path":"apps/server/src/modules/account/profile.controller.ts","op":"create"}',
+      '"verify_kind":"typecheck","files":[{"path":"apps/server/src/account/profile.controller.ts","op":"create"}',
+      '"verify_kind":"sniff","files":[{"path":"apps/server/src/account/profile.controller.ts","op":"create"}',
     );
     expect(() => analyzer.parseContent(bad, plan, spec)).toThrowError(
       /verify_kind 'sniff' not in workspace\.verify_commands/,

@@ -12,7 +12,7 @@ export const TasksFrontmatterSchema = z.object({
 });
 
 // Path convention: `path` and `rename_to` are repo-root-relative
-// (e.g. "apps/server/src/modules/account/profile.controller.ts").
+// (e.g. "apps/server/src/account/profile.controller.ts").
 // fs-ops + git-flow both resolve against repoRoot; workspace.cwd is
 // used only as the working dir for verify_command.
 export const TaskFileOpSchema = z
