@@ -54,7 +54,7 @@
 
 | 类别 | Agent 能做（repo + CLI） | User 手动（dashboard / 交互登录 / 付费） |
 |---|---|---|
-| Web | `_redirects`、`.env.production.example`、本地 `pnpm -C apps/mobile build:web` 验证、playbook 文档 | CF console 创建项目 + env vars + 自定义域；SWAS `.env.production` CORS 更新 + `docker compose up -d` 重启 |
+| Web | `_redirects`、`.env.production.example`、本地 `pnpm -C apps/mobile build:web` 验证、playbook 文档 | CF console 创建项目 + env vars + 自定义域；SWAS `.env.production` CORS 更新 + `docker compose --env-file .env.production up -d` 重启 |
 | Mobile 地基 | `eas.json`、`app.json` version、`assets/` 复制、`eas-cli` devDep、`.easignore`、ADR-0044 | `eas login` + `eas init`（建议 session 内 `! eas login`） |
 | Android | `eas build --platform android`（user 登录后 agent 可跑）、分发文档 | （keystore 默认 EAS 托管，无需手动） |
 | iOS | 阶段1 `eas build --platform ios --profile preview`、`xcrun simctl install` | 阶段2：Apple Developer Program 注册（$99/yr）+ App Store Connect app record |
