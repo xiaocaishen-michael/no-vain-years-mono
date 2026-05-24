@@ -168,7 +168,7 @@ PR-2 ([#111](https://github.com/xiaocaishen-michael/no-vain-years-mono/pull/111)
 ## Open Questions
 
 - **Plan 3 deploy hook 接入方式** — `if: outputs['apps/server--release_created']` 是 release-please v4 文档推荐路径,但若 [ADR-0026](0026-backend-deployment-topology.md) 决定走 Cloudflare 单边触发,可能改 webhook 反推。defer 到 Plan 3。
-- **mobile EAS Build buildNumber / runtimeVersion 与 release-please 协作边界** — 当前设计 release-please 只改 `expo.version` / `package.json`,native 字段 EAS 自管,但 OTA 热更与 native build 同时发生时存在 race。defer 到首次 Plan 2 mobile feature ship。
+- **mobile EAS Build buildNumber / runtimeVersion 与 release-please 协作边界** — build-time 半边已由 [ADR-0044](0044-mobile-binary-deployment.md) §4 **Resolved**(`appVersionSource: remote`:`expo.version` 归 release-please 写 `app.json`,`buildNumber`/`versionCode` 归 EAS 远端 autoIncrement,不碰 `app.json`,无 race);**OTA(EAS Update)/ `runtimeVersion` 半边仍 open**,defer 到引入热更时(ADR-0044 Open Questions 承接)。
 
 ## References
 
