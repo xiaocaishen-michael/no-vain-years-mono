@@ -62,7 +62,6 @@ sequenceDiagram
       "id": "E1",
       "name": "Account",
       "domain": "account",
-      "aggregate_root": true,
       "attrs": [
         { "name": "id", "type": "string" },
         { "name": "displayName", "type": "string", "max_len": 50 },

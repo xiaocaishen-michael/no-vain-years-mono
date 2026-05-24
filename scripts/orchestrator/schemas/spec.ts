@@ -64,7 +64,6 @@ export const EntitySchema = z.object({
   id: z.string().regex(/^E\d+$/),
   name: z.string().min(1),
   domain: z.string().optional(),
-  aggregate_root: z.boolean(),
   attrs: z.array(
     z.object({
       name: z.string(),

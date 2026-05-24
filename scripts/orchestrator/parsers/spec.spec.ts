@@ -28,7 +28,6 @@ describe('SpecAnalyzer', () => {
 
     expect(result.entities).toHaveLength(1);
     expect(result.entities[0].id).toBe('E1');
-    expect(result.entities[0].aggregate_root).toBe(true);
     expect(result.entities[0].attrs.find((a) => a.name === 'phone')?.format).toBe('E.164');
 
     expect(result.successCriteria.map((s) => s.id)).toEqual(['SC-001', 'SC-002']);

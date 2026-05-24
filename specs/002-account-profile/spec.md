@@ -30,10 +30,15 @@ state_branches:
 
 # Feature Specification: Account Profile（onboarding 信号 + displayName 维护 + 我的页骨架）
 
+> ⚠️ **[ARCHITECTURE GOVERNANCE NOTE (2026-05-24)]**
+> This spec was implemented under the legacy Hexagonal/DDD architecture.
+> The narrative (e.g., "aggregate root", "domain 层", "VO") is preserved for historical record.
+> However, future implementations MUST follow the **Flat + Anemic + Moat** paradigm defined in **[ADR-0043](../../docs/adr/0043-server-flat-module-paradigm.md)**.
+
 **Feature Branch**: `002-account-profile`
 **Created**: 2026-05-04（server base） / 2026-05-07（client UI 段追加） / **mono migrated**: 2026-05-20
 **Status**: Clarified（server 业务规则已 impl pending review；client UI 段已完成 /speckit.clarify）
-**Module**: `account`（server `apps/server/src/modules/account` / mobile `apps/mobile/app/(app)/(tabs)/profile`）
+**Module**: `account`（server `apps/server/src/account` / mobile `apps/mobile/app/(app)/(tabs)/profile`）
 **Input**:
 
 - Server：phoneSmsAuth 不暴露 isNewAccount；客户端 auth 成功后查 `/me` 拿 displayName 决定是否进 onboarding 完善昵称；onboarding 强制不可跳。
@@ -436,7 +441,7 @@ state_branches:
 - **SC-004**: 限流准确性 — FR-008 两条规则集成测试验证生效；429 + 正确 `Retry-After`
 - **SC-005**: FROZEN / ANONYMIZED 账号持有未过期 access token 调 `/me` 必返 401（FR-009 集成测试覆盖）
 - **SC-006**: DisplayName 校验规则集成测试覆盖：[空 / 仅空白 / 控制字符 / 零宽字符 / 33 码点超长 / CJK 32 字 / emoji-only / 混合合法] 8 个 case，全部按 FR-005 命中或放过
-- **SC-007**: module 边界 CI 检查（per ADR-0020）仍 0 violation；DisplayName VO 在 domain 层 0 framework 依赖
+- **SC-007**: module 边界 CI 检查（per ADR-0032）仍 0 violation；DisplayName VO 在 domain 层 0 framework 依赖
 
 ### Client Measurable Outcomes
 
@@ -676,7 +681,7 @@ flowchart TD
 
 - 上游 unified auth 决策（M1.2 确立：取消独立 register / phone-SMS 统一入口）；见 [`specs/001-phone-sms-auth/`](../001-phone-sms-auth/)
 - SDD 工作流：业务流先行 + mockup 后置（见 [`docs/conventions/sdd.md`](../../docs/conventions/sdd.md) § 前端 UI 工作流变体）
-- [ADR-0020](../../docs/adr/0020-module-boundary-nestjs.md) — NestJS module + ESLint boundaries 规则
+- [ADR-0032](../../docs/adr/0032-backend-bounded-context.md) — bounded context + ESLint module boundaries 规则
 - 上游 use case：`specs/001-phone-sms-auth/`（auth 上游 use case）
 - 后续 spec B：account-settings-shell（账号与安全详情页）
 - 后续 spec C：delete-account-cancel-deletion-ui

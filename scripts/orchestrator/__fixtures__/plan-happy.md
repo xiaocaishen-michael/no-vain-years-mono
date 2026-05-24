@@ -25,7 +25,7 @@ GET / PATCH `/v1/account/profile` 两个 endpoint。
       "nx_project": "server",
       "cwd": "apps/server",
       "lang": "typescript",
-      "module_path": "src/modules/account",
+      "module_path": "src/account",
       "verify_commands": {
         "build": "pnpm nx build server",
         "test": "pnpm nx test server --watch=false",
@@ -33,7 +33,7 @@ GET / PATCH `/v1/account/profile` 两个 endpoint。
         "typecheck": "pnpm nx run server:typecheck",
         "e2e": "pnpm nx run server:e2e"
       },
-      "graphify_scope": "apps/server/src/modules/account/**/*"
+      "graphify_scope": "apps/server/src/account/**/*"
     },
     {
       "id": "api-client",

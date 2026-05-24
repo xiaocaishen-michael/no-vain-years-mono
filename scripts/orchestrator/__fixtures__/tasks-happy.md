@@ -13,16 +13,16 @@ orchestrator_compat: ">=0.1.0"
 ## Server
 
 - [ ] T001 GET /v1/account/profile endpoint + ProfileService
-  <!-- task-meta: {"id":"T001","workspace":"server-app","deps":[],"trace_us":["US1"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/modules/account/profile.controller.ts","op":"create"},{"path":"apps/server/src/modules/account/profile.service.ts","op":"create"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T001","workspace":"server-app","deps":[],"trace_us":["US1"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/account/profile.controller.ts","op":"create"},{"path":"apps/server/src/account/profile.service.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T002 ProfileController unit test
-  <!-- task-meta: {"id":"T002","workspace":"server-app","deps":["T001"],"trace_us":["US1"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/modules/account/profile.controller.spec.ts","op":"create"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T002","workspace":"server-app","deps":["T001"],"trace_us":["US1"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/account/profile.controller.spec.ts","op":"create"}],"parallel":false} -->
 
 - [ ] T003 PATCH /v1/account/profile + displayName 校验
-  <!-- task-meta: {"id":"T003","workspace":"server-app","deps":["T001"],"trace_us":["US1"],"trace_fr":["FR-002"],"trace_ep":["EP2"],"kind":"impl","verify_kind":"test","files":[{"path":"apps/server/src/modules/account/profile.controller.ts","op":"modify"}],"parallel":true} -->
+  <!-- task-meta: {"id":"T003","workspace":"server-app","deps":["T001"],"trace_us":["US1"],"trace_fr":["FR-002"],"trace_ep":["EP2"],"kind":"impl","verify_kind":"test","files":[{"path":"apps/server/src/account/profile.controller.ts","op":"modify"}],"parallel":true} -->
 
 - [ ] T004 PATCH endpoint integration test
-  <!-- task-meta: {"id":"T004","workspace":"server-app","deps":["T003"],"trace_us":["US1"],"trace_fr":["FR-002"],"trace_ep":["EP2"],"trace_sc":["SC-001"],"kind":"test-integration","verify_kind":"test","files":[{"path":"apps/server/src/modules/account/profile.integration.spec.ts","op":"create"}],"parallel":false} -->
+  <!-- task-meta: {"id":"T004","workspace":"server-app","deps":["T003"],"trace_us":["US1"],"trace_fr":["FR-002"],"trace_ep":["EP2"],"trace_sc":["SC-001"],"kind":"test-integration","verify_kind":"test","files":[{"path":"apps/server/src/account/profile.integration.spec.ts","op":"create"}],"parallel":false} -->
 
 ## API Client
 
