@@ -1,0 +1,21 @@
+{
+  // Cloudflare Workers Static Assets — apps/mobile Expo Web export host.
+  // Per ADR-0025 (2026-05-24 update): host pivot CF Pages → Workers Static
+  // Assets, following Cloudflare's Feb-2026 "start with Workers" direction
+  // (Pages → maintenance mode). Assets-only Worker (no `main` script):
+  // Workers serves the static SPA directly.
+  //
+  // Deploy:
+  //   pnpm -C apps/mobile build:web      # → apps/mobile/dist
+  //   npx wrangler deploy                # reads this config from repo root
+  // Git-connected auto-build: Workers Builds dashboard runs the same two cmds.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "no-vain-years-mono",
+  "compatibility_date": "2026-05-24",
+  "assets": {
+    "directory": "./apps/mobile/dist",
+    // SPA fallback: any unmatched path serves /index.html with 200 (replaces
+    // the Pages `_redirects` `/* /index.html 200` trick, which Workers ignores).
+    "not_found_handling": "single-page-application",
+  },
+}

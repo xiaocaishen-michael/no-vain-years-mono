@@ -1,6 +1,12 @@
-# 子 plan 1 — Cloudflare Pages Web 部署
+# 子 plan 1 — Cloudflare Web 部署（Workers Static Assets）
 
-> 隶属 [客户端部署 master plan](05-24-client-deploy-web-android-ios-master.md)（Track A，独立轨）。基准：[ADR-0025](../../adr/0025-frontend-cloudflare-pages-expo-web.md)（Accepted）+ playbook [`05-22-cloudflare-pages-deploy-mono.md`](../../experience/2026-05/05-22-cloudflare-pages-deploy-mono.md)。
+> 隶属 [客户端部署 master plan](05-24-client-deploy-web-android-ios-master.md)（Track A，独立轨）。基准：[ADR-0025](../../adr/0025-frontend-cloudflare-pages-expo-web.md)（Accepted，2026-05-24 amended：host Pages → Workers Static Assets）。
+>
+> ⚠️ **2026-05-24 host pivot（per ADR-0025 amendment）**：CF 合并 Workers/Pages + 官方推 Workers，本 plan 改用 **Workers Static Assets**。下文凡提 "Pages" / "`_redirects`" / playbook Pages bootstrap，按以下实际方案读：
+>
+> - repo root `wrangler.jsonc`（`assets.directory: ./apps/mobile/dist` + `not_found_handling: "single-page-application"`）已加；`apps/mobile/public/_redirects` 已移除（Workers 不处理 `_redirects`，SPA 回退改用 `not_found_handling`；`wrangler deploy --dry-run` 已验证读到 dist 42 文件）
+> - dashboard 走 **Workers & Pages → Create → Workers**（Git 连接 Workers Builds）：build cmd `corepack enable && pnpm install --frozen-lockfile && pnpm -C apps/mobile build:web`、deploy cmd `npx wrangler deploy`、env `EXPO_PUBLIC_API_BASE_URL=https://api.xiaocaishen.me` + `NODE_VERSION=22` + `PNPM_VERSION=10.33.2`
+> - 默认 URL 是 `<name>.<account>.workers.dev`（非 `*.pages.dev`）；用户实际入口仍是自定义域 `app.xiaocaishen.me`（已在 CORS allowlist）。**注意**：`app.xiaocaishen.me` 当前 CNAME 指向旧 meta 项目 `no-vain-years-app.pages.dev`，迁到新 worker 需先从旧项目摘除该自定义域（详见操作交接）
 
 ## Context
 
