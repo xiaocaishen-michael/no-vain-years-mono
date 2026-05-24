@@ -7,9 +7,9 @@ import { ValidationPipe } from '@nestjs/common';
 import { execFileSync } from 'node:child_process';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
-import { MockSmsGateway } from '../../src/auth/infrastructure/mock-sms.gateway';
-import { Phone } from '../../src/account/domain/phone.vo';
-import { SMS_GATEWAY } from '../../src/auth/application/ports/sms-gateway.port';
+import { MockSmsGateway } from '../../src/auth/mock-sms.gateway';
+import { Phone } from '../../src/account/phone.vo';
+import { SMS_GATEWAY } from '../../src/auth/sms-gateway.port';
 
 const SERVER_DIR = process.cwd();
 
