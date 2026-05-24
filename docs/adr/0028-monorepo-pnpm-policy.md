@@ -9,7 +9,7 @@ sunset_trigger: |
   - 仓内不再含 Expo / RN 项目 (e.g. mobile 切 Capacitor)
 ---
 
-# ADR-0028: Monorepo pnpm Policy — `shamefully-hoist=true` + publicHoistPattern (Expo 兼容)
+# ADR-0028: Monorepo pnpm Policy — `shamefully-hoist=true` (Expo 兼容)
 
 - Status: Accepted (PR #67 已 ship `.npmrc`,本 ADR 追溯文档化)
 - Deciders: project owner
@@ -34,20 +34,15 @@ A-002 ship 过程中 (PR #65/#66/#67) 反复撞:
 
 ```ini
 shamefully-hoist=true
-public-hoist-pattern[]=*expo*
-public-hoist-pattern[]=*react-native*
-public-hoist-pattern[]=*react*
-public-hoist-pattern[]=@nestjs/*
-node-linker=hoisted
 ```
 
-- `shamefully-hoist=true` 是兜底,确保所有 peer flat 可见
-- `public-hoist-pattern` 显式列高频包,即使未来 strict 化也保 expo/react 链
-- `node-linker=hoisted` 显式声明(与 shamefully-hoist 配合,跨 pnpm minor 兼容)
+- `.npmrc` **最终仅一行** `shamefully-hoist=true` — root `node_modules/` flat layout,Metro / Expo CLI 一次满足
+- `public-hoist-pattern[]`(显式列 expo/react/...)**曾尝试但弃用**:每跑 `expo export -p web` 又冒新 deeply-transitive peer(fbjs → styleq → invariant → react-fast-compare → ...),whack-a-mole,改 `shamefully-hoist` 一刀切
+- `node-linker=hoisted` 未单独声明(`shamefully-hoist=true` 已蕴含 flat node_modules)
 
 ## Consequences
 
-- **Phantom dep 风险**:子包代码 require 未 declare 的 dep 不会失败 — 由 `eslint-plugin-import` `no-extraneous-dependencies` rule + nx affected boundaries 校验顶替
+- **Phantom dep 风险**:子包代码 require 未 declare 的 dep 不会失败 — 由 `@nx/enforce-module-boundaries`(ESLint,declared-deps 门)+ TS path mapping 在 import 边界顶替
 - **Lockfile 略大**:hoisted 重复条目多;可接受
 - **CI install 速度**:hoist 后稍慢;实测无显著差异
 - **未来 Expo SDK upgrade**:major bump 走 dedicated session (per memory `feedback_expo_sdk_major_dedicated_session`),`.npmrc` 不动

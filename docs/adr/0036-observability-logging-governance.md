@@ -42,7 +42,7 @@ LoggerModule.forRoot({
         '*.smsCode',
         '*.phone',
       ],
-      censor: '[PII_REDACTED]',
+      censor: '[REDACTED]',
     },
     customProps: (req) => ({ trace_id: req.headers['x-trace-id'] ?? generateTraceId() }),
     serializers: { req, res, err },
@@ -54,24 +54,28 @@ LoggerModule.forRoot({
 - 输出 stdout 一行 JSON,容器层 (docker compose / 生产 deploy per [ADR-0026](0026-backend-deployment-topology.md)) 自接收
 - `pino-pretty` defer to M3 (per memory) — 用 `pnpm db:log | pino-pretty` 本地手 pipe
 
-### 2. AsyncLocalStorage 伪 trace_id
+### 2. nestjs-cls trace_id（middleware mode，底层 AsyncLocalStorage）
+
+第三方 `nestjs-cls`(**非手写 middleware**),`SecurityModule` 内 `ClsModule.forRoot` 注册为 global:
 
 ```ts
-// src/security/cls.middleware.ts
-const cls = new AsyncLocalStorage<{ trace_id: string }>();
+// src/security/security.module.ts
+ClsModule.forRoot({
+  global: true,
+  middleware: {
+    mount: true,
+    generateId: true,
+    useEnterWith: true, // Fastify 必需:否则 ALS context 跨 hook 丢失，Guards/Filters 读不到
+    idGenerator: (req) => (req.headers?.['x-trace-id'] as string) || randomUUID(),
+  },
+});
 
-@Injectable()
-class TraceMiddleware {
-  use(req, res, next) {
-    const trace_id = req.headers['x-trace-id'] ?? randomUUID();
-    cls.run({ trace_id }, () => next());
-  }
-}
-
-// 任意 service 调用:
-const { trace_id } = cls.getStore() ?? { trace_id: 'no-trace' };
-logger.info({ trace_id, ...rest }, '...');
+// 任意 service / Guard / Filter 注入 ClsService:
+constructor(private readonly cls: ClsService) {}
+const trace_id = this.cls.getId() ?? 'no-trace';
 ```
+
+middleware mode(非 interceptor mode)覆盖完整 request 生命周期 — Guards / Interceptors / Pipes / Controller / Filters 同见一个 CLS context(per memory `reference_nestjs_cls_fastify_middleware_mode`)。
 
 ### 3. Cross-context trace 串联 (Outbox)
 
@@ -82,15 +86,15 @@ Outbox event payload `metadata.trace_id` (per [ADR-0033](0033-outbox-cross-conte
 
 ### 4. PII redact 白名单字段
 
-| 字段                                   | redact           | 理由     |
-| -------------------------------------- | ---------------- | -------- |
-| `phone` / `mobile`                     | `[PII_REDACTED]` | 个人信息 |
-| `smsCode` / `code`                     | `[PII_REDACTED]` | 安全     |
-| `password` / `pwd`                     | `[PII_REDACTED]` | 安全     |
-| `token` / `refreshToken` / `jwt`       | `[PII_REDACTED]` | 安全     |
-| `req.headers.authorization` / `cookie` | `[PII_REDACTED]` | 安全     |
+| 字段                                   | redact       | 理由     |
+| -------------------------------------- | ------------ | -------- |
+| `phone` / `mobile`                     | `[REDACTED]` | 个人信息 |
+| `smsCode` / `code`                     | `[REDACTED]` | 安全     |
+| `password` / `pwd`                     | `[REDACTED]` | 安全     |
+| `token` / `refreshToken` / `jwt`       | `[REDACTED]` | 安全     |
+| `req.headers.authorization` / `cookie` | `[REDACTED]` | 安全     |
 
-PR-1 / PR-6 写 verify test:log 流出后 grep `+861[0-9]{10}` 应 0 命中。
+redact paths 已随 nestjs-pino `redact:` 配置 ship;专门的流出 verify test(log 后 grep `+861[0-9]{10}` 应 0 命中)**尚未实装**,留待补。
 
 ### 5. Log level 治理
 
@@ -111,8 +115,8 @@ PR-1 / PR-6 写 verify test:log 流出后 grep `+861[0-9]{10}` 应 0 命中。
 
 ## Consequences
 
-- PR-1 amend `app.module.ts` LoggerModule.forRoot + redact paths
-- PR-6 写 verify test (grep PII regex)
+- `app.module.ts` LoggerModule.forRoot + redact paths(已 ship)
+- redact verify test (grep PII regex) — **尚未实装**(留待补)
 - mobile core/api/client.ts axios interceptor 加 x-trace-id req header → 联 server CLS
 
 ## Trade-offs

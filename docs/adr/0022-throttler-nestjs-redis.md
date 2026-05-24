@@ -22,7 +22,7 @@ mono Plan 1 起立栈即决定 ditch Java/Spring → NestJS + Fastify + Prisma +
 W3 阶段(2026-05-17 ~ 18) US1 A1/A2 task 实装 `/sms-codes` 限流:
 
 - `apps/server/package.json`: `@nestjs/throttler@^6.5.0` + `@nest-lab/throttler-storage-redis@^1.2.0`(pnpm-lock 6.5.0 / 1.2.0 ship)
-- `apps/server/src/auth/auth.module.ts` § 57-83:`ThrottlerModule.forRootAsync` 配 3 throttler + Redis storage
+- `apps/server/src/auth/auth.module.ts`:`ThrottlerModule.forRootAsync` 配 5 throttler(W3 起 SMS 3 条 + 后续 account `/me` 2 条)+ Redis storage
 - `apps/server/src/auth/web/sms-phone-throttler.guard.ts`:`extends ThrottlerGuard` override `getTracker` → `sms:<phone>` key
 - `apps/server/src/auth/web/account-sms-code.rate-limit.it.spec.ts`:Testcontainers Redis IT 实证 60s 1x rule
 
@@ -45,7 +45,7 @@ mono 限流栈固化为:
 2. **Storage**:`@nest-lab/throttler-storage-redis@^1.2`(社区 nest-lab,@nestjs/throttler 文档明确 recommend 的 Redis adapter)— 支持多 throttler 共享同 Redis instance + atomic INCR + TTL
 3. **多 throttler**:`ThrottlerModule.forRootAsync({ throttlers: [...] })` 同一 module 内组合多条规则(per-route 默认全部 enforce,无 `@Throttle` decorator 时 v6+ 默认 enforce 所有);per-throttler `getTracker` 让 phone-key + ip-key 混用干净
 4. **Custom guard**:`SmsPhoneThrottlerGuard extends ThrottlerGuard` override module-level default tracker,从 IP 改为 `sms:<phone>` body 字段;无 phone 时保守 fallback IP(`unknown` 兜底)
-5. **不复用 `REDIS_CLIENT` provider**:`ThrottlerModule.forRootAsync` useFactory 内 `new Redis(config.getOrThrow('REDIS_URL'))` 创**独立** ioredis instance(不注入 REDIS_CLIENT)— **临时妥协**,见 § Consequences Negative
+5. **Storage 自建连接,不复用 `REDIS_CLIENT` provider**:`ThrottlerModule.forRootAsync` `inject: [redisConfig.KEY]`,useFactory 内 `new ThrottlerStorageRedisService(cfg.url)` 由 redis URL 自建存储连接(不注入 `REDIS_CLIENT` 实例)— 额外 1 Redis 连接每 pod,见 § Consequences Negative
 
 ## Consequences
 
@@ -60,11 +60,11 @@ mono 限流栈固化为:
 
 ### Negative / Trade-offs
 
-- **独立 ioredis instance 而非复用 `REDIS_CLIENT`** — auth.module.ts § 60 在 ThrottlerModule.forRootAsync useFactory 内 `new Redis(...)` 创独立连接,不复用 providers § 94 的 `REDIS_CLIENT` provider;额外 1 TCP 连接每 server pod。**根因**:ThrottlerModule 的 storage option 要求 sync 提供 `ThrottlerStorage` 实例,而 NestJS DI 在 `forRootAsync` useFactory inject 是 sync resolution 阶段,inject `REDIS_CLIENT` token 需复杂 `forwardRef` / module 依赖排序。**缓解**:单 server pod 多 1 连接对 Redis 容量无影响(< 0.01% 连接池消耗);Plan 2+ 若 module 拆分到独立 `InfraModule` 集中管 Redis,可同步消除
+- **Storage 自建连接而非复用 `REDIS_CLIENT`** — auth.module.ts 在 `ThrottlerModule.forRootAsync` useFactory 内 `new ThrottlerStorageRedisService(cfg.url)`(注入 `redisConfig.KEY` 取 url),adapter 内部自建 ioredis,不复用 providers 的 `REDIS_CLIENT` provider;额外 1 TCP 连接每 server pod。**根因**:`ThrottlerStorageRedisService` 构造接受 redis URL,以 URL 自建最直接;复用 `REDIS_CLIENT` 实例需在 `forRootAsync` sync resolution 阶段 inject 该 token,排序复杂收益低。**缓解**:单 server pod 多 1 连接对 Redis 容量无影响(< 0.01% 连接池消耗);Plan 2+ 若集中 `InfraModule` 管 Redis 可同步消除
 - **Storage adapter 是社区(non-official)package** — `@nest-lab/throttler-storage-redis` 不在 @nestjs scope 下;**缓解**:nest-lab 是 @nestjs/throttler README 明确 recommend 的 first-class adapter,GitHub 由 NestJS core contributor (kkoomen) 维护,与 throttler core lockstep 升级
 - **fixed-window 计数(非 true sliding-window)** — `@nestjs/throttler` v6 内部 INCR+TTL 等价 fixed window;边界场景(window-boundary 双倍突发)理论存在。**缓解**:SMS 60s 1 次 / 24h 10 次 等阈值对 ±100% 边界突发不敏感(用户视角:60s 内最多 2 次仍 < SMS gateway 1s rate-limit);若 M2+ 需要严格 sliding 可换 `rate-limiter-flexible` 但需重写 NestJS guard wrapper
 - **FR-S07 全 4 条 e2e IT 缺位** — W3 仅落 IT 覆盖第 1 条 60s 1x;第 2/3 条(24h 阈值)+ 第 4 条(auth lock)完整 e2e 验证 deferred 到 Plan 2 SC-S04 IT;**缓解**:单条 IT + module config code review 覆盖语义正确性,24h window IT 落地见 Plan 2 W2-3
-- **Throttler decorator 缺位** — `@Throttle()` decorator 未在 controller 级覆盖,完全依赖 module-level default + custom guard `@UseGuards(SmsPhoneThrottlerGuard)`;**理由**:phone-sms-auth 是 mono 当前唯一限流端点,3 throttler 全部 enforce 即 FR-S07 #1-3 全覆盖,无 per-endpoint override 需求;Plan 2 多端点引入时再评估
+- **(W3 trade-off 已解决)端点级 throttler decorator** — W3 仅 SMS 端点、无 `@Throttle()`,完全依赖 module-level default + custom guard `@UseGuards(SmsPhoneThrottlerGuard)`;account profile(FR-008)引入后 `/me` GET/PATCH 已用 `@Throttle({ 'me-get': ... })` / `@Throttle({ 'me-patch': ... })` 命名 throttler(`account-profile.controller.ts`),与 SMS 端点共享同 module 的 5 throttler + 同一 Redis storage
 
 ## Alternatives Considered
 
@@ -80,7 +80,7 @@ mono 限流栈固化为:
 
 - **实装锚点**(W3 ship,2026-05-18):
   - `apps/server/package.json` § 12 + § 19:`@nest-lab/throttler-storage-redis@^1.2.0` + `@nestjs/throttler@^6.5.0`
-  - `apps/server/src/auth/auth.module.ts` § 57-83:`ThrottlerModule.forRootAsync` 3 throttler config
+  - `apps/server/src/auth/auth.module.ts`:`ThrottlerModule.forRootAsync` 5 throttler config(SMS 3 + account `/me` 2)+ `new ThrottlerStorageRedisService(cfg.url)`
   - `apps/server/src/auth/web/sms-phone-throttler.guard.ts`:`SmsPhoneThrottlerGuard extends ThrottlerGuard`
   - `apps/server/src/auth/web/account-sms-code.controller.ts` § 24:`@UseGuards(SmsPhoneThrottlerGuard)`
 - **IT 覆盖**(W3 ship):

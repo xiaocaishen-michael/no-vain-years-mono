@@ -47,12 +47,10 @@ pre-commit:
   commands:
     prisma-generate-gate:
       glob: 'apps/server/prisma/schema.prisma'
-      run: |
-        pnpm -C apps/server prisma generate
-        git add apps/server/src/generated/prisma  # or wherever output 指
+      run: pnpm -C apps/server prisma generate # 生成物 gitignored,无需 git add re-stage
 ```
 
-staged `schema.prisma` → 自动 generate + stage 生成物 → 拒"改 schema 但 generated client stale"的 commit。
+staged `schema.prisma` → 自动 generate(生成物 `apps/server/.gitignore /src/generated/prisma` 已忽略,无需 re-stage)→ schema 非法 / generate 失败即 abort commit,不让 stale client 漏到 CI / runtime。
 
 ### 3. 3 层 seed idempotent UPSERT
 

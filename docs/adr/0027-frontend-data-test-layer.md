@@ -51,7 +51,7 @@ A-002 (account profile + mobile bootstrap, PR #65) ship 中暴露 3 类前端数
 
 ## Trade-offs
 
-- Orval 重 codegen 输出量更大 (per tag 拆文件) — 可接受,packages/api-client `.gitignore` 跑 codegen 输出
+- Orval 重 codegen 输出量更大 (per tag 拆文件) — 可接受;`packages/api-client/src/generated/` 直接提交(无 `.gitignore` 忽略),codegen 产物随仓版本化
 - react-query global error boundary 与现 Error Boundary 双层 — 需 ADR-0038 (Error Handling) 一致性
 
 ## References

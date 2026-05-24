@@ -31,15 +31,15 @@ sunset_trigger: |
 
 ### 7 决策点（2026-05-23 锁定）
 
-| #   | 决策点         | 锁定值                                                                      | 联动 ADR / Memory                                                                                                                                                                   |
-| --- | -------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Compute 形态   | **SWAS 单实例**（复用 meta-server 同一台）                                  | meta [A-Tight 部署 ADR](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/adr/0002-deployment-a-tight.md) + memory [`reference_aliyun_swas_ufw_incompat`](memory) |
-| D2  | DB 托管        | **SWAS 同机 docker compose `postgres:16-alpine`**                           | drop + recreate（`prisma migrate deploy` + seed），不保留 meta Java Flyway V1-V14 schema                                                                                            |
-| D3  | Redis 托管     | **SWAS 同机 docker compose `redis:7-alpine`**                               | drop + `FLUSHALL`，不保留 meta keys                                                                                                                                                 |
-| D4  | Secrets 注入   | **volumes mount `.env.production`**                                         | [ADR-0037](0037-security-credentials-governance.md) § secrets；文件权限 + .gitignore 双保险                                                                                         |
-| D5  | 镜像 registry  | **阿里云 ACR 个人版 `mbw_xcs/mbw-app`**（namespace + repo 名 全复用）       | drop-in image replacement；mono push 同 repo，`server-vX.Y.Z` tag（per [ADR-0042](0042-monorepo-release-strategy.md) component-in-tag）+ `latest` 覆盖 meta latest                  |
-| D6  | CI/CD pipeline | **GitHub Actions → SSH deploy**（复用 meta workflow 体例 + secrets）        | secrets 复用：`APP_SSH_KEY` / `APP_HOST` / `APP_SSH_USER` / `ACR_USERNAME` / `ACR_PASSWORD`                                                                                         |
-| D7  | 备案 / 域名    | **复用 `api.xiaocaishen.me`**（meta 时代已国内备案，mono 接管不需重新备案） | 解 memory [`reference_cf_workers_to_aliyun_ecs_525`](memory) 跨境问题                                                                                                               |
+| #   | 决策点         | 锁定值                                                                      | 联动 ADR / Memory                                                                                                                                                                                                       |
+| --- | -------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Compute 形态   | **SWAS 单实例**（复用 meta-server 同一台）                                  | meta [A-Tight 部署 ADR](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/adr/0002-deployment-a-tight.md) + memory [`reference_aliyun_swas_ufw_incompat`](memory)                                     |
+| D2  | DB 托管        | **SWAS 同机 docker compose `postgres:16-alpine`**                           | drop + recreate（`prisma migrate deploy` + seed），不保留 meta Java Flyway V1-V14 schema                                                                                                                                |
+| D3  | Redis 托管     | **SWAS 同机 docker compose `redis:7-alpine`**                               | drop + `FLUSHALL`，不保留 meta keys                                                                                                                                                                                     |
+| D4  | Secrets 注入   | **`--env-file .env.production`（docker compose CLI flag）**                 | deploy.yml 用 `docker compose --env-file .env.production`；文件权限 + .gitignore 双保险；[ADR-0037](0037-security-credentials-governance.md) § secrets 的 `secrets:` 段 + `/run/secrets` 是未来硬化（Proposed，未实装） |
+| D5  | 镜像 registry  | **阿里云 ACR 个人版 `mbw_xcs/mbw-app`**（namespace + repo 名 全复用）       | drop-in image replacement；mono push 同 repo，`server-vX.Y.Z` tag（per [ADR-0042](0042-monorepo-release-strategy.md) component-in-tag）+ `latest` 覆盖 meta latest                                                      |
+| D6  | CI/CD pipeline | **GitHub Actions → SSH deploy**（复用 meta workflow 体例 + secrets）        | secrets 复用：`APP_SSH_KEY` / `APP_HOST` / `APP_SSH_USER` / `ACR_USERNAME` / `ACR_PASSWORD`                                                                                                                             |
+| D7  | 备案 / 域名    | **复用 `api.xiaocaishen.me`**（meta 时代已国内备案，mono 接管不需重新备案） | 解 memory [`reference_cf_workers_to_aliyun_ecs_525`](memory) 跨境问题                                                                                                                                                   |
 
 ### A-Tight v2 继承（per meta [A-Tight 部署 ADR Update 2026-04-30](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/adr/0002-deployment-a-tight.md#update-2026-04-30-a-tight-重新激活附两处偏差) + [A-Split 部署 ADR Amendment](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/adr/0012-deployment-a-split.md#amendment-2026-04-30-撤回到-a-tight本-adr-标-superseded)）
 
@@ -53,6 +53,8 @@ sunset_trigger: |
 | 内存预算       | **Node ~500MB-1GB（vs meta JVM 1.5g）** — 2c4g SWAS 余量更宽（Node + PG + Redis + Nginx ≈ 1.8GB vs 原 meta 2.86GB），不需调 `-Xmx` 类参数                                                                                                          |
 
 ### Drop-in replacement cutover 流程（mono 接管 meta server）
+
+> **权威 compose**：仓根 `docker-compose.tight.yml` 是 prod 唯一权威（deploy.yml 实际 `docker compose -f docker-compose.tight.yml --env-file .env.production` 用它）；`infrastructure/docker-compose.yml` 仅 `secrets:`-段 stub 模板（非部署用）；`docker-compose.dev.yml` 是本地 PoC。
 
 1. mono build-image push `mbw_xcs/mbw-app:server-v0.0.1` 到 ACR（per Sub-PR 3.3）
 2. SWAS 上停 meta server container：
