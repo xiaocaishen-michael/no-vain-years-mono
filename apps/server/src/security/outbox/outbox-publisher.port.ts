@@ -5,7 +5,7 @@
  * 异步分发 (T041 placeholder; 真消费方由后续 use case 加).
  *
  * Implementation: OutboxEventPrismaPublisher (T029) — 写 `outbox_event` 表
- * (Plan 2 Phase 0 § 2.2.1: Spring Modulith 老 `event_publication` 已 drop)。
+ * (legacy `event_publication` 表已 drop per Plan 2 Phase 0 § 2.2.1)。
  * Impl 内部把 caller 传的 flat `payload` 封进 ADR-0033 envelope shape
  * `{ metadata: { trace_id, occurred_at, event_version, producer_context }, data }`
  * 写入 `outbox_event.payload` jsonb 列;trace_id 自动从 `ClsService` 取

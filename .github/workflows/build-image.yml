@@ -7,15 +7,15 @@ name: Build & Push Image
 #
 # Build the multi-stage Dockerfile (apps/server/Dockerfile) on the GHA
 # runner (4-vCPU, fast disk), then push to Aliyun Container Registry
-# (cn-shanghai) reusing meta-server's existing namespace (mbw_xcs/mbw-app)
+# (cn-shanghai) reusing the existing namespace (mbw_xcs/mbw-app)
 # per ADR-0026 § A-Tight v2 资源复用 — drop-in image replacement so
 # .env.production / docker-compose.tight.yml don't need to change image
-# reference URL when mono cuts over from meta-server.
+# reference URL at cutover.
 #
 # ACR was chosen over ghcr.io because deploy (SWAS pulling) latency
 # dominates user-perceived deploy time, and ACR intranet pull (~5s for
 # 180MB) is 100x faster than ghcr.io's international-link pull (no
-# docker-mirror covers ghcr.io). Same rationale as meta-server.
+# docker-mirror covers ghcr.io).
 
 on:
   push:
@@ -48,7 +48,7 @@ jobs:
         # (GITHUB_REF_NAME e.g. server-v0.1.5). Strip the `server-` prefix per
         # ADR-0042 component-in-tag — image tag stays version-only (v0.1.5)
         # so existing .env.production MBW_VERSION references work after cutover
-        # (meta-server used pure v0.X.Y; mono inherits same image-tag schema).
+        # (image tag stays pure v0.X.Y per the existing image-tag schema).
         run: |
           RAW="${{ inputs.tag }}"
           if [[ -z "$RAW" ]]; then
@@ -84,8 +84,8 @@ jobs:
           # Two tags: version (immutable) + 'latest' (moving pointer to
           # current production). Production deploys reference the version tag
           # via .env.production MBW_VERSION; 'latest' is for ad-hoc local
-          # pulls + drop-in replacement of meta-server's latest tag (per
-          # ADR-0026 § Cutover; meta latest gets overwritten when mono ships).
+          # pulls + drop-in replacement of the existing 'latest' tag (per
+          # ADR-0026 § Cutover; existing latest gets overwritten when mono ships).
           tags: |
             ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY }}:${{ steps.tag.outputs.tag }}
             ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY }}:latest
