@@ -27,7 +27,7 @@ Plan 1-2 实际安全状态:
 
 ### 1. gitleaks pre-commit + CI
 
-`.gitleaks.toml` 配规则 (AWS / GCP / Aliyun / OpenAI / Anthropic / generic secret pattern); `lefthook.yml` pre-commit hook 跑 `gitleaks protect --staged --no-banner`,CI workflow 跑 `gitleaks detect`.
+`.gitleaks.toml` 用 `useDefault = true`(继承 gitleaks 内置规则集 — 含 AWS / GCP / generic secret 等 pattern)+ `[allowlist]`(仓内已知非密文豁免),未自写 per-厂商 `[[rules]]`; `lefthook.yml` pre-commit hook 跑 `gitleaks protect --staged --no-banner`,CI workflow 跑 `gitleaks detect`.
 
 ### 2. `.env` / `.env.example` 同步校验
 
@@ -56,15 +56,15 @@ lefthook hook `check-env-sync`:staged `.env*` 任一改动触发。
 - 5s grace:旧 refresh 删除后 5s 内仍接受(并行请求 race window)— 用 `jti:revoked-with-grace` 5s TTL SET 兜底
 - logout:`jti:whitelist` SET 删该 user 所有 jti → 立即失效
 
-### 4. secrets 通过 volumes mount 注入容器
+### 4. secrets 注入 — 当前 `--env-file`，目标 volumes mount
 
-(per [ADR-0026](0026-backend-deployment-topology.md) Phase 1 决细节)
+> **当前实装**(per [ADR-0026](0026-backend-deployment-topology.md) D4):M1.1 部署用 `docker compose --env-file .env.production`(文件权限 + .gitignore 双保险)。下列 `secrets:` 段 + `/run/secrets` 文件挂载是**未实装的硬化目标**(本 ADR `Proposed`)。
 
 - 禁 image ENV baking — 任何 secret 不写 Dockerfile `ENV`
 - docker-compose 模板 `infrastructure/docker-compose.yml` 用 `secrets:` 段
 - 生产部署:secrets 文件 mount 到容器 `/run/secrets/<name>`,应用启动读文件
 
-`apps/server/src/core/config/config.module.ts` 加 secret loader:先尝试 `/run/secrets/<name>`,fallback `process.env.<NAME>`.
+当前 config 基建 = `apps/server/src/config/*.config.ts`(`registerAs` + Zod,启动 fail-fast 读 `process.env`);`/run/secrets/<name>` 文件 loader 属**未实装**的 secrets 设计(本 ADR `Proposed`),落地时在该 config 层加 file-first / env-fallback reader。
 
 ### 5. Refresh rotation 5s race grace 算法
 
