@@ -65,4 +65,4 @@ sunset_trigger: |
 - [V3 验收(`db pull` 反推 V1-V14)— V10 retro § 3.1](../experience/2026-05/05-18-v10-claude-agent-loop.md#31-一击中目标0-round-trip)
 - [Prisma 7 driver adapters](https://www.prisma.io/docs/orm/overview/databases/database-drivers)
 - [ADR-0018: 后端 stack root pivot](0018-backend-language-pivot.md)
-- 旧 meta 仓 ADR-0008(Spring Data JPA + MapStruct,superseded by ADR-0020 with DDD 思想保留 / 实现差异说明)
+- 旧 meta 仓 Spring Data JPA + MapStruct 持久化决策(superseded by [ADR-0020](0020-module-boundary-nestjs.md) with DDD 思想保留 / 实现差异说明)

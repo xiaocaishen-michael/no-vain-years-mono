@@ -64,7 +64,7 @@ apps/server/                # NestJS + Fastify + Prisma
 packages/                   # 共享包(api-client / shared-types / ...)
 ```
 
-**旧 ADR cross-ref**(per Plan 1 § G.1 矩阵): ADR-0001 / ADR-0008 标 superseded;ADR-0011(限流)与 ADR-0006(meta CLI)留待 Plan 2 立 ADR-0021 / ADR-0022 时再标。ADR-0003 / 0005 / 0007 / 0009 / 0010 / 0013-0017 直接继承(独立分析后同结论)。
+**旧 meta 仓 Java/Spring ADR cross-ref**:整套旧 meta ADR 已被本 mono ADR 体系取代或独立继承(限流续 [ADR-0022](0022-throttler-nestjs-redis.md);模块边界续 [ADR-0020](0020-module-boundary-nestjs.md))。逐条映射矩阵留档 [Plan 1 § G.1](../plans/2026-05/05-18-plan1-backend-stack-poc.md);mono 自 ADR-0018 起独立编号。
 
 ## Consequences
 
@@ -98,4 +98,4 @@ packages/                   # 共享包(api-client / shared-types / ...)
 - [V1 LoC 验收 — mono 0.119 / Java 5705](../../specs/001-phone-sms-auth/v1-loc-report.md)
 - [ADR-0019: ORM = Prisma](0019-orm-prisma.md)
 - [ADR-0020: 模块边界 = NestJS Module + ESLint boundaries](0020-module-boundary-nestjs.md)
-- 旧 meta 仓 ADR-0001(superseded by ADR-0020)/ ADR-0008(superseded by ADR-0020,DDD 思想保留)
+- 旧 meta 仓 Spring Modulith 模块化 + Pure Repository Interface 决策 — 均 superseded by [ADR-0020](0020-module-boundary-nestjs.md)(DDD 思想保留)

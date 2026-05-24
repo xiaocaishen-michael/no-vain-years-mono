@@ -15,7 +15,7 @@ sunset_trigger: |
 
 ## Context
 
-[ADR-0018](0018-backend-language-pivot.md) 锁定 TS / NestJS 后端 stack root,需替代旧 Java meta-repo 的边界硬约束机制(旧体系 = Maven 多模块物理隔离 + Spring Modulith 运行时验证 + ArchUnit 4 类 CI 规则 + DDD 五层包结构,详 meta 仓 ADR-0001)。
+[ADR-0018](0018-backend-language-pivot.md) 锁定 TS / NestJS 后端 stack root,需替代旧 Java meta-repo 的边界硬约束机制(旧体系 = Maven 多模块物理隔离 + Spring Modulith 运行时验证 + ArchUnit 4 类 CI 规则 + DDD 五层包结构,详旧 meta 仓 Spring Modulith 模块化 ADR)。
 
 替代设计约束:
 
@@ -97,7 +97,7 @@ apps/server/
 - **层 1 NestJS Module 框架级强制** — 未 export 的 provider 注入运行时即报错,solo dev / Claude 协作场景几乎不可能写错跨 module 调用并 ship 到 main
 - **层 2 ESLint 文件级 lint 兜底** — domain 层 import application / infrastructure / web / module 装配会被 lint 拦截,W2 T040 forbidden-import 实证拦截 fire(memory `feedback_lint_plugin_upgrade_must_verify_with_violation`)
 - **ArchUnit 4 类规则(a)(b)在新栈 1:1 覆盖** — V2 验收 rule-by-rule 对照表 PASS;规则 (c)(d) W3+ 多 module 时启用
-- **DDD 5 层结构保留** — domain / application / infrastructure / web 4 层 + `*.module.ts` 装配文件 + `port/` 子目录显式标外部依赖接口,Plan 1 § C.3 + Java ADR-0001 + ADR-0008 DDD 思想 0 流失
+- **DDD 5 层结构保留** — domain / application / infrastructure / web 4 层 + `*.module.ts` 装配文件 + `port/` 子目录显式标外部依赖接口,Plan 1 § C.3 + 旧 Java meta 仓 DDD 思想 0 流失
 - **测试边界** — `src/**/*.spec.ts` / `src/**/*.test.ts` / `src/__smoke__/**` 在 `eslint.config.mjs` 内显式关 `boundaries/dependencies`(测试代码穿层访问允许),不污染 prod boundary
 - **学习曲线** — Spring `@Component` / `@Service` / `@Configuration` 老用户对 NestJS `@Injectable` / `@Module` 概念几乎 0 阵痛
 
@@ -105,7 +105,7 @@ apps/server/
 
 - **模块物理隔离弱于 Maven 多模块** — 单 jar / 单 dist;拆服务时 module 不能直接 `mvn package` 出独立 artifact,需要 Plan 2+ 做 Nx project 拆分(`apps/auth-service/` 等独立 project)。**solo dev 阶段够用**(Plan 1 § C.3 主动承认"软约束版"),多 dev / 拆服务前需评估
 - **AI 静默踩坑面**(memory `feedback_audit_must_verify_code_anchors` + `feedback_lint_plugin_upgrade_must_verify_with_violation`) — `eslint-plugin-boundaries` v5 → v6 syntax 不向下兼容且 silent no-op;**任何 lint plugin major bump 必须 forbidden import 验证 rule 真 fire**,不可信 lint pass 假绿
-- **Spring Modulith 运行时 outbox 替换** — 旧 ADR-0001 Spring Modulith 自带 Event Publication Registry(outbox);新栈手写 outbox(W3 落 `OutboxEventPrismaPublisher` + `OutboxEventCronPublisher.scan()`,详 memory `feedback_transactional_outbox_port_shape`) — ~150 LoC 显式但可控
+- **Spring Modulith 运行时 outbox 替换** — 旧 meta 仓 Spring Modulith 自带 Event Publication Registry(outbox);新栈手写 outbox(W3 落 `OutboxEventPrismaPublisher` + `OutboxEventCronPublisher.scan()`,详 memory `feedback_transactional_outbox_port_shape`) — ~150 LoC 显式但可控
 - **跨 module 通信约束相对宽松** — Plan 1 § C.3 写"跨 module 通信只能经 api/ exported provider";W2 单 module 阶段未启用 `boundaries/no-private` rule,**W3+ 第 2 个 business module 加入时必须启用**作 sweep
 - **Nx project boundary** — `@nx/enforce-module-boundaries` 当前依赖 mono root `nx.json` + 各 project `tags`,W2 PoC 阶段 `apps/server` 单 project + `packages/*` 0 业务包,边界硬度未真考验;Plan 2 多 project 后启用 tags 才 surface
 
@@ -125,5 +125,5 @@ apps/server/
 - [`eslint-plugin-boundaries` v5 → v6 migration](https://github.com/javierbrea/eslint-plugin-boundaries/releases)
 - [ADR-0018: 后端 stack root pivot](0018-backend-language-pivot.md)
 - [ADR-0019: ORM = Prisma](0019-orm-prisma.md)
-- 旧 meta 仓 ADR-0001: Modular Monolith with Spring Modulith + ArchUnit(superseded by 本 ADR)
-- 旧 meta 仓 ADR-0008: Pure Repository Interface in Domain(Java)(superseded by 本 ADR;DDD 思想 + Repository pure interface 保留,实现细节差异 = `domain/port/repository.interface.ts` + infrastructure Prisma impl,无 MapStruct 双向映射)
+- 旧 meta 仓 Modular Monolith with Spring Modulith + ArchUnit 决策(superseded by 本 ADR)
+- 旧 meta 仓 Pure Repository Interface in Domain(Java)决策(superseded by 本 ADR;DDD 思想 + Repository pure interface 保留,实现细节差异 = `domain/port/repository.interface.ts` + infrastructure Prisma impl,无 MapStruct 双向映射)
