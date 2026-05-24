@@ -3,7 +3,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import { execFileSync } from 'node:child_process';
 import { PrismaService } from '../../security/prisma.service';
 import { AccountPrismaRepository } from '../../account/infrastructure/account.prisma.repository';
-import { OutboxEventPrismaPublisher } from '../infrastructure/outbox-event.prisma.publisher';
+import { OutboxEventPrismaPublisher } from '../../security/outbox/outbox-event.prisma.publisher';
 import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase';
 import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';

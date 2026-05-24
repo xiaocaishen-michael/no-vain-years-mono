@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
 import type { ClsService } from 'nestjs-cls';
-import { PrismaService } from '../../security/prisma.service';
+import { PrismaService } from '../prisma.service';
 import { OutboxEventPrismaPublisher } from './outbox-event.prisma.publisher';
 
 const SERVER_DIR = process.cwd();

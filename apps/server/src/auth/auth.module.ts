@@ -13,7 +13,6 @@ import {
 import { SecurityModule } from '../security/security.module.js';
 import { AccountModule } from '../account/account.module.js';
 import { REDIS_CLIENT } from '../security/redis.token.js';
-import { OUTBOX_PUBLISHER } from './application/ports/outbox-publisher.port.js';
 import { RETRY_EXECUTOR, type RetryExecutor } from './application/ports/retry-executor.port.js';
 import { SMS_CODE_REPOSITORY } from './application/ports/sms-code.repository.port.js';
 import { SMS_GATEWAY } from './application/ports/sms-gateway.port.js';
@@ -25,8 +24,6 @@ import { AuthFailureLockService } from './infrastructure/auth-failure-lock.servi
 import { BcryptTimingDefenseExecutor } from './infrastructure/bcrypt-timing-defense.executor.js';
 import { CockatielRetryExecutor } from './infrastructure/cockatiel-retry.executor.js';
 import { MockSmsGateway } from './infrastructure/mock-sms.gateway.js';
-import { OutboxEventCronPublisher } from './infrastructure/outbox-event-cron.publisher.js';
-import { OutboxEventPrismaPublisher } from './infrastructure/outbox-event.prisma.publisher.js';
 import { SmsCodeRedisRepository } from './infrastructure/sms-code.redis.repository.js';
 import { AccountPhoneSmsAuthController } from './web/account-phone-sms-auth.controller.js';
 import { AccountSmsCodeController } from './web/account-sms-code.controller.js';
@@ -42,8 +39,6 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
  * Owns:
  *   - SMS code domain (sms-code.vo) + ports + infra (Redis-backed repository,
  *     Aliyun/mock gateway, bcrypt-timing-defense)
- *   - Cross-context Outbox publisher (FR-S05/CL-008 — eventual account
- *     auto-create propagation)
  *   - phone-sms-auth + request-sms-code use cases (编排 — calls
  *     AccountRepository (via DI from AccountModule) + JwtTokenService
  *     (via SecurityModule))
@@ -132,13 +127,11 @@ import { SmsPhoneThrottlerGuard } from './web/sms-phone-throttler.guard.js';
       },
       inject: [smsConfig.KEY, RETRY_EXECUTOR],
     },
-    { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
     { provide: TIMING_DEFENSE_EXECUTOR, useClass: BcryptTimingDefenseExecutor },
     { provide: RETRY_EXECUTOR, useClass: CockatielRetryExecutor },
     AuthFailureLockService,
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
-    OutboxEventCronPublisher,
     SmsPhoneThrottlerGuard,
     // ProblemDetailFilter (APP_FILTER) moved to SecurityModule in PR-5a —
     // it's a cross-context concern, owned by the platform infra layer.
