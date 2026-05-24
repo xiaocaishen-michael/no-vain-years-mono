@@ -1,6 +1,6 @@
 ---
 adr_id: ADR-0020
-status: Accepted
+status: Superseded
 applies_to: [apps/server, packages/api-client, packages/types]
 sunset_trigger: |
   - 切非 NestJS 框架
@@ -9,9 +9,11 @@ sunset_trigger: |
 
 # ADR-0020: 模块边界 — NestJS Module 框架级 + ESLint `eslint-plugin-boundaries` v6 文件级
 
-- Status: Accepted (2026-05-18)
+- Status: Superseded (2026-05-24，by [ADR-0032](0032-backend-bounded-context.md) + [ADR-0043](0043-server-flat-module-paradigm.md))
 - Deciders: project owner
 - Tags: backend / architecture / cross-cutting
+
+> **⚠️ Superseded（2026-05-24）**：本 ADR 的 hexagonal 四层 ESLint 强制（`domain` / `application` / `infrastructure` / `web`）已退役 —— 模块边界改由 [ADR-0032](0032-backend-bounded-context.md)（bounded-context 拆分，elements 由 layer 切 module）+ [ADR-0043](0043-server-flat-module-paradigm.md)（扁平范式）定义。本篇保留作历史 rationale，不再 in-place 改决策本身（per [ADR-0031](0031-adr-governance.md) § ADR 修订策略 supersede-not-delete）。
 
 ## Context
 
