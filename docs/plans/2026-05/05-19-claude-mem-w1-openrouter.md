@@ -1,6 +1,7 @@
 # claude-mem W1 启动 plan（OpenRouter 路径）
 
 > **Status**: drafted 2026-05-18，等用户 ExitPlan 审批后启动 W1 实地执行
+> **处置（2026-05-24 状态追进）**：deferred — 父 [eval plan](05-19-claude-mem-pilot-eval.md) 未启则不动；同窗口随父 plan 启动。
 > **Parent eval plan**: `docs/plans/2026-05/05-19-claude-mem-pilot-eval.md`（170 行 untracked 调研，Status / Killswitch / 4 维验收等仍 authoritative）
 > **本文档承载**：re-check delta + OpenRouter 路径补丁 + 与原生 memory 机制对比 + W1 step-by-step 可执行清单 + 2-day A/B 短期验证
 

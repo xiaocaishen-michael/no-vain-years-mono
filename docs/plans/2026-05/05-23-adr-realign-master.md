@@ -1,6 +1,6 @@
 # Master Plan: ADR 基线重对齐 + meta 包袱清理
 
-> **统领 2 个独立子 plan**：Phase 1「ADR 自检 / 自洽 / 去包袱」→ Phase 2「以干净 ADR 指导的代码 drift 重构」。本文件**不下钻子 plan 内部**，只锁处置策略、drift 方向分类法、跨阶段契约、跨切主题、终局验收。
+> **统领 2 个独立子 plan**：Phase 1「ADR 自检 / 自洽 / 去包袱」→ ~~Phase 2「以干净 ADR 指导的代码 drift 重构」~~（**P2 已退役 2026-05-24** — hinge 软化后无实质内容，effort 坍缩为单 Phase，详见下「子 plan 拆分」）。本文件**不下钻子 plan 内部**，只锁处置策略、drift 方向分类法、跨阶段契约、跨切主题、终局验收。
 
 ## Context
 

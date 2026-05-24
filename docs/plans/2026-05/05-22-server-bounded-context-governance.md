@@ -1,5 +1,7 @@
 # Plan: Server Bounded Context Governance（security / account / auth 长期治理）
 
+> **Status（2026-05-24 闭合）**：基线已稳。Carry-over O1-O4 全部 resolved — O1 Outbox `metadata.trace_id` 强制 (#90) / O2 Operation Catalog (#93) / O3 hexagonal layer ESLint **VOID**（扁平贫血范式取代，见下 O3）/ O4 `src/common/` policy → ADR-0041 (#87)。下方「Governance Checklist（per feature 触发）」已毕业为常驻约定 [server-bounded-context-catalog.md](../../conventions/server-bounded-context-catalog.md)，随 Plan 2 feature 持续生效，不随本 plan 闭合。
+
 ## Context
 
 2026-05-21 ship [05-21-review-tech-stack-post-a002.md](05-21-review-tech-stack-post-a002.md) 的 PR-4「Server bounded context split」(PR #72) 完成物理拆分，但后续 PR-5 链落地时**仅靠 unit test 没能拦住 2 处 cross-module wiring bug**——`security.module.ts` 的 ClsModule interceptor mode 让 Guards/Filters 看不到 `trace_id`；`FormValidationException` 定义了但 `main.ts` 全局 ValidationPipe 未挂接。两 bug 等到 PR #79 真后端 smoke 才浮出，这种「装配 gap」是 bounded context 分层的固有副作用，**Plan 2 的 16 use case 顺序迁入时每个 feature 都可能触碰**。

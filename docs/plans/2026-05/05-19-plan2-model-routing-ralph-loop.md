@@ -1,6 +1,7 @@
 # Plan 2 模型路由 + Ralph loop 执行方案(No reinventing the wheel)
 
 > **Status**: drafted 2026-05-19 v3(per user input on clarify + orchestrator + /model 切换 + 前置章节拆 spec-kit preset 定制),plan-mode pending approval
+> **处置(2026-05-24 状态追进)**: deferred — 与 Plan 2 强耦合;orchestrator 2b 触发门槛(halt-log ≥ 3 同形态)因 Plan 2 仅跑批 A 从未达到,随 Plan 2 续跑自然激活,不单独追。
 > **Supersedes**: PR #34 amend 的"§ 2.2.5 + § 4 deferred"半决策状态
 > **Trigger**: 架构师 input 提议 Bun orchestrator / LangGraph.js;Phase 1 exploration 发现 spec-kit Workflows YAML 已 vendored 但**缺 clarify / analyze step**,改变 calculation
 
