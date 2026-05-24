@@ -54,7 +54,9 @@ pre-commit:
       # so we don't need to re-stage anything. The gate's value is: if the schema
       # changed and `prisma generate` fails (invalid schema, dialect break), the
       # commit aborts here instead of failing later in CI / runtime.
-      run: pnpm -C apps/server prisma generate
+      # pnpm 10: `pnpm -C <dir> prisma generate` mis-parses the dir as a command
+      # (ERR_PNPM_RECURSIVE_EXEC). Use `--dir <dir> exec` so pnpm runs the binary.
+      run: pnpm --dir apps/server exec prisma generate
 
     migration-naming-check:
       tags: data

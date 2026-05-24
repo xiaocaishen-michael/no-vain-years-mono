@@ -31,12 +31,12 @@ import {
  * `new OutboxEventPrismaPublisher()` 直接构造, fallback trace_id 路径覆盖。
  */
 type PrismaOutboxClient = {
-  outbox_event: {
+  outboxEvent: {
     create: (args: {
       data: {
-        event_type: string;
+        eventType: string;
         payload: unknown;
-        published_at: Date | null;
+        publishedAt: Date | null;
       };
     }) => Promise<unknown>;
   };
@@ -61,11 +61,11 @@ export class OutboxEventPrismaPublisher implements OutboxPublisher {
     });
 
     const c = client as PrismaOutboxClient;
-    await c.outbox_event.create({
+    await c.outboxEvent.create({
       data: {
-        event_type: eventType,
+        eventType: eventType,
         payload: envelope,
-        published_at: null,
+        publishedAt: null,
       },
     });
   }

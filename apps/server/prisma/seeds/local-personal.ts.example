@@ -21,8 +21,8 @@ async function main(): Promise<void> {
   //
   // await prisma.account.upsert({
   //   where: { phone: '+8613912345678' },
-  //   create: { phone: '+8613912345678', status: 'ACTIVE', display_name: 'me' },
-  //   update: { status: 'ACTIVE', display_name: 'me' },
+  //   create: { phone: '+8613912345678', status: 'ACTIVE', displayName: 'me' },
+  //   update: { status: 'ACTIVE', displayName: 'me' },
   // });
   console.log('[seed:local-personal] template — edit me to add your local accounts.');
 }

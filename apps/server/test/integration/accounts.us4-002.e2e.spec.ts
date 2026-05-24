@@ -96,7 +96,7 @@ describe('US4 e2e — FROZEN / ANONYMIZED + valid token → 401 (FR-009)', () =>
 
     await prisma.account.update({
       where: { phone },
-      data: { status: 'FROZEN', freeze_until: new Date('2030-01-01T00:00:00Z') },
+      data: { status: 'FROZEN', freezeUntil: new Date('2030-01-01T00:00:00Z') },
     });
 
     const res = await app.inject({
@@ -132,7 +132,7 @@ describe('US4 e2e — FROZEN / ANONYMIZED + valid token → 401 (FR-009)', () =>
     const tokenFrozen = await acquireToken(phoneFrozen);
     await prisma.account.update({
       where: { phone: phoneFrozen },
-      data: { status: 'FROZEN', freeze_until: new Date('2030-06-01T00:00:00Z') },
+      data: { status: 'FROZEN', freezeUntil: new Date('2030-06-01T00:00:00Z') },
     });
 
     // ANONYMIZED account: same flow

@@ -21,8 +21,8 @@ export class OutboxEventCronPublisher {
   constructor(private readonly prisma: PrismaService) {}
 
   async scan(): Promise<{ scanned: number; published: number }> {
-    const unpublished = await this.prisma.outbox_event.findMany({
-      where: { published_at: null },
+    const unpublished = await this.prisma.outboxEvent.findMany({
+      where: { publishedAt: null },
       take: 100,
     });
 
@@ -30,11 +30,11 @@ export class OutboxEventCronPublisher {
     for (const row of unpublished) {
       // TODO W3+: dispatch to real subscriber (search-index / welcome SMS / etc.)
       // 当前 placeholder 直接 mark published; W3+ 替换为:
-      //   try { await dispatcher.dispatch(row.event_type, row.payload); }
+      //   try { await dispatcher.dispatch(row.eventType, row.payload); }
       //   catch (e) { logger.error('dispatch failed', e); continue; }
-      await this.prisma.outbox_event.update({
+      await this.prisma.outboxEvent.update({
         where: { id: row.id },
-        data: { published_at: new Date() },
+        data: { publishedAt: new Date() },
       });
       published += 1;
     }

@@ -179,8 +179,8 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
           id: 99n,
           phone: '+8613900139001',
           status: 'ACTIVE',
-          created_at: new Date('2026-05-17T12:00:00Z'),
-          last_login_at: new Date('2026-05-17T12:00:00Z'),
+          createdAt: new Date('2026-05-17T12:00:00Z'),
+          lastLoginAt: new Date('2026-05-17T12:00:00Z'),
         }),
       },
     };

@@ -146,7 +146,7 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
     const phone = '+8613800138714';
     const freezeUntil = new Date('2026-06-17T00:00:00Z');
     await prisma.account.create({
-      data: { phone, status: 'FROZEN', freeze_until: freezeUntil },
+      data: { phone, status: 'FROZEN', freezeUntil: freezeUntil },
     });
 
     await app.inject({
@@ -192,7 +192,7 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
       data: {
         phone: phoneFrozen,
         status: 'FROZEN',
-        freeze_until: new Date('2026-07-01T00:00:00Z'),
+        freezeUntil: new Date('2026-07-01T00:00:00Z'),
       },
     });
     await app.inject({

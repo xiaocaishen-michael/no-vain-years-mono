@@ -103,7 +103,7 @@ describe('US1 e2e smoke (Testcontainers PG + Redis + Fastify)', () => {
     expect(body.refreshToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
     const updated = await prisma.account.findUnique({ where: { id: acc.id } });
-    expect(updated?.last_login_at).not.toBeNull();
+    expect(updated?.lastLoginAt).not.toBeNull();
   });
 
   it('code mismatch returns 401', async () => {

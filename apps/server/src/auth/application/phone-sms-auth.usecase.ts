@@ -113,11 +113,11 @@ export class PhoneSmsAuthUseCase {
             data: {
               phone: phone.value,
               status: 'ACTIVE',
-              last_login_at: new Date(),
+              lastLoginAt: new Date(),
             },
           });
 
-          const event = AccountCreatedEvent.create(created.id, phone.value, created.created_at);
+          const event = AccountCreatedEvent.create(created.id, phone.value, created.createdAt);
           await this.outboxPublisher.publish(
             tx,
             ACCOUNT_CREATED_EVENT_TYPE,
