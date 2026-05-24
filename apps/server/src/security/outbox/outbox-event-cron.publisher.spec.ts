@@ -42,11 +42,11 @@ describe('OutboxEventCronPublisher (Testcontainers PG) — T041 placeholder', ()
   });
 
   it('scan() marks unpublished rows as published (placeholder behavior)', async () => {
-    await prisma.outbox_event.create({
+    await prisma.outboxEvent.create({
       data: {
-        event_type: 'auth.test.event',
+        eventType: 'auth.test.event',
         payload: { foo: 'bar' },
-        published_at: null,
+        publishedAt: null,
       },
     });
 
@@ -54,8 +54,8 @@ describe('OutboxEventCronPublisher (Testcontainers PG) — T041 placeholder', ()
     expect(result.scanned).toBeGreaterThanOrEqual(1);
     expect(result.published).toBeGreaterThanOrEqual(1);
 
-    const unpublished = await prisma.outbox_event.findMany({
-      where: { event_type: 'auth.test.event', published_at: null },
+    const unpublished = await prisma.outboxEvent.findMany({
+      where: { eventType: 'auth.test.event', publishedAt: null },
     });
     expect(unpublished).toHaveLength(0);
   });

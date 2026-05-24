@@ -11,102 +11,107 @@ datasource db {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model account {
-  id                  BigInt       @id @default(autoincrement())
-  phone               String?      @unique(map: "uk_account_phone") @db.VarChar(20)
-  status              String       @db.VarChar(16)
-  created_at          DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime     @default(now()) @db.Timestamptz(6)
-  last_login_at       DateTime?    @db.Timestamptz(6)
-  display_name        String?      @db.VarChar(64)
-  freeze_until        DateTime?    @db.Timestamptz(6)
-  previous_phone_hash String?      @db.VarChar(64)
-  credential          credential[]
+model Account {
+  id                BigInt       @id @default(autoincrement())
+  phone             String?      @unique(map: "uk_account_phone") @db.VarChar(20)
+  status            String       @db.VarChar(16)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  lastLoginAt       DateTime?    @map("last_login_at") @db.Timestamptz(6)
+  displayName       String?      @map("display_name") @db.VarChar(64)
+  freezeUntil       DateTime?    @map("freeze_until") @db.Timestamptz(6)
+  previousPhoneHash String?      @map("previous_phone_hash") @db.VarChar(64)
+  credentials       Credential[]
 
-  @@index([freeze_until], map: "idx_account_freeze_until_active", where: raw("(((status)::text = 'FROZEN'::text) AND (freeze_until IS NOT NULL))"))
-  @@index([previous_phone_hash], map: "idx_account_previous_phone_hash", where: raw("(previous_phone_hash IS NOT NULL)"))
+  @@index([freezeUntil], map: "idx_account_freeze_until_active", where: raw("(((status)::text = 'FROZEN'::text) AND (freeze_until IS NOT NULL))"))
+  @@index([previousPhoneHash], map: "idx_account_previous_phone_hash", where: raw("(previous_phone_hash IS NOT NULL)"))
+  @@map("account")
   @@schema("account")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model account_sms_code {
-  id         BigInt    @id @default(autoincrement())
-  account_id BigInt
-  code_hash  String    @db.VarChar(64)
-  purpose    String    @db.VarChar(32)
-  expires_at DateTime  @db.Timestamptz(6)
-  used_at    DateTime? @db.Timestamptz(6)
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
+model AccountSmsCode {
+  id        BigInt    @id @default(autoincrement())
+  accountId BigInt    @map("account_id")
+  codeHash  String    @map("code_hash") @db.VarChar(64)
+  purpose   String    @db.VarChar(32)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  @@index([account_id, purpose], map: "idx_account_sms_code_account_purpose_active", where: raw("(used_at IS NULL)"))
+  @@index([accountId, purpose], map: "idx_account_sms_code_account_purpose_active", where: raw("(used_at IS NULL)"))
+  @@map("account_sms_code")
   @@schema("account")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model credential {
-  id            BigInt    @id @default(autoincrement())
-  account_id    BigInt
-  type          String    @db.VarChar(16)
-  password_hash String?   @db.VarChar(60)
-  last_used_at  DateTime? @db.Timestamptz(6)
-  created_at    DateTime  @default(now()) @db.Timestamptz(6)
-  account       account   @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@unique([account_id, type], map: "uk_credential_account_type")
-  @@index([account_id], map: "idx_credential_account_id")
-  @@schema("account")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model realname_profile {
-  id              BigInt    @id @default(autoincrement())
-  account_id      BigInt    @unique
-  status          String    @db.VarChar(16)
-  real_name_enc   Bytes?
-  id_card_no_enc  Bytes?
-  id_card_hash    String?   @unique(map: "uk_realname_profile_id_card_hash", where: raw("(id_card_hash IS NOT NULL)")) @db.VarChar(64)
-  provider_biz_id String?   @db.VarChar(64)
-  verified_at     DateTime? @db.Timestamptz(6)
-  failed_reason   String?   @db.VarChar(32)
-  failed_at       DateTime? @db.Timestamptz(6)
-  retry_count_24h Int       @default(0)
-  created_at      DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
-
-  @@index([provider_biz_id], map: "idx_realname_profile_provider_biz_id")
-  @@schema("account")
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model refresh_token {
+model Credential {
   id           BigInt    @id @default(autoincrement())
-  token_hash   String    @unique(map: "uk_refresh_token_token_hash") @db.VarChar(64)
-  account_id   BigInt
-  expires_at   DateTime  @db.Timestamptz(6)
-  revoked_at   DateTime? @db.Timestamptz(6)
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  device_id    String    @db.VarChar(36)
-  device_name  String?   @db.VarChar(64)
-  device_type  String    @default("UNKNOWN") @db.VarChar(16)
-  ip_address   String?   @db.VarChar(45)
-  login_method String    @default("PHONE_SMS") @db.VarChar(16)
+  accountId    BigInt    @map("account_id")
+  type         String    @db.VarChar(16)
+  passwordHash String?   @map("password_hash") @db.VarChar(60)
+  lastUsedAt   DateTime? @map("last_used_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  account      Account   @relation(fields: [accountId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  @@index([account_id, device_id], map: "idx_refresh_token_account_device_active", where: raw("(revoked_at IS NULL)"))
-  @@index([account_id], map: "idx_refresh_token_account_id_active", where: raw("(revoked_at IS NULL)"))
+  @@unique([accountId, type], map: "uk_credential_account_type")
+  @@index([accountId], map: "idx_credential_account_id")
+  @@map("credential")
   @@schema("account")
 }
 
-model outbox_event {
-  id           String    @id @default(uuid()) @db.Uuid
-  event_type   String
-  payload     Json
-  published_at DateTime? @db.Timestamptz(6)
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model RealnameProfile {
+  id            BigInt    @id @default(autoincrement())
+  accountId     BigInt    @unique @map("account_id")
+  status        String    @db.VarChar(16)
+  realNameEnc   Bytes?    @map("real_name_enc")
+  idCardNoEnc   Bytes?    @map("id_card_no_enc")
+  idCardHash    String?   @unique(map: "uk_realname_profile_id_card_hash", where: raw("(id_card_hash IS NOT NULL)")) @map("id_card_hash") @db.VarChar(64)
+  providerBizId String?   @map("provider_biz_id") @db.VarChar(64)
+  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz(6)
+  failedReason  String?   @map("failed_reason") @db.VarChar(32)
+  failedAt      DateTime? @map("failed_at") @db.Timestamptz(6)
+  retryCount24h Int       @default(0) @map("retry_count_24h")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  @@index([created_at], map: "outbox_event_unpublished_idx")
+  @@index([providerBizId], map: "idx_realname_profile_provider_biz_id")
+  @@map("realname_profile")
+  @@schema("account")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model RefreshToken {
+  id          BigInt    @id @default(autoincrement())
+  tokenHash   String    @unique(map: "uk_refresh_token_token_hash") @map("token_hash") @db.VarChar(64)
+  accountId   BigInt    @map("account_id")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deviceId    String    @map("device_id") @db.VarChar(36)
+  deviceName  String?   @map("device_name") @db.VarChar(64)
+  deviceType  String    @default("UNKNOWN") @map("device_type") @db.VarChar(16)
+  ipAddress   String?   @map("ip_address") @db.VarChar(45)
+  loginMethod String    @default("PHONE_SMS") @map("login_method") @db.VarChar(16)
+
+  @@index([accountId, deviceId], map: "idx_refresh_token_account_device_active", where: raw("(revoked_at IS NULL)"))
+  @@index([accountId], map: "idx_refresh_token_account_id_active", where: raw("(revoked_at IS NULL)"))
+  @@map("refresh_token")
+  @@schema("account")
+}
+
+model OutboxEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  eventType   String    @map("event_type")
+  payload     Json
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt], map: "outbox_event_unpublished_idx")
+  @@map("outbox_event")
   @@schema("public")
 }
-

@@ -103,15 +103,15 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
 
     // outbox row written — payload follows ADR-0033 envelope shape
     // { metadata: { trace_id, occurred_at, event_version, producer_context }, data }
-    const outboxRows = await prisma.outbox_event.findMany({
-      where: { event_type: ACCOUNT_CREATED_EVENT_TYPE },
+    const outboxRows = await prisma.outboxEvent.findMany({
+      where: { eventType: ACCOUNT_CREATED_EVENT_TYPE },
     });
     const matching = outboxRows.filter((r) => {
       const p = r.payload as { data?: { phone?: string } };
       return p?.data?.phone === phone;
     });
     expect(matching).toHaveLength(1);
-    expect(matching[0]!.published_at).toBeNull();
+    expect(matching[0]!.publishedAt).toBeNull();
 
     const envelope = matching[0]!.payload as {
       metadata: {

@@ -16,10 +16,10 @@ export class AccountPrismaRepository implements AccountRepository {
       id: row.id,
       phone: row.phone,
       status: row.status as 'ACTIVE' | 'FROZEN' | 'ANONYMIZED',
-      created_at: row.created_at,
-      last_login_at: row.last_login_at,
-      freeze_until: row.freeze_until,
-      display_name: row.display_name ?? null,
+      created_at: row.createdAt,
+      last_login_at: row.lastLoginAt,
+      freeze_until: row.freezeUntil,
+      display_name: row.displayName ?? null,
     });
   }
 
@@ -32,10 +32,10 @@ export class AccountPrismaRepository implements AccountRepository {
       id: row.id,
       phone: row.phone,
       status: row.status as 'ACTIVE' | 'FROZEN' | 'ANONYMIZED',
-      created_at: row.created_at,
-      last_login_at: row.last_login_at,
-      freeze_until: row.freeze_until,
-      display_name: row.display_name ?? null,
+      created_at: row.createdAt,
+      last_login_at: row.lastLoginAt,
+      freeze_until: row.freezeUntil,
+      display_name: row.displayName ?? null,
     });
   }
 
@@ -46,7 +46,7 @@ export class AccountPrismaRepository implements AccountRepository {
       data: {
         phone: account.phone.value,
         status: account.status as AccountStatus,
-        last_login_at: account.lastLoginAt,
+        lastLoginAt: account.lastLoginAt,
       },
     });
   }
@@ -54,14 +54,14 @@ export class AccountPrismaRepository implements AccountRepository {
   async updateLastLoginAt(id: bigint, at: Date): Promise<void> {
     await this.prisma.account.update({
       where: { id },
-      data: { last_login_at: at },
+      data: { lastLoginAt: at },
     });
   }
 
   async updateDisplayName(id: bigint, displayName: DisplayName | null): Promise<void> {
     await this.prisma.account.update({
       where: { id },
-      data: { display_name: displayName?.value ?? null },
+      data: { displayName: displayName?.value ?? null },
     });
   }
 }

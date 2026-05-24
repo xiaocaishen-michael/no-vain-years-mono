@@ -54,14 +54,14 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
 
     await publisher.publish(prisma, eventType, data);
 
-    const rows = await prisma.outbox_event.findMany({
-      where: { event_type: eventType },
+    const rows = await prisma.outboxEvent.findMany({
+      where: { eventType },
     });
     expect(rows).toHaveLength(1);
     const row = rows[0]!;
-    expect(row.event_type).toBe(eventType);
-    expect(row.published_at).toBeNull();
-    expect(row.created_at).toBeInstanceOf(Date);
+    expect(row.eventType).toBe(eventType);
+    expect(row.publishedAt).toBeNull();
+    expect(row.createdAt).toBeInstanceOf(Date);
     expect(row.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
     const payload = row.payload as {
@@ -86,7 +86,7 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
 
     await publisher.publish(prisma, eventType, { x: 1 });
 
-    const row = (await prisma.outbox_event.findMany({ where: { event_type: eventType } }))[0]!;
+    const row = (await prisma.outboxEvent.findMany({ where: { eventType } }))[0]!;
     const payload = row.payload as { metadata: { trace_id: string } };
     expect(payload.metadata.trace_id).toMatch(
       /^out-of-request-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
@@ -100,8 +100,8 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
       await publisher.publish(tx, eventType, { foo: 'bar' });
     });
 
-    const rows = await prisma.outbox_event.findMany({
-      where: { event_type: eventType },
+    const rows = await prisma.outboxEvent.findMany({
+      where: { eventType },
     });
     expect(rows).toHaveLength(1);
     const payload = rows[0]!.payload as {
@@ -122,8 +122,8 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
       }),
     ).rejects.toThrow('simulated business failure');
 
-    const rows = await prisma.outbox_event.findMany({
-      where: { event_type: eventType },
+    const rows = await prisma.outboxEvent.findMany({
+      where: { eventType },
     });
     expect(rows).toHaveLength(0);
   });
