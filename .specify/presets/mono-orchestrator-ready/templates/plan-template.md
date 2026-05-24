@@ -16,7 +16,7 @@ Frontmatter contract (parsed by scripts/orchestrator/parsers/plan.ts):
 - feature_id: must equal spec.md frontmatter feature_id
 - spec_ref: relative path to spec.md (orchestrator cross-loads)
 - status: drafted → tasks-ready → implementing → implemented → superseded
-- adr_refs: list of ADR ids this plan depends on (e.g., ["0019", "0020"])
+- adr_refs: list of ADR ids this plan depends on (e.g., ["0019", "0043"])
 - context7_verified: library names whose API surface was grounded via
   mcp__context7__query-docs during plan drafting (populated by
   context7-injection preset workflow)
@@ -41,7 +41,7 @@ Single JSON block, language tag MUST be `json orchestrator_config`.
 - workspaces[].id is referenced by tasks-meta.workspace
 - workspaces[].verify_commands keys must match tasks-meta.verify_kind values
 - workspaces[].graphify_scope is the default AST scope per workspace
-- module_boundaries enforces ESLint @nx/enforce-module-boundaries (per ADR-0020)
+- module_boundaries enforces eslint-plugin-boundaries at module level (per ADR-0032 / ADR-0043; ADR-0020 superseded)
 - sandbox.cwd_template uses {feature_id} and {task_id} placeholders
 -->
 
@@ -53,7 +53,7 @@ Single JSON block, language tag MUST be `json orchestrator_config`.
       "nx_project": "server",
       "cwd": "apps/server",
       "lang": "typescript",
-      "module_path": "src/modules/<module>",
+      "module_path": "src/<module>",
       "verify_commands": {
         "build": "pnpm nx build server",
         "test": "pnpm nx test server --watch=false",
@@ -61,13 +61,13 @@ Single JSON block, language tag MUST be `json orchestrator_config`.
         "typecheck": "pnpm nx run server:typecheck",
         "smoke": "pnpm tsx scripts/ci/server-boot-smoke.ts"
       },
-      "graphify_scope": "apps/server/src/modules/<module>/**/*"
+      "graphify_scope": "apps/server/src/<module>/**/*"
     }
   ],
   "module_boundaries": {
     "server-app": {
       "modules": ["<module>"],
-      "allowed_imports": ["@nestjs/*", "libs/db"],
+      "allowed_imports": ["@nestjs/*"],
       "forbidden_imports": ["apps/mobile/**/*"]
     }
   },
@@ -228,21 +228,26 @@ focused on a decision that an LLM coding agent needs to honor.
 <!--
 Per ADR-0040 multi-layer test gate strategy. These three invariants are the
 hard rules for any NestJS lifecycle test (Guard / Interceptor / Filter /
-Pipe / Repository). 违背任一条 → P3 阶段 lefthook anti-mock 正则会拦 commit.
+Pipe). 违背任一条 → P3 阶段 lefthook anti-mock 正则会拦 commit.
 These bullets are injected verbatim into the orchestrator LLM prompt; do
 not soften the language — the LLM defaults to mock everything if not
 explicitly forbidden.
 -->
 
-- **NO LIFECYCLE MOCKING**: 对 `Guard` / `Interceptor` / `Filter` / `Pipe` / `Repository` 子类，**绝对禁止** `new MyGuard()` / `jest.mock('./my.guard')` 这类隔离单元测试。这些组件依赖 NestJS DI lifecycle 顺序 (Guards→Interceptors→Pipes→Filters)，mock 隔离 = 抹掉 PR-79 类 cascade bug 的唯一信号。
+- **NO LIFECYCLE MOCKING**: 对 `Guard` / `Interceptor` / `Filter` / `Pipe` 子类，**绝对禁止** `new MyGuard()` / `jest.mock('./my.guard')` 这类隔离单元测试。这些组件依赖 NestJS DI lifecycle 顺序 (Guards→Interceptors→Pipes→Filters)，mock 隔离 = 抹掉 PR-79 类 cascade bug 的唯一信号。
 - **MANDATORY INTEGRATION**: 必须用 `Test.createTestingModule({ imports: [<TheModule>] }).compile()` 装一个微型 DI 容器，让被测组件在真实 lifecycle 中触发。`createTestingModule` 之外的"测试" 视同未测试。
 - **EXHAUSTIVE BRANCHING**: spec.md `state_branches` 列出的每条分支，**必须**在 integration test 文件中有对应 `it()` 块。100% 路径覆盖 — 不允许漏 cold-boot / 路由根 `/` 等非 happy-path 状态（PR #79 实证 4 层 cascade 始于一个未列状态分支）。
 
 ### General Architecture Notes
 
-- [Key design decision 1 — e.g., "Reuse AccountModule, add ProfileController + ProfileService"]
-- [Key design decision 2 — e.g., "Prisma schema already has the field; no migration needed (per ADR-0019)"]
-- [Key design decision 3 — e.g., "Phone-number masking happens at the response serializer, not at the entity layer"]
+> ⚠️ **CRITICAL ARCHITECTURE PARADIGM (ADR-0043 — ENFORCED)**
+> The implementer LLM MUST strictly follow the "Flat + Anemic + Moat" paradigm:
+> - **Flat Module**: ALL files live flatly in `apps/server/src/<module>/`. NEVER generate `domain/`, `application/`, `infrastructure/`, or `web/` subdirectories.
+> - **Anemic Data & Zero-Class**: Data equals raw Prisma rows (snake_case handled by `@map` in schema.prisma). NEVER generate Domain Classes or Entity Mappers.
+> - **No Repositories**: NEVER create Repository interfaces/adapters for your own tables. Inject `PrismaService` directly into UseCases. Put business invariants in pure functions (`*.rules.ts`).
+> - **The Moat**: NEVER write `tx.<otherTable>.*`. Cross-context access MUST go through the target module's UseCase (use the Two-step Inspect+Commit saga only when caller validation must sit between read and write).
+
+(Write any feature-specific architecture notes here — reuse decisions, schema state, masking points, etc.)
 
 ## Complexity Tracking
 

@@ -45,10 +45,10 @@ Status semantics (per task-closure preset):
 ## Server
 
 - [ ] T001 [task title]
-  <!-- task-meta: {"id":"T001","workspace":"server-app","deps":[],"trace_us":["US1"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"test","files":[{"path":"apps/server/src/modules/<module>/<file>.ts","op":"create"}]} -->
+  <!-- task-meta: {"id":"T001","workspace":"server-app","deps":[],"trace_us":["US1"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"test","files":[{"path":"apps/server/src/<module>/<file>.ts","op":"create"}]} -->
 
 - [ ] T002 [task title — unit test, ships RED first then GREEN]
-  <!-- task-meta: {"id":"T002","workspace":"server-app","deps":["T001"],"trace_us":["US1"],"trace_fr":["FR-001"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/modules/<module>/<file>.spec.ts","op":"create"}],"tdd_red_expected":true} -->
+  <!-- task-meta: {"id":"T002","workspace":"server-app","deps":["T001"],"trace_us":["US1"],"trace_fr":["FR-001"],"kind":"test-unit","verify_kind":"test","files":[{"path":"apps/server/src/<module>/<file>.spec.ts","op":"create"}],"tdd_red_expected":true} -->
 
 - [ ] T003 Verify Backend Physics — Server Runtime Smoke Verification
   <!-- task-meta: {"id":"T003","workspace":"server-app","deps":["T001","T002"],"trace_us":["US1"],"trace_fr":["FR-001"],"kind":"verification","verify_kind":"smoke","files":[]} -->
