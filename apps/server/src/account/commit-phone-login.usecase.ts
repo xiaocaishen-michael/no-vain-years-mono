@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../security/prisma.service';
 import { OUTBOX_PUBLISHER, type OutboxPublisher } from '../security/outbox/outbox-publisher.port';
-import { ACCOUNT_CREATED_EVENT_TYPE, AccountCreatedEvent } from './account-created.event';
+import { ACCOUNT_CREATED_EVENT_TYPE, buildAccountCreatedEvent } from './account-created.event';
 
 /**
  * 跨 context 账户登录落地 (per ADR-0043 两段式委托 — Saga 第 2 段 mutate)。
@@ -12,12 +12,18 @@ import { ACCOUNT_CREATED_EVENT_TYPE, AccountCreatedEvent } from './account-creat
  *
  *   - 已存在 → 更新 lastLoginAt (登录)。
  *   - 不存在 → create + publish AccountCreatedEvent (自动注册, FR-S11)。
- *   - FR-S08 并发同号注册 race → unique violation (P2002) fallback 落到登录路径。
+ *
+ * FR-S08 并发同号注册 race 在 Serializable 下有两种失败形态,两条都收敛到登录:
+ *   - **P2002**(unique violation,insert 时即触)→ tx 内 fallback 重查 + 更新 lastLoginAt。
+ *   - **P2034**(write conflict / deadlock,commit 时序列化失败,整 tx abort)→ `execute`
+ *     层重试整个 tx;重试时顶层 `findUnique` 命中已 commit 的 row 落登录路径。
  *
  * 自持 `$transaction({ Serializable })` 让 create 与 outbox 写共享 tx
  * (业务 rollback 时 outbox row 也撤,per ADR-0033)。AccountCreatedEvent 是
  * account context 的事件,故 publish 收在此处 (而非 auth) —— 符合依赖方向。
  */
+const MAX_SERIALIZATION_RETRIES = 3;
+
 @Injectable()
 export class CommitPhoneLoginUseCase {
   constructor(
@@ -27,6 +33,20 @@ export class CommitPhoneLoginUseCase {
   ) {}
 
   async execute(phone: string): Promise<{ accountId: bigint }> {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.commitOnce(phone);
+      } catch (e) {
+        // P2034 = Serializable 序列化失败,整 tx 已 abort → 重试(下一轮顶层命中已 commit row)。
+        if (isWriteConflict(e) && attempt < MAX_SERIALIZATION_RETRIES) {
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  private async commitOnce(phone: string): Promise<{ accountId: bigint }> {
     return this.prisma.$transaction(
       async (tx) => {
         const existing = await tx.account.findUnique({ where: { phone } });
@@ -42,11 +62,11 @@ export class CommitPhoneLoginUseCase {
           const created = await tx.account.create({
             data: { phone, status: 'ACTIVE', lastLoginAt: new Date() },
           });
-          const event = AccountCreatedEvent.create(created.id, phone, created.createdAt);
+          const payload = buildAccountCreatedEvent(created.id, phone, created.createdAt);
           await this.outboxPublisher.publish(
             tx,
             ACCOUNT_CREATED_EVENT_TYPE,
-            event.payload as unknown as Record<string, unknown>,
+            payload as unknown as Record<string, unknown>,
           );
           return { accountId: created.id };
         } catch (e) {
@@ -71,5 +91,13 @@ export class CommitPhoneLoginUseCase {
 function isPrismaUniqueViolation(e: unknown): boolean {
   return (
     typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'P2002'
+  );
+}
+
+// Prisma P2034: "Transaction failed due to a write conflict or a deadlock" —
+// Postgres Serializable 序列化失败 (40001),整 tx 已 abort,retryable。
+function isWriteConflict(e: unknown): boolean {
+  return (
+    typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'P2034'
   );
 }

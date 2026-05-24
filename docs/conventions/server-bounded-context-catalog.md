@@ -48,7 +48,8 @@ const { accountId } = await this.commitPhoneLogin.execute(phone); // 第2段: ac
 await this.prisma.$transaction(async (tx) => {
   const created = await tx.account.create({ ... });
   // CROSS-CONTEXT-ASYNC: auth.account.created → 下游消费方
-  await this.outboxPublisher.publish(tx, ACCOUNT_CREATED_EVENT_TYPE, event.payload);
+  const payload = buildAccountCreatedEvent(created.id, phone, created.createdAt); // 零-class builder
+  await this.outboxPublisher.publish(tx, ACCOUNT_CREATED_EVENT_TYPE, payload);
 });
 ```
 
