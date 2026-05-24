@@ -36,18 +36,48 @@ sunset_trigger: |
 
 ```typescript
 // account/account.rules.ts —— 纯函数，无状态，不碰 DB
-import type { account as AccountRow } from '../generated/prisma';
+import type { Account } from '../generated/prisma/client';
 
-export const isFrozen = (a: AccountRow): boolean =>
-  a.status === 'FROZEN' && (a.freezeUntil?.getTime() ?? 0) > Date.now();
-export const isAnonymized = (a: AccountRow): boolean => a.status === 'ANONYMIZED';
+export const isActive = (a: Account): boolean => a.status === 'ACTIVE';
+export const isFrozen = (a: Account): boolean => a.status === 'FROZEN';
+export const isAnonymized = (a: Account): boolean => a.status === 'ANONYMIZED';
 ```
+
+#### 2a. snake_case 体验问题在 `schema.prisma` 层用 `@map` 解决（**不**写 POJO 映射）
+
+贫血层直接消费 generated Prisma row，但 DB 列是 snake_case。**绝不**为改大小写写 `mapToX(row)` —— 那就是 Entity Mapper 特洛伊木马（今天 map 大小写、明天塞状态、后天分层复活；且 `select` 部分字段时 mapper 必崩）。正解在 schema 层：model 用 PascalCase + `@@map("snake_table")`，多词列用 camelCase + `@map("snake_col")`。TS client 字段 camelCase、物理列名保留 snake_case、**零运行时开销 + 零 migration**（`prisma migrate diff --from-schema <old> --to-schema <new> --exit-code` 实测空，因描述同一物理库）。
+
+可空列（如 `phone String?`）→ `phone: string | null` **让它穿透**到 UseCase / Rules，编译器逼显式处理 null = 业务严谨性的物理保护。若业务上绝不可空 → 改 schema 为非空（`String`），**禁**用 POJO / `!` 断言掩耳盗铃。
+
+#### 2b. 输入校验：Value Object 也拍平为纯函数（**零 class**）
+
+输入校验（手机号 / 显示名 / 验证码格式等）原 Value Object class 一并拍平为 `*.rules.ts` 纯函数 —— 保留 VO class 会撕裂心智模型（「既然 Phone 能是 class，为什么 Account 是裸 POJO」），并到处 `phone.value` 装箱/拆箱。北极星：`apps/server/src/` 下**零 class（除 NestJS 必需的 Controller / UseCase / Module / Guard / Filter / Interceptor / @Injectable Service / HttpException 子类 / class-validator DTO）**。
+
+- **有归一语义的**（trim / 大小写折叠）→ `normalizeX(raw): string` 返回规范化值（如 `normalizePhone` / `normalizeDisplayName` trim 后返回）。
+- **纯校验无变换的** → `assertValidX(raw): asserts raw is string`（如 `assertValidSmsCode`）。
+- 校验在**边界**（controller）调用,内部一律传裸 string。`.equals()` → `===`。
 
 ### 3. 三条跨界规则
 
 1. **R1 同 ctx + 自己的表** → 直注 `PrismaService` 读写，无 repository 接口。
 2. **R2 跨 ctx 同步**（同 tx 强一致）→ DI 注入对方 **UseCase**（受 [ADR-0032](0032-backend-bounded-context.md) 单向放行），传 `tx`；**禁** `tx.<otherTable>.*`。
 3. **R3 跨 ctx 副作用** → Outbox 异步，发布方 `publish(tx, eventType, payload)`，消费方按 event-type 字符串契约响应，双方互不 import。
+
+#### 3a. R2 落地形态：生命周期委托（高内聚），必要时两段式（Two-Step Saga）
+
+被调 context 暴露的不是「贫血 CRUD 微操」（`find` + `create` + `recordLogin` 三个细粒度 use case 会让 caller 变成对方状态机的 micromanager），而是**高内聚的生命周期委托**：把「这个手机号登录成功后，账户体系该如何流转」整个委托给 callee 的 use case。Caller（编排层 `auth`）只表达意图，callee（`account`）独占自己表的读写。
+
+**但当 caller 自身的校验/防御必须夹在「读 callee 状态」与「写 callee」之间时，单个 use case 吞不下，必须拆两段（Inspect 读 + Commit 写）**：
+
+- **第 1 段 `Inspect*UseCase`（只读）** → 返回贫血 discriminated 状态（如 `{ kind: NOT_FOUND | ACTIVE | FROZEN(+freezeUntil) | ANONYMIZED }`），**不改任何数据**。让 caller 在调用方自己的校验**之前**拿到 callee 状态做分支（反枚举要求：FROZEN → 403 披露 / ANONYMIZED → timing-pad 401，状态判定必须先于验码）。
+- **第 2 段 `Commit*UseCase`（写）** → caller 校验通过后调用，callee 自持 `$transaction`，find-or-create + 状态写 + R3 事件 publish + race fallback。
+
+**为何不能图省事用单个 upsert-first use case**（血泪教训，保留作 anti-pattern）：
+
+1. **0-day**：upsert 在 caller 校验（如短信码）**之前**就建号 → 任何人无需验证码即可为任意手机号建账户，被黑产瞬间耗尽资源。
+2. **失败前置态污染**：`upsert({ update: { lastLoginAt } })` 在 `isFrozen` 检查**之前**就更新了字段。
+
+**安全 + 时序永远凌驾于代码结构洁癖之上。** 实装样本见 `account/inspect-account-status.usecase.ts` + `account/commit-phone-login.usecase.ts`（auth `phone-sms-auth.usecase.ts` 两段委托）。
 
 ### 4. Port 三分法（替代「封杀所有 port」）
 
