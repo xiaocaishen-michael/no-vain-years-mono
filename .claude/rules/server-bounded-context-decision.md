@@ -22,9 +22,9 @@ paths:
    - side-effect notification? → **R3 CROSS-CTX-ASYNC** (Outbox)
    - 跨 ctx 读? → SecurityModule 共享读服务 OR Outbox event replay，**禁** cross-ctx use case 直 DI
 
-## 强制注释（PR review 拒缺失）
+## 跨上下文注释引导（PR Review 建议项）
 
-任何跨 bounded context 的 import 上方 1-3 行必有：
+触及跨 context 调用时请尽量按规范在 import 上方 1-3 行写注释；当前主干无刚性 CI 拦截，旨在为后续自动化门禁沉淀样本：
 
 - `// CROSS-CONTEXT-SYNC: <reason>` (R2)
 - `// CROSS-CONTEXT-ASYNC: <event-type>` (R3)
