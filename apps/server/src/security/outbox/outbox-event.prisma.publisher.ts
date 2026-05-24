@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, Optional } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
-import type { OutboxPublisher } from '../application/ports/outbox-publisher.port';
+import type { OutboxPublisher } from './outbox-publisher.port';
 import {
   OutboxEventEnvelopeSchema,
   type OutboxEventEnvelope,
-} from '../application/outbox-event-envelope.schema';
+} from './outbox-event-envelope.schema';
 
 /**
  * OutboxEventPrismaPublisher — writes domain events to `outbox_event` (FR-S11,

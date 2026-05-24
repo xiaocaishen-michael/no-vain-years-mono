@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../security/prisma.service';
+import { PrismaService } from '../prisma.service';
 
 /**
  * OutboxEventCronPublisher placeholder (T041, W2 polish scope).

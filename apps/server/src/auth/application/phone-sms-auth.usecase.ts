@@ -6,7 +6,10 @@ import {
   type AccountRepository,
 } from '../../account/application/ports/account.repository.port';
 import { SMS_CODE_REPOSITORY, type SmsCodeRepository } from './ports/sms-code.repository.port';
-import { OUTBOX_PUBLISHER, type OutboxPublisher } from './ports/outbox-publisher.port';
+import {
+  OUTBOX_PUBLISHER,
+  type OutboxPublisher,
+} from '../../security/outbox/outbox-publisher.port';
 import { TIMING_DEFENSE_EXECUTOR, type TimingDefenseExecutor } from './ports/timing-defense.port';
 import { AuthFailureLockService } from '../infrastructure/auth-failure-lock.service';
 import { JwtTokenService } from '../../security/jwt-token.service';

@@ -19,6 +19,9 @@ import { JwtTokenService } from './jwt-token.service.js';
 import { PrismaService } from './prisma.service.js';
 import { ProblemDetailFilter } from './problem-detail.filter.js';
 import { REDIS_CLIENT } from './redis.token.js';
+import { OUTBOX_PUBLISHER } from './outbox/outbox-publisher.port.js';
+import { OutboxEventPrismaPublisher } from './outbox/outbox-event.prisma.publisher.js';
+import { OutboxEventCronPublisher } from './outbox/outbox-event-cron.publisher.js';
 
 const REDIS_LIFECYCLE = Symbol('REDIS_LIFECYCLE');
 
@@ -50,6 +53,9 @@ class RedisLifecycle implements OnModuleDestroy {
  *                        propagation
  *   - APP_FILTER ProblemDetailFilter (RFC 9457 + business extension fields
  *                        per ADR-0038; injects traceId from ClsService)
+ *   - OUTBOX_PUBLISHER   cross-context Outbox publisher (per ADR-0033 +
+ *                        ADR-0043; outbox/ subdir per ADR-0041 sunset) —
+ *                        exported so any context can publish via shared tx
  *
  * "security" is intentionally broader than its original JWT-only scope —
  * it is the platform base layer where common platform infra lives.
@@ -113,7 +119,14 @@ class RedisLifecycle implements OnModuleDestroy {
       inject: [REDIS_LIFECYCLE],
     },
     { provide: APP_FILTER, useClass: ProblemDetailFilter },
+    // Cross-context Outbox (per ADR-0033 + ADR-0043): publisher lives in the
+    // platform base layer (security/outbox/) so account + auth — and any future
+    // context — can publish without violating the single-direction import
+    // boundary. OUTBOX_PUBLISHER is exported; the cron scanner is a placeholder
+    // (W3+ dispatch hook) registered here but not yet exported.
+    { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
+    OutboxEventCronPublisher,
   ],
-  exports: [JwtTokenService, JwtModule, PrismaService, REDIS_CLIENT],
+  exports: [JwtTokenService, JwtModule, PrismaService, REDIS_CLIENT, OUTBOX_PUBLISHER],
 })
 export class SecurityModule {}

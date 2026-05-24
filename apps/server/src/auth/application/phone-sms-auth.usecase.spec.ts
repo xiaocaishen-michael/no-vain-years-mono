@@ -7,7 +7,7 @@ import { Account } from '../../account/domain/account.aggregate';
 import { AccountInFreezePeriodException } from '../../account/domain/account-in-freeze-period.exception';
 import type { AccountRepository } from '../../account/application/ports/account.repository.port';
 import type { SmsCodeRepository } from './ports/sms-code.repository.port';
-import type { OutboxPublisher } from './ports/outbox-publisher.port';
+import type { OutboxPublisher } from '../../security/outbox/outbox-publisher.port';
 import type { TimingDefenseExecutor } from './ports/timing-defense.port';
 import type { JwtTokenService } from '../../security/jwt-token.service';
 import type { PrismaService } from '../../security/prisma.service';
