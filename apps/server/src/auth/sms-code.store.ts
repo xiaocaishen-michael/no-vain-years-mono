@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Redis } from 'ioredis';
-import { Phone } from '../account/phone.vo';
-import { SmsCode } from './sms-code.vo';
 
 const KEY_PREFIX = 'sms_code:';
 
@@ -26,12 +24,12 @@ export class SmsCodeStore {
     private readonly hmacSecret: string,
   ) {}
 
-  async store(phone: Phone, code: SmsCode, ttlSec: number): Promise<void> {
+  async store(phone: string, code: string, ttlSec: number): Promise<void> {
     const digest = this.hmac(code);
     await this.redis.setex(this.key(phone), ttlSec, digest);
   }
 
-  async verify(phone: Phone, code: SmsCode): Promise<boolean | null> {
+  async verify(phone: string, code: string): Promise<boolean | null> {
     const stored = await this.redis.get(this.key(phone));
     if (stored === null) return null;
     const candidate = this.hmac(code);
@@ -41,15 +39,15 @@ export class SmsCodeStore {
     return timingSafeEqual(storedBuf, candidateBuf);
   }
 
-  async clear(phone: Phone): Promise<void> {
+  async clear(phone: string): Promise<void> {
     await this.redis.del(this.key(phone));
   }
 
-  private hmac(code: SmsCode): string {
-    return createHmac('sha256', this.hmacSecret).update(code.value).digest('base64url');
+  private hmac(code: string): string {
+    return createHmac('sha256', this.hmacSecret).update(code).digest('base64url');
   }
 
-  private key(phone: Phone): string {
-    return `${KEY_PREFIX}${phone.value}`;
+  private key(phone: string): string {
+    return `${KEY_PREFIX}${phone}`;
   }
 }

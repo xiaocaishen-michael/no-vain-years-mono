@@ -8,7 +8,6 @@ import { execFileSync } from 'node:child_process';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
 import { MockSmsGateway } from '../../src/auth/mock-sms.gateway';
-import { Phone } from '../../src/account/phone.vo';
 import { SMS_GATEWAY } from '../../src/auth/sms-gateway.port';
 
 const SERVER_DIR = process.cwd();
@@ -71,7 +70,7 @@ describe('US1 e2e smoke (Testcontainers PG + Redis + Fastify)', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ ttlSec: 300 });
-    expect(mockSms.getLastCode(Phone.create(phone))).toMatch(/^\d{6}$/);
+    expect(mockSms.getLastCode(phone)).toMatch(/^\d{6}$/);
   });
 
   it('US1 happy path: request SMS → submit auth → 200 + tokens + DB last_login_at updated', async () => {
@@ -87,7 +86,7 @@ describe('US1 e2e smoke (Testcontainers PG + Redis + Fastify)', () => {
     });
     expect(reqRes.statusCode).toBe(200);
 
-    const code = mockSms.getLastCode(Phone.create(phone));
+    const code = mockSms.getLastCode(phone);
     expect(code).toMatch(/^\d{6}$/);
 
     const authRes = await app.inject({

@@ -1,6 +1,3 @@
-import { Phone } from '../account/phone.vo';
-import { SmsCode } from './sms-code.vo';
-
 /**
  * SmsGateway port (FR-S03 Template A unified).
  *
@@ -9,10 +6,11 @@ import { SmsCode } from './sms-code.vo';
  *
  * 操作:
  * - sendCode(phone, code): 发送 Template A 真实验证码; 反枚举要求 unified template
- *   (不区分注册 / 登录, per FR-S03).
+ *   (不区分注册 / 登录, per FR-S03). phone / code 均为已校验 string (per ADR-0043
+ *   R-VO — 校验在边界 normalizePhone / assertValidSmsCode 完成)。
  */
 export const SMS_GATEWAY = Symbol('SMS_GATEWAY');
 
 export interface SmsGateway {
-  sendCode(phone: Phone, code: SmsCode): Promise<void>;
+  sendCode(phone: string, code: string): Promise<void>;
 }

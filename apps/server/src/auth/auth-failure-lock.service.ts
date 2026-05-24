@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 import { AuthAttemptLockedException } from './auth-attempt-locked.exception';
-import { Phone } from '../account/phone.vo';
 import { REDIS_CLIENT } from '../security/redis.token';
 
 const FAIL_KEY = (phone: string): string => `auth-fail:${phone}`;
@@ -27,8 +26,8 @@ export class AuthFailureLockService {
   /**
    * 检查 phone 是否在锁定期。锁定 → throw AuthAttemptLockedException。
    */
-  async assertNotLocked(phone: Phone): Promise<void> {
-    const ttl = await this.redis.ttl(LOCK_KEY(phone.value));
+  async assertNotLocked(phone: string): Promise<void> {
+    const ttl = await this.redis.ttl(LOCK_KEY(phone));
     if (ttl > 0) {
       throw new AuthAttemptLockedException(ttl);
     }
@@ -37,14 +36,14 @@ export class AuthFailureLockService {
   /**
    * 记录一次认证失败。失败计数达 5 → 立即上锁 + reset 计数。
    */
-  async recordFailure(phone: Phone): Promise<void> {
-    const failKey = FAIL_KEY(phone.value);
+  async recordFailure(phone: string): Promise<void> {
+    const failKey = FAIL_KEY(phone);
     const count = await this.redis.incr(failKey);
     if (count === 1) {
       await this.redis.expire(failKey, FAIL_WINDOW_SECONDS);
     }
     if (count >= FAIL_THRESHOLD) {
-      await this.redis.set(LOCK_KEY(phone.value), '1', 'EX', LOCK_DURATION_SECONDS);
+      await this.redis.set(LOCK_KEY(phone), '1', 'EX', LOCK_DURATION_SECONDS);
       await this.redis.del(failKey);
     }
   }

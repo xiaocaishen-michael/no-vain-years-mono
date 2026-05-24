@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UnauthorizedException } from '@nestjs/common';
 import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase';
-import { Phone } from '../account/phone.vo';
-import { SmsCode } from './sms-code.vo';
 import { AccountInFreezePeriodException } from '../account/account-in-freeze-period.exception';
 import type { SmsCodeStore } from './sms-code.store';
 import type {
@@ -76,8 +74,8 @@ function buildHarness(): Harness {
 const ACTIVE: AccountStatusInspection = { kind: 'ACTIVE' };
 const NOT_FOUND: AccountStatusInspection = { kind: 'NOT_FOUND' };
 
-const phone = Phone.create('+8613800138401');
-const code = SmsCode.create('123456');
+const phone = '+8613800138401';
+const code = '123456';
 
 describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
   let h: Harness;
@@ -97,7 +95,7 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
     expect(result.refreshToken).toBe('refresh-token-xyz');
     expect(h.storeClear).toHaveBeenCalledWith(phone);
     expect(h.commit).toHaveBeenCalledTimes(1);
-    expect(h.commit).toHaveBeenCalledWith(phone.value);
+    expect(h.commit).toHaveBeenCalledWith(phone);
   });
 
   it('ACTIVE + code mismatch (verify false) → 401, no commit', async () => {
@@ -133,7 +131,7 @@ describe('PhoneSmsAuthUseCase US2 unregistered auto-register path', () => {
   it('unregistered + matching code → commit (create) + tokens', async () => {
     const result = await h.useCase.execute(phone, code);
     expect(h.commit).toHaveBeenCalledTimes(1);
-    expect(h.commit).toHaveBeenCalledWith(phone.value);
+    expect(h.commit).toHaveBeenCalledWith(phone);
     expect(result.accountId).toBe(99n);
     expect(result.accessToken).toBe('access-token-xyz');
     expect(result.refreshToken).toBe('refresh-token-xyz');

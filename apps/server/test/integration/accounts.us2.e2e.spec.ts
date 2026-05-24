@@ -8,7 +8,6 @@ import { execFileSync } from 'node:child_process';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
 import { MockSmsGateway } from '../../src/auth/mock-sms.gateway';
-import { Phone } from '../../src/account/phone.vo';
 import { SMS_GATEWAY } from '../../src/auth/sms-gateway.port';
 import { ACCOUNT_CREATED_EVENT_TYPE } from '../../src/account/account-created.event';
 
@@ -75,7 +74,7 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
     expect(reqRes.statusCode).toBe(200);
     expect(reqRes.json()).toEqual({ ttlSec: 300 });
 
-    const code = mockSms.getLastCode(Phone.create(phone));
+    const code = mockSms.getLastCode(phone);
     expect(code).toMatch(/^\d{6}$/);
 
     // Send inbound x-trace-id header — nestjs-cls middleware honors it
@@ -138,7 +137,7 @@ describe('US2 e2e smoke — unregistered phone auto-register (Testcontainers PG 
       url: '/api/v1/accounts/sms-codes',
       payload: { phone },
     });
-    const code = mockSms.getLastCode(Phone.create(phone));
+    const code = mockSms.getLastCode(phone);
 
     const authRes = await app.inject({
       method: 'POST',

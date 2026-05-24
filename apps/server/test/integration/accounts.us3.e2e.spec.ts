@@ -8,7 +8,6 @@ import { execFileSync } from 'node:child_process';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
 import { MockSmsGateway } from '../../src/auth/mock-sms.gateway';
-import { Phone } from '../../src/account/phone.vo';
 import { SMS_GATEWAY } from '../../src/auth/sms-gateway.port';
 import { ACCOUNT_IN_FREEZE_PERIOD_CODE } from '../../src/account/account-in-freeze-period.exception';
 
@@ -103,7 +102,7 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
       url: '/api/v1/accounts/sms-codes',
       payload: { phone: phone2 },
     });
-    const code2 = mockSms.getLastCode(Phone.create(phone2));
+    const code2 = mockSms.getLastCode(phone2);
     expect(code2).toMatch(/^\d{6}$/);
     const res2 = await app.inject({
       method: 'POST',
@@ -154,7 +153,7 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
       url: '/api/v1/accounts/sms-codes',
       payload: { phone },
     });
-    const code = mockSms.getLastCode(Phone.create(phone));
+    const code = mockSms.getLastCode(phone);
 
     const res = await app.inject({
       method: 'POST',
@@ -200,7 +199,7 @@ describe('US3 e2e smoke — anti-enumeration (CL-006)', () => {
       url: '/api/v1/accounts/sms-codes',
       payload: { phone: phoneFrozen },
     });
-    const codeFrozen = mockSms.getLastCode(Phone.create(phoneFrozen));
+    const codeFrozen = mockSms.getLastCode(phoneFrozen);
     const res403 = await app.inject({
       method: 'POST',
       url: '/api/v1/accounts/phone-sms-auth',

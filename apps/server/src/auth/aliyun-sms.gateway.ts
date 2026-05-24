@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Dysmsapi, { SendSmsRequest } from '@alicloud/dysmsapi20170525';
 import { $OpenApiUtil } from '@alicloud/openapi-core';
-import { Phone } from '../account/phone.vo';
-import { SmsCode } from './sms-code.vo';
 import type { RetryExecutor } from './retry-executor.port';
 import type { SmsGateway } from './sms-gateway.port';
 
@@ -53,14 +51,14 @@ export class AliyunSmsGateway implements SmsGateway {
     return new Dysmsapi(config);
   }
 
-  async sendCode(phone: Phone, code: SmsCode): Promise<void> {
-    const phoneNumber = phone.value.startsWith('+86') ? phone.value.slice(3) : phone.value;
+  async sendCode(phone: string, code: string): Promise<void> {
+    const phoneNumber = phone.startsWith('+86') ? phone.slice(3) : phone;
 
     const request = new SendSmsRequest({
       phoneNumbers: phoneNumber,
       signName: this.signName,
       templateCode: this.templateCode,
-      templateParam: JSON.stringify({ code: code.value }),
+      templateParam: JSON.stringify({ code }),
     });
 
     const response = await this.retryExecutor.execute(() => this.client.sendSms(request));
@@ -70,8 +68,6 @@ export class AliyunSmsGateway implements SmsGateway {
         `Aliyun SMS send failed: code=${response.body?.code ?? 'UNKNOWN'} message=${response.body?.message ?? ''}`,
       );
     }
-    this.logger.log(
-      `Aliyun SMS sent to ${phone.value} (bizId=${response.body.bizId ?? 'unknown'})`,
-    );
+    this.logger.log(`Aliyun SMS sent to ${phone} (bizId=${response.body.bizId ?? 'unknown'})`);
   }
 }
