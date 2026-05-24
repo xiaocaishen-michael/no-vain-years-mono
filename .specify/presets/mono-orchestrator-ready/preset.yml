@@ -1,5 +1,5 @@
 id: mono-orchestrator-ready
-version: 0.3.1
+version: 0.4.0
 description: |
   mono-repo spec-kit 自动编排 + 执行支持。把 spec / plan / tasks 三大 template
   升级到 orchestrator-friendly 形态:
@@ -53,6 +53,21 @@ description: |
       列出所有新依赖 / polyfill / defensive import + fact-check 锚点 URL,
       防 PR #79 retro Pattern F (defensive cargo-cult, 抄过时教程的
       polyfill / config)
+
+  0.4.0 增量 (ADR-0043 扁平+贫血范式对齐):
+    - spec-template: 删 entities 块 DDD 词汇 (aggregate_root 字段移除 + domain
+      "DDD subdomain" 改义为 owning-module 标签)
+    - plan-template:
+      · module_boundaries 注释改 eslint-plugin-boundaries (per ADR-0032 /
+        ADR-0043; ADR-0020 superseded), 去 @nx/enforce-module-boundaries
+      · orchestrator_config 路径修扁平 src/<module> (去 src/modules/<module>),
+        去不存在的 libs/db import
+      · Testing Invariants + General Architecture Notes 去 Repository / entity
+        layer 旧范式残留
+      · General Architecture Notes 加 ⚠️ CRITICAL ADR-0043 范式 banner
+        (Flat + Anemic + Moat, fierce NEVER/MUST), orchestrator inject 进
+        implement prompt
+    - tasks-template: task-meta files 路径修扁平 src/<module>
 
   配合 scripts/orchestrator/*.ts 使用。仅适用于 monorepo (nx workspaces),
   因为 orchestrator 需要在单仓内同时调度 server / api-client / mobile 多 workspace。

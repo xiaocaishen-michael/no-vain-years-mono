@@ -125,8 +125,7 @@ trace_sc MAY be empty for infrastructure FRs (no metric to attach).
 <!--
 Single JSON fenced block. Orchestrator extracts the whole block at once and
 validates with the EntitySchema (scripts/orchestrator/schemas/spec.ts).
-- aggregate_root: required boolean; guides NestJS Service-layer codegen
-- domain: optional DDD subdomain (decoupled from `modules` frontmatter)
+- domain: optional — owning business module this entity lives in (free-form label, NOT a DDD subdomain)
 - relations.kind: "1:1" | "1:N" | "N:1" | "N:N"
 -->
 
@@ -137,7 +136,6 @@ validates with the EntitySchema (scripts/orchestrator/schemas/spec.ts).
       "id": "E1",
       "name": "[EntityName]",
       "domain": "<module>",
-      "aggregate_root": true,
       "attrs": [
         { "name": "id", "type": "string" }
       ],
