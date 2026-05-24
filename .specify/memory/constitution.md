@@ -22,18 +22,18 @@
 
 **禁反模式**：tasks 拆得过细（每个 method 一个 task） / 多 task 合一 commit / 写完 impl 喊 /commit 事后再开 PR 改 tasks.md。
 
-### IV. Module Boundary 显式 + ESLint 强制
+### IV. Module Boundary 显式 + ESLint 强制（扁平 + 贫血 + 护城河）
 
-NestJS Module 间禁止直接 `import` 跨 module 内部 service / repository。跨 module 通信走 Module 显式 `exports` + API 层（DTO / interface），由 `eslint-plugin-boundaries` 在 lint 阶段拦截。
+跨 bounded context（`auth` / `account` / `security`）通信走 Module 显式 `exports` + DI，**单向** `auth → account → security`（反向禁），由 `eslint-plugin-boundaries` 在 **module 级**拦截（hexagonal 层强制已退役，per ADR-0032）。模块**内部扁平**：文件平铺于 module 根，无 `domain` / `application` / `infrastructure` / `web` 层子目录（per ADR-0043 § 1）。
 
-**4 类规则**（对标旧 Java ArchUnit，V2 验收必须 1:1 覆盖）：
+**现行边界规则**（ESLint boundaries + Nx depConstraints 在 CI 拦截）：
 
-1. domain 层零外部依赖（不 import infrastructure / web）
-2. web 层不直接 import infrastructure（必经 application service）
-3. 跨 module 必经 api 层（不直接 cross-module repository import）
-4. shared 层（packages/）不依赖 business module（apps/）
+1. 跨 module 单向 `auth → account → security`；`security`（平台基座）不依赖任何业务 ctx
+2. **数据护城河**：某 ctx 不碰他 ctx 的 Prisma 表（禁 `tx.<otherTable>.*` / `prisma.<otherTable>.*` 出现在非 owner ctx）；跨 ctx 读/写经对方的 use case（R2，必要时拆**两段式委托** `Inspect*UseCase` 只读 + `Commit*UseCase` 写，per ADR-0043 § 3a / § 5）
+3. **无 repository port**：use case 直注 `PrismaService` 读写自己 ctx 的表；数据 = 贫血 Prisma row（`@map` camelCase）+ `*.rules.ts` 纯函数不变量；禁充血 Domain Class / Entity Mapper / 输入校验 VO class（零-class，per ADR-0043 § 2 / § 4）
+4. shared 层（`packages/`）不依赖 business module（`apps/`）
 
-详见 ADR-0020（W4-W5 ship）。
+详见 ADR-0032（bounded context 拆分 + hexagonal 退役）+ ADR-0043（扁平 / 贫血 / 护城河 / 零-class 正向范式）。**ADR-0020（原 hexagonal 四层 + repository 边界）已 Superseded by 0032 + 0043。**
 
 ### V. 类型同步链 Nx-driven（不引入跨仓 hook）
 
@@ -96,4 +96,6 @@ PoC 阶段（W1-W5）锁定栈：
 - `/speckit-analyze` 把 spec / plan / tasks 对照 Constitution 扫一致性
 - Constitution 与 `docs/conventions/sdd.md` 冲突时以 Constitution 为准（sdd.md 是 SDD 流程细节，Constitution 是 PoC 项目级原则）
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-17 | **Last Amended**: 2026-05-17
+**Version**: 1.1.0 | **Ratified**: 2026-05-17 | **Last Amended**: 2026-05-24
+
+> v1.1.0（2026-05-24）：§ IV Module Boundary 重写对齐 ADR-0043 扁平+贫血+护城河+零-class 范式（R-1~R-VO 实装后）—— 删退役的 hexagonal 四层 ArchUnit 规则，改单向 module 边界 + 数据护城河 + 无 repository；ADR-0020 标 Superseded。
