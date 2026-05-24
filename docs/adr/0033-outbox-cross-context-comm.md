@@ -29,13 +29,13 @@ Plan 1 W2.4 已实装 `outbox_event` 表 + `OutboxPublisher` (per memory `feedba
 
 ## Decision
 
-### 跨 context 调用规则(强制层 → ADR-0034)
+### 跨 context 调用规则(演进层，详见 ADR-0034)
 
-| 场景                                 | 路径                                                                                                                                 |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Same context                         | DI 调用 use case (直 import 同 module application service)                                                                           |
-| Cross-context **sync**(同 tx 强需求) | 编排型 use case 内组合 (e.g. `phone-sms-auth.usecase` 直接调 `account.autoCreate` ),允许但显式注释 `// CROSS-CONTEXT-SYNC: <reason>` |
-| Cross-context **async** (default)    | **Outbox event**;publisher 一边写 outbox_event 一边业务写同 tx,后台 worker 消费                                                      |
+| 场景                                 | 路径                                                                                                                                                                                                 |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Same context                         | DI 调用 use case (直 import 同 module application service)                                                                                                                                           |
+| Cross-context **sync**(同 tx 强需求) | 编排型 use case 内组合 (e.g. `phone-sms-auth.usecase` 内联 `tx.account.create`),允许跨 context 调用;**强烈建议**显式写 `// CROSS-CONTEXT-SYNC: <reason>` 注释以利影响面分析,当前阶段不做 CI 刚性卡点 |
+| Cross-context **async** (default)    | **Outbox event**;publisher 一边写 outbox_event 一边业务写同 tx,后台 worker 消费                                                                                                                      |
 
 ### Event payload envelope schema 强制 `metadata.trace_id`
 

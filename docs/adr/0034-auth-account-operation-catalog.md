@@ -30,13 +30,15 @@ sunset_trigger: |
 
 ## Decision
 
-### 3 传播规则(强制注释)
+### 3 传播规则(注释为建议项，渐进式强制)
 
-| Rule ID                 | 场景                                                             | 路径                                                                  |
-| ----------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **R1: SAME-CTX**        | use case 内部业务调同 context use case                           | DI 调用,无注释要求                                                    |
-| **R2: CROSS-CTX-SYNC**  | 必同 tx 强需求 (e.g. phone-sms-auth → account.autoCreate-or-get) | 编排型 use case 内组合,**必加注释** `// CROSS-CONTEXT-SYNC: <reason>` |
-| **R3: CROSS-CTX-ASYNC** | side effect / 通知 / audit / 风控 (default 跨 context 路径)      | Outbox event,**必加注释** `// CROSS-CONTEXT-ASYNC: <event-type>`      |
+| Rule ID                 | 场景                                                             | 路径                                                                      |
+| ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **R1: SAME-CTX**        | use case 内部业务调同 context use case                           | DI 调用,无注释要求                                                        |
+| **R2: CROSS-CTX-SYNC**  | 必同 tx 强需求 (e.g. phone-sms-auth → account.autoCreate-or-get) | 编排型 use case 内组合,**建议添加**注释 `// CROSS-CONTEXT-SYNC: <reason>` |
+| **R3: CROSS-CTX-ASYNC** | side effect / 通知 / audit / 风控 (default 跨 context 路径)      | Outbox event,**建议添加**注释 `// CROSS-CONTEXT-ASYNC: <event-type>`      |
+
+> **渐进式强制定位**（per § 落地演进路径）：当前阶段注释为 **SHOULD**（物理越界由 Nx 标签电网 `@nx/enforce-module-boundaries` 硬卡；注释靠人工 / AI CR 引导）。待 Golden Samples 沉淀 + 独立 `ts-morph` 扫描器上线后恢复 **MUST**。
 
 ### LLM decision tree + Operation Catalog
 
@@ -48,13 +50,21 @@ sunset_trigger: |
 
 - LLM agent 触及 server use case / module / spec 时, `.claude/rules/server-bounded-context-decision.md` 自动 surface 简版决策树 + 注释规则
 - `docs/conventions/server-bounded-context-catalog.md` 是 PR review 单一权威 — 4 现有 use case 已 backfill; Plan 2 anticipated 4 候选预占位
-- ESLint/AST custom rule（**独立的 `ts-morph`/regex 注释扫描项，从已废弃的 hexagonal layer ESLint 重引计划完全解耦** — 该 hexagonal 前提已被 [ADR-0032](0032-backend-bounded-context.md) 在 PR-4 retired，注释扫描与 hexagonal 层正交，不再 defer 到它）: cross-context import 必前 1-3 行有 `CROSS-CONTEXT-(SYNC|ASYNC|READ):` 注释 — 当前 PR review 人工兜底, 未来独立上线该扫描器
+- 注释门禁分阶段（详 § 落地演进路径）：当前 **SHOULD**（PR review / AI CR 人工兜底），Plan 2 沉淀 Golden Samples，Post-Plan-2 上线**独立 `ts-morph` 注释扫描器**（与已退役的 hexagonal layer ESLint 完全解耦、正交）挂 lefthook，恢复 **MUST** + status 翻 `Enforced via CI`
 
 ## Trade-offs
 
 - 注释 overhead — 但 LLM 命中率 + 人脑追踪 side effect 链收益大
 - Catalog 维护需 PR review 配合 — 由 PR template checklist + path-triggered rule 双层兜底
 - 决策树 7 questions 比原 2 questions 长 — 但覆盖 cross-context 读 + 新 bounded context evaluation 两个原版漏洞
+
+## 落地演进路径 (Evolutionary Path)
+
+CROSS-CONTEXT 注释从 SHOULD 渐进到 MUST，避免 0 Golden Sample 下开 CI 刚性拦截逼 LLM 因无模仿对象而注水幻觉（per realign hinge 裁决 2026-05-24）：
+
+1. **Stage A（M1.1 现在）→ SHOULD**：物理边界（`account ↛ auth` 等 import 方向）由 Nx 标签电网 `@nx/enforce-module-boundaries` 硬卡；`// CROSS-CONTEXT-*` 注释为建议项，靠人工 / AI CR 引导，不阻 merge。
+2. **Stage B（Plan 2 首个跨域 feature）→ 锚 Golden Samples**：人类 / AI 手写 3 个 Golden Sample（R2 / R3 / R-READ 各一），让全仓长出 few-shot 模仿对象。
+3. **Stage C（Post-Plan-2）→ 恢复 MUST**：上线**独立 `ts-morph` 注释扫描器**（与已退役的 hexagonal layer ESLint **完全解耦、正交** —— 不以其为活跃前提），挂 lefthook，注释从 SHOULD 翻 MUST，本 ADR status → `Enforced via CI`。
 
 ## References
 
