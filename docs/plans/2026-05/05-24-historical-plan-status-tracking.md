@@ -2,7 +2,7 @@
 
 > **目的**：盘点 `docs/plans/` 内全部历史计划的真实完成状态，把**未完成的逐个过一遍**（原目标 / 已落地 / 剩余 / 建议处置），作为后续优先级决策的依据。
 > **方法**：读每篇 doc 自述 → 用 `git log` PR 号 + `specs/` / `apps/server/src/` 实际产物交叉验真，不轻信 doc 自述。
-> **范围**：33 个 plan（排除当前在做的 `05-24-client-deploy-*` master + p1-cloudflare-web）。
+> **范围**：34 个 plan（含本日晚新增并 ship 的 `05-24-speckit-preset-orchestrator-adr0043`；排除当前在做的 `05-24-client-deploy-*` master + p1-cloudflare-web）。
 
 ## 一览（按完成度分桶）
 
@@ -12,7 +12,7 @@
 | 🟡 有意延后 | 3 | 触发条件未到 / 被优先级挤后 | 暂不动 |
 | ⚪ 已退役 / 吸收 / 参考档 | 3 | 正式关闭，无执行剩余 | 否 |
 | 🟢 已 ship 缺收口 | 3 | 实质完成，仅缺闭合 / 对账文档 | 可选（文档级） |
-| ✅ 已完整 ship | 19 | 核实通过 | 否 |
+| ✅ 已完整 ship | 20 | 核实通过 | 否 |
 
 下面 § A-§ D 逐个过未完成项；§ E 列已闭合项备查。
 
@@ -100,7 +100,7 @@
 
 ## § E 已完整 ship ✅（核实通过，备查）
 
-Plan 1 backend-stack-poc · graphify-knowledge-graph · orchestrator-ndjson-stream（#60）· orchestrator-poc-a002（A-002）· pr3-5to2-packages-refactor（#77）· pr5-tail-orval-stabilize（#79）· test-infra master/p1/p2/p3（#80/#81/#82）· meta-config-mono-migration（#94/#96）· mono-meta backend/frontend-gap-audit（#106/#107/#110，B/C 有意延后）· release-please-mono-bootstrap（#109/#111/#114）· adr-realign-p1（#149-156）· claude-config-meta-to-mono master/p1/p2/p3（#118-135）· prod-cutover-meta-to-mono-swas（#144/#145/#147，prod 已上线）· sdd-path-trigger-split（#138/#139）· meta-debt-cleanup-whole-repo（#174/#176）· server-flat-paradigm-refactor（#157-168，ADR-0043 Accepted）
+Plan 1 backend-stack-poc · graphify-knowledge-graph · orchestrator-ndjson-stream（#60）· orchestrator-poc-a002（A-002）· pr3-5to2-packages-refactor（#77）· pr5-tail-orval-stabilize（#79）· test-infra master/p1/p2/p3（#80/#81/#82）· meta-config-mono-migration（#94/#96）· mono-meta backend/frontend-gap-audit（#106/#107/#110，B/C 有意延后）· release-please-mono-bootstrap（#109/#111/#114）· adr-realign-p1（#149-156）· claude-config-meta-to-mono master/p1/p2/p3（#118-135）· prod-cutover-meta-to-mono-swas（#144/#145/#147，prod 已上线）· sdd-path-trigger-split（#138/#139）· meta-debt-cleanup-whole-repo（#174/#176）· server-flat-paradigm-refactor（#157-168，ADR-0043 Accepted）· speckit-preset-orchestrator-adr0043（上游 presets#16 + mono #181/#182/#185/#186，2026-05-24 晚新增并 ship；详见下节）
 
 ---
 
@@ -124,9 +124,24 @@ Plan 1 backend-stack-poc · graphify-knowledge-graph · orchestrator-ndjson-stre
 
 - **A-1 续 Plan 2**（唯一 live 业务）— 从批 B `003-tokens` 起手，**等你给 server ↔ app spec 合并约束**后再 `/speckit-specify`。
 
-> 本轮 8 处 plan 文件编辑 + 本追进文档**尚未 commit**，待你确认后一并提交。
+> 上述「本轮」8 处编辑 + 本文档已 commit（#179）。
+
+### 后续轮（2026-05-24 晚）：spec-kit preset + orchestrator 对齐 ADR-0043
+
+A-1 暂停期间插入的工具链清债 —— 新计划 `05-24-speckit-preset-orchestrator-adr0043.md`（master + PRESET / MONO 子计划），已全 ship：
+
+| PR | 内容 |
+|---|---|
+| `michael-speckit-presets#16` | preset `mono-orchestrator-ready` 0.3.1→0.4.0：删 DDD entity 词汇（`aggregate_root`）+ 修扁平 `src/<module>` 路径 + `eslint-plugin-boundaries`(ADR-0032/0043) + 新增 fierce ADR-0043 范式 banner |
+| #181 | orchestrator 删 `aggregate_root` + 全仓扫 stale `src/modules`→`src/account` + prompt-assembler 注入静态范式段；历史 `specs/001`+`002` 挂 deprecation banner + 修 002 路径 / ADR-0020 链 |
+| #182 | re-install preset 0.4.0 到 mono vendored |
+| #185 | `eslint.config.mjs` 注释去 stale hexagonal/ADR-0020；`05-20`+`05-21` 挂 HISTORICAL 布局 banner |
+| #186 | `.prettierignore` 修 `verify.sh` 误报的 2 个 cosmetic drift（vendored 文件被 prettier 单引号化） |
+
+净效果：spec-kit preset + orchestrator 从「旧范式默认引力」翻转为「新范式默认引力」，权威面无残留 stale `src/modules` / hexagonal 引用；`verify.sh` 转绿。**A-1 仍暂停**，工具链已就绪。
 
 ## confidence 声明
 
 - 🔴 § A-1 Plan 2 为**直接核实**（`specs/` 目录 + server 模块），最高可信。
 - 🟢 § D 的 D-1/D-3 部分基于 subagent 对 git log 的归纳；精确定责前需再核 commit。
+- ✅ 后续轮（ADR-0043）5 PR 全 merged，**直接核实**（`verify.sh` green + 全仓 grep `src/modules`/hexagonal 权威面 0 残留），最高可信。
