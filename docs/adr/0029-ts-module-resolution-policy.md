@@ -63,7 +63,7 @@ A-002 ship (PR #65/#66/#67) 暴露 `tsconfig.base.json` 用 `moduleResolution: n
 2. 加 `apps/server/tsconfig.json` override
 3. 删 PR #67 在 `packages/auth/tsconfig.json` 加的 bundler override (现继承自 base)
 4. `pnpm nx run-many --target=typecheck --all --skip-nx-cache` GREEN
-5. `pnpm nx run mobile:bundle:web` GREEN (无 `.js` 后缀解析报错)
+5. `pnpm nx run mobile:build` GREEN (无 `.js` 后缀解析报错)
 
 ## Consequences
 

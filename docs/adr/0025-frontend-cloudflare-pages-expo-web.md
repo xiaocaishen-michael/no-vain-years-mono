@@ -40,7 +40,7 @@ mono Plan 3 前端部署链:
 1. **Build target**:`apps/mobile` Expo SDK 54+ `expo export --platform web` 产出静态 SPA(`apps/mobile/dist/` 单页 + 静态 asset),不引入第二套 Web 项目
 2. **Host**:**Cloudflare Pages**(static asset 托管,非 Functions / Workers tier)
 3. **Build trigger**:GitHub repo connect → CF Pages 拉取 main 分支自动 build(or 改 GitHub Actions push 触发 `wrangler pages deploy`,具体方式 Plan 3 Phase 2 实施时决)
-4. **Build command**:`pnpm nx run mobile:export-web`(or 等价 `pnpm nx run mobile:build --configuration=web`,Plan 3 Phase 2 起手前 mobile project.json target 落地)
+4. **Build command**:`pnpm nx run mobile:build`(`apps/mobile/project.json` 的 `build` target,executor 跑 `expo export -p web` 产出 `apps/mobile/dist/`)
 5. **API 调用方式**:Web SPA 直接走 CORS 访问 `https://api.<domain>`(后端 Aliyun ECS / SWAS / ACK 任一,per ADR-0026)— **不走 CF Pages Functions 反代**,避开 [CF Workers/Pages Functions → Aliyun ECS 525](../../memory/reference_cf_workers_to_aliyun_ecs_525.md) 已知卡 TLS 握手问题
 6. **mobile binary 部署 deferred**:本 ADR 不锁定 EAS Build / 真机分发 / 国内商店上架方案;触发时机 = Plan 3 ship 后 Plan 4 立 ADR
 
@@ -81,7 +81,7 @@ mono Plan 3 前端部署链:
 ## Validation
 
 - **实装锚点 deferred to Plan 3 Phase 2**:
-  - `apps/mobile/project.json`:`export-web` target(`nx run mobile:export-web` 跑通本地产出 `apps/mobile/dist/`)
+  - `apps/mobile/project.json`:`build` target(`nx run mobile:build` 跑通本地产出 `apps/mobile/dist/`)
   - `wrangler.toml` or CF Pages dashboard config:build command + output dir + env vars
   - `apps/server` `enableCors` config:allow-origin = CF Pages prod 域 + preview 通配
   - `.github/workflows/deploy-web.yml`:main push 触发 deploy or CF Pages 自管

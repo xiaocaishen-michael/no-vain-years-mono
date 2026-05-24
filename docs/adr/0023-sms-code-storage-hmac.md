@@ -18,7 +18,7 @@ sunset_trigger: |
 
 [FR-S06](../../specs/001-phone-sms-auth/spec.md) 要求 `/phone-sms-auth` 反枚举 3 个 401 路径（ACTIVE+码错 / ACTIVE+码过期 / ANONYMIZED+任意码）P95 wall-clock 时延差 ≤ 50ms。
 
-W3 deferred Item 4 落地 `SingleEndpointEnumerationDefenseIT`（mono PR #23）实测 200-rep diff ≈ 193ms,违反阈值。**根因**:
+W3 deferred Item 4 落地 `timing-defense.p95.it.spec.ts`（mono PR #23）实测 200-rep diff ≈ 193ms,违反阈值。**根因**:
 
 | 路径               | `SmsCodeRedisRepository.verify` 触发 | bcrypt.compare(cost=12) | `BcryptTimingDefenseExecutor.pad`(cost=10) | 总耗时     |
 | ------------------ | ------------------------------------ | ----------------------- | ------------------------------------------ | ---------- |
@@ -34,7 +34,7 @@ SMS code Redis 存储**从 bcrypt(cost=12) 改 HMAC-SHA256 + `crypto.timingSafeE
 
 - `store(phone, code, ttl)` — `crypto.createHmac('sha256', SMS_CODE_HMAC_SECRET).update(code.value).digest()` 取 32-byte digest → base64url encode → `SETEX sms_code:<phone> ttl <digest>`
 - `verify(phone, code)` — `GET sms_code:<phone>` → 若 null 返 null;否则同算法 HMAC `code.value` → `crypto.timingSafeEqual(stored, candidate)` constant-time 比较
-- secret 从 env `SMS_CODE_HMAC_SECRET` 注入(同 `AUTH_JWT_SECRET` 管理风格,fail-fast via `ConfigService.getOrThrow`)
+- secret 从 env `SMS_CODE_HMAC_SECRET` 注入(同 `AUTH_JWT_SECRET` 管理风格,fail-fast via `authConfig` Zod schema)
 - `BcryptTimingDefenseExecutor` 保留(纵深防御:抹平未来 verify 路径间任何残余时差,如 redis.get 抖动 / Phone.create 校验 / VO 构造等)
 
 ### 接口签名(无变更)
@@ -43,7 +43,7 @@ SMS code Redis 存储**从 bcrypt(cost=12) 改 HMAC-SHA256 + `crypto.timingSafeE
 
 ### ConfigModule wireup
 
-`auth.module.ts` `SMS_CODE_REPOSITORY` provider 从 `useClass` 改 `useFactory` 注入 `REDIS_CLIENT + ConfigService.getOrThrow('SMS_CODE_HMAC_SECRET')`。
+`auth.module.ts` `SMS_CODE_REPOSITORY` provider 从 `useClass` 改 `useFactory`,`inject: [REDIS_CLIENT, authConfig.KEY]`(从 `authConfig` 读 `SMS_CODE_HMAC_SECRET`)。
 
 ## Consequences
 
@@ -59,7 +59,7 @@ SMS code Redis 存储**从 bcrypt(cost=12) 改 HMAC-SHA256 + `crypto.timingSafeE
 - **新增 env `SMS_CODE_HMAC_SECRET`** — 部署清单 + 测试 setup + `.env.example` 都需加;但与 `AUTH_JWT_SECRET` 风格一致,新增运维负担可控
 - **失去 bcrypt work-factor** — bcrypt cost=12 的设计意图是防"hash 库泄露后离线爆破"。SMS code 是 6 位数字 + 5min TTL + 5-strike auth-lock + 24h 10 次 rate-limit,本质上 **没有 password 的离线爆破威胁模型**(6 位数字 + 5min TTL 在线爆破期望成功率 5/100W × 5min/24h ≈ 1.7e-9,与 secret 不被偷的前提下 HMAC 比较冗余的安全余量相比 negligible);Redis hash 即便泄露,5min 内已 expire 0 价值
 - **HMAC secret 泄露 = 全量 code 可离线伪造 hash** — 但攻击者要 RCE 拿到 server env 同时也能拿 redis 数据 + JWT signing key,attack chain 等价 admin compromise;不是 secret 漏出独占的新 attack surface
-- **`BcryptTimingDefenseExecutor` 仍存在** — 看似 redundant(verify ~1ms),但保留作纵深:redis.get 抖动 / Phone VO 构造 / ConfigService.get / DB account 查询时差等任何**未列**的隐藏 1-5ms 差异都被 ~80ms pad 抹平。删 pad = 暴露任何未来引入的微差异为枚举信号
+- **`BcryptTimingDefenseExecutor` 仍存在** — 看似 redundant(verify ~1ms),但保留作纵深:redis.get 抖动 / Phone VO 构造 / config 读取 / DB account 查询时差等任何**未列**的隐藏 1-5ms 差异都被 ~80ms pad 抹平。删 pad = 暴露任何未来引入的微差异为枚举信号
 - **HMAC deterministic** — 同 code 同 secret 同 digest(不像 bcrypt salt 不同 hash 不同);Redis key `sms_code:<phone>` per-phone 隔离 + 5min TTL,deterministic 性质对 6 位 code 反枚举无削弱(攻击者本就知道 6 位 code 全集 10^6,本攻击面与 hash 算法无关)
 - **secret 轮换需双读期** — 蓝绿 / 滚动部署期间新 verify(新 secret)对老 store(老 secret hash)失败,产生 false-negative;**缓解**:secret 轮换运维 SOP = 旧 secret deprecate 期 ≥ 5min TTL 自然过期,期间 0 用户影响(短时 SMS code 天然适合此 model)
 
@@ -76,7 +76,7 @@ SMS code Redis 存储**从 bcrypt(cost=12) 改 HMAC-SHA256 + `crypto.timingSafeE
 ## Validation
 
 - `SmsCodeRedisRepository` 单测覆盖:store / verify true / verify false / verify null after expire / verify null after clear / HMAC deterministic(同 code 同 secret 同 digest) / negative test(不同 code 不同 digest);Testcontainers Redis
-- `SingleEndpointEnumerationDefenseIT`(`timing-defense.p95.it.spec.ts`)`RUN_PERF_IT=true PERF_IT_REPS=200` 实测 P95 diff ≤ 50ms PASS;200-rep 是 PoC 阶段 fast feedback,1000-rep nightly job 在 Plan 2 引入 dedicated slow-IT job 时启用
+- `timing-defense.p95.it.spec.ts` `RUN_PERF_IT=true PERF_IT_REPS=200` 实测 P95 diff ≤ 50ms PASS;200-rep 是 PoC 阶段 fast feedback,1000-rep nightly job 在 Plan 2 引入 dedicated slow-IT job 时启用
 - Spec amend [FR-S06](../../specs/001-phone-sms-auth/spec.md) 末尾加 storage sub-clause + Changelog 2026-05-18 entry,记录从 bcrypt → HMAC 切换
 
 ## References

@@ -39,9 +39,9 @@ type ProblemDetailResponse = {
   instance?: string; // URI ref to this error instance (request id)
 
   // 业务扩展 (this ADR)
-  code: string; // machine code e.g. "AUTH_LOCKED"
+  code: string; // machine code e.g. "AUTH_ATTEMPT_LOCKED"
   traceId: string; // 联 [ADR-0036](0036-observability-logging-governance.md) CLS trace_id
-  freezeUntil?: string; // ISO 8601 — for AUTH_LOCKED
+  freezeUntil?: string; // ISO 8601 — for ACCOUNT_IN_FREEZE_PERIOD
   retryAfterSeconds?: number; // for RATE_LIMIT_EXCEEDED
   invalidAttributes?: Array<{ field: string; messages: string[] }>; // for FORM_VALIDATION
   // 可继续扩 (e.g. requiredCaptcha for FORM_NEEDS_CAPTCHA)
@@ -56,7 +56,8 @@ type ProblemDetailResponse = {
 // generated/api-client/auth.ts
 export type PhoneSmsAuthErrorCode =
   | 'FORM_VALIDATION'
-  | 'AUTH_LOCKED'
+  | 'AUTH_ATTEMPT_LOCKED'
+  | 'ACCOUNT_IN_FREEZE_PERIOD'
   | 'RATE_LIMIT_EXCEEDED'
   | 'SMS_CODE_INVALID';
 ```
@@ -65,7 +66,7 @@ export type PhoneSmsAuthErrorCode =
 
 ### 3. 客户端 fallback chain
 
-`apps/mobile/src/core/api/problem-guards.ts`:
+`apps/mobile/src/core/api/errors.ts`(problem-detail 提取与守卫):
 
 ```ts
 function extractProblemDetail(err: unknown): ProblemDetailResponse | null {
@@ -101,11 +102,12 @@ if (problem.code === 'FORM_VALIDATION') {
 
 ### 6. ERROR_DISPLAY_MAP — 中文 inline map
 
-`apps/mobile/src/core/i18n/errors.ts`:
+`apps/mobile/src/core/api/errors.ts`(同文件 `ERROR_DISPLAY_MAP`):
 
 ```ts
 export const ERROR_DISPLAY_MAP: Record<string, string> = {
-  AUTH_LOCKED: '账号已锁定',
+  ACCOUNT_IN_FREEZE_PERIOD: '账号处于注销冻结期内,暂不可登录',
+  AUTH_ATTEMPT_LOCKED: '验证失败次数过多,账号已暂时锁定,请稍后再试',
   RATE_LIMIT_EXCEEDED: '操作过于频繁,请稍后再试',
   SMS_CODE_INVALID: '验证码错误或已过期',
   FORM_VALIDATION: '表单信息有误',
@@ -127,7 +129,7 @@ export const ERROR_DISPLAY_MAP: Record<string, string> = {
 
 ## Consequences
 
-- PR-5 ship:client interceptor + problem-guards + form.setError + Error Boundary trace_id 显示
+- PR-5 ship:client interceptor + problem-detail 守卫(errors.ts) + form.setError + Error Boundary trace_id 显示
 - PR-5 server amend:ProblemDetailResponse 加 6 业务扩展字段 + Filter 注入 traceId + FormValidationException 新建
 - 联 ADR-0027 Orval codegen 自动产 typed error code
 
