@@ -70,7 +70,7 @@
 
 ### 索引一致性校验
 
-`scripts/check-adr-index.ts`（lefthook `adr-index-check` 自动跑;手动 `pnpm tsx scripts/check-adr-index.ts`）机械校验上表与各文件 frontmatter 一致：每篇 ADR ↔ 恰一行（无漏 / 无幻影），且 status 列 == frontmatter `status`。改 status 或新增 ADR 后须同步本表，否则 commit 被拒。
+`scripts/checks/check-adr-index.ts`（lefthook `adr-index-check` 自动跑;手动 `pnpm tsx scripts/checks/check-adr-index.ts`）机械校验上表与各文件 frontmatter 一致：每篇 ADR ↔ 恰一行（无漏 / 无幻影），且 status 列 == frontmatter `status`。改 status 或新增 ADR 后须同步本表，否则 commit 被拒。
 
 ## 反查与过滤
 

@@ -31,7 +31,7 @@ Plan 1-2 实际安全状态:
 
 ### 2. `.env` / `.env.example` 同步校验
 
-`scripts/check-env-sync.ts`(PR-6 ship):
+`scripts/checks/check-env-sync.ts`(PR-6 ship；R-6 后续归入 `scripts/checks/` nx 项目):
 
 ```ts
 // 对每个 .env.example: 提取 key 集合 K_example

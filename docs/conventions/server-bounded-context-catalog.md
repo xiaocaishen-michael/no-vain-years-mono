@@ -33,7 +33,7 @@ export class UpdateDisplayNameUseCase {
 
 **场景**：编排型 use case 跨 context 调用 callee，且 caller 失败时**必须** rollback callee（事务一致性强需求）。
 
-**实现**：编排型 use case 物理放 `auth/`（编排层），跨业务 ctx 的**构造器注入参数上方 必须（Must）** 加 `// CROSS-CONTEXT-SYNC:` 注释 —— 注入点 = 行为耦合点，R-6 探针 `scripts/check-server-moat.ts` 机器强制（缺则 lefthook + CI 拒；import 上方 / 调用处的注释不被探针采信，per [ADR-0034](../adr/0034-auth-account-operation-catalog.md) § 落地演进路径 Stage C）：
+**实现**：编排型 use case 物理放 `auth/`（编排层），跨业务 ctx 的**构造器注入参数上方 必须（Must）** 加 `// CROSS-CONTEXT-SYNC:` 注释 —— 注入点 = 行为耦合点，R-6 探针 `scripts/checks/check-server-moat.ts` 机器强制（缺则 lefthook + CI 拒；import 上方 / 调用处的注释不被探针采信，per [ADR-0034](../adr/0034-auth-account-operation-catalog.md) § 落地演进路径 Stage C）：
 
 编排层**不碰** `tx.<otherTable>.*`（护城河，per [ADR-0043](../adr/0043-server-flat-module-paradigm.md) § 5）—— 委托 callee 的 UseCase；callee 自持 tx 写自己的表 + 发自己的 event。必要时拆两段（Inspect 读 + Commit 写，per ADR-0043 § 3a）：
 
@@ -141,7 +141,7 @@ PR review 检查（spec / catalog 一致性硬拒；SYNC/READ 注释由探针硬
 
 - spec `modules:` 与 catalog 不一致 — **拒**
 - catalog 表无新行（除非该 use case 不跨 context 且不引入新 operation 概念）— **拒**
-- 跨业务 ctx 注入缺 `// CROSS-CONTEXT-SYNC:` / 跨 ctx 只读缺 `// CROSS-CONTEXT-READ:` / 跨 ctx 写 — **拒**（R-6 探针 `scripts/check-server-moat.ts` lefthook + CI 机器强制）
+- 跨业务 ctx 注入缺 `// CROSS-CONTEXT-SYNC:` / 跨 ctx 只读缺 `// CROSS-CONTEXT-READ:` / 跨 ctx 写 — **拒**（R-6 探针 `scripts/checks/check-server-moat.ts` lefthook + CI 机器强制）
 - Outbox publish 缺 `// CROSS-CONTEXT-ASYNC:` 注释 — **建议（非拒）**，CR 抽检引导，不阻 merge
 
 ## 参考
