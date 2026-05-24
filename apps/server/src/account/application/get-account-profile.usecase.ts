@@ -1,6 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ACCOUNT_REPOSITORY, type AccountRepository } from './ports/account.repository.port';
-import { AccountStatus } from '../domain/account.aggregate';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../security/prisma.service';
+import { AccountStatus } from '../domain/account.rules';
 
 export interface AccountProfileResult {
   accountId: bigint;
@@ -12,23 +12,21 @@ export interface AccountProfileResult {
 
 @Injectable()
 export class GetAccountProfileUseCase {
-  constructor(
-    @Inject(ACCOUNT_REPOSITORY)
-    private readonly accountRepo: AccountRepository,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async execute(accountId: bigint): Promise<AccountProfileResult> {
-    const account = await this.accountRepo.findById(accountId);
+    const account = await this.prisma.account.findUnique({ where: { id: accountId } });
 
-    if (!account) {
+    // phone-null row 视为 not-found (沿用旧 repository 守卫语义)。
+    if (!account || account.phone === null) {
       throw new NotFoundException('ACCOUNT_NOT_FOUND');
     }
 
     return {
       accountId: account.id,
-      phone: account.phone.value,
-      displayName: account.displayName?.value ?? null,
-      status: account.status,
+      phone: account.phone,
+      displayName: account.displayName,
+      status: account.status as AccountStatus,
       createdAt: account.createdAt,
     };
   }

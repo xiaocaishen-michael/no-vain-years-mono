@@ -1,39 +1,40 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { GetAccountProfileUseCase } from './get-account-profile.usecase';
-import { Account, AccountStatus } from '../domain/account.aggregate';
-import type { AccountRepository } from './ports/account.repository.port';
+import { AccountStatus } from '../domain/account.rules';
+import type { PrismaService } from '../../security/prisma.service';
 
-function buildAccountRepoMock(): AccountRepository {
-  return {
-    findById: vi.fn(),
-    findByPhone: vi.fn(),
-    save: vi.fn().mockResolvedValue(undefined),
-    updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
-    updateDisplayName: vi.fn().mockResolvedValue(undefined),
-  } as unknown as AccountRepository;
+type AccountFindUnique = ReturnType<typeof vi.fn>;
+
+function buildPrismaMock(): { prisma: PrismaService; findUnique: AccountFindUnique } {
+  const findUnique = vi.fn();
+  const prisma = { account: { findUnique } } as unknown as PrismaService;
+  return { prisma, findUnique };
 }
 
 // US1: new user — displayName null (profile missing signal, FR-007)
 describe('GetAccountProfileUseCase US1 — new user, displayName null', () => {
-  let accountRepo: AccountRepository;
+  let findUnique: AccountFindUnique;
   let useCase: GetAccountProfileUseCase;
 
   const accountId = 42n;
   const row = {
     id: accountId,
     phone: '+8613800138001',
-    status: 'ACTIVE' as const,
-    created_at: new Date('2026-01-01T00:00:00Z'),
-    last_login_at: null,
-    freeze_until: null,
-    display_name: null,
+    status: 'ACTIVE',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+    lastLoginAt: null,
+    displayName: null,
+    freezeUntil: null,
+    previousPhoneHash: null,
   };
 
   beforeEach(() => {
-    accountRepo = buildAccountRepoMock();
-    useCase = new GetAccountProfileUseCase(accountRepo);
-    vi.mocked(accountRepo.findById).mockResolvedValue(Account.fromPrisma(row));
+    const m = buildPrismaMock();
+    findUnique = m.findUnique;
+    useCase = new GetAccountProfileUseCase(m.prisma);
+    findUnique.mockResolvedValue(row);
   });
 
   it('displayName is null when not yet set (FR-007 auto-create default)', async () => {
@@ -46,7 +47,7 @@ describe('GetAccountProfileUseCase US1 — new user, displayName null', () => {
     expect(result.accountId).toBe(accountId);
     expect(result.phone).toBe('+8613800138001');
     expect(result.status).toBe(AccountStatus.ACTIVE);
-    expect(result.createdAt).toEqual(row.created_at);
+    expect(result.createdAt).toEqual(row.createdAt);
   });
 
   it('phone is raw E.164 string — mask deferred to frontend (FR-001)', async () => {
@@ -62,33 +63,34 @@ describe('GetAccountProfileUseCase US1 — new user, displayName null', () => {
     );
   });
 
-  it('calls findById with the provided accountId', async () => {
+  it('queries findUnique with the provided accountId', async () => {
     await useCase.execute(accountId);
-    expect(accountRepo.findById).toHaveBeenCalledWith(accountId);
-    expect(accountRepo.findById).toHaveBeenCalledTimes(1);
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: accountId } });
+    expect(findUnique).toHaveBeenCalledTimes(1);
   });
 });
 
 // US3: returning user — profile already complete
 describe('GetAccountProfileUseCase US3 — returning user, displayName set', () => {
-  let accountRepo: AccountRepository;
   let useCase: GetAccountProfileUseCase;
 
   const accountId = 99n;
   const row = {
     id: accountId,
     phone: '+8613900139001',
-    status: 'ACTIVE' as const,
-    created_at: new Date('2025-06-01T00:00:00Z'),
-    last_login_at: new Date('2026-05-20T12:00:00Z'),
-    freeze_until: null,
-    display_name: '张三',
+    status: 'ACTIVE',
+    createdAt: new Date('2025-06-01T00:00:00Z'),
+    updatedAt: new Date('2026-05-20T12:00:00Z'),
+    lastLoginAt: new Date('2026-05-20T12:00:00Z'),
+    displayName: '张三',
+    freezeUntil: null,
+    previousPhoneHash: null,
   };
 
   beforeEach(() => {
-    accountRepo = buildAccountRepoMock();
-    useCase = new GetAccountProfileUseCase(accountRepo);
-    vi.mocked(accountRepo.findById).mockResolvedValue(Account.fromPrisma(row));
+    const m = buildPrismaMock();
+    useCase = new GetAccountProfileUseCase(m.prisma);
+    m.findUnique.mockResolvedValue(row);
   });
 
   it('returns displayName string when set', async () => {
@@ -106,19 +108,18 @@ describe('GetAccountProfileUseCase US3 — returning user, displayName set', () 
     expect(result.accountId).toBe(accountId);
     expect(result.phone).toBe('+8613900139001');
     expect(result.status).toBe(AccountStatus.ACTIVE);
-    expect(result.createdAt).toEqual(row.created_at);
+    expect(result.createdAt).toEqual(row.createdAt);
   });
 });
 
 // Not found path
 describe('GetAccountProfileUseCase — account not found', () => {
-  let accountRepo: AccountRepository;
   let useCase: GetAccountProfileUseCase;
 
   beforeEach(() => {
-    accountRepo = buildAccountRepoMock();
-    useCase = new GetAccountProfileUseCase(accountRepo);
-    vi.mocked(accountRepo.findById).mockResolvedValue(null);
+    const m = buildPrismaMock();
+    useCase = new GetAccountProfileUseCase(m.prisma);
+    m.findUnique.mockResolvedValue(null);
   });
 
   it('throws NotFoundException when account does not exist', async () => {

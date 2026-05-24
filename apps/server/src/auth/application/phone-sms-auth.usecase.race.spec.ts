@@ -2,20 +2,18 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
 import { PrismaService } from '../../security/prisma.service';
-import { AccountPrismaRepository } from '../../account/infrastructure/account.prisma.repository';
 import { OutboxEventPrismaPublisher } from '../../security/outbox/outbox-event.prisma.publisher';
 import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase';
 import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
-import type { SmsCodeRepository } from './ports/sms-code.repository.port';
+import type { SmsCodeStore } from '../infrastructure/sms-code.store';
 import type { TimingDefenseExecutor } from './ports/timing-defense.port';
 import type { JwtTokenService } from '../../security/jwt-token.service';
 import type { AuthFailureLockService } from '../infrastructure/auth-failure-lock.service';
 
-// Ctor amend 轨迹: T036/T037 +TimingDefenseExecutor=6 / T047 +AuthFailureLockService=7
+// Ctor (post-ADR-0043 R-2+3): repository ports 删除,直注 PrismaService + SmsCodeStore。
 type UseCaseCtor = new (
-  accountRepo: AccountPrismaRepository,
-  smsCodeRepo: SmsCodeRepository,
+  smsCodeStore: SmsCodeStore,
   jwtTokenService: JwtTokenService,
   outboxPublisher: OutboxEventPrismaPublisher,
   prismaService: PrismaService,
@@ -47,14 +45,13 @@ describe('PhoneSmsAuthUseCase concurrent auto-register race (Testcontainers PG)'
 
     prisma = new PrismaService(url);
 
-    const accountRepo = new AccountPrismaRepository(prisma);
     const outboxPublisher = new OutboxEventPrismaPublisher();
 
-    const smsCodeRepo: SmsCodeRepository = {
+    const smsCodeStore = {
       store: vi.fn().mockResolvedValue(undefined),
       verify: vi.fn().mockResolvedValue(true),
       clear: vi.fn().mockResolvedValue(undefined),
-    };
+    } as unknown as SmsCodeStore;
     const jwtTokenService = {
       signAccessToken: vi.fn().mockReturnValue('access-token-race'),
       generateRefreshToken: vi.fn().mockReturnValue('refresh-token-race'),
@@ -68,8 +65,7 @@ describe('PhoneSmsAuthUseCase concurrent auto-register race (Testcontainers PG)'
       recordFailure: vi.fn().mockResolvedValue(undefined),
     } as unknown as AuthFailureLockService;
     useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
-      accountRepo,
-      smsCodeRepo,
+      smsCodeStore,
       jwtTokenService,
       outboxPublisher,
       prisma,

@@ -1,11 +1,8 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Phone } from '../../account/domain/phone.vo';
 import { SmsCode } from '../domain/sms-code.vo';
-import {
-  ACCOUNT_REPOSITORY,
-  type AccountRepository,
-} from '../../account/application/ports/account.repository.port';
-import { SMS_CODE_REPOSITORY, type SmsCodeRepository } from './ports/sms-code.repository.port';
+import { isAnonymized, isFrozen } from '../../account/domain/account.rules';
+import { SmsCodeStore } from '../infrastructure/sms-code.store';
 import {
   OUTBOX_PUBLISHER,
   type OutboxPublisher,
@@ -29,10 +26,7 @@ export interface PhoneSmsAuthResult {
 @Injectable()
 export class PhoneSmsAuthUseCase {
   constructor(
-    @Inject(ACCOUNT_REPOSITORY)
-    private readonly accountRepo: AccountRepository,
-    @Inject(SMS_CODE_REPOSITORY)
-    private readonly smsCodeRepo: SmsCodeRepository,
+    private readonly smsCodeStore: SmsCodeStore,
     private readonly jwtTokenService: JwtTokenService,
     @Inject(OUTBOX_PUBLISHER)
     private readonly outboxPublisher: OutboxPublisher,
@@ -58,36 +52,38 @@ export class PhoneSmsAuthUseCase {
   }
 
   private async executeInternal(phone: Phone, code: SmsCode): Promise<PhoneSmsAuthResult> {
-    const account = await this.accountRepo.findByPhone(phone);
+    // phone-null row 视为 not-found → 走未注册路径 (沿用旧 repository 守卫语义)。
+    const account = await this.prisma.account.findUnique({ where: { phone: phone.value } });
 
-    if (!account) {
+    if (!account || account.phone === null) {
       return this.handleUnregistered(phone, code);
     }
 
     // CL-006 FROZEN disclosure — 403 + freezeUntil, NOT in timing pad scope.
-    if (account.isFrozen()) {
+    if (isFrozen(account)) {
       throw new AccountInFreezePeriodException(account.freezeUntil ?? new Date());
     }
 
     // CL-006 ANONYMIZED anti-enumeration — 401 + dummy bcrypt timing pad.
-    if (account.isAnonymized()) {
+    if (isAnonymized(account)) {
       await this.timingDefense.pad();
       throw new UnauthorizedException('INVALID_CREDENTIALS');
     }
 
     // ACTIVE path
-    const verifyResult = await this.smsCodeRepo.verify(phone, code);
+    const verifyResult = await this.smsCodeStore.verify(phone, code);
     if (verifyResult !== true) {
       // FR-S06 timing defense: 码错 / 码过期 → pad before throw.
       await this.timingDefense.pad();
       throw new UnauthorizedException('INVALID_CREDENTIALS');
     }
 
-    await this.smsCodeRepo.clear(phone);
+    await this.smsCodeStore.clear(phone);
 
-    const loginAt = new Date();
-    account.markLoggedIn();
-    await this.accountRepo.updateLastLoginAt(account.id, loginAt);
+    await this.prisma.account.update({
+      where: { id: account.id },
+      data: { lastLoginAt: new Date() },
+    });
 
     const accessToken = this.jwtTokenService.signAccessToken({
       accountId: account.id,
@@ -98,7 +94,7 @@ export class PhoneSmsAuthUseCase {
   }
 
   private async handleUnregistered(phone: Phone, code: SmsCode): Promise<PhoneSmsAuthResult> {
-    const verifyResult = await this.smsCodeRepo.verify(phone, code);
+    const verifyResult = await this.smsCodeStore.verify(phone, code);
     if (verifyResult !== true) {
       // FR-S06 timing defense: 未注册 + 码错 → pad before throw.
       await this.timingDefense.pad();
@@ -132,19 +128,21 @@ export class PhoneSmsAuthUseCase {
     } catch (e) {
       // FR-S08 race fallback: 并发同号注册 → unique violation 落到 login 路径.
       if (isPrismaUniqueViolation(e)) {
-        const existing = await this.accountRepo.findByPhone(phone);
+        const existing = await this.prisma.account.findUnique({ where: { phone: phone.value } });
         if (!existing) {
           throw e;
         }
-        existing.markLoggedIn();
-        await this.accountRepo.updateLastLoginAt(existing.id, new Date());
+        await this.prisma.account.update({
+          where: { id: existing.id },
+          data: { lastLoginAt: new Date() },
+        });
         newAccountId = existing.id;
       } else {
         throw e;
       }
     }
 
-    await this.smsCodeRepo.clear(phone);
+    await this.smsCodeStore.clear(phone);
 
     const accessToken = this.jwtTokenService.signAccessToken({
       accountId: newAccountId,

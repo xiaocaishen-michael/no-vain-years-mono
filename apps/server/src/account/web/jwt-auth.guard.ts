@@ -1,15 +1,7 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import {
-  ACCOUNT_REPOSITORY,
-  type AccountRepository,
-} from '../application/ports/account.repository.port';
+import { PrismaService } from '../../security/prisma.service';
+import { isActive } from '../domain/account.rules';
 
 export interface AuthenticatedUser {
   accountId: bigint;
@@ -26,8 +18,7 @@ export interface AuthenticatedUser {
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
-    @Inject(ACCOUNT_REPOSITORY)
-    private readonly accountRepository: AccountRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -56,8 +47,8 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
 
-    const account = await this.accountRepository.findById(accountId);
-    if (!account || !account.isActive()) {
+    const account = await this.prisma.account.findUnique({ where: { id: accountId } });
+    if (!account || account.phone === null || !isActive(account)) {
       throw new UnauthorizedException();
     }
 
