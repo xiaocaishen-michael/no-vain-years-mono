@@ -1,6 +1,6 @@
 # no-vain-years-mono Constitution
 
-> 「不虚此生」mono-repo PoC 项目级原则。每个业务模块、每个 use case、每个 PR review 必参考。基于 [Plan 1](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) PoC 范围（W1-W5）锁定，Plan 2 / Plan 3 阶段视需要 amend。
+> 「不虚此生」mono-repo PoC 项目级原则。每个业务模块、每个 use case、每个 PR review 必参考。基于 [Plan 1](../../docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) PoC 范围（W1-W5）锁定，Plan 2 / Plan 3 阶段视需要 amend。
 
 ## Core Principles
 
@@ -37,7 +37,7 @@
 
 ### V. 类型同步链 Nx-driven（不引入跨仓 hook）
 
-`apps/server` `@nestjs/swagger` 装饰器 → `nx run server:export-openapi` 产 `apps/server/openapi.json` → `packages/api-client` 跑 `openapi-typescript` 生成 TS client → `apps/mobile` 消费。`nx affected` 自动传导，**不引入 cross-cwd hook**（meta 时代 `/sync-api-types` / `api-types-sync` preset 失效，mono 内 Nx target dependency chain 覆盖）。
+`apps/server` `@nestjs/swagger` 装饰器 → `nx run server:export-openapi` 产 `apps/server/openapi.json` → `packages/api-client` 跑 `openapi-typescript` 生成 TS client → `apps/mobile` 消费。`nx affected` 自动传导，**不引入 cross-cwd hook**（改由 Nx target dependency chain 覆盖）。
 
 PR 边界：server impl + api-client regen + mobile 消费 **同 PR**。
 
@@ -61,8 +61,6 @@ PoC 阶段（W1-W5）锁定栈：
 | 容器 base | `node:22-alpine`（production） | § F |
 | OpenAPI | code-first `@nestjs/swagger` | § F |
 | 跨语言 contract | OpenAPI（Protobuf 未来评估） | § F |
-
-**禁锚定旧 ADR**（per [Plan 1](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) E.4 / user 决策 2026-05-17）：mono 是从 Java meta-repo 推倒重来，旧 ADR-0001~ADR-0017（业务无关部分如 Lint / Format / 部署）不自动继承；ADR-0018（语言）/ ADR-0019（ORM）/ ADR-0020（module 边界）由 PoC 验证产出后落 W4-W5。
 
 ## Quality Gates
 

@@ -5,7 +5,7 @@
 **修订策略（分层不可变，per [ADR-0031](0031-adr-governance.md) § ADR 修订策略）**：
 
 - `Proposed` — 尚未冻结，自由 in-place 改 / 删，无需 supersede 仪式。
-- `Accepted` — 原则上 supersede-not-delete（**决策本身**变更时立新 ADR、旧标 `Superseded` 留史链接覆盖）；但「不改变决策」的修订（meta 导入纠错 / anchor typo / 版本号更新 / 路径名更正）**豁免**，允许 in-place 改。
+- `Accepted` — 原则上 supersede-not-delete（**决策本身**变更时立新 ADR、旧标 `Superseded` 留史链接覆盖）；但「不改变决策」的修订（anchor typo / 版本号更新 / 路径名更正 / 笔误纠正）**豁免**，允许 in-place 改。
 - `Deprecated` / `Superseded` — 终态留史，不再 in-place 改。
 
 ## 新立 ADR 模板

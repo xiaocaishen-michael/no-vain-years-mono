@@ -41,13 +41,13 @@ state_branches:
 
 > **2026-05-07 修订**：扩 `phone` 字段进 `/me` 响应（与前端账号与安全详情页联动 —— 详情页需 mask 显示 `+86 138****5678`）。原 FR-001 "deliberately narrow 4 fields" 立场被 supersede；**domain `Account.phone` 字段已存在**（注册即必填），本次仅扩 read shape，无 schema migration / domain 字段新增。
 >
-> **Context（server）**：ADR-0016 取消独立 register；新用户首登 auto-create 进 ACTIVE，**displayName 字段在 auto-create 时为 null**。客户端需独立信号决定路由 `(app)/onboarding` vs `(app)/`，本 spec 提供该信号 = `GET /api/v1/accounts/me`，并补 `PATCH /api/v1/accounts/me` 用于 onboarding 提交昵称。
+> **Context（server）**：unified auth 取消独立 register；新用户首登 auto-create 进 ACTIVE，**displayName 字段在 auto-create 时为 null**。客户端需独立信号决定路由 `(app)/onboarding` vs `(app)/`，本 spec 提供该信号 = `GET /api/v1/accounts/me`，并补 `PATCH /api/v1/accounts/me` 用于 onboarding 提交昵称。
 >
-> **反枚举不变性**：phoneSmsAuth 响应字节级不动（per ADR-0016 FR-006），displayName 仅在受 JWT 保护的 `/me` 流出。
+> **反枚举不变性**：phoneSmsAuth 响应字节级不动，displayName 仅在受 JWT 保护的 `/me` 流出。
 >
 > **决策约束（client）**：
 >
-> - **per ADR-0017 类 1 流程**：本 spec 阶段产出业务流 + 占位 UI；视觉决策（精确 px / hex / 阴影 / 自定义动画 / photo blur 沉浸式背景）**不进 spec / plan**，留 PHASE 2 mockup 落地后回填 plan.md UI 段
+> - **类 1 流程**：本 spec 阶段产出业务流 + 占位 UI；视觉决策（精确 px / hex / 阴影 / 自定义动画 / photo blur 沉浸式背景）**不进 spec / plan**，留 PHASE 2 mockup 落地后回填 plan.md UI 段
 > - server 端 0 工作量：`/me` / `logout-all` / `delete-account` / `cancel-deletion` 全部已落地；本 spec 仅读 store 的 displayName（由 T031 packages/auth store 的 `loadProfile()` 写入；onboarding 流入口由后续 spec 引入）
 > - 路由 `apps/mobile/app/(app)/(tabs)/profile.tsx` — 在 `(app)/(tabs)` 路由组内，受 AuthGate 第一层（`!authed → /(auth)/login`）保护；profile screen 自身无 auth 逻辑
 > - **占位 UI 阶段不引入 packages/ui 新组件**（per FR-022）；现有共享组件（Button / Spinner 等）可复用，新组件等 PHASE 2 mockup 评估
@@ -358,7 +358,7 @@ state_branches:
 - **FR-021**: 三 slide tabs 内容区 — 每 tab 渲染单 `<Text>` 占位文案（如 "笔记内容即将推出"）；无实际数据 fetch / 列表 / 卡片
   <!-- fr-meta: {"id": "FR-021", "priority": "must", "needs_clarification": false, "questions": [], "trace_us": ["US7"], "trace_sc": ["SC-010"]} -->
 
-- **FR-022**: 占位 UI 4 边界（per ADR-0017 类 1 强制纪律）— 路由结构（FR-013） ✓ / 单层 form-equivalent 输入（本 spec 无 input — 替代为"状态切换"是 slide tabs activeTab） / 提交事件（替代为 tab 切换 + nav button press） / 状态机视觉指示（active tab underline / disabled 状态 opacity） / 错误展示位（本 spec 无网络请求 — 无错误展示）；**全裸 RN，禁引 packages/ui 新抽组件**；每 page 顶 `// PHASE 1 PLACEHOLDER — business flow validated; visuals pending mockup.` banner
+- **FR-022**: 占位 UI 4 边界（类 1 强制纪律）— 路由结构（FR-013） ✓ / 单层 form-equivalent 输入（本 spec 无 input — 替代为"状态切换"是 slide tabs activeTab） / 提交事件（替代为 tab 切换 + nav button press） / 状态机视觉指示（active tab underline / disabled 状态 opacity） / 错误展示位（本 spec 无网络请求 — 无错误展示）；**全裸 RN，禁引 packages/ui 新抽组件**；每 page 顶 `// PHASE 1 PLACEHOLDER — business flow validated; visuals pending mockup.` banner
   <!-- fr-meta: {"id": "FR-022", "priority": "must", "needs_clarification": false, "questions": [], "trace_us": ["US5", "US9"], "trace_sc": ["SC-011"]} -->
 
 - **FR-023**: 不引入 packages/ui 新抽象组件（如 `<ProfileHero>` / `<SlideTabs>` / `<TopBar>`）— 现有共享组件（`Spinner` 等）按需复用；新组件 PHASE 2 mockup 落地后再评估
@@ -379,7 +379,7 @@ state_branches:
 - **FR-028**: 未登录态由 AuthGate 第一层处理（per onboarding spec FR-001）— profile screen 自身**不**做 auth 判断
   <!-- fr-meta: {"id": "FR-028", "priority": "must", "needs_clarification": false, "questions": [], "trace_us": ["US6", "US12"], "trace_sc": ["SC-014"]} -->
 
-- **FR-029**: 头像 / 背景占位资源 — **不引图片资源**（per plan.md 决策 2）；头像用 `<View>` + `<Text>👤</Text>`（系统 emoji 字体），背景用裸 `<View>`（无图）；PHASE 2 mockup 落地时一并引入实际 PNG / SVG。理由：占位 UI 4 边界严禁视觉决策（per ADR-0017），图片资源涉及尺寸 / 风格 / 主题 — 本批次不锁
+- **FR-029**: 头像 / 背景占位资源 — **不引图片资源**（per plan.md 决策 2）；头像用 `<View>` + `<Text>👤</Text>`（系统 emoji 字体），背景用裸 `<View>`（无图）；PHASE 2 mockup 落地时一并引入实际 PNG / SVG。理由：占位 UI 4 边界严禁视觉决策，图片资源涉及尺寸 / 风格 / 主题 — 本批次不锁
   <!-- fr-meta: {"id": "FR-029", "priority": "must", "needs_clarification": false, "questions": [], "trace_us": ["US5", "US10"], "trace_sc": ["SC-011"]} -->
 
 - **FR-030**: 滚动行为（per CL-005 (b) sticky tabs）— 整页有单一垂直滚动容器；hero 区随滚动消失；三 slide tabs 区触顶后**钉在顶 nav 下方**（sticky）；内容区在 sticky tabs 下延续滚动。具体实现选型（单 `<ScrollView>` + `stickyHeaderIndices` / 第三方 collapsible-tab-view / pager-view 组合）由 plan.md 决，占位 UI 阶段倾向最简方案（单 ScrollView + stickyHeaderIndices）
@@ -453,7 +453,7 @@ state_branches:
 
 ## Clarifications
 
-> server 端 4 点澄清（CL-001 ~ CL-004）于 2026-05-04 与 ADR-0016 / ADR-0017 决策同期完成；client 端 5 项 Cross-cutting Clarifications（CL-005 ~ CL-009）于 2026-05-07 完成。
+> server 端 4 点澄清（CL-001 ~ CL-004）于 2026-05-04 完成；client 端 5 项 Cross-cutting Clarifications（CL-005 ~ CL-009）于 2026-05-07 完成。
 
 ### CL-001: onboarding 是否可跳过 [from server]
 
@@ -640,7 +640,7 @@ flowchart TD
 
 ### Client Out of Scope（M1.X 显式不做）
 
-- **mockup / 视觉完成**（per ADR-0017 类 1 流程，PHASE 2 后置）— 占位 UI 阶段不做精确间距 / 颜色 / 字号 / 阴影 / photo blur 沉浸式背景 / 自定义动画 / 底 tab 图标系统
+- **mockup / 视觉完成**（类 1 流程，PHASE 2 后置）— 占位 UI 阶段不做精确间距 / 颜色 / 字号 / 阴影 / photo blur 沉浸式背景 / 自定义动画 / 底 tab 图标系统
 - **顶 nav 左 ≡ 浮层 list 内容**（扫码 / 消息 / 用户菜单 等）— 单起 spec
 - **顶 nav 🔍 搜索功能**（全局搜 / 搜笔记）— 单起 spec
 - **三 slide tabs 实际 PKM 内容**（笔记 list / 图谱可视化 / 知识库分类）— 独立模块，各起 spec
@@ -674,9 +674,9 @@ flowchart TD
 
 ## References
 
-- ADR-0016 — 上游 unified auth 决策
-- ADR-0017 — SDD 业务流先行 + mockup 后置
-- ADR-0020 — NestJS module + ESLint boundaries 规则
+- 上游 unified auth 决策（M1.2 确立：取消独立 register / phone-SMS 统一入口）；见 [`specs/001-phone-sms-auth/`](../001-phone-sms-auth/)
+- SDD 工作流：业务流先行 + mockup 后置（见 [`docs/conventions/sdd.md`](../../docs/conventions/sdd.md) § 前端 UI 工作流变体）
+- [ADR-0020](../../docs/adr/0020-module-boundary-nestjs.md) — NestJS module + ESLint boundaries 规则
 - 上游 use case：`specs/001-phone-sms-auth/`（auth 上游 use case）
 - 后续 spec B：account-settings-shell（账号与安全详情页）
 - 后续 spec C：delete-account-cancel-deletion-ui
@@ -685,9 +685,8 @@ flowchart TD
 
 ## 变更记录
 
-- **2026-05-04**：server spec 首次创建（base，业务规则 + endpoint 行为）。基于 ADR-0016 / ADR-0017 决策同期完成 4 点 server 端 Clarifications（CL-001 ~ CL-004）。
+- **2026-05-04**：server spec 首次创建（base，业务规则 + endpoint 行为）。同期完成 4 点 server 端 Clarifications（CL-001 ~ CL-004）。
 - **2026-05-07**：client spec 首次创建（M1.X — `(tabs)` 接入 + 我的页骨架）。基于 4 张参考截图 + 用户红框注释 + 21 项 Clarification Q&A 对齐。spec 阶段产出业务流 / 占位 UI 边界 / a11y / 路由结构；PHASE 2 mockup 由 Claude Design 单独产出后回填 plan.md UI 段。本 spec 是 SDD 拆分链 A → B → C 的 A，后续 PR 衔接 spec B（account-settings-shell） / spec C（delete-account-cancel-deletion-ui）。
 - **2026-05-07 +1**（client）：`/speckit.clarify` round 1 — 追加 5 项 Cross-cutting Clarifications：滚动 paradigm 锁 sticky tabs / settings stack 在 `(tabs)` 之外底 tab 隐藏 / activeTab in-session 保持 / deep link 由 AuthGate 拦截 / 冷启强制回我的 tab。
 - **2026-05-07 修订**（server）：扩 `phone` 字段进 `/me` 响应（与前端账号与安全详情页联动）。原 FR-001 "deliberately narrow 4 fields" 立场被 supersede；domain `Account.phone` 字段已存在，本次仅扩 read shape，无 schema migration / domain 字段新增。
-- **2026-05-15**：合并两份子仓 spec.md 到 meta canonical（single source of truth）。
-- **2026-05-20**：mono migrated — 全部 ID 重编号合并到统一命名空间（US1-US12 / FR-001-FR-030 / CL-001-CL-009 / SC-001-SC-017），适配 mono orchestrator schema；server / client 边界用 heading 子段保留语义；插入 AST marker（us-meta / fr-meta / cl-meta + json entities block）；未读取 design/ 视觉资料 / 未生成视觉规范。
+- **2026-05-20**：mono 化 — 全部 ID 重编号合并到统一命名空间（US1-US12 / FR-001-FR-030 / CL-001-CL-009 / SC-001-SC-017），适配 mono orchestrator schema；server / client 边界用 heading 子段保留语义；插入 AST marker（us-meta / fr-meta / cl-meta + json entities block）；未读取 design/ 视觉资料 / 未生成视觉规范。

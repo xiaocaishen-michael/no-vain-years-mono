@@ -1,6 +1,6 @@
 # Spec-Driven Development（SDD）工作流
 
-mono-repo 单仓共享。M1.1 起业务模块按此流程开发。基于 [GitHub Spec-Kit](https://github.com/github/spec-kit)（2025-2026 事实标准）；选型决策见 `docs/adr/0010-sdd-with-spec-kit.md`（Plan 3 阶段迁入）。
+mono-repo 单仓共享。M1.1 起业务模块按此流程开发。基于 [GitHub Spec-Kit](https://github.com/github/spec-kit)（2025-2026 事实标准）。
 
 ## 标准流程（每个 feature 走一遍）
 
@@ -35,19 +35,19 @@ status: implemented # draft | planned | implementing | implemented | superseded 
 
 **模块倒查**：`rg -l '^modules:.*\bauth\b' specs/`（不依赖目录结构，靠 frontmatter）。
 
-## 前端 UI 工作流变体（per ADR-0017）
+## 前端 UI 工作流变体
 
-前端 UI 业务模块的 SDD 流程**按 UI 类别分支**（per `docs/adr/0017-sdd-business-flow-first-then-mockup.md`，amends `docs/adr/0015-claude-design-from-m1-2.md`；两 ADR 均 Plan 3 阶段从 meta 迁入）：
+前端 UI 业务模块的 SDD 流程**按 UI 类别分支**：
 
-| UI 类别              | 例子                                                             | 流程                                                                                                                                                                                                                                     |
-| -------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **类 1 标准 UI**     | login / onboarding / 设置 / 表单 / 列表 / 信息卡片               | spec → plan（业务段 + UI 段标占位）→ tasks → impl 业务+占位 UI → 真后端冒烟 → **Mockup（用户跑 Claude Design → HTML preview baseline，over-deliver .tsx 不依赖）** → plan UI 段回填 + UI 完成 impl（HTML 直翻为 RN，不消费 source .tsx） |
-| **类 2 自由画布**    | PKM 知识图谱 / 自由画布                                          | spec → **Mockup**（design/，库选型 + paradigm 决策必先做）→ plan（含完整 UI 段）→ tasks → impl 业务+UI                                                                                                                                   |
-| **类 3 数据可视化**  | 财富板块图表 / dashboard                                         | 同类 2（图表库 + 数据建模与 mockup 互锁）                                                                                                                                                                                                |
-| **设计哲学重设页面** | spec User Scenarios 主路径变化（如 ADR-0016 单 form 取代双 tab） | 同类 2（让 mockup 帮决定新方向）                                                                                                                                                                                                         |
-| **后端业务模块**     | account / pkm / 其他 server use case                             | 不涉及 UI 流程；走完整 SDD 标准流程（无 mockup 步骤）                                                                                                                                                                                    |
+| UI 类别              | 例子                                                   | 流程                                                                                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **类 1 标准 UI**     | login / onboarding / 设置 / 表单 / 列表 / 信息卡片     | spec → plan（业务段 + UI 段标占位）→ tasks → impl 业务+占位 UI → 真后端冒烟 → **Mockup（用户跑 Claude Design → HTML preview baseline，over-deliver .tsx 不依赖）** → plan UI 段回填 + UI 完成 impl（HTML 直翻为 RN，不消费 source .tsx） |
+| **类 2 自由画布**    | PKM 知识图谱 / 自由画布                                | spec → **Mockup**（design/，库选型 + paradigm 决策必先做）→ plan（含完整 UI 段）→ tasks → impl 业务+UI                                                                                                                                   |
+| **类 3 数据可视化**  | 财富板块图表 / dashboard                               | 同类 2（图表库 + 数据建模与 mockup 互锁）                                                                                                                                                                                                |
+| **设计哲学重设页面** | spec User Scenarios 主路径变化（如单 form 取代双 tab） | 同类 2（让 mockup 帮决定新方向）                                                                                                                                                                                                         |
+| **后端业务模块**     | account / pkm / 其他 server use case                   | 不涉及 UI 流程；走完整 SDD 标准流程（无 mockup 步骤）                                                                                                                                                                                    |
 
-### 类 1 占位 UI 4 边界（强制纪律，per ADR-0017）
+### 类 1 占位 UI 4 边界（强制纪律）
 
 **应包含**：路由 / Form 输入 / 提交事件 / 状态机视觉指示（裸 `<Text>` 即可）/ 错误展示位置
 
@@ -79,10 +79,10 @@ specs/NNN-<feature-slug>/
 
 ## 与已有约定的协同
 
-| 约定                  | 协同点                                                                                                    |
-| --------------------- | --------------------------------------------------------------------------------------------------------- |
-| OpenAPI（code-first） | server 注解派生 `/v3/api-docs`（@nestjs/swagger 替代旧 Springdoc），mobile 通过 `pnpm api:gen` 同步 typed |
-| ADR                   | use case 内部决策留 `plan.md`；跨模块 / 不可逆决策才抽出独立 ADR                                          |
+| 约定                  | 协同点                                                                                  |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| OpenAPI（code-first） | server `@nestjs/swagger` 装饰器派生 OpenAPI spec，mobile 通过 `pnpm api:gen` 同步 typed |
+| ADR                   | use case 内部决策留 `plan.md`；跨模块 / 不可逆决策才抽出独立 ADR                        |
 
 ## /implement 每 task 闭环 6 步（强制）
 

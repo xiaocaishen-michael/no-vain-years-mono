@@ -135,7 +135,7 @@ stdlib):
 
 ### Implementation for US2
 
-- [X] T029 [Infra] [US2] 实装 `OutboxEventPrismaPublisher` in `apps/server/src/auth/infrastructure/outbox-event.prisma.publisher.ts`（Prisma `outbox_event.create({ data: { event_type, payload, published_at: null } })`；publish 接受 client 首参由 caller 传 tx context；写新表 `outbox_event` — Spring Modulith 老 `event_publication` 保留不动）— GREEN T025
+- [X] T029 [Infra] [US2] 实装 `OutboxEventPrismaPublisher` in `apps/server/src/auth/infrastructure/outbox-event.prisma.publisher.ts`（Prisma `outbox_event.create({ data: { event_type, payload, published_at: null } })`；publish 接受 client 首参由 caller 传 tx context；写新表 `outbox_event` — legacy `event_publication` 保留不动）— GREEN T025
 - [X] T030 [App] [US2] PhoneSmsAuthUseCase amend 未注册路径（findByPhone returns null → verify code first → wrap in `prisma.$transaction` with `isolationLevel: 'Serializable'`: `tx.account.create` + `outboxPublisher.publish(tx, AccountCreatedEvent.type, payload)` + sign tokens；catch P2002 unique constraint violation → fallback to login path per FR-S08 sub-clause；ctor 扩 5 参 + `auth.module.ts` 注册 OUTBOX_PUBLISHER provider）— GREEN T026 + T027
 - [X] T031 [US2] E2E smoke pass: GREEN T028（响应 body / headers / status 与 US1 ACTIVE 路径**字节级一致**断言）
 
@@ -170,7 +170,7 @@ stdlib):
 
 **Purpose**: Plan 1 § E.3 V1/V2 验收 + cross-cutting cleanup
 
-- [X] T039 [P] V1 验收：`cloc apps/server/src/auth` 测量 LoC + 对比旧 Java `mbw-account/src/main/java/com/mbw/account/{domain,application,infrastructure,web}` 等价类（`UnifiedPhoneSmsAuthUseCase` + `RequestSmsCodeUseCase` + 配套 Repository / Service / Controller / DTO / Config）；ratio ≤ 1.5x 才 pass；写报告到 `specs/001-phone-sms-auth/v1-loc-report.md`
+- [X] T039 [P] V1 验收：`cloc apps/server/src/auth` 测量 LoC + 对比旧实现等价类；ratio ≤ 1.5x 才 pass；写报告到 `specs/001-phone-sms-auth/v1-loc-report.md`
 - [X] T040 [P] V2 验收：`pnpm nx run server:lint` 0 violation；手测 4 类规则各写 1 个 forbidden import → 验证 lint err；写报告到 `specs/001-phone-sms-auth/v2-boundary-report.md`（含 v5→v6 plugin migration drift 发现 + 修复：`eslint-plugin-boundaries` v6 + legacy `element-types` 语法静默 no-op，amend 为 `boundaries/dependencies` object-selector + `eslint-import-resolver-typescript`）
 - [X] T041 [P] AccountCreatedEvent outbox subscriber placeholder：`OutboxEventCronPublisher.scan()` skeleton — 扫 `outbox_event` WHERE `published_at IS NULL` → mark as published（W2 不分发到真消费方，hook 点保留给 W3+ subscriber 接入；不引 `@nestjs/schedule` 新 dep，scan 触发由 W3+ cron infra 决定）
 - [X] T042 V3 (CI required): mono main-protection ruleset amend 加 `Lint (nx lint server)` + `Test (nx test server)` 2 个 required check（gh api PUT ruleset 16500378，本 PR 直接以 6 required checks 验收）

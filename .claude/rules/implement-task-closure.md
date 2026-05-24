@@ -27,4 +27,4 @@ paths:
 
 **常见反模式**：写完 impl 喊 /commit、事后再开 PR 改 tasks.md → 应 impl PR 内**同 commit** stage tasks.md `[X]`。
 
-**历史 `✅` 标记**：meta-repo 时代有 use case tasks.md 使用 `✅` emoji；mono 仓所有新 use case 一律走 `[X]`。lefthook `tasks-md-drift` 识别两种 marker。
+**`✅` 标记兼容**：早期部分 tasks.md 用 `✅` emoji 标完成；新 use case 一律走 `[X]`。lefthook `tasks-md-drift` 两种 marker 都识别。

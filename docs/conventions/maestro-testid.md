@@ -26,7 +26,7 @@ testID="<feature>.<element>.<verb>"
 ## 强制范围
 
 - **所有交互元素**必填：`<Pressable>` / `<TextInput>` / `<Button>` / `<TouchableOpacity>` / 等带 `onPress` / `onChangeText` 的组件
-- **占位 UI（ADR-0017 类 1）**亦必填：业务流验证阶段视觉占位但已能交互的页面，testID 一次性写好，避免 Mockup 回填阶段漏装
+- **占位 UI（类 1 业务流验证页面）**亦必填：业务流验证阶段视觉占位但已能交互的页面，testID 一次性写好，避免 Mockup 回填阶段漏装
 - **Final UI** 直翻 HTML → RN 时，testID 与 RN 组件**一同迁移**（不允许翻译过程丢失）
 
 ## 不强制范围
@@ -52,5 +52,5 @@ testID="<feature>.<element>.<verb>"
 ## 参考
 
 - [ADR-0027 Frontend Data + Test Layer](../adr/0027-frontend-data-test-layer.md) — Maestro 决策 + testID 强制时机
-- [ADR-0017 SDD business-flow-first then mockup](../adr/0017-sdd-business-flow-first-then-mockup.md) — 占位 UI 4 边界（testID 属"应包含"清单）
+- [`docs/conventions/sdd.md` § 类 1 占位 UI 4 边界](./sdd.md) — testID 属"应包含"清单
 - [Maestro 官方文档](https://maestro.mobile.dev/)

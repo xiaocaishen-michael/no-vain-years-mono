@@ -16,7 +16,7 @@ sunset_trigger: |
 
 ## Context
 
-mono 仓 W1.4 起引入 GitHub Spec-Kit 0.8.7 做 SDD（参 `.specify/integrations/speckit.manifest.json`）。`docs/conventions/sdd.md` 初版（W1.3 meta minimal-adapt copy）规定 spec 单一来源在 `specs/<module>/<usecase>/spec.md`（如 `specs/auth/phone-sms-auth/`），与 NestJS module / `apps/mobile/src/features/<module>/` / Prisma schema "业务模块字符串四处一致"（[`business-naming.md`](../conventions/business-naming.md)）的代码层强约束保持视觉同构。
+mono 仓 W1.4 起引入 GitHub Spec-Kit 0.8.7 做 SDD（参 `.specify/integrations/speckit.manifest.json`）。`docs/conventions/sdd.md` 初版规定 spec 单一来源在 `specs/<module>/<usecase>/spec.md`（如 `specs/auth/phone-sms-auth/`），与 NestJS module / `apps/mobile/src/features/<module>/` / Prisma schema "业务模块字符串四处一致"（[`business-naming.md`](../conventions/business-naming.md)）的代码层强约束保持视觉同构。
 
 W2 唯一 use case `phone-sms-auth` 全 ship 后，准备开第二个 use case（Plan 2 起）时识别出两条结构性问题：
 
@@ -114,7 +114,7 @@ pnpm nx run repo:spec-by-module auth
 
 - mono 当前唯一已存在的 `specs/auth/phone-sms-auth/` 在本 ADR 同 PR 内 `git mv` → `specs/001-phone-sms-auth/`，history 保留
 - 旧目录 `specs/auth/` 同 PR 删除
-- spec.md 内 L11 / L337 / L338 关于 meta-repo 历史路径 `specs/auth/phone-sms-auth/` 的描述**保留不动**（描述的是 meta-repo 起源路径与 W2 migration 时刻路径，是历史事实不是 stale ref）；Changelog 追加 2026-05-19 entry 记录本次重命名
+- Changelog 追加 2026-05-19 entry 记录本次重命名
 
 ## Consequences
 

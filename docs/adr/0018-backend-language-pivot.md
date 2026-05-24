@@ -16,13 +16,13 @@ sunset_trigger: |
 
 ## Context
 
-「不虚此生」M1 阶段后端原 stack = Java 21 + Spring Boot 3 + Spring Modulith + Spring Data JPA + Flyway + MapStruct + Bucket4j + Resilience4j + Maven 多模块。Plan 1 启动前已实现 mbw-account / mbw-pkm 部分 use case(my-beloved-server 仓)。
+「不虚此生」M1 阶段后端原 stack = Java 21 + Spring Boot 3 + Spring Modulith + Spring Data JPA + Flyway + MapStruct + Bucket4j + Resilience4j + Maven 多模块,已实现部分 account / pkm use case。
 
 驱动 pivot 的 3 个力:
 
 1. **Claude AI coding loop 体感新维度** — solo dev 节奏下 AI 协作命中率 / 速度成为后端选型可量化维度,权重应大于"既有 Java 经验沉淀"
 2. **Java/Spring solo dev 摩擦** — Spring Boot Test 启动 5-10s 反馈慢、MapStruct + JpaEntity ↔ Domain Model 双向映射 boilerplate 重、Maven 多模块部署单 jar 但开发期心智负担与拆服务收益不匹配
-3. **零用户阶段** — 兼容 token / 双写 / 灰度均不需,推倒重来代价低(Plan 1 § G "C5 零用户"约束 + ADR cross-ref 矩阵)
+3. **零用户阶段** — 兼容 token / 双写 / 灰度均不需,推倒重来代价低(Plan 1 § G "C5 零用户"约束)
 
 Plan 1 § B 8 候选 × 10 维度加权评分,**TS / NestJS+Fastify+Prisma+Nx** 排名 #1;Python/FastAPI 第 #3 但备选(§ D 触发条件);raw Fastify 第 #2 但 NestJS+Fastify 性能损失可接受换 DDD 范式契合度。
 
@@ -64,7 +64,7 @@ apps/server/                # NestJS + Fastify + Prisma
 packages/                   # 共享包(api-client / types / ...)
 ```
 
-**旧 meta 仓 Java/Spring ADR cross-ref**:整套旧 meta ADR 已被本 mono ADR 体系取代或独立继承(限流续 [ADR-0022](0022-throttler-nestjs-redis.md);模块边界续 [ADR-0020](0020-module-boundary-nestjs.md))。逐条映射矩阵留档 [Plan 1 § G.1](../plans/2026-05/05-18-plan1-backend-stack-poc.md);mono 自 ADR-0018 起独立编号。
+子决策:限流见 [ADR-0022](0022-throttler-nestjs-redis.md);模块边界见 [ADR-0020](0020-module-boundary-nestjs.md)。
 
 ## Consequences
 
@@ -79,7 +79,7 @@ packages/                   # 共享包(api-client / types / ...)
 ### Negative / Trade-offs
 
 - **模块物理隔离弱**(单 jar / 单 dist vs Java Maven 多模块)— 详 ADR-0020 § Consequences;solo dev 阶段 NestJS Module + ESLint boundaries 双保险够用,多 dev 阶段拆服务前需评估
-- **Plan 3 资产迁移成本**(Plan 1 § G.2) — 192 files / 5705 LoC Java mbw-account 完整重写 + Spring Modulith outbox / ArchUnit / MapStruct / Springdoc / Nimbus / Bucket4j / Resilience4j 7 个 stack 子件全替;红黄绿分类后实际重写量 ~30% files
+- **资产迁移成本** — 此前 Java/Spring 服务的既有 use case 需完整重写,涉及事件发件箱 / 模块边界校验 / 对象映射 / OpenAPI 生成 / JWT / 限流 / 弹性 7 个子系统全部换 TS 等价实现
 - **复杂外部 SDK 迁移延后**(memory `feedback_complex_external_dep_migration_last`) — Aliyun cloudauth(实名认证)/ ip2region(地理位置)排在 Plan 3 后期,迁移期需 reuse 已成熟 adapter 模式
 - **AI 静默踩坑非零**(memory `feedback_audit_must_verify_code_anchors`) — `pnpm -C` 不传 cwd / `nx cache` 假绿 / `eslint-plugin-boundaries` v6 silent no-op / vitest full AppModule boot 撞外部依赖等各踩 1 次;**memory pool 沉淀 + 后续按记忆规避**是必要安全网
 - **Bun runtime 推迟到 M3 复评** — reflect-metadata + Fastify on Bun 1.2 兼容性 PoC W5 buffer 未单独验,M3 业务稳态后独立 spike
@@ -93,9 +93,8 @@ packages/                   # 共享包(api-client / types / ...)
 
 ## References
 
-- [Plan 1 — Claude+Java vs Claude+AI meta-repo 推倒重来选型](../plans/2026-05/05-18-plan1-backend-stack-poc.md)
+- [Plan 1 — 后端选型(Java vs TS 推倒重来评分)](../plans/2026-05/05-18-plan1-backend-stack-poc.md)
 - [V10 验收 — Claude Code agent loop 体感](../experience/2026-05/05-18-v10-claude-agent-loop.md)
-- [V1 LoC 验收 — mono 0.119 / Java 5705](../../specs/001-phone-sms-auth/v1-loc-report.md)
+- [V1 LoC 验收 — TS 实装紧凑度对照](../../specs/001-phone-sms-auth/v1-loc-report.md)
 - [ADR-0019: ORM = Prisma](0019-orm-prisma.md)
 - [ADR-0020: 模块边界 = NestJS Module + ESLint boundaries](0020-module-boundary-nestjs.md)
-- 旧 meta 仓 Spring Modulith 模块化 + Pure Repository Interface 决策 — 均 superseded by [ADR-0020](0020-module-boundary-nestjs.md)(DDD 思想保留)

@@ -41,7 +41,7 @@ sunset_trigger: |
 - **`db pull` 反推 V1-V14 Flyway PG schema 1:1 等价**(V3 验收 PASS,无 schema drift)— Plan 1 § H R1 风险未触发,不需 fallback Drizzle Kit
 - **类型派生编译期校验** — `prisma.account.findUnique({ where: { phone } })` 返回值 / 字段名 / 关联 include 全 IDE-strong-typed;改 schema → `prisma generate` → 调用点立刻 typecheck 红
 - **Prisma Studio + migrate UX** — `prisma studio` 即时 DB GUI;`prisma migrate dev` 自动检测 schema drift 并生成 migration SQL;solo dev 体感优秀
-- **MapStruct boilerplate 消除** — Java mbw-account 每个聚合 1 组 MapStruct mapper class(`@Mapper`/`@Mapping`),TS 改 row → domain 直接 spread + 显式字段映射 ~10 行/聚合,LoC 贡献 ~30%
+- **MapStruct boilerplate 消除** — 此前 Java 服务每个聚合 1 组 MapStruct mapper class(`@Mapper`/`@Mapping`);TS 侧 Prisma 原始 row 直接消费,无对象映射层,LoC 贡献 ~30%
 - **Vitest 单测启动 ms 级**(对比 Spring Boot Test 5-10s) — Prisma Client 不需要 Spring Context,Testcontainers PG 启动 + Prisma migrate 是 IT 主要耗时(~3-5s),单元测试 mock PrismaService 即可
 
 ### Negative / Trade-offs
@@ -66,4 +66,3 @@ sunset_trigger: |
 - [Prisma 7 driver adapters](https://www.prisma.io/docs/orm/overview/databases/database-drivers)
 - [ADR-0018: 后端 stack root pivot](0018-backend-language-pivot.md)
 - [ADR-0043: Server 扁平范式](0043-server-flat-module-paradigm.md) — amend 本 ADR 的 repository 边界为 PrismaService 直连
-- 旧 meta 仓 Spring Data JPA + MapStruct 持久化决策(superseded by [ADR-0020](0020-module-boundary-nestjs.md) with DDD 思想保留 / 实现差异说明)
