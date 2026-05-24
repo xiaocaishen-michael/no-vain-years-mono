@@ -2,6 +2,8 @@
 
 > **统领 4 个独立子 plan**：Cloudflare Pages Web 部署 → Mobile binary 共享地基 → Android 签名 APK → iOS（simulator → TestFlight）。本文件**不下钻子 plan 内部实现**，只锁构建链路决策、跨子 plan 契约、agent/user 操作边界、依赖顺序、终局验收。每个子 plan 各自独立 `/plan` 会话 + 独立 PR + 独立 ExitPlanMode 批准。
 
+> ⚠️ **2026-05-24 子 plan 1 host pivot**：Web 部署形态从 CF Pages 改为 **Cloudflare Workers Static Assets**（per [ADR-0025](../../adr/0025-frontend-cloudflare-pages-expo-web.md) 2026-05-24 amendment；动因：CF 合并 Workers/Pages + 2026-02 官方推「新站从 Workers 起步」）。下文凡「CF Pages / `_redirects` / `*.pages.dev`」按 Workers Static Assets 读：repo root `wrangler.jsonc` + `not_found_handling: single-page-application`（`_redirects` 已移除）+ dashboard Workers Builds（`npx wrangler deploy`）。其余（build target / 直 CORS 避 525 / 自定义域 `app.xiaocaishen.me`）不变。
+
 ## Context
 
 **为什么现在做**：服务端 prod cutover 已于 2026-05-24 完成（mono server 上线 `https://api.xiaocaishen.me`，Aliyun SWAS，已备案，per #144/#145/#147）。后端就绪后，Plan 3 客户端部署形态进入执行：(1) Web 入口（ADR-0025 已拍板 CF Pages，playbook 已就绪但**未 bootstrap**）；(2) 原属 "Plan 4 deferred" 的 mobile binary 打包（Android + iOS）现一并启动。
@@ -78,9 +80,9 @@ Track B（Mobile）
 
 ## 子 plan outline（detail 在各自文件）
 
-### 子 plan 1 — Cloudflare Pages Web 部署
+### 子 plan 1 — Cloudflare Web 部署（Workers Static Assets，per ADR-0025 amend）
 
-详见 [`05-24-client-deploy-p1-cloudflare-web.md`](05-24-client-deploy-p1-cloudflare-web.md)。要点：repo 侧仅新增 `apps/mobile/public/_redirects`（CORS 接线已就位）；其余 CF console bootstrap + SWAS `.env.production` CORS + 自定义域为 user 手动步骤；smoke test 走 playbook 3 条 curl + 浏览器登录主流程。
+详见 [`05-24-client-deploy-p1-cloudflare-web.md`](05-24-client-deploy-p1-cloudflare-web.md)。要点：repo 侧加 root `wrangler.jsonc`（assets 指向 `apps/mobile/dist` + `not_found_handling: single-page-application`，`_redirects` 已移除）；server CORS 接线 + allowlist 经实测**已就位**（live 返回 `access-control-allow-origin: https://app.xiaocaishen.me`）；user 手动步骤 = dashboard Workers Builds（Git 连接自动构建）+ 自定义域从旧 meta 项目 `no-vain-years-app` 迁到新 worker；smoke test 走 curl + 浏览器登录主流程。
 
 ### 子 plan 2 — Mobile binary 共享地基（Phase 0，子 plan 3+4 硬前置）
 
