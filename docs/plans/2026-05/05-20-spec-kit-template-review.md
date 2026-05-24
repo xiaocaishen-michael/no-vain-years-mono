@@ -3,6 +3,7 @@
 > **Status**: SUPERSEDED(2026-05-24 状态追进) — DRAFT v1 从未进入逐 template review;其 template 工程化产物(如 spec.zod `state_branches`)已被 [test-infra master](05-22-test-infra-master.md) 链(#80-82)吸收落地,本 plan 无独立执行剩余。
 > **v0 → v1 pivot**: v0 只盯"workflow.yml 缺 clarify/analyze";v1 真重心 = **template 产出的语料对下游 orchestrator 是否够用**
 > **Supersedes scope**:本 plan amend [Plan 2 § 2.2.5](2026-05/05-19-plan2-plan3-migration-deploy.md#22-起手准备phase-0约-1-周) — Wiggum CLI + Bridge Adapter 的 defer 被本 plan **激活并以自写 Node22+tsx orchestrator 替代**(per 2026-05-20 user Q3 答 "Phase 0 端到端激活")
+> ⚠️ **[HISTORICAL — 布局已变 (2026-05-24)]**：本文 `src/modules/<module>` 及旧 `domain/application/infrastructure/web` 分层示例反映当时认知；server 实际为**扁平** `apps/server/src/<module>/`（无 layer 子目录，per [ADR-0043](../../adr/0043-server-flat-module-paradigm.md)）。示例不逐条改，作历史留痕。
 
 ---
 

@@ -11,15 +11,15 @@ export default [
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
     rules: {
-      // Mono-level Nx project boundary (per ADR-0020 § Decision 层 3).
+      // Mono-level Nx project boundary (cross-project, tag-driven via scope:* tags).
       // Source of truth: specs/002-account-profile/plan.md § module_boundaries
       // (post-PR-3 ADR-0030: 4 workspaces — apps/{server,mobile} + packages/{api-client,types}).
       //
-      // Business module "account" → filesystem path mapping (per 2026-05-20 dry-run + 001 reality):
-      //   - server: apps/server/src/auth/{domain,application,infrastructure,web}/**
-      //     (hexagonal layer enforcement lives in apps/server/eslint.config.mjs;
-      //      "account" is the spec frontmatter business name, src/auth/ is the on-disk module dir)
-      //   - mobile: apps/mobile/app/(app)/(tabs)/profile.tsx + co-located feature code
+      // Business module → filesystem path mapping:
+      //   - server: apps/server/src/<module>/** — flat module dir, NO layer subdirs
+      //     (per ADR-0043; intra-server bounded-context boundaries are file-level,
+      //      module-scoped, in apps/server/eslint.config.mjs per ADR-0032)
+      //   - mobile: apps/mobile/app/(app)/(tabs)/<feature> + co-located feature code
       //
       // depConstraints below are tag-driven via `scope:*` Nx tags on each project.json.
       // PR-T2 (ADR-0040 L2 策略层) flipped this from "fallback-permitted" to default-deny:

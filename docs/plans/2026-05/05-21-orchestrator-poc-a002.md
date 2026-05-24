@@ -2,6 +2,7 @@
 
 > Sub-plan of [2026-05/05-19-plan2-plan3-migration-deploy.md](./2026-05/05-19-plan2-plan3-migration-deploy.md)。
 > 状态：**待 user 答 § 7 Q4/Q5/Q6 后定稿**，再启 § 3.1。
+> ⚠️ **[HISTORICAL — 布局已变 (2026-05-24)]**：本文 `apps/server/src/modules/account/...` 及 `use-cases/` 子结构反映当时认知；server 实际为**扁平** `apps/server/src/<module>/`（无 `modules/` 包装、无 layer 子目录，per [ADR-0043](../../adr/0043-server-flat-module-paradigm.md)）。
 
 ## 1. Context
 
