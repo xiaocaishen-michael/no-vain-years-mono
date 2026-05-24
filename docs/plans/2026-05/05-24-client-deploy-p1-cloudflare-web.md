@@ -30,7 +30,7 @@
 
 1. **SWAS `.env.production` CORS**：确认实际 secret 文件含
    `CORS_ALLOWED_ORIGINS=https://app.xiaocaishen.me,https://no-vain-years-mono.pages.dev`
-   （cutover 时若设 `*` 或未设 → web 跨域被拒）→ `docker compose -f docker-compose.tight.yml up -d` 应用。
+   （cutover 时若设 `*` 或未设 → web 跨域被拒）→ 在 mono 目录跑 `docker compose -f docker-compose.tight.yml --env-file .env.production up -d` 应用。**必须带 `--env-file .env.production`**（compose 镜像/DB/secret 全是 `${VAR}` 插值，缺省会退化成 `:latest` 触发私有 ACR 拉取 + 空 secret，per [prod-cutover runbook](../../../ops/runbook/prod-cutover.md) §86）。
    注：native Android/iOS 不受影响（不发 Origin、不走 CORS）
 2. **CF console bootstrap**（playbook § Bootstrap）：Connect Git `xiaocaishen-michael/no-vain-years-mono` → project `no-vain-years-mono` / branch `main` / framework preset **None** / build cmd `corepack enable && pnpm install --frozen-lockfile && pnpm -C apps/mobile build:web` / output `apps/mobile/dist` / root `/` / env `EXPO_PUBLIC_API_BASE_URL=https://api.xiaocaishen.me` + `NODE_VERSION=22` + `PNPM_VERSION`（对齐 root `package.json` `packageManager`）
 3. **自定义域**：CF Pages → Custom domains → `app.xiaocaishen.me`（同账号自动 CNAME + Universal SSL）
