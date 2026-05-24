@@ -1,13 +1,13 @@
 # Implementation Plan: Phone SMS Auth (W2 server scope)
 
 **Branch**: `feature/phone-sms-auth-plan` | **Date**: 2026-05-17 | **Spec**: [`spec.md`](./spec.md)
-**Input**: Feature specification from `specs/001-phone-sms-auth/spec.md`（mono W2.1 migrated 自 meta canonical；2026-05-19 per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md) 从旧路径 `specs/auth/phone-sms-auth/` 重命名）
+**Input**: Feature specification from `specs/001-phone-sms-auth/spec.md`（per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md) feature-first 布局）
 
 ## Summary
 
 mono PoC 首个业务 use case：1 个 endpoint（`POST /accounts/phone-sms-auth`）统一 register + login，server 自动判已注册路径 → login / 未注册 → 自动创建+login；配套 1 个 endpoint（`POST /accounts/sms-codes`）发码。FROZEN / ANONYMIZED 账号与码错共享反枚举字节级一致响应（HTTP 401 INVALID_CREDENTIALS，时延差 ≤ 50ms）。SMS Template A 真实验证码（不区分注册/登录），60s 冷却。
 
-**W2 焦点**：server `domain` + `application` + `infrastructure` 层在 NestJS Module `auth` 内实现，达成 [Plan 1 § E.3](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) V1（LoC ≤ Java 等价 1.5x，`cloc` 对比）+ V2（NestJS Module boundary 对标 ArchUnit 4 类规则）验收。Aliyun SMS 真实集成 / E2E Testcontainers / @nestjs/throttler 限流属 W3+ 范围。
+**W2 焦点**：server `domain` + `application` + `infrastructure` 层在 NestJS Module `auth` 内实现，达成 [Plan 1 § E.3](../../docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) V1（LoC ≤ 旧实现等价 1.5x，`cloc` 对比）+ V2（NestJS Module boundary 对标 ArchUnit 4 类规则）验收。Aliyun SMS 真实集成 / E2E Testcontainers / @nestjs/throttler 限流属 W3+ 范围。
 
 ## Technical Context
 
@@ -50,7 +50,7 @@ mono PoC 首个业务 use case：1 个 endpoint（`POST /accounts/phone-sms-auth
 
 ```text
 specs/001-phone-sms-auth/
-├── spec.md                # W2.1 migrated (meta canonical); 2026-05-19 path rename per ADR-0024
+├── spec.md                # feature specification
 ├── plan.md                # W2.2 this file
 ├── tasks.md               # W2.3 /speckit-tasks output
 └── analysis.md            # W2.3 /speckit-analyze output (consistency report)
@@ -98,7 +98,7 @@ apps/server/src/
 ```
 
 **Structure 决策依据**：
-- 4 层（domain / application / infrastructure / web）对标 hexagonal / clean architecture，与 Java meta 时代 `mbw-account` 4 层 1:1 — V1 LoC 对比公平
+- 4 层（domain / application / infrastructure / web）对标 hexagonal / clean architecture，与旧实现分层一致以使 V1 LoC 对比公平
 - `ports/` 在 application 层声明 interface，infrastructure 实现 — Dependency Inversion 实现 Constitution IV-1（domain 零依赖）
 - `auth.module.ts` 显式 `exports: [AuthService]`（W2.4 后续 use case 复用 token 验证 / account 查询 时通过 export 拿）
 
@@ -114,7 +114,7 @@ apps/server/src/
 
 **决策**：自实现 outbox（`outbox_event` 表 + 后台 cron job 异步分发）。W3+ 生产化时若需要重试 / DLQ 再 swap B。
 
-**表名 amend（2026-05-17 US2 起步决策）**：W1.4 db pull 把老 Java meta-repo 的 Spring Modulith `event_publication` 表（columns: `listener_id / serialized_event / publication_date / completion_date`）带入新 mono schema；本 plan 简化 outbox 落 `outbox_event`（独立新表），Modulith 老表保留不动待 W3+ 决策（per Plan 1 pivot 精神：不绑老栈技术 schema）。**2026-05-19 follow-up**：Plan 2 Phase 0 § 2.2.1 落 migration `2_drop_legacy_modulith_flyway_tables` 已 DROP `event_publication` + `flyway_schema_history`；上述"保留不动"条款语义 supersede。
+**表名 amend（2026-05-17 US2 起步决策）**：早期 db pull 把 legacy `event_publication` 表（columns: `listener_id / serialized_event / publication_date / completion_date`）带入 mono schema；本 plan 简化 outbox 落 `outbox_event`（独立新表），legacy 表保留不动待后续决策（不绑旧栈技术 schema）。**2026-05-19 follow-up**：migration `2_drop_legacy_modulith_flyway_tables` 已 DROP `event_publication` + `flyway_schema_history`；上述"保留不动"条款语义 supersede。
 
 ### R0.2 — Rate Limit（FR-S07）
 
@@ -273,7 +273,7 @@ curl -X POST http://localhost:3000/api/v1/accounts/phone-sms-auth \
 # manually verify response bytes equal (use diff on body + curl -i headers)
 ```
 
-V1 LoC 测量：`cloc apps/server/src/auth` vs 旧 Java `mbw-account` 等价类（`UnifiedPhoneSmsAuthUseCase` + `RequestSmsCodeUseCase` + `RefreshTokenUseCase` + 3 个 controller + Repository + Service + Config）。
+V1 LoC 测量：`cloc apps/server/src/auth` vs 旧实现等价类（详 [`v1-loc-report.md`](v1-loc-report.md)）。
 
 V2 module boundary：`pnpm nx run server:lint` 0 boundaries violation；4 类规则手测：
 1. domain 层禁 import infrastructure / web — 写测试 import 必报 lint err
@@ -306,7 +306,7 @@ V2 module boundary：`pnpm nx run server:lint` 0 boundaries violation；4 类规
 
 每 task 30min-2h + 独立 commit + tasks.md `[X]` flip（per Constitution III + /implement 6 步闭环）。
 
-预估 task 数：20-25 个（与 Java meta 旧实现 `mbw-account` 4-5 层结构 1:1，但 mono 不含 schema migration + Aliyun SMS 真集成 + rate limit，所以略少）。
+预估 task 数：20-25 个（4-5 层结构完整覆盖，mono 不含 schema migration + Aliyun SMS 真集成 + rate limit，所以略少）。
 
 ---
 

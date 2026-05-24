@@ -25,4 +25,4 @@ mono 内 server → api-client → mobile 走 **Nx target 依赖链**（不装 `
 2. `packages/api-client` `nx run api-client:generate` 依赖 server openapi.json，跑 `openapi-typescript` 生成 TS client
 3. `apps/mobile` 依赖 `packages/api-client`，`nx affected` 改 server endpoint 自动传导触发 api-client regen + mobile rebuild
 
-**PR 边界**：mono 单仓内 server impl + api-client regen + mobile 消费**可同 PR**（跨仓 PR 拆分概念 meta 时代专属，mono 不适用）；commit message `chore(api-client): sync types — <feature-slug>` 或并入主 PR commit message 备注 types 已 regen。
+**PR 边界**：mono 单仓内 server impl + api-client regen + mobile 消费**可同 PR**；commit message `chore(api-client): sync types — <feature-slug>` 或并入主 PR commit message 备注 types 已 regen。

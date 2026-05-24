@@ -34,14 +34,14 @@ state_branches:
 # Feature Specification: Phone SMS Auth (unified login/register)
 
 **Feature Branch**: `001-phone-sms-auth`（per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md)；Plan 1 期间合入的 PR 使用旧命名 `feature/phone-sms-auth-<usX>` 不追溯）
-**Created**: 2026-05-04（meta canonical 起源） / **mono W2 migrated**: 2026-05-17
+**Created**: 2026-05-04 / **mono W2 implemented**: 2026-05-17
 **Status**: Server Draft（mono W2 PoC 首个业务 use case，从零实现） / Client 段保留作 W4+ mobile impl reference
 **Module**: server `apps/server` NestJS Module `auth` / client `apps/mobile/app/(auth)/login`（W4+ 物理迁入）
 **Input**: User description: "登录注册合二为一：客户端只输入手机号 + SMS code 一键登录；server 自动判已注册→login / 未注册→自动创建+login。参考大陆主流 app 范式（网易云音乐 / 小红书 / 拼多多）"
 
 > **mono W2 migration context**（2026-05-17）：
 >
-> 本 spec 源自 meta-repo `specs/auth/phone-sms-auth/spec.md`（354 行，2026-05-04 起源 + 2026-05-15 双源合并）。mono W2 PoC 阶段以**从零重写**心智实现 server 端（W2 焦点 = V1/V2 验收）；spec 业务规则保留 1:1（user-facing 行为不变），Spring / Java 实现绑定描述替换为 NestJS / Prisma / TS 中立或对应描述；client 段保留作 W4+ mobile use case 落地的契约 reference。
+> 本 spec server 端为 mono W2 PoC 从零实现（W2 焦点 = V1/V2 验收），业务规则与 user-facing 行为以 NestJS / Prisma / TS 描述；client 段（FR-C\*）保留作 W4+ mobile use case 落地的契约 reference。
 >
 > **本 spec 双层结构**：同时承载 server (`apps/server` `auth` Module) 与 client (`apps/mobile/app/(auth)/login`) 双侧约束。User Scenarios / Functional Requirements / Success Criteria 各自分 `Server` / `Client` 子段；Clarifications 与 Open Questions 分别打 `[from server]` / `[from app]` 标签。
 >
@@ -75,7 +75,7 @@ state_branches:
 
 未注册大陆手机号用户首次到访，输入「手机号 + SMS code」流程完全相同；server **静默创建** ACTIVE 账号并签 token。**客户端无感知"创建"动作**——返回响应与已注册路径字节级一致；client 端**操作路径与 User Story 1 完全相同**，client 代码无 phone-existed 分支。
 
-**Why this priority**: 大陆主流 UX 核心 —— 用户无注册心智负担（per ADR-0016 决策 1）。
+**Why this priority**: 大陆主流 UX 核心 —— 用户无注册心智负担。
 
 **Independent Test (server)**: 未注册号 `+8613900139000`，发起 `/sms-codes` + `/phone-sms-auth` 流程，断言响应**字节级与已注册路径一致**；DB 新增 `Account` 记录 status=ACTIVE，触发 `AccountCreatedEvent` 写 outbox。
 
@@ -111,7 +111,7 @@ state_branches:
 
 恶意用户对同一手机号或同一 IP 高频请求 `/sms-codes` 或 `/phone-sms-auth`，系统按规则限流并返回 HTTP 429 + `Retry-After`，避免短信费用爆炸 + 账号枚举辅助暴破。client 端给清晰 toast 不静默；access token 过期 401 由 `@nvy/api-client` 拦截器透明 refresh，组件层不感知（per PR #48）。
 
-**Why this priority**: 复用既有 `RateLimitService` 基础设施（per ADR-0011）；`/sms-codes` 60s 限流是反 SMS 滥发硬性合规要求。边缘错误体验差是 D 类 bug 风险源；refresh 透明性是已实现的契约，本 spec 验证消费侧不破坏它。
+**Why this priority**: 复用既有 `RateLimitService` 基础设施；`/sms-codes` 60s 限流是反 SMS 滥发硬性合规要求。边缘错误体验差是 D 类 bug 风险源；refresh 透明性是已实现的契约，本 spec 验证消费侧不破坏它。
 
 **Independent Test (server)**: Testcontainers 测试快速调 `/sms-codes` N 次断言第 2 次起返回 429；24h 内同号 5 次失败码后第 6 次返回 LOCKED（隐藏在 `INVALID_CREDENTIALS` 形态内）。
 
@@ -160,7 +160,7 @@ state_branches:
 
 ### Server Requirements (FR-S01 ~ FR-S12)
 
-- **FR-S01（Endpoint）**：唯一 endpoint `POST /api/v1/accounts/phone-sms-auth`，入参 `{phone: string, code: string}`，响应 `{accountId, accessToken, refreshToken}` 或 RFC 9457 ProblemDetail 错误。**无 password / email 字段**（per ADR-0016 决策 2 + 3）
+- **FR-S01（Endpoint）**：唯一 endpoint `POST /api/v1/accounts/phone-sms-auth`，入参 `{phone: string, code: string}`，响应 `{accountId, accessToken, refreshToken}` 或 RFC 9457 ProblemDetail 错误。**无 password / email 字段**
 - **FR-S02（Phone 格式）**：`^\+861[3-9]\d{9}$`（仅大陆段）；不匹配 → `INVALID_PHONE_FORMAT` HTTP 400
 - **FR-S03（SMS code 存储）**：复用既有 SMS code 基础设施 — Redis `sms_code:<phone>` 5min TTL，hash 存储（不存明文，per CL-002）；存储算法 = **HMAC-SHA256 + `crypto.timingSafeEqual`**（per [ADR-0023](../../../docs/adr/0023-sms-code-storage-hmac.md)，2026-05-18 从 bcrypt cost=12 切换，根因见 FR-S06 timing 段）；secret env `SMS_CODE_HMAC_SECRET` fail-fast；与 SMS gateway / RateLimitService 完全复用
 - **FR-S04（SMS Purpose 隐藏）**：`/api/v1/accounts/sms-codes` endpoint 入参**简化为 `{phone}`**（删除 purpose 字段）；server 内部根据 phone 是否存在动态决定 SMS template：
@@ -176,7 +176,7 @@ state_branches:
 - **FR-S06（反枚举 timing defense）**：timing defense 范围**缩为 ANONYMIZED + 码错 + 码过期 + 未注册自动创建 + 已注册 ACTIVE 路径**——FROZEN 路径已显式 disclosure 不参与（per spec D `expose-frozen-account-status` FR-004 + CL-003 `TimingDefenseExecutor.executeInConstantTime` bypassPad 参数）。覆盖范围内成功路径（已注册 ACTIVE / 未注册自动注册）+ 失败路径（ANONYMIZED / 码错 / 码过期）必须**响应 P95 时延差 ≤ 50ms**：
   - SMS code 存储 = HMAC-SHA256 + `crypto.timingSafeEqual`（per FR-S03 + [ADR-0023](../../../docs/adr/0023-sms-code-storage-hmac.md)）— verify 路径耗时 < 1ms,3 个反枚举路径自然时延均一
   - 失败路径仍调用 `TimingDefenseExecutor.pad()` 计算 dummy bcrypt compare(cost=10，~80ms)作纵深防御 — 抹平 redis.get 抖动 / Phone VO 构造 / ConfigService.get / account 查询等任何残余微差异
-  - mono `BcryptTimingDefenseExecutor` 由 TS + `bcrypt` npm 包新写（不沿用 Java 老类），dummy hash input 用固定内存常量（不依赖 DB password_hash 列）
+  - `BcryptTimingDefenseExecutor` 由 TS + `bcrypt` npm 包实现，dummy hash input 用固定内存常量（不依赖 DB password_hash 列）
   - 由独立集成测试 `SingleEndpointEnumerationDefenseIT`（`apps/server/test/integration/timing-defense.p95.it.spec.ts`，env-gated `RUN_PERF_IT=true PERF_IT_REPS=N`）验证 P95 差 ≤ 50ms（**不含 FROZEN 路径**——单独由 spec D `FrozenAccountStatusDisclosureIT` 覆盖）；PoC 阶段 200-rep fast feedback，1000-rep nightly job 在 Plan 2 dedicated slow-IT job 引入时启用
 - **FR-S07（限流规则，复用 + 新增）**：
   - 复用 `sms:<phone>` 60s 1 次（per RateLimitService 既有规则）
@@ -189,8 +189,8 @@ state_branches:
 - **FR-S09（响应 token 规格）**：access (JWT, TTL 15min) + refresh (random 256-bit, TTL 30day)；JWT secret 从环境变量 `AUTH_JWT_SECRET` 读取（fail-fast on missing）；签发由 `@nestjs/jwt` 实现
   - **Refresh token 持久化**：`RefreshTokenRecord` 表设计移到后续 use case；本 use case 仅签发 + 返回 + 不写持久化记录
 - **FR-S10（错误响应格式）**：所有错误响应遵循 RFC 9457 ProblemDetail（`application/problem+json`）；由 NestJS `@Catch()` 全局异常 filter 映射
-- **FR-S11（Outbox event）**：自动注册路径 publish `AccountCreatedEvent`（domain event，schema 见 plan.md）— 走 outbox pattern（domain event 持久化到 `outbox_event` 表，per 2026-05-17 W2.4 US2 decision；后台 worker 异步分发），技术选型在 plan.md 决定（候选：自实现 outbox + Prisma + node-cron / BullMQ + Redis）。**2026-05-19 amend**：Spring Modulith 老 `event_publication` 表已 drop（per Plan 2 Phase 0 § 2.2.1，migration `2_drop_legacy_modulith_flyway_tables`）
-- **FR-S12（命名 / 路由统一）**：本 use case 是 mono 首次实现 phone-sms-auth；不存在"删除既有 endpoint"动作（meta 时代 Java server 已有 3 个旧 endpoint 需删除，mono 从零写不适用）。路由命名标准化：
+- **FR-S11（Outbox event）**：自动注册路径 publish `AccountCreatedEvent`（domain event，schema 见 plan.md）— 走 outbox pattern（domain event 持久化到 `outbox_event` 表，per 2026-05-17 W2.4 US2 decision；后台 worker 异步分发），技术选型在 plan.md 决定（候选：自实现 outbox + Prisma + node-cron / BullMQ + Redis）。**2026-05-19 amend**：legacy `event_publication` 表已 drop（per migration `2_drop_legacy_modulith_flyway_tables`）
+- **FR-S12（命名 / 路由统一）**：本 use case 是 mono 首次实现 phone-sms-auth；不存在"删除既有 endpoint"动作。路由命名标准化：
   - `POST /api/v1/accounts/sms-codes`（发码，无 purpose 字段）
   - `POST /api/v1/accounts/phone-sms-auth`（统一登录注册）
 
@@ -204,7 +204,7 @@ state_branches:
 | FR-C04 | SMS 触发：调 `@nvy/api-client.AccountSmsCodeApi.requestSmsCode({phone})` （**无 purpose 字段**，per FR-S04）；60s 倒计时锁按钮防重复点击                                                                                                                                                                                                                 |
 | FR-C05 | submit 成功后：`@nvy/auth.phoneSmsAuth` 内部调 `store.setSession({accountId, accessToken, refreshToken})`；`AuthGate` (apps/native/app/\_layout.tsx) 监听 `isAuthenticated` 自动 `router.replace('/(app)/')`。Hook **不直调** router                                                                                                                     |
 | FR-C06 | 错误统一映射（per `mapApiError` util，已含 `FetchError` 检查 per PR #48 修复）：401 → "手机号或验证码错误"；429 → "请求过于频繁，请稍后再试"；FetchError / TypeError / 5xx → "网络异常，请检查网络后重试"；未知错 → "登录失败，请稍后再试"；**不区分 401 子码**（server 单接口 4 分支字节级一致，client 仅看 401 状态）                                  |
-| FR-C07 | 三方 OAuth 圆形按钮 placeholder：press 弹 toast "<provider> 登录 - Coming in M1.3"；不调任何后端：<br>- 微信（绿色）：iOS / Android / Web 全平台渲染<br>- Google（多彩 G）：iOS / Android / Web 全平台渲染<br>- Apple（黑色苹果）：**iOS only**（`Platform.OS === 'ios'` 条件，per ADR-0016 决策 4）                                                     |
+| FR-C07 | 三方 OAuth 圆形按钮 placeholder：press 弹 toast "<provider> 登录 - Coming in M1.3"；不调任何后端：<br>- 微信（绿色）：iOS / Android / Web 全平台渲染<br>- Google（多彩 G）：iOS / Android / Web 全平台渲染<br>- Apple（黑色苹果）：**iOS only**（`Platform.OS === 'ios'` 条件）                                                                          |
 | FR-C08 | 顶部 close `×` 按钮（per mockup v2，2026-05-04 落地）：press 时 router.back（如有 history） / 否则 noop。**原 "立即体验" 游客模式占位已废**（mockup 落地反向修订；游客模式 M2 评估时再决定 UI 入口位置）                                                                                                                                                 |
 | FR-C09 | 底部 "登录遇到问题" placeholder：press 弹 toast "帮助中心 - Coming in M1.3"；不调后端                                                                                                                                                                                                                                                                    |
 | FR-C10 | SMS "获取验证码" 按钮：成功 / 失败均不区分 toast（成功静默 + 60s 倒计时；失败也只 toast 通用错，**不暴露**"未注册"或"已注册"信号）                                                                                                                                                                                                                       |
@@ -217,7 +217,7 @@ state_branches:
 ### Key Entities
 
 - **Account（聚合根）**：复用既有 Account；本 use case 不引入新字段
-  - `email` 字段保留 schema 但不写入新值（`[DEPRECATED M1.2 ADR-0016]`，per PRD 修订）
+  - `email` 字段保留 schema 但不写入新值（`[DEPRECATED M1.2]`，per PRD 修订）
   - `password_hash` 字段保留 schema 但**不写入新值且不被读取**（mono `BcryptTimingDefenseExecutor` 用固定内存常量作 dummy hash input，不依赖此列，per 2026-05-17 Changelog (c)；M2+ 评估真删该字段）
 - **新增**：无（不引入新聚合根 / 实体 / 值对象）
 - **删除**：无（domain 层无变化；删的是 application / web / DTO 层）
@@ -250,13 +250,13 @@ state_branches:
 
 ## Clarifications
 
-> Server 端 6 点澄清于 2026-05-04 与 ADR-0016 决策同期完成（CL-006 由 2026-05-07 spec D ship 引入）。Client 端 Open Questions 见下方独立段落。
+> Server 端 6 点澄清于 2026-05-04 完成（CL-006 由 2026-05-07 spec D ship 引入）。Client 端 Open Questions 见下方独立段落。
 
 ### CL-001：FROZEN / ANONYMIZED 账号在新模式下如何反枚举 _[from server]_
 
 **Q**：旧模式 register / login 双接口分别处理 phone 状态；新模式单接口下 FROZEN 账号尝试登录 / ANONYMIZED 账号 phone 被新用户尝试时，如何避免暴露状态？
 
-**A**：FR-S05 明确分支 + FR-S06 timing defense。FROZEN 账号→反枚举吞为"码错"（CL-006 后改为显式 disclosure）；ANONYMIZED 账号 phone 字段被匿名化为 NULL（per PRD § 5.5），故 ANONYMIZED 账号的"phone"在新 phone-sms-auth 路径下视为"未注册"——可被任意人重新注册（per ADR-0016 决策 1 default 路径），但绑定为新 accountId（不恢复匿名化数据，per PRD § 5.5"不可逆"）。
+**A**：FR-S05 明确分支 + FR-S06 timing defense。FROZEN 账号→反枚举吞为"码错"（CL-006 后改为显式 disclosure）；ANONYMIZED 账号 phone 字段被匿名化为 NULL（per PRD § 5.5），故 ANONYMIZED 账号的"phone"在新 phone-sms-auth 路径下视为"未注册"——可被任意人重新注册（unified auth default 路径），但绑定为新 accountId（不恢复匿名化数据，per PRD § 5.5"不可逆"）。
 
 **落点**：FR-S05 显式 3 分支；User Story 3 含 FROZEN / ANONYMIZED 双场景；Edge Cases 不再有"匿名化 phone 重新注册" 段（自然成为 User Story 2 的子场景）。
 
@@ -288,7 +288,7 @@ state_branches:
 
 **Q**：本 use case 不写 RefreshTokenRecord（与既有 register / login 一致），客户端拿到的 refresh token 此时无服务端 revoke 路径——M1.2 阶段是否引入持久化？
 
-**A**：不。Phase 1.3 use case (`refresh-token`) 引入持久化时**统一回填**本 use case + 既有 register / login（虽然 register / login 旧 use case 在 phone-sms-auth 落地时即被删，但回填指 phone-sms-auth 的 token 签发路径）；M1.2 阶段窗口期内客户端拿 refresh token 等同于"30 天内随便用"（无 revoke 通道）— per ADR-0013 验收范围。
+**A**：不。Phase 1.3 use case (`refresh-token`) 引入持久化时**统一回填**本 use case + 既有 register / login（虽然 register / login 旧 use case 在 phone-sms-auth 落地时即被删，但回填指 phone-sms-auth 的 token 签发路径）；M1.2 阶段窗口期内客户端拿 refresh token 等同于"30 天内随便用"（无 revoke 通道）。
 
 **落点**：FR-S09 注 "refresh token 持久化在 Phase 1.3 统一回填"；Out of Scope 加"1.x 内自行管理 RefreshTokenRecord"。
 
@@ -303,13 +303,13 @@ state_branches:
 3. ANONYMIZED 是不可逆终态，反枚举防 phone 时序复用攻击价值高；
 4. FROZEN 是用户主动注销知情态，信息泄露面小。
 
-**落点**：本 spec FR-S05（第 3 分支拆开 FROZEN/ANONYMIZED 单独表述）+ FR-S06（timing defense 范围明示，FROZEN 不参与）+ SC-S03（IT 路径数 4→3）；FROZEN disclosure 业务行为整合至 meta canonical [`account/delete-account/spec.md`](../../account/delete-account/spec.md)（合并自 server `expose-frozen-account-status` use case）。
+**落点**：本 spec FR-S05（第 3 分支拆开 FROZEN/ANONYMIZED 单独表述）+ FR-S06（timing defense 范围明示，FROZEN 不参与）+ SC-S03（IT 路径数 4→3）。FROZEN disclosure 完整业务行为定义待 Account 相关 use case 迁入时补充。
 
 ### Client Open Questions _[from app]_
 
 | #   | 问                                                | 决议                                                                                                                      |
 | --- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 1   | "立即体验"游客模式具体行为                        | M2 / M3 决定（per ADR-0016 Open Questions）；M1.2 仅 placeholder toast（mockup v2 落地后已废 entry，等 M2 决策再加）      |
+| 1   | "立即体验"游客模式具体行为                        | M2 / M3 决定；M1.2 仅 placeholder toast（mockup v2 落地后已废 entry，等 M2 决策再加）                                     |
 | 2   | Apple 按钮 Android 端 conditional render 由谁负责 | login.tsx 用 `Platform.OS === 'ios'` 判（不下沉到 packages/ui — AppleButton 组件本身跨端可渲染，由 caller 决定）          |
 | 3   | mockup v1（双 tab）design/source/ 是否删除        | 保留作历史参考（visual tokens / design-tokens 镜像仍有效）；加 design/SUPERSEDED.md 指针指向 v2                           |
 | 4   | 重做 mockup 是否复用 v1 token 命名                | ✅ 复用（`packages/design-tokens` 命名 ink/line/surface/ok/warn/err/accent/brand 不变；新 mockup 仅改 layout / 区域结构） |
@@ -319,7 +319,7 @@ state_branches:
 ### Server Assumptions
 
 - **A-S01**：复用既有 register-by-phone Assumptions A-001 ~ A-005（SDK / Redis / JWT secret / BCrypt cost / Token TTL）— 仅命名上的 use case 变了，基础设施假设不变
-- **A-S02**：M1 阶段 v0.x.x 无真实用户；删旧 endpoint + 改 OpenAPI breaking 是可接受的（per CL-002 + ADR-0016 决策 2）
+- **A-S02**：M1 阶段 v0.x.x 无真实用户；删旧 endpoint + 改 OpenAPI breaking 是可接受的（per CL-002）
 - **A-S03**：DB `password_hash` 字段保留 schema 仅作 timing defense dummy hash 输入；M2+ 评估真删该字段
 - **A-S04**：`AccountCreatedEvent` 既存事件类 schema 不变；新模式自动注册路径复用此事件 publish 到 outbox
 - **A-S05**：阿里云 SMS Template A 审批已就绪（既有 register-by-phone use case 已审过）；Template C 配置废弃不影响审批资源
@@ -339,48 +339,42 @@ state_branches:
 
 - **`refresh-token` use case**（token 刷新 + RefreshTokenRecord 持久化）— Phase 1.3 引入
 - **`logout-all` use case**（退出所有设备 + revoke RefreshTokenRecord）— Phase 1.4 引入
-- **微信 / Google / Apple OAuth** — M1.3 引入（per ADR-0016 决策 4）
-- **运营商一键登录 SDK**（中国移动 / 联通 / 电信免密验证）— M2+ 评估（per ADR-0016 决策 5）
+- **微信 / Google / Apple OAuth** — M1.3 引入
+- **运营商一键登录 SDK**（中国移动 / 联通 / 电信免密验证）— M2+ 评估
 - **二维码扫码登录** — M2+ 移动端启用后引入
-- **Backward compat for old clients calling `/register-by-phone` / `/login-by-phone-sms` / `/login-by-password`** — per CL-002 + ADR-0016 决策 2 拒绝；M1 v0.x.x 无真实用户
-- **DB schema 真删 `email` / `password_hash` 字段** — M2+ 评估（per ADR-0016 Open Questions）
+- **Backward compat for old clients calling `/register-by-phone` / `/login-by-phone-sms` / `/login-by-password`** — per CL-002 拒绝；M1 v0.x.x 无真实用户
+- **DB schema 真删 `email` / `password_hash` 字段** — M2+ 评估
 - **1.x 内自行管理 RefreshTokenRecord** — per CL-005 推迟到 Phase 1.3
-- **找回密码 / 修改密码** — password 已废，per ADR-0016 决策 2；新模式下"忘记密码"在 UX 中无入口
+- **找回密码 / 修改密码** — password 已废；新模式下"忘记密码"在 UX 中无入口
 
 ### Client Out of Scope（M1.2 显式不做）
 
 - 微信 / Google / Apple OAuth **真实流程**（M1.3）；M1.2 仅 placeholder 圆形按钮，press 弹 "Coming in M1.3" toast
 - "立即体验" 游客模式真实功能（M2/M3 评估）
 - "登录遇到问题" 帮助中心（M1.3）
-- 中国运营商一键登录 SDK（中国移动 / 联通 / 电信免密验证；per ADR-0016 决策 5，M2+ 评估）
+- 中国运营商一键登录 SDK（中国移动 / 联通 / 电信免密验证；M2+ 评估）
 - 二维码扫码登录（M2+ 移动端真机时）
 - 多端会话管理（"踢掉其他设备"等，M3+ 内测前）
 - iOS / Android 真机渲染验证（M2.1）
 - 国际化 / 多语言（M3+）
 - 视觉细节（精确 px / hex / 阴影偏移 / 字重值）— 走 mockup → plan.md UI 段吸收
-- **register 独立页**（per ADR-0016 决策 1，整页废弃；旧 `app/(auth)/register.tsx` placeholder 已于 PR #50 删除）
-- **密码登录 / 忘记密码 / 修改密码**（per ADR-0016 决策 2，整套废弃）
-- **邮箱登录 / 邮箱注册 / Google email-only 账号**（per ADR-0016 决策 3）
+- **register 独立页**（整页废弃；旧 `app/(auth)/register.tsx` placeholder 已于 PR #50 删除）
+- **密码登录 / 忘记密码 / 修改密码**（整套废弃）
+- **邮箱登录 / 邮箱注册 / Google email-only 账号**（已废）
 
 ## Change Log
 
-- **2026-05-04** — Client 端 spec 整体重写为 unified phone-SMS auth（per ADR-0016）。原 2026-05-03 双 tab 版本（含密码 + 短信 tab + 跳 register）整段废弃；旧 design/source mockup 标 SUPERSEDED；packages/ui 既有 12 组件保留 8（per ADR-0016 Migration 表），M1.3 impl PR 删 PasswordField + 加 WechatButton + AppleButton。
+- **2026-05-04** — Client 端 spec 整体重写为 unified phone-SMS auth。原 2026-05-03 双 tab 版本（含密码 + 短信 tab + 跳 register）整段废弃；旧 design/source mockup 标 SUPERSEDED；packages/ui 既有 12 组件保留 8，M1.3 impl PR 删 PasswordField + 加 WechatButton + AppleButton。
 - **2026-05-07** — Server 端 spec D `expose-frozen-account-status` ship — FR-S05 第 3 分支拆开 FROZEN/ANONYMIZED 单独表述；FR-S06 timing defense 范围明示（FROZEN 不参与）；SC-S03 路径数 4→3；新增 Clarifications CL-006 引用 spec D。本 amendment 与 spec D 同 PR 合入（防 spec drift > 1 week，per constitution Anti-Patterns）。
-- **2026-05-17** — mono W2 amend：(a) FR-S11 outbox 表名 `event_publication` → `outbox_event`（per W2.4 US2 决策；Spring Modulith 老表保留不动）；(b) User Story 3 Acceptance Scenarios L70-73 narrative 保留 pre-CL-006 的早期描述作上下文，实施严格按 FR-S05/FR-S06/SC-S03 post-CL-006 amended terms（FROZEN→403 disclosure，ANONYMIZED→401 反枚举吞 + dummy bcrypt timing pad）；(c) mono `TimingDefenseExecutor` 由 TS + `bcrypt` npm 包新写（不沿用 Java 老类），dummy hash input 用固定内存常量（不需 DB password_hash 列）；(d) ANONYMIZED 测试 setup 用 phone NOT NULL hack 触达 code path（生产中 phone 应 NULL per PRD § 5.5，测试为覆盖反枚举行为路径需要 denormalized state）。
-- **2026-05-15** — Meta canonical 合并 server `mbw-account/phone-sms-auth/spec.md` + app `apps/native/specs/auth/login/spec.md` 双源（per meta-repo spec-kit 抽 single source of truth 计划）；server FR-001..012 重编 FR-S01..S12 / app FR-001..015 重编 FR-C01..C15；client UI flow / a11y / OAuth placeholder / errorScope 完整保留；后续 server / app 仓 spec.md 转 symlink 指向本 canonical。
-- **2026-05-17** — **mono W2 migration**：从 meta canonical copy 到 mono `specs/auth/phone-sms-auth/spec.md`，8 处 Java/Spring 实现绑定描述替换为 NestJS / Prisma / TS 中立等价描述（`mbw-account` → `apps/server` Module `auth` / `@Transactional` Java annotation → Prisma `$transaction` / `mbw-shared.web.GlobalExceptionHandler` → NestJS `@Catch()` filter / Spring Modulith Event → outbox pattern / `MBW_AUTH_JWT_SECRET` → `AUTH_JWT_SECRET` / ArchUnit + Spring Modulith Verifier → `eslint-plugin-boundaries` 4 类规则 / FR-S12 "删除既有 endpoint" → "命名/路由统一"（mono 从零写无既有可删））；业务规则 / Acceptance Scenarios / FR-S01-S08 / SC-S01-S06 / Clarifications 1:1 保留；client 段 FR-C01-C15 / SC-C01-C09 完全保留作 W4+ mobile reference。
+- **2026-05-17** — mono W2 amend：(a) FR-S11 outbox 表名 `event_publication` → `outbox_event`（per W2.4 US2 决策；legacy 表保留不动）；(b) User Story 3 Acceptance Scenarios L70-73 narrative 保留 pre-CL-006 的早期描述作上下文，实施严格按 FR-S05/FR-S06/SC-S03 post-CL-006 amended terms（FROZEN→403 disclosure，ANONYMIZED→401 反枚举吞 + dummy bcrypt timing pad）；(c) `TimingDefenseExecutor` 用 TS + `bcrypt` npm 包实现，dummy hash input 用固定内存常量（不需 DB password_hash 列）；(d) ANONYMIZED 测试 setup 用 phone NOT NULL hack 触达 code path（生产中 phone 应 NULL per PRD § 5.5，测试为覆盖反枚举行为路径需要 denormalized state）。
 - **2026-05-18** — **FR-S03 / FR-S06 storage amend**：SMS code Redis 存储算法从 bcrypt cost=12 切到 HMAC-SHA256 + `crypto.timingSafeEqual`，per [ADR-0023](../../docs/adr/0023-sms-code-storage-hmac.md)。根因 = W3 deferred Item 4 `SingleEndpointEnumerationDefenseIT`（mono PR #23）实测 200-rep diff ≈ 193ms，违反 FR-S06 P95 ≤ 50ms。新机制 verify <1ms 让 3 个反枚举 401 路径时延自然均一,`BcryptTimingDefenseExecutor.pad`(cost=10) 保留作纵深防御。新增 env `SMS_CODE_HMAC_SECRET` fail-fast；Key Entities `password_hash` 注脚补充"不被读取"。
-- **2026-05-19** — **Path rename**: spec dir 从 `specs/auth/phone-sms-auth/` 重命名为 `specs/001-phone-sms-auth/`（per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md) feature-first 扁平布局）；frontmatter `modules: [auth]` / `owners` / `status: implemented` 同步添加。**业务内容 0 变化**，仅目录结构 + cross-doc ref 调整；spec.md 内 L11 / 上方 2026-05-15 / 2026-05-17 changelog entry 中提及的旧路径 `specs/auth/phone-sms-auth/` 保留不动（描述的是 meta-repo 起源路径 + W2 migration 时刻路径，是历史事实）。
-- **2026-05-19** — **Legacy schema cleanup**：Plan 2 Phase 0 § 2.2.1 落 migration `2_drop_legacy_modulith_flyway_tables`：DROP Spring Modulith 老 `event_publication` 表 + Java Flyway `flyway_schema_history` 表（W1.4 db pull 反推进来的非业务表）。`outbox_event` + 5 `account` 业务表全保留。FR-S11 amend "Modulith 老表保留不动" 条款；2026-05-17 W2 changelog entry (a) "Modulith 老表保留不动" 语义已 supersede。
+- **2026-05-19** — **Path rename**: spec dir 从 `specs/auth/phone-sms-auth/` 重命名为 `specs/001-phone-sms-auth/`（per [ADR-0024](../../docs/adr/0024-spec-feature-first-layout.md) feature-first 扁平布局）；frontmatter `modules: [auth]` / `owners` / `status: implemented` 同步添加。**业务内容 0 变化**，仅目录结构 + cross-doc ref 调整。
+- **2026-05-19** — **Legacy schema cleanup**：Plan 2 Phase 0 § 2.2.1 落 migration `2_drop_legacy_modulith_flyway_tables`：DROP legacy `event_publication` + `flyway_schema_history` 表（早期 db pull 反推进来的非业务表）。`outbox_event` + 5 `account` 业务表全保留。FR-S11 amend "legacy 表保留不动" 条款由本次 cleanup 落地。
 
 ## References
 
-> mono `docs/adr/` 目录 Plan 3 阶段迁入；以下 ADR 引用属 meta 仓历史决策，在 mono W2 PoC 阶段作业务上下文 reference，对应实现 ADR 在 mono W4-W5（ADR-0018/0019/0020）落地后逐项 backfill。
+- [ADR-0023 SMS code 存储 — HMAC](../../docs/adr/0023-sms-code-storage-hmac.md)（FR-S03 / FR-S06 storage）
+- [ADR-0024 spec feature-first 布局](../../docs/adr/0024-spec-feature-first-layout.md)（本 spec 目录结构）
+- 限流方案见 [ADR-0022](../../docs/adr/0022-throttler-nestjs-redis.md)（FR-S07）
 
-- **ADR-0016**（unified-mobile-first-auth） — 上游决策（业务范围决定）；meta 仓 `docs/adr/0016-unified-mobile-first-auth.md`；mono 待迁入
-- **PRD** `docs/requirement/account-center.v2.md` § 2.1 / 2.2 / 4.2 / 5.2 / 5.3（2026-05-04 修订）— meta 仓持有；mono 待迁入
-- **Account state machine**（FROZEN / ANONYMIZED 终态）业务定义见 meta canonical [`account/delete-account/spec.md`](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/specs/account/delete-account/spec.md)；mono 引入对应 use case 时同步迁入
-- **历史 spec**（meta 时代）：`specs/account/register-by-phone/` / `specs/account/login-by-phone-sms/` / `specs/account/login-by-password/` 各加 SUPERSEDED.md 归并到 [`auth/register-by-phone/`](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/specs/auth/register-by-phone/) + [`auth/login-by-phone-sms/`](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/specs/auth/login-by-phone-sms/) + [`auth/login-by-password/`](https://github.com/xiaocaishen-michael/no-vain-years/blob/main/specs/auth/login-by-password/)；mono **不引入**这些（unified phone-sms-auth 是 mono 唯一 entry）
-- **Client mockup handoff 流程**：meta `docs/experience/claude-design-handoff.md` § 2.1b / § 6；W4+ mobile use case 适用时迁入
-- **ADR-0011**（rate-limit-jcache-then-redis） — server 限流基础设施；mono 改用 NestJS-friendly 实现（`@nestjs/throttler` + Redis adapter），W3+ FR-S07 实现时决定具体方案
-- **ADR-0013** — refresh token revoke 验收范围；mono `RefreshTokenRecord` 在后续 use case 引入时 backfill 对应决策
+相关上游业务决策（unified auth 业务范围 / Account 状态机 FROZEN·ANONYMIZED 终态 / refresh token revoke）将在对应 ADR 迁入 mono 后补充。
