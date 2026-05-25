@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { decideAuthRoute, type AuthGateInput } from './auth-gate-decision.js';
+import { decideAuthRoute, type AuthGateInput } from './auth-gate-decision';
 
 const base: AuthGateInput = {
   isAuthenticated: false,
