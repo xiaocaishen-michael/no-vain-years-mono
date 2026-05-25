@@ -404,21 +404,26 @@ per FR-C06：401 → "手机号或验证码错误"（不区分 401 子码）；4
 
 ## 测试策略（per p3 Verification）
 
-- **组件测**（vitest + RTL）：5 态 happy path（US1-5 client）、反枚举 client 一致性（SC-C02：已注册 vs 未注册 submit 后状态/toast/setSession 完全 equal）、429/网络错映射（SC-C04）、a11y label（SC-C05）。错误态测试走 **helper-level 单测**（memory `feedback_vitest_spy_rejection_through_event_handlers`：event handler 内 spy-rejection 会 false-positive）。
-- **web e2e**（Playwright）：SC-C09 浏览器跑通；注意 expo-router web 隐藏 `(group)/` URL 段 + Desktop Chrome `hasTouch:false`（memory `reference_expo_router_web_hides_route_groups`）。
+> **测试分层 = mono vitest 架构**（`apps/mobile/vitest.config.ts`：node env / `src/**/*.spec.ts` / 不碰 `app/` 树 —— UI 渲染走 Playwright，避 RN→DOM 高成本）。既有 `~/ui` `Button`/`Spinner` 无单测即此故。
+
+- **vitest `.spec.ts`（logic-only）**：zod schema（T060）/ `~/auth` wrapper mock Orval（T061）/ `useLoginForm` hook 行为 —— T062 状态机+倒计时+setSession、T063 错误映射（FR-C06 401/429/网络错，SC-C04）+ **反枚举 client 一致性**（SC-C02：已注册≡未注册 mock 两响应 → hook state/setSession equal，无需渲染）。helper-level（memory `feedback_vitest_spy_rejection_through_event_handlers`）。
+- **presentational（无 vitest 单测）**：`~/ui` primitives（T059）/ `login.tsx`（T064/T065）—— 同 `Button`/`Spinner`；verify = typecheck/lint + SC-C07 静态 grep（T064）；render/视觉覆盖 → e2e。
+- **Playwright e2e（Expo Web，T066）**：US1 happy 全流程 + 5 态视觉 + a11y（SC-C05 axe/role）+ SC-C09 三端；expo-router web 隐藏 `(group)/` + Desktop Chrome `hasTouch:false`（memory `reference_expo_router_web_hides_route_groups`）；success 不清 session 等价路径（memory `feedback_visual_smoke_unreachable_when_finally_clears_session`）。
 
 ## Phase 2 准备（`/speckit-tasks` 输入，[Mobile] only）
 
-建议 task 层级（三位一体里 `[Server]`/`[Contract]` 本切片留空）：
+task 层级（三位一体里 `[Server]`/`[Contract]` 本切片留空）；tasks.md Phase M 为权威：
 
-1. `[Mobile]` `~/ui` primitive port（PhoneInput / SmsInput / ErrorRow / PrimaryButton / LogoMark / SuccessCheck）+ index 导出
-2. `[Mobile]` zod `phoneSmsAuthSchema`（`apps/mobile/src/auth/`）+ 单测
-3. `[Mobile]` `~/auth` phone-sms-auth wrapper（Orval mutation + setSession）+ 单测
-4. `[Mobile]` `useLoginForm`（RHF + 副作用态分层 + 倒计时 + 错误映射）+ helper-level 单测
-5. `[Mobile]` `login.tsx` 屏组装（Controller 包输入、状态机视觉、a11y）+ 组件测
-6. `[Mobile]` web e2e smoke（Playwright）
+1. `[Mobile]` `~/ui` primitive port + index 导出（presentational，无单测）— T059
+2. `[Mobile]` zod `phoneSmsAuthSchema` + vitest `.spec.ts` — T060
+3. `[Mobile]` `~/auth` wrapper（mock Orval）+ vitest `.spec.ts` — T061
+4. `[Mobile]` `useLoginForm` 核心（状态机/倒计时/setSession）+ vitest — T062
+5. `[Mobile]` `useLoginForm` 错误映射 + 反枚举一致性 + vitest — T063
+6. `[Mobile]` `login.tsx` skin + close × + SC-C07 grep（presentational）— T064
+7. `[Mobile]` `login.tsx` 状态机 + success（presentational）— T065
+8. `[Mobile]` Playwright e2e（render/a11y/SC-C09）— T066
 
-每 task TDD 红→绿→typecheck/lint→`[X]`→commit（constitution II，per `.claude/rules/implement-task-closure.md`）。预估 6-8 task。
+logic task 走 TDD 红→绿→typecheck/lint→`[X]`→commit；presentational task 走 impl→typecheck/lint→`[X]`→commit（per `.claude/rules/implement-task-closure.md`）。共 8 task。
 
 ## 开放决策 / 风险
 
