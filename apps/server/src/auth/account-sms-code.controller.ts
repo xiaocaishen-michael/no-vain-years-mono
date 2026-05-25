@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { normalizePhone } from '../account/account.rules';
 import { RequestSmsCodeUseCase } from './request-sms-code.usecase';
 import { RequestSmsCodeRequest } from './request-sms-code.request';
@@ -27,6 +28,8 @@ export class AccountSmsCodeController {
 
   @Post('sms-codes')
   @HttpCode(200)
+  // 跳过 refresh-* 共享 throttler (本路由无 refreshToken body, 否则共享 refresh:empty 桶被污染)。
+  @SkipThrottle({ 'refresh-ip': true, 'refresh-token': true })
   @ApiOperation({
     summary: 'Request an SMS verification code',
     description:
