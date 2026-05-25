@@ -76,7 +76,7 @@ created_at: '2026-05-25'
 **Independent Test**：Testcontainers PG；账号 A 3 active + 1 已撤销 + 账号 B 2 active → logout-all → A 3 撤、A 已撤销时间戳不变、B 不动。
 
 - [X] T016 [US5] [Server] `RefreshTokenService.revokeAllForAccount(accountId, now)` in `refresh-token.service.ts`：`updateMany where {accountId, revokedAt:null} set revokedAt=now`（count 忽略，幂等；`revokedAt:null` 过滤令已撤行时间戳不变）+ 单测（Testcontainers 2 测：A 3 active+1 已撤→全撤+已撤时间戳不变+B 隔离 / 0 active 幂等不报错）
-- [ ] T017 [US5] [Server] `auth/logout-all.usecase.ts`（取 accountId from JWT sub → `revokeAllForAccount` → void）+ `account-token.controller.ts` `POST /api/v1/accounts/logout-all`（EP2，挂 JwtAuthGuard，返回 **204**）；throttler named `logout-all-ip` 50/60s + `logout-all-account` 5/60s（account 桶先）+ 单测
+- [X] T017 [US5] [Server] `auth/logout-all.usecase.ts`（accountId from JWT sub → `revokeAllForAccount` → void）+ `account-token.controller.ts` `POST /api/v1/accounts/logout-all`（EP2，返回 **204**）；**JwtAccessGuard**（T001 决策 B：auth 薄 guard 委托 `JwtTokenService.verifyAccess`，只验 token 不做 isActive 门控 → frozen 也可登出）；guards 挂**方法级**（JwtAccessGuard 先填 req.user → ThrottlerGuard 读 account tracker）；throttler `logout-all-ip` 50/60s + `logout-all-account` 5/60s 入共享数组 + 全路由 `@SkipThrottle` 反污染（refresh/me/sms 补 logout-all-*）+ 单测（usecase 1 / controller logout-all 1）。**JwtAccessGuard 走 e2e 测**（ADR-0040 no-bad-mocks 禁 guard 隔离 `new`，沿用 account guard 仅 e2e 覆盖范式 → T018 IT 覆盖 204 + 401 token 路径）。回归：refresh+me-patch+sms 22 e2e 全绿
 - [ ] T018 [US5] [Server-IT] `tokens.us5-logout-all.it.spec.ts`：幂等（0/1/N 均 204）+ 隔离（已撤销记录时间戳不变 / 其他账号不受影响）+ 鉴权缺失→401
 
 ---

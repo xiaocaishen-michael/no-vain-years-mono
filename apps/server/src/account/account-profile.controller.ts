@@ -35,6 +35,8 @@ export class AccountProfileController {
     'me-patch': true,
     'refresh-ip': true,
     'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
   })
   @Throttle({ 'me-get': { limit: 60, ttl: 60_000 } })
   @ApiOperation({
@@ -78,6 +80,8 @@ export class AccountProfileController {
     'me-get': true,
     'refresh-ip': true,
     'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
   })
   @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
   @ApiOperation({

@@ -29,6 +29,8 @@ import { AccountPhoneSmsAuthController } from './account-phone-sms-auth.controll
 import { AccountSmsCodeController } from './account-sms-code.controller.js';
 import { AccountTokenController } from './account-token.controller.js';
 import { RefreshTokenUseCase } from './refresh-token.usecase.js';
+import { LogoutAllUseCase } from './logout-all.usecase.js';
+import { JwtAccessGuard } from './jwt-access.guard.js';
 import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
 
 /**
@@ -116,6 +118,28 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
                 return Promise.resolve(`refresh:${raw ? hashRefreshToken(raw) : 'empty'}`);
               },
             },
+            // FR-S14: logout-all EP per-IP 50/60s
+            {
+              name: 'logout-all-ip',
+              limit: 50,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const ip = req['ip'];
+                return Promise.resolve(`logout-all-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+              },
+            },
+            // FR-S14: logout-all EP per-account 5/60s (JwtAccessGuard 先填 req.user)
+            {
+              name: 'logout-all-account',
+              limit: 5,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const user = req['user'] as { accountId?: unknown } | undefined;
+                return Promise.resolve(
+                  `logout-all-account:${user?.accountId ?? 'unauthenticated'}`,
+                );
+              },
+            },
           ],
           storage: new ThrottlerStorageRedisService(cfg.url),
         };
@@ -156,6 +180,8 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
     RefreshTokenUseCase,
+    LogoutAllUseCase,
+    JwtAccessGuard,
     SmsPhoneThrottlerGuard,
     // ProblemDetailFilter (APP_FILTER) moved to SecurityModule in PR-5a —
     // it's a cross-context concern, owned by the platform infra layer.
