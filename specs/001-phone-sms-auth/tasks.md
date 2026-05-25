@@ -314,7 +314,7 @@ stdlib):
 
 > CON1 拆分：hook 拆「核心 / 错误映射」各 ≤2h（Constitution III）。hook 是**纯 logic** → mono vitest `.spec.ts`（node env，不渲染）；反枚举一致性 + 错误映射在 hook 层断言，无需 render。
 
-- [ ] T062 [Mobile] [US1] `useLoginForm` 核心 → `apps/mobile/src/auth/use-login-form.ts`：RHF + `zodResolver`（铁律 1 Controller 订阅）；**副作用态分层**（铁律 2：`useAccountSmsCodeControllerRequest` mutation + 60s `useRef` 倒计时在 RHF 外）；`isSubmitting` 单源（铁律 3）；FR-C11 状态机（idle → requesting_sms → sms_sent → submitting → success）；RED：`use-login-form.spec.ts` helper-level（倒计时启停 / requestSms→sms_sent / submit success→setSession，per memory `feedback_vitest_spy_rejection_through_event_handlers`）→ GREEN
+- [X] T062 [Mobile] [US1] `useLoginForm` 核心 → `apps/mobile/src/auth/use-login-form.ts`：RHF + `zodResolver`（铁律 1 Controller 订阅）；**副作用态分层**（铁律 2：`useAccountSmsCodeControllerRequest` mutation + 60s `useRef` 倒计时在 RHF 外）；`isSubmitting` 单源（铁律 3）；FR-C11 状态机（idle → requesting_sms → sms_sent → submitting → success）；RED：`use-login-form.spec.ts` helper-level（倒计时启停 / requestSms→sms_sent / submit success→setSession，per memory `feedback_vitest_spy_rejection_through_event_handlers`）→ GREEN
 - [ ] T063 [Mobile] [US2] `useLoginForm` 错误映射 + 反枚举一致性 → `use-login-form.ts`（接 T062）：`AxiosError` → `errorToast` 映射（FR-C06：401 / 429 / 网络错 / 未知）+ `errorScope`（FR-C15 `sms|submit|null`）+ `clearError`；RED：`use-login-form.spec.ts` helper-level —（a）401（US3 不区分子码）/ 429 / `AxiosError` 无 `response` 各映射 + errorScope + clearError（SC-C04/C06）；（b）**反枚举一致性 SC-C02**：mock 已注册 vs 未注册两 Orval 响应 → 断言 hook state / setSession 完全 equal（client 无 phone-existed 分支）→ GREEN
 
 ### Implementation for US1 — `login.tsx` 屏（port，presentational，无 vitest，T066 e2e 覆盖）
