@@ -4,7 +4,7 @@ modules: [account]
 owners: ['@xiaocaishen-michael']
 status: implemented
 created_at: '2026-05-04'
-updated_at: '2026-05-21'
+updated_at: '2026-05-25'
 spec_kit_version: '>=0.8.5,<0.10.0'
 orchestrator_compat: '>=0.2.0'
 
