@@ -4,7 +4,7 @@ workflow:
   name: "Full SDD Cycle"
   version: "1.0.0"
   author: "GitHub"
-  description: "Runs specify → plan → tasks → implement with review gates"
+  description: "Runs specify → clarify → plan → tasks → analyze → implement with review gates"
 
 requires:
   speckit_version: ">=0.7.2"
@@ -32,6 +32,12 @@ steps:
     input:
       args: "{{ inputs.spec }}"
 
+  - id: clarify
+    command: speckit.clarify
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "{{ inputs.spec }}"
+
   - id: review-spec
     type: gate
     message: "Review the generated spec before planning."
@@ -52,6 +58,12 @@ steps:
 
   - id: tasks
     command: speckit.tasks
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "{{ inputs.spec }}"
+
+  - id: analyze
+    command: speckit.analyze
     integration: "{{ inputs.integration }}"
     input:
       args: "{{ inputs.spec }}"
