@@ -25,7 +25,7 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 |---|---|---|---|---|---|
 | 1 | [`p1-toolchain-ralph-loop`](05-25-account-migration-p1-toolchain-ralph-loop.md) | 工具链(先行) | 无 | 模型路由 + orchestrator + Ralph loop + workflow override | ✅ 大体落地;缺 workflow.yml 2 步 + run-implement.ts(待触发) |
 | 2 | [`p2-usecase-dependency`](05-25-account-migration-p2-usecase-dependency.md) | 分析/规划 | 无(可与 p1 并行) | 新范式锚定 + 业务级调研 + 16 uc 依赖关系 + 迁移顺序 | 🟡 依赖/顺序已成;业务卡逐 uc 待展开 |
-| 3 | [`p3-usecase-steps`](05-25-account-migration-p3-usecase-steps.md) | 执行 | **p2(顺序)+ p1(工具链)** | 逐 use case 详细迁移过程 + 步骤 | ⬜ **stub**(待 p2 完成 + user 输入后 plan 模式填充) |
+| 3 | [`p3-usecase-steps`](05-25-account-migration-p3-usecase-steps.md) | 执行 | **p2(顺序)+ p1(工具链)** | 逐 use case 详细迁移过程 + 步骤 | 🟢 **已填充**(2026-05-25 plan 会话:一条引擎 + Step 1 两模式 + Step 4 两形态;本轮全程手动不用 orchestrator) |
 
 ## 跨契约(master 锁定,子 plan 不得违反)
 
@@ -69,7 +69,7 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 
 ### 子 plan 3 — 逐 use case 迁移步骤
 
-⬜ **stub**。针对每个 use case 定义详细迁移过程 + 步骤。**待 p2 完成 + user 给输入后,切 plan 模式填充具体内容**。详见 [`p3`](05-25-account-migration-p3-usecase-steps.md)。
+🟢 **已填充**(2026-05-25)。定义为**一条手动迁移引擎 + 两处分叉**:Step 1 两模式(1a 抽取重写 fresh / 1b de-stale 已有 spec 的 client 段)→ Step 2 plan+tasks(ADR-0043 扁平 + 三位一体同 tasks.md)→ Step 3 analyze → Step 4 impl(server 9 条并发/事务手译注意 + 前端 Strangler-Fig + RHF Golden Sample);Step 4 前端两形态(port 旧 app 成品 / 批 E mockup)。**本轮全程手动,不用 p1 orchestrator**。详见 [`p3`](05-25-account-migration-p3-usecase-steps.md)。
 
 ## Out of Scope（整体不做）
 
