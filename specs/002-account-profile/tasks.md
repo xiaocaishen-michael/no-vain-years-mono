@@ -165,7 +165,7 @@ orchestrator_compat: ">=0.1.0"
 - [X] T043 [Mobile] `src/auth/use-onboarding-form.ts` — RHF（`useForm` + zodResolver 接 T041）+ `onboardingErrorToast`（duck-type AxiosError，复用 login 判别逻辑、文案不同）+ 状态机 idle→submitting→success|error → RED: `use-onboarding-form.spec.ts`（合法提交调 mutation / 非法 disabled / 错误映射 / input change 清错）。verify: spec 绿（FR-033 / FR-034）
 - [X] T044 [Mobile] `src/ui/DisplayNameInput.tsx` + barrel export — 字符计数 + focus/error 边框 + a11y label/hint（裸 `TextInput` + NativeWind，复用 `~/theme`）。verify: `nx typecheck mobile` + `nx lint mobile` 绿（FR-036）
 - [X] T045 [Mobile] `app/(app)/onboarding.tsx` 真实表单（替换占位）— `<Controller>` 绑 DisplayNameInput + Button + ErrorRow + SuccessOverlay；Android 硬件返回 noop（FR-035）；`src/auth/index.ts` 导出新符号。verify: typecheck + lint 绿；删除 `// PHASE 1 PLACEHOLDER` banner（US13 / FR-035 / FR-036）
-- [ ] T046 [Mobile] `e2e/onboarding.spec.ts` — Playwright Web happy path：新用户 displayName=null → 落 onboarding → 输入提交 → redirect 进 `(tabs)/profile`；复用 `e2e/_support/api-mock.ts` mock PATCH `/me`。verify: `nx run mobile:e2e --skip-nx-cache` 绿（SC-019）
+- [X] T046 [Mobile] `e2e/onboarding.spec.ts` — Playwright Web happy path：新用户 displayName=null → 落 onboarding → 输入提交 → redirect 进 `(tabs)/profile`；复用 `e2e/_support/api-mock.ts` mock PATCH `/me`。verify: `nx run mobile:e2e --skip-nx-cache` 绿（SC-019）
 
 ---
 

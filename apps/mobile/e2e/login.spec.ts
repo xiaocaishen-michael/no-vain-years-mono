@@ -80,7 +80,8 @@ test('US1 happy — phone → code → 登录 redirects into the authed area (SC
   // setSession (mutation onSuccess) flips isAuthenticated; AuthGate redirects.
   // displayName is null for a fresh login → onboarding (group prefix stripped).
   await page.waitForURL(/onboarding/);
-  await expect(page.getByText('设置昵称页面占位')).toBeVisible();
+  // Onboarding form (002 T045) replaced the old placeholder; assert its heading.
+  await expect(page.getByText('完善个人资料')).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOT_DIR}/t066-login-success.png`, fullPage: true });
 });
 
