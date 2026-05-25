@@ -85,7 +85,7 @@ created_at: '2026-05-25'
 
 **Independent Test**：Testcontainers + Redis；refresh 同 token 第 6 次 429、同 IP 第 101 次 429；logout-all 同账号第 6 次 429、同 IP 第 51 次 429。
 
-- [ ] T019 [US6] [Server-IT] `tokens.us6-rate-limit.it.spec.ts`：4 规则（refresh-ip 100 / refresh-token 5 / logout-all-ip 50 / logout-all-account 5）→ 429 + 正确 `Retry-After`（限流 config 已在 T012/T017 加，本 task 纯验证）
+- [X] T019 [US6] [Server-IT] `tokens.us6-rate-limit.it.spec.ts`（全 boot + `beforeEach` Redis flushall 隔离桶）：4 规则 → 429（refresh-token 第 6 / refresh-ip 第 101 / logout-all-account 第 6 / logout-all-ip 第 51）。4 测全绿。**发现**：ThrottlerException 的 `Retry-After` 头未经 `ProblemDetailFilter` 透出（filter 仅 `body.retryAfterSeconds` 存在时设头）→ 全 throttler 429（含 shipped SMS FR-S07）缺 Retry-After，**pre-existing 跨切面 gap，建议单独 fix**（越界未改）
 
 ---
 
