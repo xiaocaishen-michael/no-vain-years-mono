@@ -8,17 +8,17 @@
 
 | 组件 | plan 声称 | 工程实证 | 状态 |
 |---|---|---|---|
-| orchestrator 框架 | Stage 2 halt-retry 自写 | `scripts/orchestrator/{ralph-loop,orphan-ralph,llm-client,prompt-assembler,schemas}.ts` 已建,批 A(`.spec-kit/runs/002-*` 有 attempt-N)实跑过 | ✅ 已建 |
-| `run-implement.ts`(2b) | 数据驱动后写 | **不存在**(待 halt-log ≥ 3 同形态触发) | ⬜ 未建(门槛未达) |
+| implement orchestrator(入口) | `pnpm orchestrate <feature>` 跑 tasks.md | **`index.ts` → `run-feature.ts`**(逐 task ralph loop + graphify context + 自动 commit)已建,**A-002 实战 30 task**(`.spec-kit/runs/002-account-profile/` T003-T032 + `_run-2026-05-21_*.md`) | ✅ 已建 + 已实战 |
+| `run-implement.ts`(2b 设想名) | 05-19 plan 设想的 Stage 2b 入口 | **从未建**(git 全历史无此 .ts 文件);实装为更完整的 `run-feature.ts`(见上行)。2b 增量(自动 halt-log + retry 参数化)加到 `run-feature.ts` 体系,待 halt 数据触发 | ⚫ 废弃命名(非缺口) |
 | `.specify/implement-halts.log` | 2a 首次 halt 时建 | **不存在** | ⬜ 未建 |
 | model routing | `/model sonnet` 手切 + orchestrator `--model` | `llm-client.ts` 支持 `--model`,default sonnet | ✅ 已建 |
 | Ralph loop | 内层 halt-retry | `ralph-loop.ts` + `orphan-ralph.ts`(孤儿文件自决,PoC #22)已建 | ✅ 已建 |
 | spec-kit preset | mono-orchestrator-ready | **0.4.0** 已装 + ADR-0043 全对齐(`05-24-speckit-preset-orchestrator-adr0043` ship) | ✅ 已建 |
 | graphify | LLM context 召回 | `graphify-out/`(graph.json 等)已产出 | ✅ 已建 |
 | claude-mem | 跨 session memory env-gate | `.envrc CLAUDE_MEM_ENABLE=1` 已配;**2-day A/B 评估仍 deferred** | 🟡 env 装 / 评估未做 |
-| workflow.yml 8 步 | 补 clarify + analyze | `.specify/workflows/speckit/workflow.yml` 当前 **6 步,仍缺 clarify/analyze**(两 skill 独立可用) | 🟡 缺 2 步 |
+| workflow.yml 命令编排 | 6 SDD 命令(specify/clarify/plan/tasks/analyze/implement)+ 2 review gate | ~~当前 YAML = 4 命令 + 2 gate,缺 clarify + analyze~~ → **2026-05-25 已补**:直接改 mono 项目级 `workflow.yml` 加 clarify(specify 后)+ analyze(tasks 后),现 6 命令 + 2 gate 齐全。两 skill `.claude/skills/speckit-{clarify,analyze}` 一直可独立调用(**非"被冲掉"**:git 全历史 0 次写入);preset 系统不分发 workflow,故走项目级直接改 | ✅ 已补 |
 
-⇒ **收尾缺口**:① workflow.yml 补 clarify/analyze 两步(或确认走 manual `/speckit-X` fallback);② `run-implement.ts` + halt-log 待后续批次 halt 数据触发。其余组件已就绪,可直接支撑批 B-E 迁移。
+⇒ **收尾缺口**:① ~~workflow.yml 补 clarify + analyze~~ **✅ 2026-05-25 已补**(直接改 mono 项目级 `workflow.yml`;preset 系统不分发 workflow,无需升级 preset);② orchestrator 2b 增量(自动 halt-log + retry 参数化)待 halt 数据触发。implement orchestrator 主体(`run-feature.ts`)已完整实战,可直接支撑批 B-E 迁移。
 
 > **Trigger(历史)**: 架构师 input 提议 Bun orchestrator / LangGraph.js;Phase 1 exploration 发现 spec-kit Workflows YAML 已 vendored 但**缺 clarify / analyze step**,改变 calculation。
 
@@ -61,7 +61,7 @@ Phase 1 exploration 揭示 4 个关键事实(2 项**改变**前次 calculation):
 
 ### Stage 1: spec → implement gate-pipeline(Opus 主导,gate 驱动)
 
-**目标 workflow 形态**(8 步流转,✦ 标新增):
+**目标 workflow 形态**(✦ 标新增;此处「8」= **6 个 SDD 命令** + 2 个 review gate,gate 也计 step;纯命令口径 = 6 步 per sdd.md):
 
 ```
 specify → ✦clarify → review-spec → plan → review-plan → tasks → ✦analyze → implement
@@ -115,7 +115,9 @@ halt-on-fail (e.g. test 失败 / typecheck error)
 
 #### 2b 自写 orchestrator(扩展性优先,user 决择)
 
-新建 `scripts/orchestrator/run-implement.ts`(~150-250 LoC,Node 22 + tsx,**非 Bun**)。
+> **2026-05-25 校正**:本节"`run-implement.ts`"是 2026-05-19 的**设想入口名,从未建**;orchestrator 实际实装为 `run-feature.ts`(`pnpm orchestrate`,功能更完整且已 A-002 实战 30 task)。下文职责边界设计仍有效,但 2b 增量加到 `run-feature.ts` 体系,**不新建** run-implement.ts。
+
+(以下为 05-19 原设想,保留作 2b 增量设计参考)新建 `scripts/orchestrator/run-implement.ts`(~150-250 LoC,Node 22 + tsx,**非 Bun**)。
 
 **接口契约**:
 ```bash
@@ -177,7 +179,7 @@ docs/plans/2026-05/05-25-account-migration-master.md                     # 主 p
 docs/plans/2026-05/05-25-account-migration-p2-usecase-dependency.md      # 子2 依赖/顺序(姊妹)
 docs/plans/2026-05/05-24-speckit-preset-orchestrator-adr0043.md          # § 0 前置(✅ 已 ship)
 .specify/implement-halts.log                                             # 2a baseline 起首次 halt 时新建(本 plan scope)
-scripts/orchestrator/run-implement.ts                                    # 2b 触发后新建,~150-250 LoC tsx(本 plan scope)
+scripts/orchestrator/run-feature.ts                                     # implement orchestrator 入口(已建 + A-002 实战);2b 增量加于此
 scripts/orchestrator/package.json                                        # 子 package 或 mono root scripts 字段二选一
 .claude/skills/speckit-implement/SKILL.md                                # 只读 reference
 .claude/skills/speckit-analyze/SKILL.md                                  # 只读 reference
@@ -192,7 +194,7 @@ scripts/orchestrator/package.json                                        # 子 p
 
 ### Phase 0 收尾 — ✅ 已 ship
 
-工具链 Phase 0 已落地:本子 plan 文档化、orchestrator 框架 + ralph-loop + model routing 建成、spec-kit preset 0.4.0 对齐 ADR-0043(见 [`05-24-speckit-preset-orchestrator-adr0043.md`](05-24-speckit-preset-orchestrator-adr0043.md))。**剩余收尾**见上 § 关键现状核实表(workflow.yml 补 clarify/analyze 2 步 / `run-implement.ts` 待 halt 数据触发)。
+工具链 Phase 0 已落地:本子 plan 文档化、orchestrator 框架 + ralph-loop + model routing 建成、spec-kit preset 0.4.0 对齐 ADR-0043(见 [`05-24-speckit-preset-orchestrator-adr0043.md`](05-24-speckit-preset-orchestrator-adr0043.md))。**剩余收尾**见上 § 关键现状核实表(workflow.yml 补 clarify/analyze 2 命令 / 2b 增量待 halt 数据触发)。
 
 ### 002 feature 起步(下 session,本 plan ship 后)
 
@@ -205,7 +207,7 @@ per 已落 [[project-plan2-spec-merge-user-gate]] memory:
 
 ### 003+ 决断点
 
-- halt-log ≥ 3 同形态 OR ≥ 1 unrecoverable → **写 `scripts/orchestrator/run-implement.ts`**(本 plan §"2b" 接口契约)
+- halt-log ≥ 3 同形态 OR ≥ 1 unrecoverable → **给 `run-feature.ts` 加 2b 增量**(自动 halt-log + retry 参数化,本 plan §"2b" 接口契约)
 - 否则维持 2a manual
 
 ## Verification
