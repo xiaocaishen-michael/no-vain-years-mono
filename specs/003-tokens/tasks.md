@@ -50,7 +50,7 @@ created_at: '2026-05-25'
 
 - [X] T005 [US1] [Server] `RefreshTokenService.persist(accountId, rawToken, { deviceId?, deviceName?, deviceType?, clientIp, loginMethod })` in `apps/server/src/security/refresh-token.service.ts`：hash token → `prisma.refreshToken.create`（`expiresAt=now+30d`、`deviceId` 缺失回退 uuid v4、`ipAddress=scrubPrivateIp`、`deviceType=normalizeDeviceType`、`revokedAt=null`）+ 构造器补 `PrismaService` DI + 单测（Testcontainers PG：显式 deviceId + 私网 IP→null + deviceType 归一 / 无 deviceId→uuid v4 + 公网 IP 原样）。**run via `nx test server <file>`（cwd=apps/server，prisma migrate deploy 需）**
 - [X] T006 [US1] [Server] 改既有登录流接 persist：`phone-sms-auth.usecase.ts` 注入 `RefreshTokenService`（注入点上方 `// CROSS-CONTEXT-SYNC: auth → security 持久化 refresh-token`，7th ctor arg）→ token 生成后调 `persist(accountId, refreshToken, {deviceId, clientIp, loginMethod:'PHONE_SMS'})`；新增 `LoginDeviceContext` 接口，`execute(phone, code, device={})` 透传；`account-phone-sms-auth.controller.ts` `@Ip()` + `@Headers('x-device-id')` 透传 usecase；更新 `phone-sms-auth.usecase.spec.ts`（persist 被调 + device 透传 + 失败路径不 persist + shape 不漂）。**回归验证**：既有 accounts.us1/us2 login+register e2e 25 测全绿（persist 在真 boot 不破登录）
-- [ ] T007 [US1] [Server-IT] `apps/server/test/integration/tokens.us1-persist.it.spec.ts`（Testcontainers PG）：登录成功 → DB active 记录逐字段（tokenHash=返回 token 哈希 / accountId / expiresAt≈+30d / deviceId 非空 / loginMethod=PHONE_SMS）；带 `X-Device-Id` vs 不带（回退）两路
+- [X] T007 [US1] [Server-IT] `apps/server/test/integration/tokens.us1-persist.it.spec.ts`（Testcontainers PG+Redis，全 AppModule boot）：登录成功 → DB active 记录逐字段（tokenHash=hash(返回 token) / accountId / expiresAt≈+30d / loginMethod=PHONE_SMS / revokedAt=null / 回环 IP→null）；带 `X-Device-Id`（=头值）vs 不带（回退 uuid v4）两路。2 测全绿
 
 ---
 
