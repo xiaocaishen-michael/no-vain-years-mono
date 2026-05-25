@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { execFileSync } from 'node:child_process';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from './prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { JwtTokenService } from './jwt-token.service';
 
 const SERVER_DIR = process.cwd();
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -25,7 +27,7 @@ describe('RefreshTokenService.findActiveByHash (Testcontainers PG)', () => {
       stdio: 'inherit',
     });
     prisma = new PrismaService(url);
-    service = new RefreshTokenService(prisma);
+    service = new RefreshTokenService(prisma, new JwtTokenService(new JwtService({ secret: 's' })));
   }, 120_000);
 
   afterAll(async () => {

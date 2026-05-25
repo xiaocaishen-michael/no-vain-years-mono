@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import type { RefreshToken } from '../generated/prisma/client';
+import { JwtTokenService } from './jwt-token.service';
 import { PrismaService } from './prisma.service';
 import { hashRefreshToken } from './refresh-token-hasher';
 import {
@@ -11,6 +12,7 @@ import {
 } from './refresh-token.rules';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_SERIALIZATION_RETRIES = 3;
 
 /** persist 入参 —— device 元数据来自登录控制器透传 (X-Device-Id 头 + clientIp)。 */
 export interface PersistRefreshTokenInput {
@@ -42,7 +44,10 @@ export interface RotatedTokens {
  */
 @Injectable()
 export class RefreshTokenService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtTokenService,
+  ) {}
 
   /**
    * 签发即持久化: hash token + create 1 条 active 行。
@@ -78,13 +83,89 @@ export class RefreshTokenService {
     return record && isActive(record, now) ? record : null;
   }
 
-  /** T010: Serializable tx 原子轮换 (条件 revoke 旧 + 签新 access/refresh + insert 新,继承 device 血缘 + 更 IP); 失败折 401 + 外层 P2034 retry。 */
-  rotate(_record: RefreshToken, _clientIp: string | null): Promise<RotatedTokens> {
-    throw new Error('not implemented (T010)');
+  /**
+   * 原子轮换: revoke 旧 + 签新 access/refresh + insert 新行 (继承 device 血缘 + 更 IP)。
+   * 调用方先经 findActiveByHash 拿到 active `record`。
+   *
+   * 单次使用 + 并发安全靠**条件 revoke 的 affected-count 乐观锁** (per FR-S08 类比):
+   * `updateMany({ where:{ id, revokedAt:null } })` → count===0 表示已被并发轮换/撤销
+   * → throw 401 (整 tx 回滚)。Serializable 双失败形态 (memory prisma_serializable_p2002_and_p2034):
+   *   - **P2002**(新 hash 撞唯一索引,256-bit 近不可能,防御性)→ 折 401。
+   *   - **P2034**(写冲突/序列化失败,整 tx abort)→ 外层 ≤3 次重试整 tx
+   *     (镜像 commit-phone-login.usecase.ts);重试时已被 winner 撤旧 → count===0 → 401。
+   * 10 并发同 token → 恰 1 成功 + 9×401;100 并发不同 token → 0 错误 (独立行无争用)。
+   */
+  async rotate(record: RefreshToken, clientIp: string | null): Promise<RotatedTokens> {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.rotateOnce(record, clientIp);
+      } catch (e) {
+        if (isWriteConflict(e) && attempt < MAX_SERIALIZATION_RETRIES) {
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  private async rotateOnce(record: RefreshToken, clientIp: string | null): Promise<RotatedTokens> {
+    const accountId = record.accountId;
+    return this.prisma.$transaction(
+      async (tx) => {
+        // 条件 revoke 旧 (乐观锁): 仅当仍 active 才撤; count===0 → 已被并发轮换/撤销。
+        const { count } = await tx.refreshToken.updateMany({
+          where: { id: record.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        if (count === 0) {
+          throw new UnauthorizedException('INVALID_CREDENTIALS');
+        }
+
+        const accessToken = this.jwt.signAccessToken({ accountId });
+        const newRefreshToken = this.jwt.generateRefreshToken();
+        const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * DAY_MS);
+        try {
+          // 继承 device 血缘 (deviceId/Name/Type + loginMethod), 更新本次 IP, 新 30d 有效期。
+          await tx.refreshToken.create({
+            data: {
+              tokenHash: hashRefreshToken(newRefreshToken),
+              accountId,
+              expiresAt,
+              deviceId: record.deviceId,
+              deviceName: record.deviceName,
+              deviceType: record.deviceType,
+              loginMethod: record.loginMethod,
+              ipAddress: scrubPrivateIp(clientIp),
+            },
+          });
+        } catch (e) {
+          if (isPrismaUniqueViolation(e)) {
+            throw new UnauthorizedException('INVALID_CREDENTIALS');
+          }
+          throw e;
+        }
+
+        return { accountId, accessToken, refreshToken: newRefreshToken };
+      },
+      { isolationLevel: 'Serializable' },
+    );
   }
 
   /** T016: updateMany 撤账号全部 active 行 (幂等, count 忽略)。 */
   revokeAllForAccount(_accountId: bigint, _now: Date): Promise<void> {
     throw new Error('not implemented (T016)');
   }
+}
+
+function isPrismaUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'P2002'
+  );
+}
+
+// Prisma P2034: Postgres Serializable 序列化失败 (40001),整 tx 已 abort,retryable。
+function isWriteConflict(e: unknown): boolean {
+  return (
+    typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'P2034'
+  );
 }
