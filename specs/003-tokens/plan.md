@@ -89,7 +89,7 @@ context7_verified: []
 
 **LogoutAll 流（`logout-all.usecase.ts`）**：JwtAuthGuard 取 `accountId`（JWT `sub`）→ per-account + per-IP 限流 → `security.revokeAllForAccount(accountId, now)`（count 忽略）→ **204**。
 
-**JwtAuthGuard 复用**：既有 `apps/server/src/account/jwt-auth.guard.ts` 验 access token（调 `JwtTokenService`）。logout-all 属 auth context，跨 ctx 用 account 的 guard 不妥 → **推荐本 feature 把 JwtAuthGuard 提升到 `security/`（platform infra，per [ADR-0041](../../docs/adr/0041-server-common-directory-policy.md)）并 export**，account `/me` 与 auth logout-all 共用。提升 = 小重构（移文件 + 改 import + 更 SecurityModule exports），tasks 单列一条；若评估提升风险则退化为 auth 自建薄 guard 委托 `JwtTokenService.verifyAccess`。**决策点留 tasks 起手确认**。
+**JwtAuthGuard 复用（T001 已决：方案 B）**：既有 `apps/server/src/account/jwt-auth.guard.ts` 同时做两件事 —— token 验证（平台关注点）+ 账号状态门控（`isActive` + `phone !== null`，import `account.rules`，account 关注点）。原推荐的「提升到 `security/`」**不可行**：security→account 被 ESLint `boundaries/dependencies` 禁令拦死（`eslint.config.mjs`），整体迁移 guard 会让 security import `account.rules`。故落 **方案 B**：`JwtTokenService` 新增 `verifyAccess(token): { accountId }`（security 平台层拥有 token 验证，验签/过期/sub 非法即抛，HTTP 401 语义由 guard 负责）；auth 在 logout-all 控制器（T017）自建一个**只验 token** 的薄 guard 委托之。account `/me` 与其 guard **完全不动**（零回归）。logout-all 因此**不被 ACTIVE 状态门控**——frozen 账号仍可登出全端（更符合登出语义，优于复用 account guard）。
 
 ### 并发 / 事务策略（迁移翻车点，逐条实现约束）
 

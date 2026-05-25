@@ -38,4 +38,31 @@ describe('JwtTokenService', () => {
     // 50 个全唯一 (entropy 检查)
     expect(tokens.size).toBe(50);
   });
+
+  describe('verifyAccess', () => {
+    it('roundtrips signAccessToken → { accountId }', () => {
+      const token = service.signAccessToken({ accountId: 12345n });
+      expect(service.verifyAccess(token)).toEqual({ accountId: 12345n });
+    });
+
+    it('preserves BigInt accountId beyond Number.MAX_SAFE_INTEGER', () => {
+      const token = service.signAccessToken({ accountId: 9007199254740993n });
+      expect(service.verifyAccess(token)).toEqual({ accountId: 9007199254740993n });
+    });
+
+    it('throws on a token signed with a different secret', () => {
+      const foreign = new JwtService({ secret: 'a-different-secret' });
+      const token = foreign.sign({ sub: '12345' });
+      expect(() => service.verifyAccess(token)).toThrow();
+    });
+
+    it('throws on a malformed (non-JWT) token', () => {
+      expect(() => service.verifyAccess('not.a.jwt')).toThrow();
+    });
+
+    it('throws when sub is not a valid integer string', () => {
+      const token = realJwt.sign({ sub: 'not-a-number' });
+      expect(() => service.verifyAccess(token)).toThrow();
+    });
+  });
 });

@@ -31,7 +31,7 @@ created_at: '2026-05-25'
 
 ## Phase 1: Setup & 决策
 
-- [ ] T001 [Server] 确认 `JwtAuthGuard` 归位决策：读 `apps/server/src/account/jwt-auth.guard.ts` 现状 → 定方案 A（提升到 `apps/server/src/security/jwt-auth.guard.ts` + `SecurityModule` export，per ADR-0041 platform infra）或方案 B（auth 自建薄 guard 委托 `JwtTokenService`）。选 A 则移文件 + 改 `account-profile.controller.ts` import + 更 `security.module.ts` exports；verify `/me` typecheck + 既有 e2e 不回归（无新行为）
+- [X] T001 [Server] 确认 `JwtAuthGuard` 归位决策 → **决策 B**（方案 A「提升到 `security/`」不可行：现 guard 含 `isActive`/`account.rules` 账号状态门控，security→account 被 ESLint boundary 禁令拦死）。已加 `JwtTokenService.verifyAccess(token)→{accountId}`（security 平台层拥有 token 验证 + 单测 5 例）；auth 薄 guard 待 T017（logout-all 控制器，唯一消费方）委托之；account guard + `/me` **完全不动**（零回归，无新行为）
 
 ---
 
