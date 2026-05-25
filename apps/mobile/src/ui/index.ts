@@ -4,11 +4,11 @@
 // shape, per plan「Mobile UI Plan」open-decision #1). Presentational — no unit
 // tests (covered by Playwright e2e, per mono vitest architecture).
 
-export { Button, type ButtonProps } from './Button.js';
-export { Spinner, type SpinnerProps, type SpinnerTone } from './Spinner.js';
-export { SafeAreaView, type SafeAreaViewProps } from './SafeAreaView.js';
-export { ErrorRow, type ErrorRowProps } from './ErrorRow.js';
-export { PhoneInput, type PhoneInputProps } from './PhoneInput.js';
-export { SmsInput, type SmsInputProps } from './SmsInput.js';
-export { LogoMark, type LogoMarkProps } from './LogoMark.js';
-export { SuccessCheck } from './SuccessCheck.js';
+export { Button, type ButtonProps } from './Button';
+export { Spinner, type SpinnerProps, type SpinnerTone } from './Spinner';
+export { SafeAreaView, type SafeAreaViewProps } from './SafeAreaView';
+export { ErrorRow, type ErrorRowProps } from './ErrorRow';
+export { PhoneInput, type PhoneInputProps } from './PhoneInput';
+export { SmsInput, type SmsInputProps } from './SmsInput';
+export { LogoMark, type LogoMarkProps } from './LogoMark';
+export { SuccessCheck } from './SuccessCheck';

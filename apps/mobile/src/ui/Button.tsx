@@ -1,5 +1,5 @@
 import { Pressable, Text } from 'react-native';
-import { Spinner } from './Spinner.js';
+import { Spinner } from './Spinner';
 
 export interface ButtonProps {
   label: string;

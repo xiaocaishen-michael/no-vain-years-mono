@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { colors } from '~/theme';
-import { Spinner } from './Spinner.js';
+import { Spinner } from './Spinner';
 
 export interface SmsInputProps {
   value: string;

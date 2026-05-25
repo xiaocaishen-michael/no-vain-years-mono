@@ -326,7 +326,7 @@ stdlib):
 
 ### Polish / e2e
 
-- [ ] T066 [Mobile] web e2e（Playwright Expo Web，SC-C05 + SC-C09）→ `apps/mobile/e2e/login.spec.ts`：US1 happy 全流程浏览器跑通（输入手机号 → 获取码 → 输入码 → 登录 → 进 `/(app)/`）+ 5 态视觉 + 错误 toast + a11y（axe / role 断言，SC-C05）；注意 expo-router web 隐藏 `(auth)` group URL 段 + Desktop Chrome `hasTouch:false`（memory `reference_expo_router_web_hides_route_groups`）；success 走**不清 session** 等价断言路径（memory `feedback_visual_smoke_unreachable_when_finally_clears_session`）
+- [X] T066 [Mobile] web e2e（Playwright Expo Web，SC-C05 + SC-C09）→ `apps/mobile/e2e/login.spec.ts`：US1 happy 全流程浏览器跑通（输入手机号 → 获取码 → 输入码 → 登录 → 进 `/(app)/`）+ 5 态视觉 + 错误 toast + a11y（axe / role 断言，SC-C05）；注意 expo-router web 隐藏 `(auth)` group URL 段 + Desktop Chrome `hasTouch:false`（memory `reference_expo_router_web_hides_route_groups`）；success 走**不清 session** 等价断言路径（memory `feedback_visual_smoke_unreachable_when_finally_clears_session`）
 
 ### Phase M Dependencies & Execution
 
