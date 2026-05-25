@@ -4,13 +4,13 @@ modules: [account]
 owners: ['@xiaocaishen-michael']
 status: implemented
 created_at: '2026-05-04'
-updated_at: '2026-05-21'
+updated_at: '2026-05-25'
 spec_kit_version: '>=0.8.5,<0.10.0'
 orchestrator_compat: '>=0.2.0'
 
 # v2 frontmatter fields (per mono-orchestrator-ready 0.2.0 + ADR-0024 amend + ADR-0039)
 web_compat: stub
-web_compat_notes: 'A-002 ship 时 mobile 占位 UI 跑通;Expo Web export 路径未冒烟;onboarding 重定向行为未在 Web 验证;packages/auth Web localStorage fallback 缺 (PR #67 部分修)'
+web_compat_notes: 'A-002 ship 时 mobile 占位 UI 跑通;Expo Web export 路径未冒烟;onboarding 重定向行为未在 Web 验证;packages/auth Web localStorage fallback 缺 (PR #67 部分修)。2026-05-25 account-migration p3：login 表单切片已 ship (#193);本轮起 onboarding 完善昵称表单切片 (FR-031~036, mobile-only, 从 legacy port 为 RHF Golden Sample)'
 agent_friction_observed: true
 agent_friction_notes: 'F-001 TS-Bundler-Mismatch (@hey-api/openapi-ts .js 后缀,Issue #68 — ADR-0027 切 Orval 解); F-003 Pnpm-Strict-vs-Expo-Hoist (PR #66 publicHoistPattern 半解 / PR #67 shamefully-hoist 全解,ADR-0028 缓解); F-006 Indirect-Spec-Module-Mapping (ADR-0018 SWC 被误读 mono-wide,ADR-0031 governance + applies_to programmatic filter 缓解)'
 perf_budgets:
@@ -271,6 +271,23 @@ state_branches:
 
 ---
 
+### User Story 13 — [Client] Onboarding 完善昵称表单（Priority: P1）
+
+> 2026-05-25 account-migration p3 追加（client onboarding 表单切片）。`displayName=null` 的新用户由 AuthGate 路由到 `(app)/onboarding`（三态逻辑已在批 A ship，per FR-014 / CL-001），在该页输入昵称并提交。表单走 `~/auth` 的 `useOnboardingForm`（RHF + zodResolver）→ 提交调 `useAccountProfileControllerUpdateDisplayName`（PATCH `/me`）→ onSuccess 写 `useAuthStore.setDisplayName` → AuthGate 观察 `displayName != null` 后 `router.replace` 进 `(tabs)/profile`。Hook **不直接导航**（与 login 一致）。
+
+**Why this priority**: 主路径；onboarding 唯一前端写入入口，所有新用户首登必经。
+
+**Independent Test**: vitest mock Orval `useAccountProfileControllerUpdateDisplayName`，渲染 `<OnboardingScreen>` → 输入合法昵称 → press 提交 → 断言 mutation 以 `{displayName}` 调用 + onSuccess 调 `setDisplayName`；schema 校验走 logic-level helper 单测（per mono 测试分层 — UI render/a11y 归 Playwright Web）。
+
+**Acceptance Scenarios**:
+
+1. **Given** 新用户在 onboarding 页，**When** 输入合法昵称 "小明" 并提交，**Then** PATCH `/me {displayName:"小明"}` → onSuccess `setDisplayName("小明")`；hook 不导航（AuthGate 接管 redirect）
+2. **Given** 输入非法昵称（空 / 超 32 码点 / 含控制字符），**When** 校验，**Then** 表单 invalid + 提交按钮 disabled（不发请求）
+3. **Given** 提交时后端返回 400 / 429 / 网络错，**When** 处理，**Then** 展示对应 errorToast（昵称不合法 / 请求过于频繁 / 网络异常）；任意 input change 清错回 idle
+4. **Given** 用户在 onboarding 页按 Android 硬件返回键，**When** 触发，**Then** noop（强制不可跳过，per CL-001）
+
+---
+
 ### Edge Cases
 
 #### Server Edge Cases
@@ -390,6 +407,22 @@ state_branches:
 - **FR-030**: 滚动行为（per CL-005 (b) sticky tabs）— 整页有单一垂直滚动容器；hero 区随滚动消失；三 slide tabs 区触顶后**钉在顶 nav 下方**（sticky）；内容区在 sticky tabs 下延续滚动。具体实现选型（单 `<ScrollView>` + `stickyHeaderIndices` / 第三方 collapsible-tab-view / pager-view 组合）由 plan.md 决，占位 UI 阶段倾向最简方案（单 ScrollView + stickyHeaderIndices）
   <!-- fr-meta: {"id": "FR-030", "priority": "must", "needs_clarification": true, "questions": [{"q": "sticky tabs 实现选哪种？", "options": ["单 ScrollView + stickyHeaderIndices（最简）", "react-native-collapsible-tab-view（成熟 + 第三方依赖）", "ScrollView + pager-view 组合（自组合）"]}], "trace_us": ["US7"], "trace_sc": ["SC-010"]} -->
 
+### Client Onboarding 表单 Functional Requirements（FR-031 ~ FR-036）
+
+> 2026-05-25 account-migration p3 追加。覆盖 onboarding displayName **真实表单**（`(app)/onboarding.tsx`，从 legacy app 净室 port，替换批 A 占位）。与 login（001 `FR-C01~C15`）同为 RHF Golden Sample（per [p3 Step 4 port](../../docs/plans/2026-05/05-25-account-migration-p3-usecase-steps.md)）。三态 AuthGate 路由（FR-014）/ store `displayName` 字段 + `setDisplayName` / logout 清理 已在批 A ship，本组引用不重立。手动模式，无 us-meta / fr-meta JSON（per p3 §3 Step 2）。
+
+- **FR-031**: displayName 客户端校验（zod schema，镜像 server FR-005）— trim 后 Unicode 码点数 ∈ [1, 32]；允 CJK / 拉丁 / 数字 / 常见标点 / emoji；禁控制字符（U+0000–U+001F / U+007F–U+009F）/ 零宽（U+200B–U+200F / U+FEFF）/ 行分隔符（U+2028 / U+2029）；校验失败 → 表单 invalid + 提交按钮 disabled。schema 落 `apps/mobile/src/auth/onboarding-form.schema.ts`，与 server `update-display-name.request.ts` 互锚（改一处必同步另一处，per RHF Golden Sample (b) 同规则写两处防漂移）
+
+- **FR-032**: updateDisplayName wrapper — `apps/mobile/src/auth/update-display-name.ts` 包 Orval mutation hook `useAccountProfileControllerUpdateDisplayName`（body `UpdateDisplayNameRequest`）；onSuccess 调 `useAuthStore.setDisplayName(displayName)`；wrapper **不**导航（AuthGate 监听 displayName 接管 redirect，per FR-014）。镜像 login `phone-sms-auth.ts` 的 wrapper 范式
+
+- **FR-033**: 表单 hook — `apps/mobile/src/auth/use-onboarding-form.ts`，RHF（`useForm` + `@hookform/resolvers/zod` 接 FR-031 schema）：单 `displayName` 字段经 `<Controller>` 绑定（铁律 1，禁 register）；提交态用 `formState.isSubmitting` 单源（铁律 3）；状态机 idle → submitting → success | error，对齐 login `useLoginForm` 形态。**不**直调 router（铁律 2 表单态 / 副作用态分层）
+
+- **FR-034**: 错误映射 — onboarding 专属 toast（duck-type AxiosError，复用 login `loginErrorToast` 同款判别逻辑，仅文案不同）：400 → "昵称不合法，请重试"；429 → "请求过于频繁，请稍后再试"；网络错（无 response）/ 5xx → "网络异常，请重试"；未知 → "提交失败，请稍后重试"；任意 input change 清空 errorToast 回 idle
+
+- **FR-035**: 强制不可跳过（per CL-001）— Android 硬件返回键在本页 noop（`BackHandler.addEventListener('hardwareBackPress', () => true)`，仅 `Platform.OS === 'android'`）；iOS 无硬件返回；无 close `×` 入口；用户唯一出口 = 提交合法昵称 / 登出
+
+- **FR-036**: a11y + skin — `<TextInput>` `accessibilityLabel='昵称'` + `accessibilityHint='1 至 32 字符，支持中文、字母、数字、emoji'`；提交按钮 `accessibilityRole='button'` + disabled 时 `accessibilityState.disabled=true`；错误 `accessibilityRole='alert'`。视觉 skin 复用 `~/theme` token + `~/ui` 组件（`Button` / `ErrorRow` / `LogoMark` / `Spinner` / `SuccessCheck`）；新增 `DisplayNameInput` 落 `~/ui`（与 login `PhoneInput` / `SmsInput` 抽法一致）
+
 ## Key Entities
 
 - **Account（聚合根）**：扩展既有 Account
@@ -455,6 +488,11 @@ state_branches:
 - **SC-015**: 底 tab bar 视觉占位：渲染 4 个 label（首页 / 搜索 / 外脑 / 我的），无图标 / 自定义视觉决策 — manual review + grep `tabBarIcon` 应为 undefined
 - **SC-016**: 现有 `/(app)/index.tsx` 已迁移为 `(tabs)/index.tsx`（首页 tab）：git diff 验证 file rename；原 home 占位文案保留或更新为 "首页内容即将推出" — git diff + manual
 - **SC-017**: logout 路径不影响 tabs 结构：`logoutLocal` / `logoutAll`（既有）被调用后，`(tabs)` umount 干净 → 跳 `/(auth)/login` 无残留 view — vitest 集成测
+
+### Client Onboarding 表单 Measurable Outcomes（2026-05-25 p3 追加）
+
+- **SC-018**: displayName 客户端校验镜像 server FR-005 — 表驱动单测 8 case（空 / 仅空白 / 控制字符 / 零宽 / 33 码点超长 / 32 CJK / emoji-only / 混合合法）全部按 FR-031 命中或放过 — vitest（logic-level helper 测，per mono 测试分层）
+- **SC-019**: onboarding 表单 happy path — Playwright Web e2e：新用户 `displayName=null` → 落 `(app)/onboarding` → 输入合法昵称提交 → AuthGate redirect 进 `(tabs)/profile`；复用 `apps/mobile/e2e/_support/api-mock.ts` 的 `mockJson` mock PATCH `/me`
 
 ## Clarifications
 
@@ -695,3 +733,4 @@ flowchart TD
 - **2026-05-07 +1**（client）：`/speckit.clarify` round 1 — 追加 5 项 Cross-cutting Clarifications：滚动 paradigm 锁 sticky tabs / settings stack 在 `(tabs)` 之外底 tab 隐藏 / activeTab in-session 保持 / deep link 由 AuthGate 拦截 / 冷启强制回我的 tab。
 - **2026-05-07 修订**（server）：扩 `phone` 字段进 `/me` 响应（与前端账号与安全详情页联动）。原 FR-001 "deliberately narrow 4 fields" 立场被 supersede；domain `Account.phone` 字段已存在，本次仅扩 read shape，无 schema migration / domain 字段新增。
 - **2026-05-20**：mono 化 — 全部 ID 重编号合并到统一命名空间（US1-US12 / FR-001-FR-030 / CL-001-CL-009 / SC-001-SC-017），适配 mono orchestrator schema；server / client 边界用 heading 子段保留语义；插入 AST marker（us-meta / fr-meta / cl-meta + json entities block）；未读取 design/ 视觉资料 / 未生成视觉规范。
+- **2026-05-25**（account-migration p3 — onboarding 表单切片）：补 client onboarding **真实表单** FR（US13 + FR-031~036 + SC-018/019）。批 A（A-002）只 ship 了 `onboarding.tsx` 占位 + 我的页占位 + 三态 AuthGate；onboarding 表单本体（displayName 输入 + 提交 + 校验）当时随 001-US5 client 一起 defer（per 原 tasks.md T040 scope_note）。本切片从 legacy app（`no-vain-years-app/.../specs/auth/onboarding/`）净室 port：皮肤复用（layout / 文案 / `~/theme` token），引擎重写为 RHF + zodResolver + Orval（legacy 的 useState + `@nvy/auth` 形态废弃）。legacy 占位纪律 FR-006/FR-012（"全裸禁 packages/ui"）被 supersede（与 login #193 一致，已过占位阶段）。mobile-only 切片：[Server]/[Contract] 层不动（server PATCH `/me` 已 ship、api-client 已生成）。

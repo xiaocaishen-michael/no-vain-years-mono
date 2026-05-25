@@ -20,3 +20,13 @@ export {
 } from './login-form.schema';
 export { useLoginForm, loginErrorToast } from './use-login-form';
 export type { LoginFormState, ErrorScope } from './use-login-form';
+
+// onboarding slice (account-migration p3): displayName form schema + wrapper + hook.
+export { useUpdateDisplayName } from './update-display-name';
+export {
+  onboardingFormSchema,
+  displayNameSchema,
+  type OnboardingFormValues,
+} from './onboarding-form.schema';
+export { useOnboardingForm, onboardingErrorToast } from './use-onboarding-form';
+export type { OnboardingFormState } from './use-onboarding-form';

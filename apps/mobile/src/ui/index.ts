@@ -10,5 +10,6 @@ export { SafeAreaView, type SafeAreaViewProps } from './SafeAreaView';
 export { ErrorRow, type ErrorRowProps } from './ErrorRow';
 export { PhoneInput, type PhoneInputProps } from './PhoneInput';
 export { SmsInput, type SmsInputProps } from './SmsInput';
+export { DisplayNameInput, type DisplayNameInputProps } from './DisplayNameInput';
 export { LogoMark, type LogoMarkProps } from './LogoMark';
 export { SuccessCheck } from './SuccessCheck';
