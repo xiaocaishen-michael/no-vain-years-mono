@@ -8,6 +8,6 @@ mono-repo 内前端 / 后端共享。前端 / 后端必须 follow。
 - 避免中英混用或拼音
 - 业务模块字符串在多处保持严格一致：
   - 后端 NestJS module 目录：`apps/server/src/<module>/`（如 `auth/` / `account/` / `security/`；模块内**扁平**文件平铺,无 `domain/application/infrastructure/web` 层子目录,per [ADR-0043](../adr/0043-server-flat-module-paradigm.md) §1;bounded context 边界 per [ADR-0032](../adr/0032-backend-bounded-context.md)）
-  - 前端 feature 目录：`apps/mobile/src/<feature>/`（已迁入 `auth/`；其余 use case 续 [Plan 2](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md) 顺序）
+  - 前端 feature 目录：`apps/mobile/src/<feature>/`（已迁入 `auth/`；其余 use case 续[迁移顺序](../plans/2026-05/05-25-account-migration-p2-usecase-dependency.md) § 4.4）
   - 数据库 schema：`<module>`
 - **加新模块时**：上述位置必须同时落地（强制由 ESLint boundaries 单向 module 边界 (per [ADR-0032](../adr/0032-backend-bounded-context.md)) + Prisma schema 在 CI 拦截）

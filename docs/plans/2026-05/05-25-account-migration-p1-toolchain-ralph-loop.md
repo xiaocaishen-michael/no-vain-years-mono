@@ -1,15 +1,32 @@
-# Plan 2 模型路由 + Ralph loop 执行方案(No reinventing the wheel)
+# 子 plan 1 — Ralph Loop 工具链(模型路由 + orchestrator + workflow override)
 
-> **Status**: drafted 2026-05-19 v3(per user input on clarify + orchestrator + /model 切换 + 前置章节拆 spec-kit preset 定制),plan-mode pending approval
-> **处置(2026-05-24 状态追进)**: deferred — 与 Plan 2 强耦合;orchestrator 2b 触发门槛(halt-log ≥ 3 同形态)因 Plan 2 仅跑批 A 从未达到,随 Plan 2 续跑自然激活,不单独追。
-> **Supersedes**: PR #34 amend 的"§ 2.2.5 + § 4 deferred"半决策状态
-> **Trigger**: 架构师 input 提议 Bun orchestrator / LangGraph.js;Phase 1 exploration 发现 spec-kit Workflows YAML 已 vendored 但**缺 clarify / analyze step**,改变 calculation
+> 隶属 [account-migration master](05-25-account-migration-master.md)(子目标轨:**先行工具链 POC**,No reinventing the wheel)。基准:ADR-0043 范式 + spec-kit preset 0.4.0 + memory `feedback_speckit_native_extension_over_skill_fork`。
+>
+> **Status**(2026-05-25 实证刷新):工具链 POC **已大体落地**(批 A `002` 实跑验证);本子 plan = 实证现状 + 收尾缺口。orchestrator 2b 触发门槛(halt-log ≥ 3 同形态)因仅跑批 A 未达到,随后续批次(B-E)自然激活,不单独追。
+
+## 关键现状核实(2026-05-25 工程实证)
+
+| 组件 | plan 声称 | 工程实证 | 状态 |
+|---|---|---|---|
+| orchestrator 框架 | Stage 2 halt-retry 自写 | `scripts/orchestrator/{ralph-loop,orphan-ralph,llm-client,prompt-assembler,schemas}.ts` 已建,批 A(`.spec-kit/runs/002-*` 有 attempt-N)实跑过 | ✅ 已建 |
+| `run-implement.ts`(2b) | 数据驱动后写 | **不存在**(待 halt-log ≥ 3 同形态触发) | ⬜ 未建(门槛未达) |
+| `.specify/implement-halts.log` | 2a 首次 halt 时建 | **不存在** | ⬜ 未建 |
+| model routing | `/model sonnet` 手切 + orchestrator `--model` | `llm-client.ts` 支持 `--model`,default sonnet | ✅ 已建 |
+| Ralph loop | 内层 halt-retry | `ralph-loop.ts` + `orphan-ralph.ts`(孤儿文件自决,PoC #22)已建 | ✅ 已建 |
+| spec-kit preset | mono-orchestrator-ready | **0.4.0** 已装 + ADR-0043 全对齐(`05-24-speckit-preset-orchestrator-adr0043` ship) | ✅ 已建 |
+| graphify | LLM context 召回 | `graphify-out/`(graph.json 等)已产出 | ✅ 已建 |
+| claude-mem | 跨 session memory env-gate | `.envrc CLAUDE_MEM_ENABLE=1` 已配;**2-day A/B 评估仍 deferred** | 🟡 env 装 / 评估未做 |
+| workflow.yml 8 步 | 补 clarify + analyze | `.specify/workflows/speckit/workflow.yml` 当前 **6 步,仍缺 clarify/analyze**(两 skill 独立可用) | 🟡 缺 2 步 |
+
+⇒ **收尾缺口**:① workflow.yml 补 clarify/analyze 两步(或确认走 manual `/speckit-X` fallback);② `run-implement.ts` + halt-log 待后续批次 halt 数据触发。其余组件已就绪,可直接支撑批 B-E 迁移。
+
+> **Trigger(历史)**: 架构师 input 提议 Bun orchestrator / LangGraph.js;Phase 1 exploration 发现 spec-kit Workflows YAML 已 vendored 但**缺 clarify / analyze step**,改变 calculation。
 
 ## 0. 前置(独立 plan,不在本 plan scope)
 
 **spec-kit preset 定制**(workflow.yml override + clarify/analyze step 补全 + `.specify/extensions.yml` 落地 + michael-speckit-presets 联动等)由**独立 plan 文件**承载,**不**在本 plan scope:
 
-- **预计文件**: `docs/plans/plan2-spec-kit-preset-customization-<slug>.md`(slug 起 plan 时按现行 random 生成约定 assign)
+- **承载文件**: [`05-24-speckit-preset-orchestrator-adr0043.md`](05-24-speckit-preset-orchestrator-adr0043.md)(✅ **已 ship**:preset 0.4.0 + orchestrator 对齐 ADR-0043;但 workflow.yml clarify/analyze 两步**仍缺**,见上 § 现状核实表)
 - **scope 包括**:
   - `.specify/workflows/speckit/workflow.yml` 项目级 override(8 步流转,补 clarify / analyze)
   - `.specify/extensions.yml` `before_implement` / `after_implement` hook 落地(若 002 撞需求)
@@ -156,9 +173,9 @@ pnpm orchestrate <feature-NNN> [--max-retries 3] [--halt-on unrecoverable]
 ## Critical files
 
 ```
-docs/plans/2026-05/05-19-plan2-plan3-migration-deploy.md                              # Plan 主文件,本 plan ship 后 amend
-docs/plans/2026-05/05-19-plan2-model-routing-ralph-loop.md   # 本 plan(archive)
-docs/plans/plan2-spec-kit-preset-customization-<slug>.md                 # § 0 前置,独立 plan,起草中
+docs/plans/2026-05/05-25-account-migration-master.md                     # 主 plan(统领)
+docs/plans/2026-05/05-25-account-migration-p2-usecase-dependency.md      # 子2 依赖/顺序(姊妹)
+docs/plans/2026-05/05-24-speckit-preset-orchestrator-adr0043.md          # § 0 前置(✅ 已 ship)
 .specify/implement-halts.log                                             # 2a baseline 起首次 halt 时新建(本 plan scope)
 scripts/orchestrator/run-implement.ts                                    # 2b 触发后新建,~150-250 LoC tsx(本 plan scope)
 scripts/orchestrator/package.json                                        # 子 package 或 mono root scripts 字段二选一
@@ -173,22 +190,9 @@ scripts/orchestrator/package.json                                        # 子 p
 
 ## 实施步骤
 
-### Phase 0 收尾(本 plan ship)
+### Phase 0 收尾 — ✅ 已 ship
 
-**PR 1: 本 plan 文件 ship**(独立 PR `docs/plan2-impl-arch-no-reinvent`)
-- 落 `docs/plans/2026-05/05-19-plan2-model-routing-ralph-loop.md`(本文件)
-- 在 commit message + PR description 明确 reference § 0 前置独立 plan(尚未起草)
-
-**PR 2: plan2 主文件 amend**(分独立 PR 或同 PR 都可)
-- § 2.2.5 改 "deferred" → "DROPPED + 改名 orchestrator(self-written,见本 plan § Stage 2 2b)"
-- § 4 工具链表:Wiggum CLI 行 DROP / Bridge Adapter 行改名 + status "data-driven";Workflows YAML 行改 "scope 移交独立 plan(spec-kit preset 定制),本 plan 声明目标形态"
-- § 2.4 Stage 2 工作流 box 重写,补 `/model` 手动切换 + orchestrator 触发条件
-- 新建 § 2.4.1 "implement 升级策略 + halt-log 规范"
-
-**PR 3: workflow.yml override / 独立 plan 起草**(由 § 0 前置独立 plan 承载,**不**在本 plan PR scope)
-- 本 plan ship 后立即起草 `docs/plans/plan2-spec-kit-preset-customization-<slug>.md`
-- 独立 plan 自带 ExitPlanMode + 独立 PR ship 路径
-- 完成时机:002 feature 起步前(否则 002 Stage 1 走 manual fallback)
+工具链 Phase 0 已落地:本子 plan 文档化、orchestrator 框架 + ralph-loop + model routing 建成、spec-kit preset 0.4.0 对齐 ADR-0043(见 [`05-24-speckit-preset-orchestrator-adr0043.md`](05-24-speckit-preset-orchestrator-adr0043.md))。**剩余收尾**见上 § 关键现状核实表(workflow.yml 补 clarify/analyze 2 步 / `run-implement.ts` 待 halt 数据触发)。
 
 ### 002 feature 起步(下 session,本 plan ship 后)
 

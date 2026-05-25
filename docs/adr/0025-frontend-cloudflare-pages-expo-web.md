@@ -18,7 +18,7 @@ sunset_trigger: |
 
 ## Context
 
-[Plan 2/3](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md) 把前端部署形态留作 Phase 0 决策项。可选方案 4 选 1:
+[Plan 2/3](../plans/2026-05/05-25-account-migration-master.md) 把前端部署形态留作 Phase 0 决策项。可选方案 4 选 1:
 
 | 方案                                                                           | 心智                                     |
 | ------------------------------------------------------------------------------ | ---------------------------------------- |
@@ -27,7 +27,7 @@ sunset_trigger: |
 | C. Capacitor / Tauri 封 Webview                                                | Web 不实质独立部署                       |
 | D. 不做 Web,只 mobile binary                                                   | 跳过浏览器入口                           |
 
-[Plan 3 § 3.3](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md) 段落已先定基调 A + Cloudflare Pages。本 ADR backfill 显式立。
+[Plan 3 § 3.3](../plans/2026-05/05-25-account-migration-master.md) 段落已先定基调 A + Cloudflare Pages。本 ADR backfill 显式立。
 
 **Plan 3 部署 scope 边界**:
 
@@ -87,13 +87,13 @@ mono Plan 3 前端部署链:
   - `wrangler.toml` or CF Pages dashboard config:build command + output dir + env vars
   - `apps/server` `enableCors` config:allow-origin = CF Pages prod 域 + preview 通配
   - `.github/workflows/deploy-web.yml`:main push 触发 deploy or CF Pages 自管
-- **Plan 3 done condition**(per [Plan 2/3 § 3.1](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md)):"Cloudflare Pages 通过 HTTPS 访问 Expo Web export 主入口,登录 → 主流程跑通"
+- **Plan 3 done condition**(per [Plan 2/3 § 3.1](../plans/2026-05/05-25-account-migration-master.md)):"Cloudflare Pages 通过 HTTPS 访问 Expo Web export 主入口,登录 → 主流程跑通"
 - **本 ADR 仅锁定 host + build target;Phase 2 实施细节 / CORS config 具体值 / preview 域命名规则等留在 Plan 3 Phase 2 task 落地时决**
 
 ## References
 
-- [Plan 2/3 § 3.3 Phase 2](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md)
-- [Plan 2/3 § 2.2.6 task](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md)
+- [Plan 2/3 § 3.3 Phase 2](../plans/2026-05/05-25-account-migration-master.md)
+- [Plan 2/3 § 2.2.6 task](../plans/2026-05/05-25-account-migration-master.md)
 - [Expo Web docs](https://docs.expo.dev/workflow/web/) — Expo SDK 54+ Web export
 - [Cloudflare Pages docs](https://developers.cloudflare.com/pages/) — static host + build config
 - memory `reference_cf_workers_to_aliyun_ecs_525` — CF Workers/Pages Functions → 阿里云 ECS 525 实证

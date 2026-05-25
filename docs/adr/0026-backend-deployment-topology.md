@@ -16,7 +16,7 @@ sunset_trigger: |
 
 ## Context
 
-[Plan 2/3](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md) Phase 1（后端首次部署）决定 `apps/server`（NestJS + Fastify + Prisma）的物理部署形态。
+[Plan 2/3](../plans/2026-05/05-25-account-migration-master.md) Phase 1（后端首次部署）决定 `apps/server`（NestJS + Fastify + Prisma）的物理部署形态。
 
 本 ADR 锁定部署 = **单机紧凑拓扑（代号 A-Tight v2）**：app + PG + Redis + Nginx 全部 docker compose 跑在同一台 SWAS，不引入托管 DB / Redis / 对象存储；并**复用既有生产资源**（同一台 SWAS + 同 ACR 仓 + 同域名 + 同 OSS bucket + 同 Resend），原则「复用既有资源」最小化新基础设施 provisioning。
 
@@ -117,7 +117,7 @@ sunset_trigger: |
 
 ## References
 
-- [Plan 2/3](../plans/2026-05/05-19-plan2-plan3-migration-deploy.md) Phase 1
+- [Plan 2/3](../plans/2026-05/05-25-account-migration-master.md) Phase 1
 - [ADR-0018](0018-backend-language-pivot.md)（backend pivot to TS/NestJS）
 - [ADR-0037](0037-security-credentials-governance.md)（secrets 注入路径 D4）
 - [ADR-0042](0042-monorepo-release-strategy.md)（component-in-tag `server-vX.Y.Z` D5）

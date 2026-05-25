@@ -1,6 +1,6 @@
 # 「不虚此生」/ no-vain-years-mono
 
-跨端内容工具型应用 mono-repo，由单人开发。栈：NestJS + Fastify + Prisma + Nx + Expo（[Plan 1](docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) 已 ship，从旧 Java meta-repo 推倒重来；[Plan 2/3](docs/plans/2026-05/05-19-plan2-plan3-migration-deploy.md) 业务迁移 / 部署上线进行中）。
+跨端内容工具型应用 mono-repo，由单人开发。栈：NestJS + Fastify + Prisma + Nx + Expo（[Plan 1](docs/plans/2026-05/05-18-plan1-backend-stack-poc.md) 已 ship，从旧 Java meta-repo 推倒重来；部署已上线；业务迁移见 [account-migration master](docs/plans/2026-05/05-25-account-migration-master.md) 进行中）。
 
 ## 工作区结构
 
@@ -36,7 +36,7 @@ Doc 文件组织 per [docs/conventions/docs-organization.md](docs/conventions/do
 | 后端栈 root 决策（语言 / 框架 / 主 ORM / 模块边界策略）                                        | `docs/adr/0018-backend-language-pivot.md`（Plan 1 W4-W5 ship）                                                                                                                  |
 | ORM 选型理由                                                                                   | `docs/adr/0019-orm-prisma.md`（同上）                                                                                                                                           |
 | NestJS module 边界 + 模块内构范式（扁平 / 贫血 / 护城河 / 零-class）                           | `docs/adr/0032-backend-bounded-context.md`（bounded context 拆分 + hexagonal 退役）+ `docs/adr/0043-server-flat-module-paradigm.md`（扁平内构正向范式）。ADR-0020 已 Superseded |
-| Plan 2 业务迁移 / Plan 3 部署上线 / Phase 0 prep / per-feature SDD gate                        | [Plan 2/3](docs/plans/2026-05/05-19-plan2-plan3-migration-deploy.md)（2026-05-19 ship；16 use case 顺序迁移 + 部署形态待 ADR-0026）                                             |
+| Plan 2 业务迁移 / Plan 3 部署上线 / Phase 0 prep / per-feature SDD gate                        | [account-migration master](docs/plans/2026-05/05-25-account-migration-master.md)（统领子 plan：p1 工具链 / p2 依赖+顺序 / p3 逐 uc 步骤；部署 Plan 3 已先行完成）               |
 | **新 server use case / 跨 context 决策 / bounded context 评估**                                | `docs/conventions/server-bounded-context-catalog.md`（3 传播规则 + 7 决策问题 + Operation 清单；`.claude/rules/server-bounded-context-decision.md` 路径触发自动加载摘要）       |
 | **执行 `gh pr create` / `gh pr edit` body 改写**                                               | `docs/conventions/pr-creation-protocol.md`（仓库模板 `.github/pull_request_template.md` 是 body 唯一权威 source；CI 严格 regex 扫部署 gate 3 checkbox，缺失 / 未勾全红）        |
 | 改 `.claude/` 目录任何内容 / 新建 commands / skills / rules / settings 调整                    | `docs/conventions/claude-config-layout.md`（`.claude/rules/claude-config-layout-sync.md` 路径触发自动加载硬 invariant 摘要）                                                    |
