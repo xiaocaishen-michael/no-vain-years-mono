@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Ip, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { normalizePhone } from '../account/account.rules';
 import { assertValidSmsCode } from './sms-code.rules';
@@ -53,10 +53,14 @@ export class AccountPhoneSmsAuthController {
     description: 'Auth attempts locked (FR-S07 #4; 5 failures → 30-min lock)',
     type: ProblemDetailResponse,
   })
-  async auth(@Body() body: PhoneSmsAuthRequest): Promise<PhoneSmsAuthResponse> {
+  async auth(
+    @Body() body: PhoneSmsAuthRequest,
+    @Ip() clientIp: string,
+    @Headers('x-device-id') deviceId?: string,
+  ): Promise<PhoneSmsAuthResponse> {
     const phone = normalizePhone(body.phone);
     assertValidSmsCode(body.code);
-    const result = await this.useCase.execute(phone, body.code);
+    const result = await this.useCase.execute(phone, body.code, { deviceId, clientIp });
     return {
       accountId: result.accountId.toString(),
       accessToken: result.accessToken,

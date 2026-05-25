@@ -28,7 +28,16 @@ export class AccountProfileController {
 
   @Get('me')
   @HttpCode(200)
-  @SkipThrottle({ default: true, 'sms-phone-24h': true, 'sms-ip-24h': true, 'me-patch': true })
+  @SkipThrottle({
+    default: true,
+    'sms-phone-24h': true,
+    'sms-ip-24h': true,
+    'me-patch': true,
+    'refresh-ip': true,
+    'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
+  })
   @Throttle({ 'me-get': { limit: 60, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Get authenticated account profile',
@@ -64,7 +73,16 @@ export class AccountProfileController {
 
   @Patch('me')
   @HttpCode(200)
-  @SkipThrottle({ default: true, 'sms-phone-24h': true, 'sms-ip-24h': true, 'me-get': true })
+  @SkipThrottle({
+    default: true,
+    'sms-phone-24h': true,
+    'sms-ip-24h': true,
+    'me-get': true,
+    'refresh-ip': true,
+    'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
+  })
   @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Update authenticated account display name',

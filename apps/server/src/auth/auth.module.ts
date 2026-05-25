@@ -13,6 +13,7 @@ import {
 import { SecurityModule } from '../security/security.module.js';
 import { AccountModule } from '../account/account.module.js';
 import { REDIS_CLIENT } from '../security/redis.token.js';
+import { hashRefreshToken } from '../security/refresh-token-hasher.js';
 import { RETRY_EXECUTOR, type RetryExecutor } from './retry-executor.port.js';
 import { SMS_GATEWAY } from './sms-gateway.port.js';
 import { TIMING_DEFENSE_EXECUTOR } from './timing-defense.port.js';
@@ -26,6 +27,10 @@ import { MockSmsGateway } from './mock-sms.gateway.js';
 import { SmsCodeStore } from './sms-code.store.js';
 import { AccountPhoneSmsAuthController } from './account-phone-sms-auth.controller.js';
 import { AccountSmsCodeController } from './account-sms-code.controller.js';
+import { AccountTokenController } from './account-token.controller.js';
+import { RefreshTokenUseCase } from './refresh-token.usecase.js';
+import { LogoutAllUseCase } from './logout-all.usecase.js';
+import { JwtAccessGuard } from './jwt-access.guard.js';
 import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
 
 /**
@@ -92,13 +97,56 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
                 return Promise.resolve(`me:${user?.accountId ?? 'unauthenticated'}`);
               },
             },
+            // FR-S14: refresh-token EP per-IP 100/60s
+            {
+              name: 'refresh-ip',
+              limit: 100,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const ip = req['ip'];
+                return Promise.resolve(`refresh-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+              },
+            },
+            // FR-S14: refresh-token EP per-token-hash 5/60s (键 = refresh:<sha256(token)>)
+            {
+              name: 'refresh-token',
+              limit: 5,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const body = req['body'] as { refreshToken?: unknown } | undefined;
+                const raw = body && typeof body.refreshToken === 'string' ? body.refreshToken : '';
+                return Promise.resolve(`refresh:${raw ? hashRefreshToken(raw) : 'empty'}`);
+              },
+            },
+            // FR-S14: logout-all EP per-IP 50/60s
+            {
+              name: 'logout-all-ip',
+              limit: 50,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const ip = req['ip'];
+                return Promise.resolve(`logout-all-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+              },
+            },
+            // FR-S14: logout-all EP per-account 5/60s (JwtAccessGuard 先填 req.user)
+            {
+              name: 'logout-all-account',
+              limit: 5,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const user = req['user'] as { accountId?: unknown } | undefined;
+                return Promise.resolve(
+                  `logout-all-account:${user?.accountId ?? 'unauthenticated'}`,
+                );
+              },
+            },
           ],
           storage: new ThrottlerStorageRedisService(cfg.url),
         };
       },
     }),
   ],
-  controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController],
+  controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController, AccountTokenController],
   providers: [
     {
       // Per ADR-0023: HMAC-SHA256 + timingSafeEqual 替换 bcrypt cost=12.
@@ -131,6 +179,9 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
     AuthFailureLockService,
     RequestSmsCodeUseCase,
     PhoneSmsAuthUseCase,
+    RefreshTokenUseCase,
+    LogoutAllUseCase,
+    JwtAccessGuard,
     SmsPhoneThrottlerGuard,
     // ProblemDetailFilter (APP_FILTER) moved to SecurityModule in PR-5a —
     // it's a cross-context concern, owned by the platform infra layer.

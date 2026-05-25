@@ -19,15 +19,23 @@
  *         lazily); name/type present once hydrate() resolves.
  *
  *   response:
- *     - no-op (errors flow back to React Query / useMutation via
- *       AxiosError; type guards in ./errors.ts narrow ProblemDetail shape)
+ *     - transparent renewal (003-tokens US7): a 401 single-flights one
+ *       refresh + retries the original request once with the new access
+ *       token (refresh endpoint exempt; x-nvy-retry marker prevents a loop).
+ *       Other errors flow back to React Query / useMutation via AxiosError;
+ *       type guards in ./errors.ts narrow ProblemDetail shape.
  *
  * Call setupAxios() once at mobile boot (apps/mobile/app/_layout.tsx top
  * import). Subsequent imports are no-ops via the booted flag.
  */
 import axios from 'axios';
 import * as Crypto from 'expo-crypto';
-import { getDeviceHeaders, useAuthStore, useDeviceStore } from '~/auth';
+import {
+  getDeviceHeaders,
+  makeAuthRefreshResponseInterceptor,
+  useAuthStore,
+  useDeviceStore,
+} from '~/auth';
 
 let booted = false;
 
@@ -73,4 +81,12 @@ export function setupAxios(): void {
 
     return config;
   });
+
+  // Transparent renewal (003-tokens US7): single-flight refresh + retry-once
+  // on 401. Logic lives in ~/auth/token-refresh so it can own the session
+  // store; here we just bind it to the shared axios instance.
+  axios.interceptors.response.use(
+    (response) => response,
+    makeAuthRefreshResponseInterceptor(axios),
+  );
 }

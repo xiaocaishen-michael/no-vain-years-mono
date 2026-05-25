@@ -3,6 +3,7 @@ import { SecurityModule } from '../security/security.module.js';
 import { GetAccountProfileUseCase } from './get-account-profile.usecase.js';
 import { UpdateDisplayNameUseCase } from './update-display-name.usecase.js';
 import { InspectAccountStatusUseCase } from './inspect-account-status.usecase.js';
+import { InspectAccountStatusByIdUseCase } from './inspect-account-status-by-id.usecase.js';
 import { CommitPhoneLoginUseCase } from './commit-phone-login.usecase.js';
 import { AccountProfileController } from './account-profile.controller.js';
 import { AccountIdThrottlerGuard } from './account-id-throttler.guard.js';
@@ -33,6 +34,7 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     GetAccountProfileUseCase,
     UpdateDisplayNameUseCase,
     InspectAccountStatusUseCase,
+    InspectAccountStatusByIdUseCase,
     CommitPhoneLoginUseCase,
     JwtAuthGuard,
     AccountIdThrottlerGuard,
@@ -41,6 +43,7 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     JwtAuthGuard,
     AccountIdThrottlerGuard,
     InspectAccountStatusUseCase,
+    InspectAccountStatusByIdUseCase,
     CommitPhoneLoginUseCase,
   ],
 })
