@@ -36,6 +36,7 @@ import type {
   PhoneSmsAuthRequest,
   PhoneSmsAuthResponse,
   ProblemDetailResponse,
+  RefreshTokenRequest,
   RequestSmsCodeRequest,
   RequestSmsCodeResponse,
   UpdateDisplayNameRequest
@@ -170,6 +171,128 @@ export const useAccountPhoneSmsAuthControllerAuth = <TError = AxiosError<Problem
         TContext
       > => {
       return useMutation(getAccountPhoneSmsAuthControllerAuthMutationOptions(options), queryClient);
+    }
+    /**
+ * Atomically revokes the presented refresh token and issues a fresh access + refresh pair (single-use). Anti-enumeration: all failures fold to 401.
+ * @summary Rotate a refresh token
+ */
+export const accountTokenControllerRefresh = (
+    refreshTokenRequest: RefreshTokenRequest, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<PhoneSmsAuthResponse>> => {
+
+
+    return axios.post(
+      `/api/v1/accounts/refresh-token`,
+      refreshTokenRequest,options
+    );
+  }
+
+
+
+export const getAccountTokenControllerRefreshMutationOptions = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountTokenControllerRefresh>>, TError,{data: RefreshTokenRequest}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof accountTokenControllerRefresh>>, TError,{data: RefreshTokenRequest}, TContext> => {
+
+const mutationKey = ['accountTokenControllerRefresh'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof accountTokenControllerRefresh>>, {data: RefreshTokenRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  accountTokenControllerRefresh(data,axiosOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AccountTokenControllerRefreshMutationResult = NonNullable<Awaited<ReturnType<typeof accountTokenControllerRefresh>>>
+    export type AccountTokenControllerRefreshMutationBody = RefreshTokenRequest
+    export type AccountTokenControllerRefreshMutationError = AxiosError<ProblemDetailResponse>
+
+    /**
+ * @summary Rotate a refresh token
+ */
+export const useAccountTokenControllerRefresh = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountTokenControllerRefresh>>, TError,{data: RefreshTokenRequest}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof accountTokenControllerRefresh>>,
+        TError,
+        {data: RefreshTokenRequest},
+        TContext
+      > => {
+      return useMutation(getAccountTokenControllerRefreshMutationOptions(options), queryClient);
+    }
+    /**
+ * Revokes every active refresh token for the bearer-authenticated account (current device included). Idempotent → 204.
+ * @summary Log out from all devices
+ */
+export const accountTokenControllerLogoutAll = (
+     options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+
+
+    return axios.post(
+      `/api/v1/accounts/logout-all`,
+      undefined,options
+    );
+  }
+
+
+
+export const getAccountTokenControllerLogoutAllMutationOptions = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountTokenControllerLogoutAll>>, TError,void, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof accountTokenControllerLogoutAll>>, TError,void, TContext> => {
+
+const mutationKey = ['accountTokenControllerLogoutAll'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof accountTokenControllerLogoutAll>>, void> = () => {
+
+
+          return  accountTokenControllerLogoutAll(axiosOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AccountTokenControllerLogoutAllMutationResult = NonNullable<Awaited<ReturnType<typeof accountTokenControllerLogoutAll>>>
+
+    export type AccountTokenControllerLogoutAllMutationError = AxiosError<ProblemDetailResponse>
+
+    /**
+ * @summary Log out from all devices
+ */
+export const useAccountTokenControllerLogoutAll = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountTokenControllerLogoutAll>>, TError,void, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof accountTokenControllerLogoutAll>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAccountTokenControllerLogoutAllMutationOptions(options), queryClient);
     }
     /**
  * Returns account profile for the bearer-authenticated user. Phone is E.164 raw string; displayName is null for new users (FR-007).

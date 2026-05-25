@@ -91,7 +91,7 @@ created_at: '2026-05-25'
 
 ## Phase 7: Contract（类型同步链，Constitution V）
 
-- [ ] T020 [Contract] `nx run server:export-openapi` 产 `apps/server/openapi.json`（含 refresh-token + logout-all 端点）→ `pnpm nx affected --target=generate`（Orval `packages/api-client` regen）→ verify typed `refresh-token` / `logout-all` 调用生成（函数式，非 class）+ typecheck
+- [X] T020 [Contract] `nx run server:export-openapi` 产 `apps/server/openapi.json`（含 `/api/v1/accounts/refresh-token` + `/logout-all`）→ `nx run api-client:generate`（Orval regen）→ 生成 `accountTokenControllerRefresh` / `accountTokenControllerLogoutAll` + react-query hooks（**函数式非 class** ✓）+ api-client/mobile typecheck 绿。**附带**：regen 同步了此前 stale 的 `/healthz` 端点（19 新文件，drift 修正，orval all-or-nothing 无法只 regen 单端点）
 
 ---
 
