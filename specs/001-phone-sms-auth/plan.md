@@ -329,3 +329,99 @@ V2 module boundary：`pnpm nx run server:lint` 0 boundaries violation；4 类规
 _Edit `perf_budgets:` in spec.md frontmatter to change. Regenerate this block with `pnpm tsx scripts/orchestrator/plan-compiler.ts <spec-dir>`._
 
 <!-- END auto-generated: performance-budget -->
+
+---
+
+# Mobile UI Plan — login slice（account-migration p3 Step 2）
+
+> 上方为 **W2 server scope** plan（已 ship，历史记录保留）。本段是 **client 切片** 的独立 plan：login mobile-only UI，对应 de-staled spec 的 `FR-C*`。
+>
+> **形态**：port（Strangler-Fig，源 = 旧 meta app `apps/native/app/(auth)/login.tsx` + `lib/hooks/use-login-form.ts`）。**= login/onboarding Golden Sample**（mono 首个 RHF + Strangler-Fig 落地标杆，per [p3 §1](../../docs/plans/2026-05/05-25-account-migration-p3-usecase-steps.md)）。
+
+## Summary（client）
+
+复用已 ship 的 server 双 endpoint（`/accounts/sms-codes` 发码 + `/accounts/phone-sms-auth` 登录注册合一）+ 已生成的 Orval api-client，落地单 form 登录屏。**纯 mobile 切片**：tasks 只有 `[Mobile]` 层，`[Server]` / `[Contract]` 留空（server 已 ship、api-client hook 已生成）。
+
+## Scope
+
+**In（本轮）**：FR-C01~C06、C10~C15 —— 单 form（phone + SMS）、zod 校验、Orval hook 调用、60s 倒计时、5 态状态机、`errorScope` 双场景、统一错误映射、a11y、成功动画 → AuthGate 接管。
+
+**Out（defer，per p3 §1「Golden Sample 本轮不含」）**：
+
+- **FR-C07** 三方 OAuth 占位按钮（微信 / Google / Apple）→ 后续 OAuth 阶段
+- **FR-C09** 「登录遇到问题」help 链接 → 后续阶段
+- **freeze 弹窗**（FROZEN → `ACCOUNT_IN_FREEZE_PERIOD` 403 拦截 modal）→ 随 cancel-account（批 C `delete-account`）阶段补；本轮 freeze 路径走 server 默认 401 反枚举,client 不特判
+- FR-C08 顶部 close `×`：**保留**（廉价、port 现成），但不连 OAuth 区
+
+## Strangler-Fig 四层拆（per p3 §4 + memory `project_rhf_form_standard_login_golden_sample`）
+
+| 层                | 处置     | meta 源                                    | mono 落点 / 改写                                                                                              |
+| ----------------- | -------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| **skin**（视觉）  | port ≈1:1 | `login.tsx` className（`bg-surface` 等）   | mono 同栈 NativeWind 4.2 + 同语义 token（`~/theme`：ink/line/surface/brand…）→ className 近乎直搬，**0 新 token** |
+| **muscle**（表单） | 重写     | `use-login-form.ts`（`useState`+safeParse） | RHF 7.75 + `@hookform/resolvers/zod` + zod 4 schema（轻范式 → Golden Sample 范式）                            |
+| **nervous**（数据）| 重写     | `@nvy/api-client` class + `@nvy/auth.phoneSmsAuth` | Orval mutation hook `useAccountSmsCodeControllerRequest` / `useAccountPhoneSmsAuthControllerAuth`，经 `~/auth` 薄 wrapper |
+| **engine**（路由/会话）| 复用 | `phoneSmsAuth` 内部 setSession + AuthGate  | `useAuthStore.setSession`（已存在）+ AuthGate（`apps/mobile/app/_layout.tsx` 已落地）；hook **不直调 router**   |
+
+## 组件清单 & port 目标（`~/ui`）
+
+mono `~/ui` 当前仅 `Button` / `SafeAreaView` / `Spinner`（`index.ts` 近空）。本轮需从 meta `packages/ui` port 入 `apps/mobile/src/ui/` 的 primitive：
+
+| 组件          | mono 现状 | 处置                                    |
+| ------------- | --------- | --------------------------------------- |
+| `PhoneInput`  | 缺        | port（带 `accessibilityLabel` + 错误标红边框 per FR-C15） |
+| `SmsInput`    | 缺        | port（含「获取验证码」按钮 + 倒计时态） |
+| `ErrorRow`    | 缺        | port（`accessibilityRole='alert'`，FR-C13） |
+| `PrimaryButton` | 缺      | port 或复用现有 `Button`（impl 时定）   |
+| `LogoMark` / `SuccessCheck` | 缺 | port（成功动画 reanimated scale-in ≤800ms，FR-C11） |
+| `Spinner`     | ✅ 有     | 复用                                    |
+
+> port 即把视觉资产直搬，**禁用 Claude Design 重设计 token**（memory `feedback_design_tokens_reuse_not_redesign`）。OAuth 按钮（`WechatButton`/`GoogleButton`/`AppleButton`）本轮不 port。
+
+## RHF Golden Sample 设计（4 铁律落地）
+
+1. **`<Controller>` 包 `TextInput`**（非 `register`）—— RN `TextInput` 非真 DOM，`register` 静默失效；按字段订阅减重渲染。
+2. **表单态 vs 副作用态分层** —— RHF 只管 phone/code 校验 + submit 生命周期；**发验证码 mutation + 60s 倒计时是 RHF 之外**的 `useAccountSmsCodeControllerRequest` + `useRef` 计时器（port 自 meta `startCountdown`）。
+3. **`isSubmitting` 单源** —— submit 走 `handleSubmit(async → mutateAsync)`，loading 视觉用 `formState.isSubmitting`，**禁** 再起 `useState(isLoading)`。
+4. **错误 + a11y** —— `formState.errors`（zod message）→ `~/ui <ErrorRow>` + `accessibilityLabel`；server 错误（`AxiosError`）经映射 util → `errorToast` + `errorScope`。
+
+**文件落点**（per [ADR-0030](../../docs/adr/0030-package-decomposition.md) 单 consumer 内联）：schema + hook 进 `apps/mobile/src/auth/`（如 `login-form.schema.ts` / `use-login-form.ts`），屏进 `apps/mobile/app/(auth)/login.tsx`，`~/auth` 加 `phone-sms-auth` wrapper（Orval mutation + `setSession`）。
+
+## 状态机（FR-C11 + FR-C15）
+
+`idle → requesting_sms → sms_sent → submitting → (success | error)`。`errorScope: 'sms' | 'submit' | null` 决定哪个 input 标红 + `ErrorRow` 渲染位置；任意 input change → `clearError` + `errorScope=null`。success：reanimated 对勾 ≤800ms → AuthGate 监听 `isAuthenticated` 自动 `router.replace('/(app)/')`。
+
+## 错误映射（client util，按 `AxiosError` 判别）
+
+per FR-C06：401 → "手机号或验证码错误"（不区分 401 子码）；429 → "请求过于频繁，请稍后再试"；`AxiosError` 无 `response`（网络错）/ 5xx → "网络异常，请检查网络后重试"；未知 → "登录失败，请稍后再试"。**不引** meta 的 `mapApiError`/`readErrorCode`（基于 typescript-fetch `ResponseError`）—— 按 Orval/axios 错误形态重写。
+
+## 校验（zod）
+
+`phoneSmsAuthSchema`：phone `/^\+861[3-9]\d{9}$/`（client zod 与 server `class-validator @Matches` **同规则写两处，注释互锚防漂移** per memory）；code 6 位数字。
+
+## 依赖 gate
+
+✅ 已满足（2026-05-25 核实）：`react-hook-form ^7.75.0` + `@hookform/resolvers ^5.2.2` + `zod ^4.4.3`（`apps/mobile/package.json`）。impl 时确认 `zodResolver` import 走 zod4 路径（非 zod3 垫片）。
+
+## 测试策略（per p3 Verification）
+
+- **组件测**（vitest + RTL）：5 态 happy path（US1-5 client）、反枚举 client 一致性（SC-C02：已注册 vs 未注册 submit 后状态/toast/setSession 完全 equal）、429/网络错映射（SC-C04）、a11y label（SC-C05）。错误态测试走 **helper-level 单测**（memory `feedback_vitest_spy_rejection_through_event_handlers`：event handler 内 spy-rejection 会 false-positive）。
+- **web e2e**（Playwright）：SC-C09 浏览器跑通；注意 expo-router web 隐藏 `(group)/` URL 段 + Desktop Chrome `hasTouch:false`（memory `reference_expo_router_web_hides_route_groups`）。
+
+## Phase 2 准备（`/speckit-tasks` 输入，[Mobile] only）
+
+建议 task 层级（三位一体里 `[Server]`/`[Contract]` 本切片留空）：
+
+1. `[Mobile]` `~/ui` primitive port（PhoneInput / SmsInput / ErrorRow / PrimaryButton / LogoMark / SuccessCheck）+ index 导出
+2. `[Mobile]` zod `phoneSmsAuthSchema`（`apps/mobile/src/auth/`）+ 单测
+3. `[Mobile]` `~/auth` phone-sms-auth wrapper（Orval mutation + setSession）+ 单测
+4. `[Mobile]` `useLoginForm`（RHF + 副作用态分层 + 倒计时 + 错误映射）+ helper-level 单测
+5. `[Mobile]` `login.tsx` 屏组装（Controller 包输入、状态机视觉、a11y）+ 组件测
+6. `[Mobile]` web e2e smoke（Playwright）
+
+每 task TDD 红→绿→typecheck/lint→`[X]`→commit（constitution II，per `.claude/rules/implement-task-closure.md`）。预估 6-8 task。
+
+## 开放决策 / 风险
+
+1. **`PrimaryButton` port vs 复用 `Button`** —— impl 时看 meta `PrimaryButton` 与 mono `Button` 差异定（倾向复用，减重）。
+2. **NativeWind className token 对齐** —— 本轮信 `~/theme` + tailwind.config 已对齐（profile.tsx 实证 className + `tokens` 共用）；port 时若有 meta className 在 mono tailwind.config 无定义 → 补 config 不新造 token。
+3. **`success` 帧可达性** —— `finally` 无条件 clearSession + AuthGate 同步 redirect 会让 success 帧不可达（memory `feedback_visual_smoke_unreachable_when_finally_clears_session`）；本屏 success 不 clearSession（成功留 session），动画帧可达,但 e2e 断言走等价非清 session 路径。
