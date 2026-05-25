@@ -306,7 +306,7 @@ stdlib):
 
 ### Foundational（共享，所有 client US 前置）
 
-- [ ] T059 [P] [Mobile] port `~/ui` primitives → `apps/mobile/src/ui/{PhoneInput,SmsInput,ErrorRow,PrimaryButton,LogoMark,SuccessCheck}.tsx` + `index.ts` 导出；复用 `~/theme` token + NativeWind className（直搬不重设计，per memory `feedback_design_tokens_reuse_not_redesign`）；a11y props 内联（`accessibilityLabel`/`accessibilityRole`/`accessibilityState`）；**presentational → 无 vitest 单测**（同既有 `Button`/`Spinner`）；verify：`pnpm nx run mobile:typecheck && pnpm nx run mobile:lint` pass；render/视觉/a11y 覆盖 → T066 e2e
+- [X] T059 [P] [Mobile] port `~/ui` primitives → `apps/mobile/src/ui/{PhoneInput,SmsInput,ErrorRow,PrimaryButton,LogoMark,SuccessCheck}.tsx` + `index.ts` 导出；复用 `~/theme` token + NativeWind className（直搬不重设计，per memory `feedback_design_tokens_reuse_not_redesign`）；a11y props 内联（`accessibilityLabel`/`accessibilityRole`/`accessibilityState`）；**presentational → 无 vitest 单测**（同既有 `Button`/`Spinner`）；verify：`pnpm nx run mobile:typecheck && pnpm nx run mobile:lint` pass；render/视觉/a11y 覆盖 → T066 e2e
 - [ ] T060 [P] [Mobile] zod `phoneSmsAuthSchema` → `apps/mobile/src/auth/login-form.schema.ts`（phone `/^\+861[3-9]\d{9}$/` 与 server `class-validator @Matches` 同规则 + 互锚注释防漂移；code 6 位数字）；RED：schema 单测（合法 / 非法 phone / code 长度）→ GREEN
 - [ ] T061 [Mobile] `~/auth` phone-sms-auth wrapper → `apps/mobile/src/auth/phone-sms-auth.ts`（封装 Orval `useAccountPhoneSmsAuthControllerAuth` 的 `mutateAsync` → `useAuthStore.setSession`；hook **不直调** router）+ `~/auth/index.ts` 加 export；RED：单测 mock Orval mutation 断言 `setSession` 被调 → GREEN
 
