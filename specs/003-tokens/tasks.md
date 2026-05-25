@@ -75,7 +75,7 @@ created_at: '2026-05-25'
 **Goal**：撤账号全部 active 记录（含当前 device），幂等 204。
 **Independent Test**：Testcontainers PG；账号 A 3 active + 1 已撤销 + 账号 B 2 active → logout-all → A 3 撤、A 已撤销时间戳不变、B 不动。
 
-- [ ] T016 [US5] [Server] `RefreshTokenService.revokeAllForAccount(accountId, now)` in `refresh-token.service.ts`：`updateMany where {accountId, revokedAt:null} set revokedAt=now`（count 忽略，幂等）+ 单测（Testcontainers：N 撤 / 0 撤 / 隔离其他账号）
+- [X] T016 [US5] [Server] `RefreshTokenService.revokeAllForAccount(accountId, now)` in `refresh-token.service.ts`：`updateMany where {accountId, revokedAt:null} set revokedAt=now`（count 忽略，幂等；`revokedAt:null` 过滤令已撤行时间戳不变）+ 单测（Testcontainers 2 测：A 3 active+1 已撤→全撤+已撤时间戳不变+B 隔离 / 0 active 幂等不报错）
 - [ ] T017 [US5] [Server] `auth/logout-all.usecase.ts`（取 accountId from JWT sub → `revokeAllForAccount` → void）+ `account-token.controller.ts` `POST /api/v1/accounts/logout-all`（EP2，挂 JwtAuthGuard，返回 **204**）；throttler named `logout-all-ip` 50/60s + `logout-all-account` 5/60s（account 桶先）+ 单测
 - [ ] T018 [US5] [Server-IT] `tokens.us5-logout-all.it.spec.ts`：幂等（0/1/N 均 204）+ 隔离（已撤销记录时间戳不变 / 其他账号不受影响）+ 鉴权缺失→401
 

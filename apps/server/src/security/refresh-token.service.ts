@@ -134,8 +134,15 @@ export class RefreshTokenService {
     );
   }
 
-  /** T016: updateMany 撤账号全部 active 行 (幂等, count 忽略)。 */
-  revokeAllForAccount(_accountId: bigint, _now: Date): Promise<void> {
-    throw new Error('not implemented (T016)');
+  /**
+   * 全端登出: 撤该账号全部 active refresh-token 行 (含当前 device)。
+   * `updateMany where {accountId, revokedAt:null}` set revokedAt=now —— **幂等**:
+   * count 忽略 (0/1/N 均 ok),已撤销行因 `revokedAt:null` 过滤不被重写 (时间戳不变)。
+   */
+  async revokeAllForAccount(accountId: bigint, now: Date): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { accountId, revokedAt: null },
+      data: { revokedAt: now },
+    });
   }
 }
