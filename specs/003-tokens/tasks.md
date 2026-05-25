@@ -39,7 +39,7 @@ created_at: '2026-05-25'
 
 - [X] T002 [P] [Server] `refresh-token-hasher.ts` in `apps/server/src/security/`：SHA-256 → 64 小写 hex（高熵 token 无 salt/HMAC，per ADR-0023 区分；禁 bcrypt）+ 单测（同输入稳定 / 大写 hex 拒 / 64 长度）。落为**纯函数** `hashRefreshToken`（ADR-0043 零-class），service 直接 import
 - [X] T003 [P] [Server] `refresh-token.rules.ts` in `apps/server/src/security/`：纯函数 `isActive(record, now)`（`revokedAt==null && expiresAt>now`）/ `scrubPrivateIp(ip)`（私网/回环→null）/ `normalizeDeviceType(raw)`（→ **UPPERCASE** PHONE/TABLET/DESKTOP/WEB/UNKNOWN，**drift 修正**：plan 写小写但 DB `device_type` 默认 `"UNKNOWN"` + `login_method` `"PHONE_SMS"` 全大写，从 schema 权威）+ 常量 `REFRESH_TTL_DAYS=30` / `ACCESS_TTL_MIN=15`（与 JwtModule `15m` 对齐单一来源）+ 单测（37 断言：表驱动私网/回环/链路本地/IPv4-mapped/公网 IP + 各 deviceType + active/expired/revoked + 过期边界）
-- [ ] T004 [Server] `refresh-token.service.ts` in `apps/server/src/security/` 骨架：`@Injectable` + `PrismaService` 直注（无 repository）+ DI `JwtTokenService` + hasher；空方法签名占位（persist/findActiveByHash/rotate/revokeAllForAccount）；加入 `SecurityModule` `providers` + `exports`（per `security.module.ts:130`）；verify typecheck + server bootstrap
+- [X] T004 [Server] `refresh-token.service.ts` in `apps/server/src/security/` 骨架：`@Injectable` + 4 方法签名占位（persist/findActiveByHash/rotate/revokeAllForAccount，throw stub）+ 导出 `PersistRefreshTokenInput`/`RotatedTokens` 类型；加入 `SecurityModule` `providers` + `exports`。**构造器 DI 延后增量补**（TS `noUnusedLocals` 不允许提前声明未读注入：T005 补 `PrismaService`+`hashRefreshToken`，T010 补 `JwtTokenService`）；verify typecheck ✅（DI 图静态自洽 + 骨架无新外部依赖，真 boot 由 T007 IT 验）
 
 ---
 

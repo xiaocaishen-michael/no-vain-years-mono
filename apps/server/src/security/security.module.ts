@@ -17,6 +17,7 @@ import {
 } from '../config/index.js';
 import { JwtTokenService } from './jwt-token.service.js';
 import { PrismaService } from './prisma.service.js';
+import { RefreshTokenService } from './refresh-token.service.js';
 import { ProblemDetailFilter } from './problem-detail.filter.js';
 import { REDIS_CLIENT } from './redis.token.js';
 import { OUTBOX_PUBLISHER } from './outbox/outbox-publisher.port.js';
@@ -103,6 +104,7 @@ class RedisLifecycle implements OnModuleDestroy {
   ],
   providers: [
     JwtTokenService,
+    RefreshTokenService,
     {
       provide: PrismaService,
       useFactory: (cfg: DbConfig) => new PrismaService(cfg.url),
@@ -127,6 +129,13 @@ class RedisLifecycle implements OnModuleDestroy {
     { provide: OUTBOX_PUBLISHER, useClass: OutboxEventPrismaPublisher },
     OutboxEventCronPublisher,
   ],
-  exports: [JwtTokenService, JwtModule, PrismaService, REDIS_CLIENT, OUTBOX_PUBLISHER],
+  exports: [
+    JwtTokenService,
+    RefreshTokenService,
+    JwtModule,
+    PrismaService,
+    REDIS_CLIENT,
+    OUTBOX_PUBLISHER,
+  ],
 })
 export class SecurityModule {}
