@@ -199,7 +199,7 @@
 
 ## B 类: 业务集成 gap → 沉淀为 ADR draft (不进本 plan impl)
 
-跟 [Plan 2/3](05-19-plan2-plan3-migration-deploy.md) 16 use case 顺序迁入。本 plan 只记账,避免 Plan 2 起手"以为有"。
+跟 [Plan 2 迁移顺序](05-25-account-migration-p2-usecase-dependency.md) 16 use case 顺序迁入。本 plan 只记账,避免 Plan 2 起手"以为有"。
 
 | # | Gap | Meta 实现锚点 | 建议 ADR 沉淀 |
 |---|---|---|---|

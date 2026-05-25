@@ -20,7 +20,7 @@
 
 ## § A 真正待续 🔴
 
-### A-1 `05-19-plan2-plan3-migration-deploy.md` — Plan 2 业务迁移
+### A-1 account-migration master（原 `05-19-plan2-plan3-migration-deploy.md`，2026-05-25 重组为 [master](05-25-account-migration-master.md) + p1/p2/p3）— Plan 2 业务迁移
 
 - **原目标（Done condition）**：mbw-account 后端 **16 use case** 全部 NestJS + Prisma 重写到 `apps/server/`，mobile per-feature 同步，`pnpm nx affected` 全绿。
 - **已落地**：仅 **feature 批 A**（`002-account-profile`：GetAccountProfile + UpdateDisplayName）。
@@ -55,7 +55,7 @@
 - **状态**：NOT-STARTED，父 plan（B-1）未启则不动。
 - **建议处置**：与 B-1 捆绑，同一窗口启动。
 
-### B-3 `05-19-plan2-model-routing-ralph-loop.md` — 模型路由 + orchestrator 2b
+### B-3 `05-25-account-migration-p1-toolchain-ralph-loop.md`（原 `05-19-plan2-model-routing-ralph-loop.md`）— 模型路由 + orchestrator 2b
 
 - **目标**：spec-kit preset 定制 + implement 阶段 halt-log + orchestrator 2b（`scripts/orchestrator/run-implement.ts` 接管 halt-retry）。
 - **状态**：触发条件未满足。2b 设计为"halt-log ≥ 3 同形态 OR ≥ 1 unrecoverable"才写；因 Plan 2 只跑了批 A，门槛从未达到，`run-implement.ts` 未建、`.specify/implement-halts.log` 未初始化。
@@ -69,7 +69,7 @@
 | Plan | 状态 | 说明 | 建议 |
 |---|---|---|---|
 | `05-23-adr-realign-p2-code-drift-refactor.md` | RETIRED | 2026-05-24 正式退役；hinge 软化后 P2 scope 归零，唯一执行项（app.json bump）并入 P1 PR #156 | 无需动作 |
-| `05-19-plan3-pre-plan-inventory.md` | PURE-REFERENCE | doc 自述"暂停保留作参考"；16 use case 清单 + 6 ambiguous decision，是 Plan 2 的设计输入档 | 保留备查 |
+| `05-19-plan3-pre-plan-inventory.md` | **DELETED (2026-05-25)** | 16 use case 清单 + 风险 + 6 ambiguous decision **已吸收进 `05-25-account-migration-p2-usecase-dependency.md` § 4 / § 6**;快照部分大面积 drift(大重构 ADR-0030/0032/0043 后),价值内联刷新后删除 | 已删除 |
 | `05-20-spec-kit-template-review.md` | 大体被吸收 | `spec.zod state_branches` 等设计项已随 test-infra（#80-82）落地；剩余无独立价值 | 无需动作 |
 
 ---
@@ -114,7 +114,7 @@ Plan 1 backend-stack-poc · graphify-knowledge-graph · orchestrator-ndjson-stre
 | D-2 adr-realign-master | 开篇 tagline 补标「P2 已退役」（body L31-85 早已对齐，缺口仅在开篇行） | `05-23-adr-realign-master.md` |
 | D-3 review-tech-stack | 加闭合 banner：**PR-6 拆成 #100/#101/#102 按钢钉落地**、**PR-7 = #103**；并标注 PR-6 清单里的 JWT 双 token/refresh usecase 实为 Plan 2 batch B 业务、归 Plan 2 | `05-21-review-tech-stack-post-a002.md` |
 | C-1 adr-realign-p2 | 已是 RETIRED（title + status blockquote），无需改 | —（已自带） |
-| C-2 plan3-inventory | 加 `> **Status**: archived` | `05-19-plan3-pre-plan-inventory.md` |
+| C-2 plan3-inventory | 加 `> **Status**: archived`(2026-05-25 续:该文件已**删除**,内容吸收进 plan2-plan3 § 2.3/§ 7) | `05-19-plan3-pre-plan-inventory.md`(已删除) |
 | C-3 spec-kit-template-review | stale `DRAFT v1` → `SUPERSEDED`（被 test-infra #80-82 吸收） | `05-20-spec-kit-template-review.md` |
 | B-1 / B-2 / B-3 | 各加 `处置: deferred` 行（claude-mem ×2 等窗口 / model-routing 耦合 Plan 2 自然激活） | 三个 `05-19-*` plan |
 
