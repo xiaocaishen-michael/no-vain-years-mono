@@ -291,3 +291,48 @@ stdlib):
 - `[P]` tasks 表示不同文件可并行（solo dev 串行更稳，[P] 标记给未来多 dev 参考）
 
 **Total tasks**: 42（Setup 4 + Foundational 8 + US1 12 + US2 7 + US3 7 + Polish 4）
+
+---
+
+## Phase M: Mobile UI — login slice（account-migration p3 · `[Mobile]` only）
+
+> ⬆️ 上方 T001-T058 = **W2/W3 server scope**（已 ship，历史记录）。本段是 **client 切片** task，对应 plan.md「Mobile UI Plan — login slice」+ de-staled spec `FR-C*`。
+>
+> **形态** = port（Strangler-Fig，源 = 旧 meta `login.tsx` + `use-login-form.ts`）。**login Golden Sample**（mono 首个 RHF + Strangler-Fig）。`[Server]` / `[Contract]` 层留空（server 已 ship、Orval api-client hook 已生成）。
+>
+> **Goal**：复用已 ship server 双 endpoint + 已生成 Orval hook，落地单 form 登录屏，RHF Golden Sample 范式落地。
+> **Independent test**：web e2e 登录流程跑通 + 组件测 5 态 + 反枚举 client 一致性 + 错误映射。
+> **Defer per p3**：FR-C07 OAuth 占位 / FR-C09 help 链接 / freeze 弹窗（随 cancel-account 批 C 补）。
+
+### Foundational（共享，所有 client US 前置）
+
+- [ ] T059 [P] [Mobile] port `~/ui` primitives → `apps/mobile/src/ui/{PhoneInput,SmsInput,ErrorRow,PrimaryButton,LogoMark,SuccessCheck}.tsx` + `index.ts` 导出；复用 `~/theme` token + NativeWind className（直搬不重设计，per memory `feedback_design_tokens_reuse_not_redesign`）；RED：每 primitive render smoke + `accessibilityLabel` 断言 → GREEN
+- [ ] T060 [P] [Mobile] zod `phoneSmsAuthSchema` → `apps/mobile/src/auth/login-form.schema.ts`（phone `/^\+861[3-9]\d{9}$/` 与 server `class-validator @Matches` 同规则 + 互锚注释防漂移；code 6 位数字）；RED：schema 单测（合法 / 非法 phone / code 长度）→ GREEN
+- [ ] T061 [Mobile] `~/auth` phone-sms-auth wrapper → `apps/mobile/src/auth/phone-sms-auth.ts`（封装 Orval `useAccountPhoneSmsAuthControllerAuth` 的 `mutateAsync` → `useAuthStore.setSession`；hook **不直调** router）+ `~/auth/index.ts` 加 export；RED：单测 mock Orval mutation 断言 `setSession` 被调 → GREEN
+
+### Implementation for US1（已注册 + 未注册主流程，client 同一路径）
+
+- [ ] T062 [Mobile] [US1] `useLoginForm` hook → `apps/mobile/src/auth/use-login-form.ts`：RHF + `zodResolver`（铁律 1 Controller 订阅）；**副作用态分层**（铁律 2：`useAccountSmsCodeControllerRequest` mutation + 60s `useRef` 倒计时在 RHF 外）；`isSubmitting` 单源（铁律 3）；`AxiosError` → `errorToast` 映射（FR-C06）+ `errorScope`（FR-C15）+ `clearError`；RED：**helper-level** 单测（倒计时启停 / requestSms→sms_sent / submit success→setSession / 错误映射 — helper-level 避 event-handler spy-rejection false-positive，per memory `feedback_vitest_spy_rejection_through_event_handlers`）→ GREEN
+- [ ] T063 [Mobile] [US1] `login.tsx` 屏组装 → `apps/mobile/app/(auth)/login.tsx`（替换 PHASE 1 占位）：`<Controller>` 包 `PhoneInput`/`SmsInput`（铁律 1）；FR-C11 五态视觉；`ErrorRow` + `errorScope` 标红边框（铁律 4）；success reanimated scale-in ≤800ms → AuthGate 接管 `router.replace('/(app)/')`；FR-C13 全交互 `accessibilityLabel`；RED：组件测 US1 happy（输入手机号 → 获取码 → 输入码 → 登录 → 断言 `setSession` + success 态）+ 初始 submit disabled → GREEN
+
+### Implementation for US2（未注册自动注册，client 视角字节级一致）
+
+- [ ] T064 [Mobile] [US2] 反枚举 client 一致性组件测（SC-C02）→ `apps/mobile/app/(auth)/login.test.tsx`：mock 已注册 vs 未注册两 Orval 响应，断言 submit 后 state 转移 / `errorToast` / `setSession` / `router.replace` 完全 equal；验证 client 代码 **无 phone-existed 分支**（US2 client = US1 client）
+
+### Implementation for US3 + US4（反枚举 401 + 边缘错误，client 错误映射）
+
+- [ ] T065 [Mobile] [US4] 边缘错误映射组件测（SC-C04/C06）→ `login.test.tsx`：429 → "请求过于频繁，请稍后再试"；`AxiosError` 无 `response`（网络错）→ "网络异常，请检查网络后重试"；401（US3 FROZEN/ANONYMIZED/码错 **不区分子码**）→ "手机号或验证码错误"；error 态 → 任意 input change → `clearError` 回 idle（FR-C12）
+
+### Polish
+
+- [ ] T066 [Mobile] web e2e smoke（Playwright，SC-C09）→ `apps/mobile/e2e/login.spec.ts`：浏览器登录流程跑通；注意 expo-router web 隐藏 `(auth)` group URL 段 + Desktop Chrome `hasTouch:false`（memory `reference_expo_router_web_hides_route_groups`）；success 走**不清 session** 等价断言路径（memory `feedback_visual_smoke_unreachable_when_finally_clears_session`）
+
+### Phase M Dependencies & Execution
+
+- 全部依赖 server + Orval api-client（已 ship）；**无新 npm dep**（RHF/resolvers/zod 已装）
+- T059 / T060 `[P]` 可并行（不同文件）；T061 独立
+- T062 依赖 T060（schema）+ T061（wrapper）；T063 依赖 T059（`~/ui`）+ T062（hook）；T064 / T065 依赖 T063；T066 依赖 T063
+- 每 task 走 /implement 6 步闭环（RED → GREEN → `pnpm nx run mobile:typecheck && pnpm nx run mobile:lint` → tasks.md `[X]` → stage → commit），per `.claude/rules/implement-task-closure.md`
+- **Stop / Surface**：撞 spec 歧义 / 需新 dep（本切片已满足）/ destructive op / 跨 PR scope → 停问 user
+
+**Phase M tasks**: 8（Foundational 3 + US1 2 + US2 1 + US3/US4 1 + Polish 1）
