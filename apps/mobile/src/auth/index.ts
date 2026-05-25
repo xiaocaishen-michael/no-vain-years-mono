@@ -9,3 +9,12 @@ export { refreshOnce, refreshTokenFlow, rehydrateSession } from './token-refresh
 
 export { useDeviceStore, getDeviceHeaders } from './device-store';
 export type { DeviceState, DeviceType } from './device-store';
+
+// login slice (account-migration p3): phone-sms-auth mutation wrapper + form schema.
+export { usePhoneSmsAuth } from './phone-sms-auth';
+export {
+  phoneSmsAuthSchema,
+  PHONE_REGEX,
+  SMS_CODE_REGEX,
+  type PhoneSmsAuthValues,
+} from './login-form.schema';
