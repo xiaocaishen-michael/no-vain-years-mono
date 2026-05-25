@@ -98,6 +98,8 @@ login UI → onboarding UI → 批 B(003-tokens) → ( 批 C(004) ∥ 批 D(005)
   9. **Moat 两段式**:Inspect(读)+ Commit(写),禁单 upsert(memory `cross_ctx_login_two_step_saga`)
   - 每批热点:B=token 轮换原子性 + raw token 只存 hash;C=悲观锁 + 串行链 + freeze-window race;D=ip2region 选 Node 替代 + 防自撤;E=split-tx + cloudauth + 加密
 - **前端**:**= 定稿的 Strangler-Fig mono 校准 prompt**(2 硬约束:Orval 函数式 hook 非 class / axios 不删;skin 复用 `~/theme`+`~/ui` / muscle+nervous+engine 重写 API·数据适配·路由)+ **RHF Golden Sample 4 铁律**(Controller 非 register / 表单态副作用态分层 / isSubmitting 单源 / 错误+a11y)。依赖 gate:补装 `@hookform/resolvers`(核 zod4 兼容)。
+  - **Metro `.js` 陷阱**(port 旧 NodeNext app 必踩):相对 import/re-export 一律 **extensionless**——旧 app 的 `.js` 扩展让 tsc remap 假绿但 Metro web bundle 500+白屏(memory `reference_metro_web_cannot_resolve_js_extension_imports`)。已由 ESLint `no-restricted-syntax` 在 `apps/mobile` + `@nvy/api-client` 机械拦(server/orchestrator 是 Node-ESM,`.js` 必需,不在此列)。撞 bundler "Unable to resolve" 时**先全仓 grep 同类一次性修**,别逐个修-重跑。
+  - **e2e mock**:调后端的 UC e2e 复用 `apps/mobile/e2e/_support/api-mock.ts` 的 `mockJson`(已处理跨 origin axios baseURL 的 CORS preflight),勿重造;locator 优先 `getByRole`/`exact`,警惕中文 label 子串撞(如「验证码」⊂「获取验证码」)。
 
 ## Critical files
 
@@ -110,5 +112,5 @@ login UI → onboarding UI → 批 B(003-tokens) → ( 批 C(004) ∥ 批 D(005)
 
 ## Verification
 
-- 每 feature ship:tasks.md `[X]` 全 flip + `pnpm nx affected --target=test,lint,build,typecheck` 全绿 + 真后端冒烟(server)/ **web e2e**(mobile)。
+- 每 feature ship:tasks.md `[X]` 全 flip + `pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿(= PR 模板 deploy-gate box 1 / [ADR-0040](../../adr/0040-multi-layer-test-gate.md);**含 `runtime-smoke`**——别只跑前 4 个,mobile web export 路径只有它+e2e 抓)+ 真后端冒烟(server)/ **web e2e**(mobile)。
 - Plan 2 graduation:16 UC 全 ship。

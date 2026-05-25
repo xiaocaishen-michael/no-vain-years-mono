@@ -1,4 +1,6 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+import { mockJson } from './_support/api-mock';
 
 // T066 — Expo Web e2e for the login slice (001-phone-sms-auth client).
 //
@@ -26,30 +28,6 @@ const VALID_PHONE = '13800138000';
 const VALID_CODE = '123456';
 
 const SCREENSHOT_DIR = 'playwright-report/screenshots';
-
-// Fulfill a JSON mock and the cross-origin preflight. No credentials are sent
-// during login (accessToken is null pre-auth), so Allow-Headers: * suffices.
-async function mockJson(page: Page, urlGlob: string, status: number, body: unknown) {
-  await page.route(urlGlob, async (route: Route) => {
-    if (route.request().method() === 'OPTIONS') {
-      await route.fulfill({
-        status: 204,
-        headers: {
-          'access-control-allow-origin': '*',
-          'access-control-allow-methods': 'POST, OPTIONS',
-          'access-control-allow-headers': '*',
-        },
-      });
-      return;
-    }
-    await route.fulfill({
-      status,
-      contentType: 'application/json',
-      headers: { 'access-control-allow-origin': '*' },
-      body: JSON.stringify(body),
-    });
-  });
-}
 
 test.beforeEach(async ({ page }) => {
   // No auth seed → cold boot is unauthenticated → AuthGate lands on /(auth)/login.

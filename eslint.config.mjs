@@ -137,6 +137,37 @@ export default [
       ],
     },
   },
+  {
+    // Metro-bundled 面禁相对 `.js`/`.jsx` 扩展 import/re-export。
+    // Metro web bundler 按字面找 `Button.js`(不回退 `.tsx`)→ 整 web bundle 500 + 白屏;
+    // 而 tsc(moduleResolution: bundler)会把 `./x.js` remap 到 `x.tsx`,故 typecheck/单测
+    // 全绿掩盖,只有 web build / e2e 暴露(login slice 实证:~/ui + @nvy/api-client barrel)。
+    // barrel `export * from './x.js'` 是高发区,故 re-export 形态一并约束。
+    //
+    // 仅约束 Metro 侧:apps/mobile + @nvy/api-client(mobile-only,server 已 ban)。
+    // apps/server / scripts/orchestrator / prisma-generated 是 Node-ESM 运行时,`.js` 是
+    // 必需的,不在此列;@nvy/types 双端(server Node-ESM + mobile Metro)消费,亦不纳入。
+    files: ['apps/mobile/**/*.ts', 'apps/mobile/**/*.tsx', 'packages/api-client/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportDeclaration[source.value=/^\\..*\\.jsx?$/]',
+          message:
+            "相对 import 用 extensionless:Metro web 无法解析 '.js'(tsc 会 remap 故 typecheck 假绿)。去掉扩展名。",
+        },
+        {
+          selector: 'ExportAllDeclaration[source.value=/^\\..*\\.jsx?$/]',
+          message:
+            "相对 re-export 用 extensionless:Metro web 无法解析 '.js'(barrel `export *` 高发区)。去掉扩展名。",
+        },
+        {
+          selector: 'ExportNamedDeclaration[source.value=/^\\..*\\.jsx?$/]',
+          message: "相对 re-export 用 extensionless:Metro web 无法解析 '.js'。去掉扩展名。",
+        },
+      ],
+    },
+  },
   // 关掉与 Prettier 冲突的 ESLint 风格规则 — 必须放最后
   // (per https://github.com/prettier/eslint-config-prettier)
   eslintConfigPrettier,
