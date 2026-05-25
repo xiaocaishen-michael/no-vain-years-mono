@@ -11,9 +11,10 @@ import type { CommitPhoneLoginUseCase } from '../account/commit-phone-login.usec
 import type { TimingDefenseExecutor } from './timing-defense.port';
 import type { JwtTokenService } from '../security/jwt-token.service';
 import type { AuthFailureLockService } from './auth-failure-lock.service';
+import type { RefreshTokenService } from '../security/refresh-token.service';
 
 // Ctor (post-ADR-0043 R-4 两段式委托): 直注 account 的 Inspect(读) + Commit(写)
-// use case,auth 不碰 prisma.account.*。6 args。
+// use case,auth 不碰 prisma.account.*。+ security RefreshTokenService (签发即持久化)。7 args。
 type UseCaseCtor = new (
   smsCodeStore: SmsCodeStore,
   jwtTokenService: JwtTokenService,
@@ -21,6 +22,7 @@ type UseCaseCtor = new (
   commitPhoneLogin: CommitPhoneLoginUseCase,
   timingDefense: TimingDefenseExecutor,
   authFailureLock: AuthFailureLockService,
+  refreshTokenService: RefreshTokenService,
 ) => PhoneSmsAuthUseCase;
 
 type Fn = ReturnType<typeof vi.fn>;
@@ -38,6 +40,7 @@ interface Harness {
   storeVerify: Fn;
   storeClear: Fn;
   timingPad: Fn;
+  persist: Fn;
   jwtTokenService: JwtTokenService;
   useCase: PhoneSmsAuthUseCase;
 }
@@ -60,6 +63,8 @@ function buildHarness(): Harness {
   const inspectAccountStatus = { execute: inspect } as unknown as InspectAccountStatusUseCase;
   const commitPhoneLogin = { execute: commit } as unknown as CommitPhoneLoginUseCase;
   const timingDefense = { pad: timingPad } as unknown as TimingDefenseExecutor;
+  const persist = vi.fn().mockResolvedValue(undefined);
+  const refreshTokenService = { persist } as unknown as RefreshTokenService;
   const useCase = new (PhoneSmsAuthUseCase as unknown as UseCaseCtor)(
     smsCodeStore,
     jwtTokenService,
@@ -67,8 +72,9 @@ function buildHarness(): Harness {
     commitPhoneLogin,
     timingDefense,
     buildAuthFailureLockMock(),
+    refreshTokenService,
   );
-  return { inspect, commit, storeVerify, storeClear, timingPad, jwtTokenService, useCase };
+  return { inspect, commit, storeVerify, storeClear, timingPad, persist, jwtTokenService, useCase };
 }
 
 const ACTIVE: AccountStatusInspection = { kind: 'ACTIVE' };
@@ -96,6 +102,29 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
     expect(h.storeClear).toHaveBeenCalledWith(phone);
     expect(h.commit).toHaveBeenCalledTimes(1);
     expect(h.commit).toHaveBeenCalledWith(phone);
+    // 签发即持久化: refresh token 落库 (loginMethod=PHONE_SMS), 返回 shape 不漂。
+    expect(h.persist).toHaveBeenCalledTimes(1);
+    expect(h.persist).toHaveBeenCalledWith(
+      42n,
+      'refresh-token-xyz',
+      expect.objectContaining({ loginMethod: 'PHONE_SMS' }),
+    );
+  });
+
+  it('threads device context (deviceId + clientIp) from controller into persist', async () => {
+    h.storeVerify.mockResolvedValue(true);
+    await h.useCase.execute(phone, code, { deviceId: 'dev-abc', clientIp: '8.8.8.8' });
+    expect(h.persist).toHaveBeenCalledWith(42n, 'refresh-token-xyz', {
+      deviceId: 'dev-abc',
+      clientIp: '8.8.8.8',
+      loginMethod: 'PHONE_SMS',
+    });
+  });
+
+  it('code mismatch → does NOT persist (持久化仅成功路径)', async () => {
+    h.storeVerify.mockResolvedValue(false);
+    await expect(h.useCase.execute(phone, code)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(h.persist).not.toHaveBeenCalled();
   });
 
   it('ACTIVE + code mismatch (verify false) → 401, no commit', async () => {
