@@ -3,7 +3,12 @@ import { Injectable } from '@nestjs/common';
 import type { RefreshToken } from '../generated/prisma/client';
 import { PrismaService } from './prisma.service';
 import { hashRefreshToken } from './refresh-token-hasher';
-import { REFRESH_TTL_DAYS, normalizeDeviceType, scrubPrivateIp } from './refresh-token.rules';
+import {
+  REFRESH_TTL_DAYS,
+  isActive,
+  normalizeDeviceType,
+  scrubPrivateIp,
+} from './refresh-token.rules';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -64,9 +69,13 @@ export class RefreshTokenService {
     });
   }
 
-  /** T008: 按 tokenHash 查 + isActive(record, now) 过滤 → record | null。 */
-  findActiveByHash(_tokenHash: string, _now: Date): Promise<RefreshToken | null> {
-    throw new Error('not implemented (T008)');
+  /**
+   * 按 tokenHash 命中唯一索引查 + isActive(record, now) 过滤 → record | null。
+   * miss (not-found / expired / revoked) 一律返回 null,由 auth 编排折叠成反枚举 401。
+   */
+  async findActiveByHash(tokenHash: string, now: Date): Promise<RefreshToken | null> {
+    const record = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });
+    return record && isActive(record, now) ? record : null;
   }
 
   /** T010: Serializable tx 原子轮换 (条件 revoke 旧 + 签新 access/refresh + insert 新,继承 device 血缘 + 更 IP); 失败折 401 + 外层 P2034 retry。 */

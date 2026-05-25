@@ -59,7 +59,7 @@ created_at: '2026-05-25'
 **Goal**：持 refresh token 原子轮换（revoke 旧 + 签新 + insert 新，继承 device 血缘 + 更 IP），全失败臂统一 401，并发恰 1 成功。
 **Independent Test**：Testcontainers PG；预置 active 记录 → refresh → 旧撤/新 active/血缘继承/IP 更新；7 路失败字节级一致；10 并发同 token 恰 1。
 
-- [ ] T008 [P] [US2] [Server] `RefreshTokenService.findActiveByHash(hash, now)` in `refresh-token.service.ts`：查 + `isActive` 过滤 → record|null + 单测（Testcontainers：active 命中 / expired miss / revoked miss）
+- [X] T008 [P] [US2] [Server] `RefreshTokenService.findActiveByHash(hash, now)` in `refresh-token.service.ts`：`findUnique({where:{tokenHash}})` + `isActive` 过滤 → record|null + 单测（Testcontainers：active 命中 / expired miss / revoked miss / not-found miss，4 测）
 - [ ] T009 [P] [US2] [Server] `account/inspect-account-status-by-id.usecase.ts`：`execute(accountId): Promise<AccountStatusInspection>`（findById + `account.rules.ts` 状态映射，返回同既有 kind）+ 单测
 - [ ] T010 [US2] [Server] `RefreshTokenService.rotate(record, clientIp)` in `refresh-token.service.ts`：interactive `$transaction`（`isolationLevel:'Serializable'`）= signAccess + generateRefresh + hash + 条件 revoke 旧（`updateMany where {id, revokedAt:null}`）→ `count===0` throw `UnauthorizedException('INVALID_CREDENTIALS')`（回滚）→ create 新（继承 deviceId/deviceName/deviceType/loginMethod + 更 ipAddress + expiresAt=now+30d）；catch P2002 → 401；**外层 ≤3 次 P2034 retry**（镜像 `commit-phone-login.usecase.ts`）+ 单测（mock + Testcontainers）
 - [ ] T011 [US2] [Server] `auth/refresh-token.usecase.ts` 编排：hash → per-token-hash 限流 → `findActiveByHash`（null→401）→ `inspectAccountStatusById`（非 ACTIVE→401，**不**抛 FROZEN 403）→ `rotate` → `LoginResponse`；跨 ctx 注入点 `// CROSS-CONTEXT-SYNC`（注入 `RefreshTokenService` + `InspectAccountStatusByIdUseCase`）+ 单测（各失败臂折叠 401）
