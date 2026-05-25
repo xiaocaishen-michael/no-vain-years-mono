@@ -2,7 +2,7 @@
 feature_id: 001-phone-sms-auth
 modules: [auth, security, account]
 owners: ['@xiaocaishen-michael']
-status: implemented
+status: implementing
 created_at: '2026-05-04'
 updated_at: '2026-05-17'
 spec_kit_version: '>=0.8.5,<0.10.0'
@@ -10,7 +10,7 @@ orchestrator_compat: '>=0.2.0'
 
 # v2 frontmatter fields (per mono-orchestrator-ready 0.2.0 + ADR-0024 amend + ADR-0039)
 web_compat: untested
-web_compat_notes: 'phone-sms-auth use case 仅 server impl,mobile/Web 客户端落地 Plan 2 Phase 2 W4+;Expo Web export 路径未走过'
+web_compat_notes: 'server impl 已 ship;mobile client 切片本轮启动(account-migration p3 login;Step 1b de-stale 起);Expo Web export 路径仍未冒烟,client impl 完成后回填'
 agent_friction_observed: true
 agent_friction_notes: 'F-002 Typecheck-Boot-Gap (nx run server:test pass 但 boot 需 Prisma+Redis Testcontainers); F-006 Indirect-Spec-Module-Mapping (本 spec 实证横跨 auth/security/account 3 context,modules 字段必显式 list, per ADR-0032 物理拆 + ADR-0034 operation catalog 缓解)'
 perf_budgets:
@@ -62,7 +62,7 @@ state_branches:
 
 **Independent Test (server)**: Testcontainers 起 PG + Redis + Mock SMS gateway，预先注册 ACTIVE 账号 → POST `/api/v1/accounts/sms-codes` `{phone}`（无 purpose 字段，per FR-S04）→ POST `/api/v1/accounts/phone-sms-auth` `{phone, code}` → 断言 200 + `{accountId, accessToken, refreshToken}` + `Account.lastLoginAt` 更新。
 
-**Independent Test (client)**: vitest + jest mock `@nvy/auth.phoneSmsAuth` 返回 `{accountId, accessToken, refreshToken}`，渲染 `<LoginScreen>` → fireEvent 输入手机号 → press "获取验证码" → 输入 6 位码 → press "登录" → 断言 store.session 已设置 + AuthGate 自动 redirect 到 `/(app)/`。
+**Independent Test (client)**: vitest `vi.mock` `~/auth` 的 phone-sms-auth wrapper（封装 Orval `useAccountPhoneSmsAuthControllerAuth`）返回 `{accountId, accessToken, refreshToken}`，渲染 `<LoginScreen>` → fireEvent 输入手机号 → press "获取验证码" → 输入 6 位码 → press "登录" → 断言 store.session 已设置 + AuthGate 自动 redirect 到 `/(app)/`。
 
 **Acceptance Scenarios**:
 
@@ -72,7 +72,7 @@ state_branches:
 4. **Given** 用户访问 `/(auth)/login`，**Then** 页面单 form 渲染（无 tab，无密码字段）；手机号 input 可见；submit "登录" 按钮初始 disabled（form invalid）
 5. **Given** 输入合法手机号 `+8613800138000`，**When** press "获取验证码"，**Then** 调 `requestSmsCode(phone)`（无 purpose 字段，per FR-S04）；按钮 disabled + 60s 倒计时
 6. **Given** 输入合法手机号 + 6 位码 `123456`，**When** press "登录"，**Then** state idle → submitting；调 `phoneSmsAuth(phone, code)`；成功后 state success；store.setSession({accountId, accessToken, refreshToken}); AuthGate 监听 isAuthenticated 自动 router.replace `/(app)/`
-7. **Given** 用户已登录（store 含 session），**When** 直接访问 `/(auth)/login`，**Then** AuthGate 拦截 → router.replace `/(app)/`（PR #48 已落地，本 spec 仅消费）
+7. **Given** 用户已登录（store 含 session），**When** 直接访问 `/(auth)/login`，**Then** AuthGate 拦截 → router.replace `/(app)/`（AuthGate 已落地，本 spec 仅消费）
 
 ---
 
@@ -114,13 +114,13 @@ state_branches:
 
 ### User Story 4 - 边缘：限流防爆刷 + 网络错 + 401 refresh 透明（Priority: P2）
 
-恶意用户对同一手机号或同一 IP 高频请求 `/sms-codes` 或 `/phone-sms-auth`，系统按规则限流并返回 HTTP 429 + `Retry-After`，避免短信费用爆炸 + 账号枚举辅助暴破。client 端给清晰 toast 不静默；access token 过期 401 由 `@nvy/api-client` 拦截器透明 refresh，组件层不感知（per PR #48）。
+恶意用户对同一手机号或同一 IP 高频请求 `/sms-codes` 或 `/phone-sms-auth`，系统按规则限流并返回 HTTP 429 + `Retry-After`，避免短信费用爆炸 + 账号枚举辅助暴破。client 端给清晰 toast 不静默；access token 过期 401 由 `~/auth` 的 axios 拦截器透明 refresh，组件层不感知。
 
 **Why this priority**: 复用既有 `RateLimitService` 基础设施；`/sms-codes` 60s 限流是反 SMS 滥发硬性合规要求。边缘错误体验差是 D 类 bug 风险源；refresh 透明性是已实现的契约，本 spec 验证消费侧不破坏它。
 
 **Independent Test (server)**: Testcontainers 测试快速调 `/sms-codes` N 次断言第 2 次起返回 429；24h 内同号 5 次失败码后第 6 次返回 LOCKED（隐藏在 `INVALID_CREDENTIALS` 形态内）。
 
-**Independent Test (client)**: vitest mock 各错误码的 `ResponseError` / `FetchError`（per PR #48 落地的错误类型），断言 errorToast 文案 + state error；refresh 透明性走 packages/api-client 已有测试（本 spec 不重复）。
+**Independent Test (client)**: vitest mock 各错误码的 `AxiosError<ProblemDetailResponse>`（Orval/axios 生成的错误类型），断言 errorToast 文案 + state error；refresh 透明性走 packages/api-client 已有测试（本 spec 不重复）。
 
 **Acceptance Scenarios**:
 
@@ -128,7 +128,7 @@ state_branches:
 2. **Given** 同号 24h 内已用错误码尝试 5 次 `/phone-sms-auth`，**When** 第 6 次提交，**Then** 即使码正确也返回 `INVALID_CREDENTIALS`，账号锁 30 分钟
 3. **Given** 同 IP 24h 内已请求 50 次 `/sms-codes`（跨手机号），**When** 第 51 次请求，**Then** 返回 429（per `sms:<ip>` bucket）
 4. **Client**: 提交 phoneSmsAuth 时后端返回 429，state error + errorToast = "请求过于频繁，请稍后再试"；submit 按钮重新 enabled
-5. **Client**: 网络错（fetch 抛 `FetchError` per @nvy/api-client，cause = TypeError）或 5xx，state error + errorToast = "网络异常，请检查网络后重试"；submit 按钮重新 enabled
+5. **Client**: 网络错（axios 抛 `AxiosError` 无 `response`，如 `ERR_NETWORK` / timeout）或 5xx，state error + errorToast = "网络异常，请检查网络后重试"；submit 按钮重新 enabled
 6. **Client**: 错误状态下任意 input change，errorToast 清空；state 回 idle
 
 ---
@@ -205,18 +205,18 @@ state_branches:
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-C01 | 单 form 容器（**无 tab**，无密码 / SMS 切换）；用户操作路径单一：phone → SMS code → submit                                                                                                                                                                                                                                                               |
 | FR-C02 | 手机号格式校验：客户端用 zod regex `/^\+861[3-9]\d{9}$/`；不合法 form invalid，submit 按钮 disabled；不区分大小写空格（trim 处理）                                                                                                                                                                                                                       |
-| FR-C03 | submit 调 `@nvy/auth.phoneSmsAuth(phone, code)`（已落地于 PR #50 过渡 → PR #54 切到真 `getAccountAuthApi().phoneSmsAuth()`，替换既有 `loginByPassword` / `loginByPhoneSms`）；server 自动判 login/register（per FR-S05）                                                                                                                                 |
-| FR-C04 | SMS 触发：调 `@nvy/api-client.AccountSmsCodeApi.requestSmsCode({phone})` （**无 purpose 字段**，per FR-S04）；60s 倒计时锁按钮防重复点击                                                                                                                                                                                                                 |
-| FR-C05 | submit 成功后：`@nvy/auth.phoneSmsAuth` 内部调 `store.setSession({accountId, accessToken, refreshToken})`；`AuthGate` (apps/native/app/\_layout.tsx) 监听 `isAuthenticated` 自动 `router.replace('/(app)/')`。Hook **不直调** router                                                                                                                     |
-| FR-C06 | 错误统一映射（per `mapApiError` util，已含 `FetchError` 检查 per PR #48 修复）：401 → "手机号或验证码错误"；429 → "请求过于频繁，请稍后再试"；FetchError / TypeError / 5xx → "网络异常，请检查网络后重试"；未知错 → "登录失败，请稍后再试"；**不区分 401 子码**（server 单接口 4 分支字节级一致，client 仅看 401 状态）                                  |
+| FR-C03 | submit 调 `~/auth` 的 phone-sms-auth wrapper（封装 Orval mutation hook `useAccountPhoneSmsAuthControllerAuth`，body `PhoneSmsAuthRequest`）；server 自动判 login/register（per FR-S05）                                                                                                                                                                  |
+| FR-C04 | SMS 触发：调 Orval mutation hook `useAccountSmsCodeControllerRequest`（body `RequestSmsCodeRequest`，**无 purpose 字段**，per FR-S04）；60s 倒计时锁按钮防重复点击                                                                                                                                                                                       |
+| FR-C05 | submit 成功后：`~/auth` 的 phone-sms-auth wrapper 内部调 `useAuthStore` 的 `setSession({accountId, accessToken, refreshToken})`；`AuthGate` (apps/mobile/app/\_layout.tsx) 监听 `isAuthenticated` 自动 `router.replace('/(app)/')`。Hook **不直调** router                                                                                               |
+| FR-C06 | 错误统一映射（client 错误映射 util，按 `AxiosError` 判别）：401 → "手机号或验证码错误"；429 → "请求过于频繁，请稍后再试"；`AxiosError` 无 `response`（网络错）/ 5xx → "网络异常，请检查网络后重试"；未知错 → "登录失败，请稍后再试"；**不区分 401 子码**（server 单接口 4 分支字节级一致，client 仅看 401 状态）                                         |
 | FR-C07 | 三方 OAuth 圆形按钮 placeholder：press 弹 toast "<provider> 登录 - Coming in M1.3"；不调任何后端：<br>- 微信（绿色）：iOS / Android / Web 全平台渲染<br>- Google（多彩 G）：iOS / Android / Web 全平台渲染<br>- Apple（黑色苹果）：**iOS only**（`Platform.OS === 'ios'` 条件）                                                                          |
 | FR-C08 | 顶部 close `×` 按钮（per mockup v2，2026-05-04 落地）：press 时 router.back（如有 history） / 否则 noop。**原 "立即体验" 游客模式占位已废**（mockup 落地反向修订；游客模式 M2 评估时再决定 UI 入口位置）                                                                                                                                                 |
 | FR-C09 | 底部 "登录遇到问题" placeholder：press 弹 toast "帮助中心 - Coming in M1.3"；不调后端                                                                                                                                                                                                                                                                    |
 | FR-C10 | SMS "获取验证码" 按钮：成功 / 失败均不区分 toast（成功静默 + 60s 倒计时；失败也只 toast 通用错，**不暴露**"未注册"或"已注册"信号）                                                                                                                                                                                                                       |
 | FR-C11 | 状态机 5 态 idle / requesting_sms / sms_sent / submitting / (success \| error)；submitting 期间 submit 按钮 disabled + loading 视觉；success 短动画 ≤ 800ms（绿色对勾 reanimated scale-in）后 AuthGate 接管切走；error 展示 errorToast；error 状态下任意 input change 清空 errorToast 回 idle                                                            |
-| FR-C12 | 401 → refresh：本页已 mount AuthGate（PR #48），未登录态进 `/(app)/*` 自动跳 `/(auth)/login`；access token 过期场景由 `@nvy/api-client.client` 拦截器透明 refresh，不在本 spec 责任范围                                                                                                                                                                  |
+| FR-C12 | 401 → refresh：root layout 已 mount AuthGate（`apps/mobile/app/_layout.tsx`），未登录态进 `/(app)/*` 自动跳 `/(auth)/login`；access token 过期场景由 `~/auth` 的 axios 拦截器透明 refresh（`refreshOnce` / `refreshTokenFlow`），不在本 spec 责任范围                                                                                                    |
 | FR-C13 | a11y：所有交互 component（input / submit / OAuth / close × / 登录遇到问题 / 获取验证码）必有 `accessibilityLabel`；submit 按钮 disabled 时 `accessibilityState.disabled = true`；错误 toast 使用 `accessibilityLiveRegion='polite'`（Android）/ `accessibilityRole='alert'`（iOS / Web）                                                                 |
-| FR-C14 | **删除既有逻辑**：双 tab（password / sms 切换） / `<PasswordField>` 渲染 / `loginPasswordSchema` zod / `loginByPassword` use case 调用 / "忘记密码"链接 / "创建一个"footer 链接 / 跳 register 路由 — 全部废弃（已于 PR #50 一并清理）                                                                                                                    |
+| FR-C14 | **无 legacy 删除动作**：mono `apps/mobile/app/(auth)/login.tsx` 为全新单 form 落地（当前仅 PHASE 1 占位），旧 meta app 的双 tab（password / sms 切换） / `<PasswordField>` / `loginPasswordSchema` / `loginByPassword` / "忘记密码" / "创建一个" / register 路由在 mono 从不存在,无可删                                                                  |
 | FR-C15 | `errorScope` 双场景（per mockup v2 设计）：hook (`useLoginForm`) 维护 `errorScope: 'sms' \| 'submit' \| null` 字段；`requestSms` 抛错时 setErrorScope('sms')，`submit` 抛错时 setErrorScope('submit')；UI 据此决定哪个 input 标红边框 + ErrorRow 在哪一栏下方渲染（PhoneInput 旁还是 SmsInput 旁）；clearError / 任意 input change → setErrorScope(null) |
 
 ### Key Entities
@@ -241,17 +241,17 @@ state_branches:
 
 ### Client Measurable Outcomes (SC-C01 ~ SC-C09)
 
-| ID     | 标准                                                                                                                                                                                                                     | 测量方式                                                                                          |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| SC-C01 | User Story 1-5 全部 happy path 单测通过                                                                                                                                                                                  | `pnpm --filter native test` 全绿                                                                  |
-| SC-C02 | 反枚举字节级一致（client 视角）：User Story 1 happy（已注册）vs User Story 2 happy（未注册）→ submit 后 state 转移 / errorToast / store.session 写入 / router.replace 调用方式完全一致；client 代码无 phone-existed 分支 | 单测断言两 case 完全 equal（含 state machine snapshot）                                           |
-| SC-C03 | 401 自动 refresh 透明：组件层不感知 access token 过期                                                                                                                                                                    | packages/api-client 已有测试覆盖；本 spec 仅"不破坏"约束                                          |
-| SC-C04 | 限流场景 (HTTP 429) 提示用户友好且不暴露后端细节                                                                                                                                                                         | 单测 mock 429 → 断言 errorToast = FR-C06 定义                                                     |
-| SC-C05 | a11y：所有交互 component 有 accessibilityLabel + 错误用 alert role                                                                                                                                                       | 手测（浏览器 axe DevTools / iOS VoiceOver）+ ESLint react-native-a11y rule（如启用）              |
-| SC-C06 | placeholder 路径（OAuth / close × / 登录遇到问题）不调任何后端 API                                                                                                                                                       | 单测断言 `requestSmsCode` / `phoneSmsAuth` mock 调用次数 = 0                                      |
-| SC-C07 | 视觉 token 化 100%：login.tsx + 关联 packages/ui 组件零 hex / px / rgb 字面量                                                                                                                                            | grep `apps/native/app/(auth)/login.tsx` + `packages/ui/src/**` 无 `#[0-9a-f]{3,8}` / `\d+px` 命中 |
-| SC-C08 | Apple 按钮 Android conditional render：`Platform.OS === 'android'` 时 Apple Button 不出现在渲染树                                                                                                                        | 单测 mock `Platform.OS = 'android'` → 断言 `<AppleButton>` 不渲染；mock `'ios'` → 断言 渲染       |
-| SC-C09 | 三端跑通：浏览器 (RN Web) M1.2 必须；iOS / Android M2 真机渲染                                                                                                                                                           | dev 期手测 + Playwright runtime-debug.mjs（详 `docs/experience/claude-design-handoff.md` § 6）    |
+| ID     | 标准                                                                                                                                                                                                                     | 测量方式                                                                                             |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| SC-C01 | User Story 1-5 全部 happy path 单测通过                                                                                                                                                                                  | `pnpm --filter mobile test` 全绿                                                                     |
+| SC-C02 | 反枚举字节级一致（client 视角）：User Story 1 happy（已注册）vs User Story 2 happy（未注册）→ submit 后 state 转移 / errorToast / store.session 写入 / router.replace 调用方式完全一致；client 代码无 phone-existed 分支 | 单测断言两 case 完全 equal（含 state machine snapshot）                                              |
+| SC-C03 | 401 自动 refresh 透明：组件层不感知 access token 过期                                                                                                                                                                    | packages/api-client 已有测试覆盖；本 spec 仅"不破坏"约束                                             |
+| SC-C04 | 限流场景 (HTTP 429) 提示用户友好且不暴露后端细节                                                                                                                                                                         | 单测 mock 429 → 断言 errorToast = FR-C06 定义                                                        |
+| SC-C05 | a11y：所有交互 component 有 accessibilityLabel + 错误用 alert role                                                                                                                                                       | 手测（浏览器 axe DevTools / iOS VoiceOver）+ ESLint react-native-a11y rule（如启用）                 |
+| SC-C06 | placeholder 路径（OAuth / close × / 登录遇到问题）不调任何后端 API                                                                                                                                                       | 单测断言 `requestSmsCode` / `phoneSmsAuth` mock 调用次数 = 0                                         |
+| SC-C07 | 视觉 token 化 100%：login.tsx + 关联 `~/ui` 组件零 hex / px / rgb 字面量                                                                                                                                                 | grep `apps/mobile/app/(auth)/login.tsx` + `apps/mobile/src/ui/**` 无 `#[0-9a-f]{3,8}` / `\d+px` 命中 |
+| SC-C08 | Apple 按钮 Android conditional render：`Platform.OS === 'android'` 时 Apple Button 不出现在渲染树                                                                                                                        | 单测 mock `Platform.OS = 'android'` → 断言 `<AppleButton>` 不渲染；mock `'ios'` → 断言 渲染          |
+| SC-C09 | 三端跑通：浏览器 (RN Web) M1.2 必须；iOS / Android M2 真机渲染                                                                                                                                                           | dev 期手测 + Playwright runtime-debug.mjs（详 `docs/experience/claude-design-handoff.md` § 6）       |
 
 ## Clarifications
 
@@ -312,12 +312,12 @@ state_branches:
 
 ### Client Open Questions _[from app]_
 
-| #   | 问                                                | 决议                                                                                                                      |
-| --- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 1   | "立即体验"游客模式具体行为                        | M2 / M3 决定；M1.2 仅 placeholder toast（mockup v2 落地后已废 entry，等 M2 决策再加）                                     |
-| 2   | Apple 按钮 Android 端 conditional render 由谁负责 | login.tsx 用 `Platform.OS === 'ios'` 判（不下沉到 packages/ui — AppleButton 组件本身跨端可渲染，由 caller 决定）          |
-| 3   | mockup v1（双 tab）design/source/ 是否删除        | 保留作历史参考（visual tokens / design-tokens 镜像仍有效）；加 design/SUPERSEDED.md 指针指向 v2                           |
-| 4   | 重做 mockup 是否复用 v1 token 命名                | ✅ 复用（`packages/design-tokens` 命名 ink/line/surface/ok/warn/err/accent/brand 不变；新 mockup 仅改 layout / 区域结构） |
+| #   | 问                                                | 决议                                                                                                             |
+| --- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 1   | "立即体验"游客模式具体行为                        | M2 / M3 决定；M1.2 仅 placeholder toast（mockup v2 落地后已废 entry，等 M2 决策再加）                            |
+| 2   | Apple 按钮 Android 端 conditional render 由谁负责 | login.tsx 用 `Platform.OS === 'ios'` 判（不下沉到 ~/ui — AppleButton 组件本身跨端可渲染，由 caller 决定）        |
+| 3   | mockup v1（双 tab）design/source/ 是否删除        | 保留作历史参考（visual tokens / `~/theme` token 仍有效）；加 design/SUPERSEDED.md 指针指向 v2                    |
+| 4   | 重做 mockup 是否复用 v1 token 命名                | ✅ 复用（`~/theme` token 命名 ink/line/surface/ok/warn/err/accent/brand 不变；新 mockup 仅改 layout / 区域结构） |
 
 ## Assumptions
 
@@ -331,12 +331,12 @@ state_branches:
 
 ### Client Assumptions & Dependencies
 
-- `@nvy/auth.phoneSmsAuth` wrapper 已落地（PR #50 过渡 → PR #54 切真 API；替换既有 `loginByPassword` / `loginByPhoneSms`）
-- `@nvy/api-client.AccountSmsCodeApi.requestSmsCode({phone})` (无 purpose 字段) 在 server PR-B merged 后通过 `pnpm api:gen:dev` 拉取 — server PR-B 与本 spec 同 session 落地
-- AuthGate / `<Redirect>` 双保险逻辑已在 PR #48 落地
+- `~/auth` phone-sms-auth wrapper **本轮落地**（封装 Orval mutation hook `useAccountPhoneSmsAuthControllerAuth`，body `PhoneSmsAuthRequest` → response `PhoneSmsAuthResponse`）
+- Orval mutation hook `useAccountSmsCodeControllerRequest`（body `RequestSmsCodeRequest`，无 purpose 字段）已随 server ship + `pnpm nx affected --target=generate` 生成于 `packages/api-client/src/generated/accounts/`
+- AuthGate / `<Redirect>` root-layout 保护逻辑已落地（`apps/mobile/app/_layout.tsx`）
 - `expo-router` v6+ + `useRouter().replace()` 可用
 - `Platform` from `react-native` 用于 Apple Android conditional render
-- 新版 mockup 由 Claude Design 后续单独产出（按 § 2.1b 合一页 prompt 模板），落 `apps/native/specs/auth/login/design/mockup-v2.png` + `handoff.md`；旧 v1 design bundle 标 SUPERSEDED 但保留 visual tokens（`packages/design-tokens` mirror 仍生效）
+- 新版 mockup 若产出，落 `specs/001-phone-sms-auth/design/`（per sdd.md mockup 留迹路径）；旧 v1 design bundle 标 SUPERSEDED 但保留 visual tokens（`~/theme` 仍生效）
 
 ## Out of Scope
 
@@ -363,7 +363,7 @@ state_branches:
 - iOS / Android 真机渲染验证（M2.1）
 - 国际化 / 多语言（M3+）
 - 视觉细节（精确 px / hex / 阴影偏移 / 字重值）— 走 mockup → plan.md UI 段吸收
-- **register 独立页**（整页废弃；旧 `app/(auth)/register.tsx` placeholder 已于 PR #50 删除）
+- **register 独立页**（不做；登录注册合一，mono 无 register 独立路由）
 - **密码登录 / 忘记密码 / 修改密码**（整套废弃）
 - **邮箱登录 / 邮箱注册 / Google email-only 账号**（已废）
 

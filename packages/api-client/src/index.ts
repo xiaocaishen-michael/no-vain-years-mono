@@ -15,6 +15,6 @@
  * a custom axios mutator to register x-trace-id + ProblemDetail interceptor
  * via Orval `override.mutator`.
  */
-export * from './generated/accounts/accounts.js';
-export * from './generated/app/app.js';
-export * from './generated/models/index.js';
+export * from './generated/accounts/accounts';
+export * from './generated/app/app';
+export * from './generated/models/index';
