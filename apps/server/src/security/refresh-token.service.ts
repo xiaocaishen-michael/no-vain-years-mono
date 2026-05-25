@@ -12,7 +12,6 @@ import {
 } from './refresh-token.rules';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_SERIALIZATION_RETRIES = 3;
 
 /** persist 入参 —— device 元数据来自登录控制器透传 (X-Device-Id 头 + clientIp)。 */
 export interface PersistRefreshTokenInput {
@@ -84,31 +83,22 @@ export class RefreshTokenService {
   }
 
   /**
-   * 原子轮换: revoke 旧 + 签新 access/refresh + insert 新行 (继承 device 血缘 + 更 IP)。
-   * 调用方先经 findActiveByHash 拿到 active `record`。
+   * 原子轮换: 条件 revoke 旧 (affected-count 乐观锁) → 签新 access/refresh + insert 新行
+   * (继承 device 血缘 + 更 IP + 新 30d)。调用方先经 findActiveByHash 拿到 active `record`。
    *
-   * 单次使用 + 并发安全靠**条件 revoke 的 affected-count 乐观锁** (per FR-S08 类比):
-   * `updateMany({ where:{ id, revokedAt:null } })` → count===0 表示已被并发轮换/撤销
-   * → throw 401 (整 tx 回滚)。Serializable 双失败形态 (memory prisma_serializable_p2002_and_p2034):
-   *   - **P2002**(新 hash 撞唯一索引,256-bit 近不可能,防御性)→ 折 401。
-   *   - **P2034**(写冲突/序列化失败,整 tx abort)→ 外层 ≤3 次重试整 tx
-   *     (镜像 commit-phone-login.usecase.ts);重试时已被 winner 撤旧 → count===0 → 401。
+   * 单次使用 + 并发 exactly-once 靠 `updateMany({ where:{ id, revokedAt:null } })` 的
+   * **affected-count**: count===0 → 已被并发轮换/撤销 → throw 401 (整 tx 回滚)。
+   *
+   * 隔离级 **READ COMMITTED 即够** —— 同 token 并发由行锁串行化 (后到者 re-check
+   * `revokedAt IS NULL` → count=0 → 401); 独立 token 不共享行,零冲突。
+   * **不用 SERIALIZABLE**: 它在共享 `revoked_at IS NULL` 偏索引上产生 SSI 假冲突
+   * (Postgres 40001),令独立 token 的高并发轮换批量失败 (T015 实证 72/100),而
+   * affected-count 已独立保证 exactly-once → SERIALIZABLE 对 rotate 纯冗余 + 有害。
+   * tokenHash 唯一约束 (256-bit 高熵,实际不撞) 若违例 → tx 原子回滚 (旧不撤),client 重试即可。
+   *
    * 10 并发同 token → 恰 1 成功 + 9×401;100 并发不同 token → 0 错误 (独立行无争用)。
    */
   async rotate(record: RefreshToken, clientIp: string | null): Promise<RotatedTokens> {
-    for (let attempt = 1; ; attempt++) {
-      try {
-        return await this.rotateOnce(record, clientIp);
-      } catch (e) {
-        if (isWriteConflict(e) && attempt < MAX_SERIALIZATION_RETRIES) {
-          continue;
-        }
-        throw e;
-      }
-    }
-  }
-
-  private async rotateOnce(record: RefreshToken, clientIp: string | null): Promise<RotatedTokens> {
     const accountId = record.accountId;
     return this.prisma.$transaction(
       async (tx) => {
@@ -124,30 +114,23 @@ export class RefreshTokenService {
         const accessToken = this.jwt.signAccessToken({ accountId });
         const newRefreshToken = this.jwt.generateRefreshToken();
         const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * DAY_MS);
-        try {
-          // 继承 device 血缘 (deviceId/Name/Type + loginMethod), 更新本次 IP, 新 30d 有效期。
-          await tx.refreshToken.create({
-            data: {
-              tokenHash: hashRefreshToken(newRefreshToken),
-              accountId,
-              expiresAt,
-              deviceId: record.deviceId,
-              deviceName: record.deviceName,
-              deviceType: record.deviceType,
-              loginMethod: record.loginMethod,
-              ipAddress: scrubPrivateIp(clientIp),
-            },
-          });
-        } catch (e) {
-          if (isPrismaUniqueViolation(e)) {
-            throw new UnauthorizedException('INVALID_CREDENTIALS');
-          }
-          throw e;
-        }
+        // 继承 device 血缘 (deviceId/Name/Type + loginMethod), 更新本次 IP, 新 30d 有效期。
+        await tx.refreshToken.create({
+          data: {
+            tokenHash: hashRefreshToken(newRefreshToken),
+            accountId,
+            expiresAt,
+            deviceId: record.deviceId,
+            deviceName: record.deviceName,
+            deviceType: record.deviceType,
+            loginMethod: record.loginMethod,
+            ipAddress: scrubPrivateIp(clientIp),
+          },
+        });
 
         return { accountId, accessToken, refreshToken: newRefreshToken };
       },
-      { isolationLevel: 'Serializable' },
+      { isolationLevel: 'ReadCommitted' },
     );
   }
 
@@ -155,17 +138,4 @@ export class RefreshTokenService {
   revokeAllForAccount(_accountId: bigint, _now: Date): Promise<void> {
     throw new Error('not implemented (T016)');
   }
-}
-
-function isPrismaUniqueViolation(e: unknown): boolean {
-  return (
-    typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'P2002'
-  );
-}
-
-// Prisma P2034: Postgres Serializable 序列化失败 (40001),整 tx 已 abort,retryable。
-function isWriteConflict(e: unknown): boolean {
-  return (
-    typeof e === 'object' && e !== null && 'code' in e && (e as { code?: unknown }).code === 'P2034'
-  );
 }
