@@ -100,7 +100,7 @@ created_at: '2026-05-25'
 **Goal**：401 透明续期（single-flight + retry once + 豁免）；logout-all wrapper（finally 清 session）。
 **Independent Test**：vitest logic-level（拦截器调用次数 / 重试 / 清 session）；Playwright Web e2e 端到端续期。
 
-- [ ] T021 [P] [US7] [Mobile] device id 生成 + 本地持久化（`apps/mobile/src/auth/`：uuid v4 + `expo-secure-store`，web localStorage fallback）+ api-client 请求拦截器注入 `X-Device-Id` 头 + logic 单测
+- [X] T021 [P] [US7] [Mobile] device id 生成 + 本地持久化（`apps/mobile/src/auth/`：uuid v4 + `expo-secure-store`，web localStorage fallback）+ api-client 请求拦截器注入 `X-Device-Id` 头 + logic 单测。**已由既有 A3 gap-audit 实装覆盖**（`device-store.ts` `getOrInitId()` 惰性合成 + persist 走 `expo-secure-store`/web `localStorage` fallback + `setup.ts` 请求拦截器注入 `x-device-id`；`device-store.spec.ts` 16 测绿）；**drift（已确认不返工）**：id 用 `nanoid(21)` 非 `uuid v4` —— 功能等价（稳定 per-install 标识，满足 FR-C04），且既有实现额外发 `x-device-name`/`x-device-type`（server 本批次忽略，铺 005）。Surgical Edits 不重写 working code
 - [ ] T022 [US7] [Mobile] 透明续期拦截器（`packages/api-client/src/` axios response interceptor）：401 → single-flight 一次 refresh（共享 in-flight promise）→ 新 access 重试原请求一次（`x-nvy-retry` 标记防二次）→ refresh 端点豁免 → 失败清 session + 路由 login + vitest logic-level（断言 refresh 调用次数=1 / 重试 1 次 / 豁免 / 失败清 session）。Metro `.js` 陷阱：相对 import extensionless
 - [ ] T023 [P] [US8] [Mobile] `logout-all` wrapper（`apps/mobile/src/auth/`）：调 Orval logout-all hook + `finally` 无条件清 session（zustand clear）+ 路由 login + 单测（成功/失败均清 session）。**无可见 UI**
 - [ ] T024 [US7] [Mobile-E2E] `apps/mobile/e2e/tokens-refresh.spec.ts`（Playwright Web）：登录 → 模拟 access 过期触发 401 → 透明续期 → 业务请求成功（复用 `apps/mobile/e2e/_support/api-mock.ts` 的 `mockJson`）
