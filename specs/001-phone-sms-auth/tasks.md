@@ -322,7 +322,7 @@ stdlib):
 > CON1 拆分：屏拆「skin 组装 / 状态机接线」各 ≤2h。`app/` 树 presentational → 无 vitest（mono 架构），行为/render 覆盖走 T066 Playwright。
 
 - [X] T064 [Mobile] [US1] `login.tsx` skin 组装 → `apps/mobile/app/(auth)/login.tsx`（替换 PHASE 1 占位）：`<Controller>` 包 `PhoneInput`/`SmsInput`（铁律 1）+ `LogoMark`/标题/`PrimaryButton`/「获取验证码」按钮 + **顶部 close `×`**（FR-C08：有 history → `router.back`，否则 noop）+ FR-C13 全交互 `accessibilityLabel`；verify：typecheck/lint pass + **SC-C07 grep**（`apps/mobile/app/(auth)/login.tsx` + `apps/mobile/src/ui/**` 无 `#[0-9a-f]{3,8}` / `\d+px` / rgb 字面量）；render 覆盖 → T066
-- [ ] T065 [Mobile] [US1] `login.tsx` 状态机接线 + success → 接 T062–T064：FR-C11 五态视觉（submitting loading + 按钮 disabled）+ `ErrorRow` + `errorScope` 标红边框（铁律 4）+ success reanimated scale-in ≤800ms → AuthGate 接管 `router.replace('/(app)/')`；verify：typecheck/lint pass；行为覆盖 → T066
+- [X] T065 [Mobile] [US1] `login.tsx` 状态机接线 + success → 接 T062–T064：FR-C11 五态视觉（submitting loading + 按钮 disabled）+ `ErrorRow` + `errorScope` 标红边框（铁律 4）+ success reanimated scale-in ≤800ms → AuthGate 接管 `router.replace('/(app)/')`；verify：typecheck/lint pass；行为覆盖 → T066
 
 ### Polish / e2e
 
