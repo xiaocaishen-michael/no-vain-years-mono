@@ -15,6 +15,18 @@
       "Bash(npx prisma *)"
     ]
   },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/graphify-cheatsheet-hook.sh\""
+          }
+        ]
+      }
+    ]
+  },
   "plansDirectory": "./docs/plans",
   "extraKnownMarketplaces": {
     "nx-claude-plugins": {
