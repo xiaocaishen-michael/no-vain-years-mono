@@ -1,8 +1,8 @@
 ---
 feature_id: 003-tokens
-modules: [auth, security]
+modules: [auth, security, account]
 owners: ['@xiaocaishen-michael']
-status: draft
+status: implemented
 created_at: '2026-05-25'
 updated_at: '2026-05-25'
 spec_kit_version: '>=0.8.5,<0.10.0'

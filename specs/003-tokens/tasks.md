@@ -109,7 +109,7 @@ created_at: '2026-05-25'
 
 ## Phase 9: Polish & Verify
 
-- [ ] T025 [Server] catalog Operation 清单新增行：`server-bounded-context-catalog.md` § Operation Catalog 加 `logout-all`(auth,R2→security.revoke-all) / `persist-refresh-token` / `rotate-refresh-token` / `revoke-all-refresh-tokens`(security) / `inspect-account-status-by-id`(account)；spec + plan frontmatter `status` bump（draft→implemented / drafted→done）
+- [X] T025 [Server] catalog Operation 清单新增行：`server-bounded-context-catalog.md` § Operation Catalog 已实装表加 6 行（`refresh-token`/`logout-all` auth 编排 + `inspect-account-status-by-id` account 只读 + `persist`/`rotate`/`revoke-all-refresh-token` security）+ 从 anticipated 表移除已实装的 `refresh-token` + 日期 bump 2026-05-25；spec frontmatter `status: draft→implemented`（**附带修正** `modules: [auth, security]→[auth, security, account]` —— T009 加了 account `inspect-account-status-by-id` use case，倒查需 account in modules，per bounded-context rule）；plan frontmatter `status: drafted→done`
 - [ ] T026 [Verify] `pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿（含 `runtime-smoke`）+ `scripts/checks/check-server-moat.ts` 跨 ctx 注释通过 + 真后端冒烟（refresh+logout-all curl）+ web e2e 通过
 
 ---

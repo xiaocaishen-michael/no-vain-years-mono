@@ -1,7 +1,7 @@
 ---
 feature_id: 003-tokens
 spec_ref: ./spec.md
-status: drafted
+status: done
 created_at: '2026-05-25'
 updated_at: '2026-05-25'
 adr_refs: ['0019', '0022', '0023', '0024', '0030', '0032', '0041', '0043']

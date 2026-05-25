@@ -105,16 +105,22 @@ await this.prisma.$transaction(async (tx) => {
 
 ## Operation Catalog
 
-### 已实装（截至 2026-05-24）
+### 已实装（截至 2026-05-25）
 
-| Operation                | Context | Side effects / Propagation                                                                                                                                                                                                     | Source PR             |
-| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
-| `request-sms-code`       | auth    | (intra; sms gateway external infra; no cross-context)                                                                                                                                                                          | PR #7 (Plan 1 W2.4)   |
-| `phone-sms-auth`         | auth    | 编排（两段式委托，per ADR-0043 § 3a）：**R2 读** → `account.inspect-account-status`（状态探查，反枚举分支先于验码）; **R2 写** → `account.commit-phone-login`; `security.issueTokens`。auth 内零 `tx.account.*`（护城河 #160） | PR #7 → 改 #160 (R-4) |
-| `inspect-account-status` | account | 跨 ctx **只读**（被 auth 委托）— 返回贫血 `{ kind: NOT_FOUND\|ACTIVE\|FROZEN\|ANONYMIZED }`，不改数据（两段式 Saga 读半段）                                                                                                    | PR #160 (R-4)         |
-| `commit-phone-login`     | account | 跨 ctx **写**（被 auth 委托）— **R2** find-or-create + record lastLoginAt（account 写自己的表）+ **R3** outbox publish `auth.account.created`（account 发自己的事件）；FR-S08 P2002 race fallback                              | PR #160 (R-4)         |
-| `get-account-profile`    | account | (intra; read-only)                                                                                                                                                                                                             | PR #65 (A-002)        |
-| `update-display-name`    | account | (intra; write Account.display_name)                                                                                                                                                                                            | PR #65                |
+| Operation                      | Context  | Side effects / Propagation                                                                                                                                                                                                        | Source PR              |
+| ------------------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `request-sms-code`             | auth     | (intra; sms gateway external infra; no cross-context)                                                                                                                                                                             | PR #7 (Plan 1 W2.4)    |
+| `phone-sms-auth`               | auth     | 编排（两段式委托，per ADR-0043 § 3a）：**R2 读** → `account.inspect-account-status`（状态探查，反枚举分支先于验码）; **R2 写** → `account.commit-phone-login`; `security.issueTokens`。auth 内零 `tx.account.*`（护城河 #160）    | PR #7 → 改 #160 (R-4)  |
+| `inspect-account-status`       | account  | 跨 ctx **只读**（被 auth 委托）— 返回贫血 `{ kind: NOT_FOUND\|ACTIVE\|FROZEN\|ANONYMIZED }`，不改数据（两段式 Saga 读半段）                                                                                                       | PR #160 (R-4)          |
+| `commit-phone-login`           | account  | 跨 ctx **写**（被 auth 委托）— **R2** find-or-create + record lastLoginAt（account 写自己的表）+ **R3** outbox publish `auth.account.created`（account 发自己的事件）；FR-S08 P2002 race fallback                                 | PR #160 (R-4)          |
+| `get-account-profile`          | account  | (intra; read-only)                                                                                                                                                                                                                | PR #65 (A-002)         |
+| `update-display-name`          | account  | (intra; write Account.display_name)                                                                                                                                                                                               | PR #65                 |
+| `refresh-token`                | auth     | 编排（两段式委托）：**R2 读** → `account.inspect-account-status-by-id`（账号可登录判定，非 ACTIVE 折 401 反枚举）; **R2 写** → `security.rotate-refresh-token`（原子轮换失败必须 rollback 整请求）。auth 内零 `tx.refreshToken.*` | 003-tokens (T011/T012) |
+| `logout-all`                   | auth     | 编排：**R2 写** → `security.revoke-all-refresh-tokens`（撤账号全部 active，幂等 204；`JwtAccessGuard` 仅验 token 不门控状态 → frozen 也可登出）                                                                                   | 003-tokens (T017)      |
+| `inspect-account-status-by-id` | account  | 跨 ctx **只读**（被 auth refresh 委托）— by-id 变体，复用 `inspect-account-status` 的 `{ kind: NOT_FOUND\|ACTIVE\|FROZEN\|ANONYMIZED }` 联合（两段式 Saga 读半段）                                                                | 003-tokens (T009)      |
+| `persist-refresh-token`        | security | platform infra（被 auth 登录流 + refresh 流调用）— 签发即落库 1 active 行（tokenHash + device 元数据 + 30d 过期）                                                                                                                 | 003-tokens (T005/T006) |
+| `rotate-refresh-token`         | security | platform infra — 原子轮换（READ COMMITTED tx + affected-count 乐观锁；条件 revoke 旧 → 签新 → insert 新，继承 device 血缘 + 更 IP）；失败抛 → auth 回滚                                                                           | 003-tokens (T010)      |
+| `revoke-all-refresh-tokens`    | security | platform infra — `updateMany {accountId, revokedAt:null}` 幂等批量撤销（count 忽略，已撤行时间戳不变）                                                                                                                            | 003-tokens (T016)      |
 
 ### Plan 2 anticipated（示例，非实装承诺）
 
@@ -122,7 +128,6 @@ await this.prisma.$transaction(async (tx) => {
 | ----------------- | --------------------- | ------------------------------------------------------------------------- |
 | `change-phone`    | account               | **R3** → `account.phone-changed`（→ security 撤旧 session + audit 留痕）  |
 | `freeze-account`  | account               | **R3** → `account.frozen`（→ security 撤 session + audit）                |
-| `refresh-token`   | auth                  | **R2** → `security.rotate-refresh-token`（rotation 失败必须 rollback）    |
 | `verify-realname` | account               | **R3** → `account.realname-verified`（→ notification 发成功短信 + audit） |
 | `create-note`     | **新 context** `pkm/` | Q4 → 触发新 bounded context 评估                                          |
 
