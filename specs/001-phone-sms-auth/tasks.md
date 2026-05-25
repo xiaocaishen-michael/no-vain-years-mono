@@ -312,27 +312,31 @@ stdlib):
 
 ### Implementation for US1（已注册 + 未注册主流程，client 同一路径）
 
-- [ ] T062 [Mobile] [US1] `useLoginForm` hook → `apps/mobile/src/auth/use-login-form.ts`：RHF + `zodResolver`（铁律 1 Controller 订阅）；**副作用态分层**（铁律 2：`useAccountSmsCodeControllerRequest` mutation + 60s `useRef` 倒计时在 RHF 外）；`isSubmitting` 单源（铁律 3）；`AxiosError` → `errorToast` 映射（FR-C06）+ `errorScope`（FR-C15）+ `clearError`；RED：**helper-level** 单测（倒计时启停 / requestSms→sms_sent / submit success→setSession / 错误映射 — helper-level 避 event-handler spy-rejection false-positive，per memory `feedback_vitest_spy_rejection_through_event_handlers`）→ GREEN
-- [ ] T063 [Mobile] [US1] `login.tsx` 屏组装 → `apps/mobile/app/(auth)/login.tsx`（替换 PHASE 1 占位）：`<Controller>` 包 `PhoneInput`/`SmsInput`（铁律 1）；FR-C11 五态视觉；`ErrorRow` + `errorScope` 标红边框（铁律 4）；success reanimated scale-in ≤800ms → AuthGate 接管 `router.replace('/(app)/')`；FR-C13 全交互 `accessibilityLabel`；RED：组件测 US1 happy（输入手机号 → 获取码 → 输入码 → 登录 → 断言 `setSession` + success 态）+ 初始 submit disabled → GREEN
+> CON1 拆分：`useLoginForm` hook 拆「核心 / 错误映射」、`login.tsx` 屏拆「skin 组装 / 状态机接线」，各 ≤2h（Constitution III）。
+
+- [ ] T062 [Mobile] [US1] `useLoginForm` 核心 → `apps/mobile/src/auth/use-login-form.ts`：RHF + `zodResolver`（铁律 1 Controller 订阅）；**副作用态分层**（铁律 2：`useAccountSmsCodeControllerRequest` mutation + 60s `useRef` 倒计时在 RHF 外）；`isSubmitting` 单源（铁律 3）；FR-C11 状态机（idle → requesting_sms → sms_sent → submitting → success）；RED：**helper-level** 单测（倒计时启停 / requestSms→sms_sent / submit success→setSession，per memory `feedback_vitest_spy_rejection_through_event_handlers`）→ GREEN
+- [ ] T063 [Mobile] [US1] `useLoginForm` 错误映射 → `use-login-form.ts`（接 T062）：`AxiosError` → `errorToast` 映射（FR-C06：401 / 429 / 网络错 / 未知）+ `errorScope`（FR-C15 `sms|submit|null`）+ `clearError`（error → input change 回 idle）；RED：helper-level 单测（401 / 429 / `AxiosError` 无 `response` 各映射 + errorScope + clearError）→ GREEN
+- [ ] T064 [Mobile] [US1] `login.tsx` skin 组装 → `apps/mobile/app/(auth)/login.tsx`（替换 PHASE 1 占位）：`<Controller>` 包 `PhoneInput`/`SmsInput`（铁律 1）+ `LogoMark`/标题/`PrimaryButton`/「获取验证码」按钮 + **顶部 close `×`**（FR-C08：有 history → `router.back`，否则 noop）+ FR-C13 全交互 `accessibilityLabel`；RED：组件测（render + 初始 submit disabled + close × 行为）→ GREEN；**verify SC-C07**：`grep apps/mobile/app/(auth)/login.tsx + apps/mobile/src/ui/**` 无 `#[0-9a-f]{3,8}` / `\d+px` / rgb 字面量
+- [ ] T065 [Mobile] [US1] `login.tsx` 状态机接线 + success → 接 T062–T064：FR-C11 五态视觉（submitting loading + 按钮 disabled）+ `ErrorRow` + `errorScope` 标红边框（铁律 4）+ success reanimated scale-in ≤800ms → AuthGate 接管 `router.replace('/(app)/')`；RED：组件测 US1 happy 全流程（输入手机号 → 获取码 → 输入码 → 登录 → 断言 `setSession` + success 态）→ GREEN
 
 ### Implementation for US2（未注册自动注册，client 视角字节级一致）
 
-- [ ] T064 [Mobile] [US2] 反枚举 client 一致性组件测（SC-C02）→ `apps/mobile/app/(auth)/login.test.tsx`：mock 已注册 vs 未注册两 Orval 响应，断言 submit 后 state 转移 / `errorToast` / `setSession` / `router.replace` 完全 equal；验证 client 代码 **无 phone-existed 分支**（US2 client = US1 client）
+- [ ] T066 [Mobile] [US2] 反枚举 client 一致性组件测（SC-C02）→ `apps/mobile/app/(auth)/login.test.tsx`：mock 已注册 vs 未注册两 Orval 响应，断言 submit 后 state 转移 / `errorToast` / `setSession` / `router.replace` 完全 equal；验证 client 代码 **无 phone-existed 分支**（US2 client = US1 client）
 
 ### Implementation for US3 + US4（反枚举 401 + 边缘错误，client 错误映射）
 
-- [ ] T065 [Mobile] [US4] 边缘错误映射组件测（SC-C04/C06）→ `login.test.tsx`：429 → "请求过于频繁，请稍后再试"；`AxiosError` 无 `response`（网络错）→ "网络异常，请检查网络后重试"；401（US3 FROZEN/ANONYMIZED/码错 **不区分子码**）→ "手机号或验证码错误"；error 态 → 任意 input change → `clearError` 回 idle（FR-C12）
+- [ ] T067 [Mobile] [US4] 边缘错误映射组件测（SC-C04/C06）→ `login.test.tsx`：429 → "请求过于频繁，请稍后再试"；`AxiosError` 无 `response`（网络错）→ "网络异常，请检查网络后重试"；401（US3 FROZEN/ANONYMIZED/码错 **不区分子码**）→ "手机号或验证码错误"；error 态 → 任意 input change → `clearError` 回 idle（FR-C12）
 
 ### Polish
 
-- [ ] T066 [Mobile] web e2e smoke（Playwright，SC-C09）→ `apps/mobile/e2e/login.spec.ts`：浏览器登录流程跑通；注意 expo-router web 隐藏 `(auth)` group URL 段 + Desktop Chrome `hasTouch:false`（memory `reference_expo_router_web_hides_route_groups`）；success 走**不清 session** 等价断言路径（memory `feedback_visual_smoke_unreachable_when_finally_clears_session`）
+- [ ] T068 [Mobile] web e2e smoke（Playwright，SC-C09）→ `apps/mobile/e2e/login.spec.ts`：浏览器登录流程跑通；注意 expo-router web 隐藏 `(auth)` group URL 段 + Desktop Chrome `hasTouch:false`（memory `reference_expo_router_web_hides_route_groups`）；success 走**不清 session** 等价断言路径（memory `feedback_visual_smoke_unreachable_when_finally_clears_session`）
 
 ### Phase M Dependencies & Execution
 
-- 全部依赖 server + Orval api-client（已 ship）；**无新 npm dep**（RHF/resolvers/zod 已装）
+- 全部依赖 server + Orval api-client（已 ship）；**无新 npm dep**（RHF/resolvers/zod + reanimated 4.1 + @playwright/test 均已装）
 - T059 / T060 `[P]` 可并行（不同文件）；T061 独立
-- T062 依赖 T060（schema）+ T061（wrapper）；T063 依赖 T059（`~/ui`）+ T062（hook）；T064 / T065 依赖 T063；T066 依赖 T063
+- T062 依赖 T060（schema）+ T061（wrapper）；T063 依赖 T062（同 hook 文件，错误映射接核心）；T064 依赖 T059（`~/ui`）+ T062（hook 存在）；T065 依赖 T063（错误映射，`ErrorRow` 用）+ T064（skin）；T066 / T067 / T068 依赖 T065
 - 每 task 走 /implement 6 步闭环（RED → GREEN → `pnpm nx run mobile:typecheck && pnpm nx run mobile:lint` → tasks.md `[X]` → stage → commit），per `.claude/rules/implement-task-closure.md`
 - **Stop / Surface**：撞 spec 歧义 / 需新 dep（本切片已满足）/ destructive op / 跨 PR scope → 停问 user
 
-**Phase M tasks**: 8（Foundational 3 + US1 2 + US2 1 + US3/US4 1 + Polish 1）
+**Phase M tasks**: 10（Foundational 3 + US1 4 + US2 1 + US3/US4 1 + Polish 1）
