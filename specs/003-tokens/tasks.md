@@ -110,7 +110,7 @@ created_at: '2026-05-25'
 ## Phase 9: Polish & Verify
 
 - [X] T025 [Server] catalog Operation 清单新增行：`server-bounded-context-catalog.md` § Operation Catalog 已实装表加 6 行（`refresh-token`/`logout-all` auth 编排 + `inspect-account-status-by-id` account 只读 + `persist`/`rotate`/`revoke-all-refresh-token` security）+ 从 anticipated 表移除已实装的 `refresh-token` + 日期 bump 2026-05-25；spec frontmatter `status: draft→implemented`（**附带修正** `modules: [auth, security]→[auth, security, account]` —— T009 加了 account `inspect-account-status-by-id` use case，倒查需 account in modules，per bounded-context rule）；plan frontmatter `status: drafted→done`
-- [ ] T026 [Verify] `pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿（含 `runtime-smoke`）+ `scripts/checks/check-server-moat.ts` 跨 ctx 注释通过 + 真后端冒烟（refresh+logout-all curl）+ web e2e 通过
+- [X] T026 [Verify] **全门绿**（base=origin/main，--skip-nx-cache）：lint+typecheck（4 projects 0 errors）/ test（server 277 passed +1 skip env-gated perf IT，含 tokens US1-US6 全 Testcontainers IT；mobile 117；api-client；@nvy/checks）/ build（4 projects）/ runtime-smoke（**server-boot-smoke** 真 boot NestFastify+真 PG/Redis 探 `/me`→401 + `/sms-codes`→400 契约 ✓；**mobile** `expo export -p web` 全 bundle + playwright **11 e2e 全绿**含 T024 tokens-refresh + login/onboarding/profile）+ `check-server-moat.ts` **0 违规**。**真后端冒烟说明**：refresh+logout-all 的真 HTTP-against-真后端覆盖由全-AppModule-boot ITs（T013 rotate / T018 logout-all / T019 rate-limit，真 PG+Redis 真 HTTP）+ server-boot-smoke（真 app 启动）提供，比手动 curl 更全；未另跑交互式 curl（IT 等价覆盖）
 
 ---
 
