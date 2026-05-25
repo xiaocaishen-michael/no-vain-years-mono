@@ -48,7 +48,7 @@ created_at: '2026-05-25'
 **Goal**：登录成功后落 1 条 active refresh-token 行（带 device 元数据 + 30d 过期 + tokenHash）。
 **Independent Test**：Testcontainers PG；新号经 phone-sms-auth 成功 → DB 新增 1 active 记录，逐字段断言。
 
-- [ ] T005 [US1] [Server] `RefreshTokenService.persist(accountId, rawToken, { deviceId?, deviceName?, deviceType?, clientIp, loginMethod })` in `apps/server/src/security/refresh-token.service.ts`：hash token → `prisma.refreshToken.create`（`expiresAt=now+30d`、`deviceId` 缺失回退 uuid、`ipAddress=scrubPrivateIp`、`deviceType=normalizeDeviceType`、`revokedAt=null`）+ 单测（Testcontainers PG：有/无 deviceId 两路 + 私网 IP 落 null）
+- [X] T005 [US1] [Server] `RefreshTokenService.persist(accountId, rawToken, { deviceId?, deviceName?, deviceType?, clientIp, loginMethod })` in `apps/server/src/security/refresh-token.service.ts`：hash token → `prisma.refreshToken.create`（`expiresAt=now+30d`、`deviceId` 缺失回退 uuid v4、`ipAddress=scrubPrivateIp`、`deviceType=normalizeDeviceType`、`revokedAt=null`）+ 构造器补 `PrismaService` DI + 单测（Testcontainers PG：显式 deviceId + 私网 IP→null + deviceType 归一 / 无 deviceId→uuid v4 + 公网 IP 原样）。**run via `nx test server <file>`（cwd=apps/server，prisma migrate deploy 需）**
 - [ ] T006 [US1] [Server] 改既有登录流接 persist：`phone-sms-auth.usecase.ts` 注入 `RefreshTokenService`（注入点上方 `// CROSS-CONTEXT-SYNC: auth → security 持久化 refresh-token`）→ `commitPhoneLogin` 后调 `persist(...)`；`account-phone-sms-auth.controller.ts` 取 `X-Device-Id` 头 + clientIp 透传 usecase；更新既有 `phone-sms-auth.usecase.spec.ts`（断言 persist 被调 + 返回 shape 不漂）
 - [ ] T007 [US1] [Server-IT] `apps/server/test/integration/tokens.us1-persist.it.spec.ts`（Testcontainers PG）：登录成功 → DB active 记录逐字段（tokenHash=返回 token 哈希 / accountId / expiresAt≈+30d / deviceId 非空 / loginMethod=PHONE_SMS）；带 `X-Device-Id` vs 不带（回退）两路
 

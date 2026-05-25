@@ -1,5 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { RefreshToken } from '../generated/prisma/client';
+import { PrismaService } from './prisma.service';
+import { hashRefreshToken } from './refresh-token-hasher';
+import { REFRESH_TTL_DAYS, normalizeDeviceType, scrubPrivateIp } from './refresh-token.rules';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** persist 入参 —— device 元数据来自登录控制器透传 (X-Device-Id 头 + clientIp)。 */
 export interface PersistRefreshTokenInput {
@@ -31,9 +37,31 @@ export interface RotatedTokens {
  */
 @Injectable()
 export class RefreshTokenService {
-  /** T005: hash token + create active 行 (expiresAt=now+30d / scrubPrivateIp / normalizeDeviceType / deviceId 缺失回退 uuid)。 */
-  persist(_accountId: bigint, _rawToken: string, _meta: PersistRefreshTokenInput): Promise<void> {
-    throw new Error('not implemented (T005)');
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * 签发即持久化: hash token + create 1 条 active 行。
+   * expiresAt = now + 30d; deviceId 缺失 → 回退 uuid v4; clientIp 经 scrubPrivateIp
+   * (私网/回环/非法 → null); deviceType 经 normalizeDeviceType 归一; revokedAt 默认 null。
+   */
+  async persist(
+    accountId: bigint,
+    rawToken: string,
+    meta: PersistRefreshTokenInput,
+  ): Promise<void> {
+    const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * DAY_MS);
+    await this.prisma.refreshToken.create({
+      data: {
+        tokenHash: hashRefreshToken(rawToken),
+        accountId,
+        expiresAt,
+        deviceId: meta.deviceId ?? randomUUID(),
+        deviceName: meta.deviceName ?? null,
+        deviceType: normalizeDeviceType(meta.deviceType),
+        ipAddress: scrubPrivateIp(meta.clientIp),
+        loginMethod: meta.loginMethod,
+      },
+    });
   }
 
   /** T008: 按 tokenHash 查 + isActive(record, now) 过滤 → record | null。 */
