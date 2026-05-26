@@ -67,7 +67,7 @@ created_at: '2026-05-26'
 
 **Independent Test**（spec US4）：4 桶各超限 → 429 + Retry-After。
 
-- [ ] T013 [US4] [Server-IT] `apps/server/test/integration/devices.us4-rate-limit.it.spec.ts`（全 boot + `beforeEach` Redis flushall）：4 规则各超限 → 429 + `Retry-After`（list account 第 31 / IP 第 101 · revoke account 第 6 / IP 第 21）+ 无公网 IP 时 IP 桶跳过
+- [X] T013 [US4] [Server-IT] `apps/server/test/integration/devices.us4-rate-limit.it.spec.ts`（全 boot + `beforeEach` Redis flushall）：4 规则各超限 → 429 + `Retry-After`（list account 第 31 / IP 第 101 · revoke account 第 6 / IP 第 21）+ 无公网 IP 时 IP 桶跳过
 
 ## Phase 7: 采集补强 (FR-S14, 独立可并行)
 
