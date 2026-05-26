@@ -5,6 +5,7 @@ import { UpdateDisplayNameUseCase } from './update-display-name.usecase.js';
 import { InspectAccountStatusUseCase } from './inspect-account-status.usecase.js';
 import { InspectAccountStatusByIdUseCase } from './inspect-account-status-by-id.usecase.js';
 import { CommitPhoneLoginUseCase } from './commit-phone-login.usecase.js';
+import { CommitAccountFreezeUseCase } from './commit-account-freeze.usecase.js';
 import { AccountProfileController } from './account-profile.controller.js';
 import { AccountIdThrottlerGuard } from './account-id-throttler.guard.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
@@ -36,6 +37,7 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     InspectAccountStatusUseCase,
     InspectAccountStatusByIdUseCase,
     CommitPhoneLoginUseCase,
+    CommitAccountFreezeUseCase,
     JwtAuthGuard,
     AccountIdThrottlerGuard,
   ],
@@ -45,6 +47,7 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     InspectAccountStatusUseCase,
     InspectAccountStatusByIdUseCase,
     CommitPhoneLoginUseCase,
+    CommitAccountFreezeUseCase,
   ],
 })
 export class AccountModule {}
