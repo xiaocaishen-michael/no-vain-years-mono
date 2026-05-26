@@ -32,7 +32,7 @@ created_at: '2026-05-26'
 
 ## Phase 1: Setup & 决策
 
-- [ ] T001 [Server] 装 `@nestjs/schedule`（`pnpm -C apps/server add @nestjs/schedule`）+ `ScheduleModule.forRoot()` 注册进 `apps/server/src/app.module.ts`（或 `account.module.ts`）+ verify typecheck/build 绿（mono 首个 scheduler）。锚定 plan 6 决策：D1 用 DB `account_sms_code`（已 db-pull 无 migration）/ D2 affected-count 非悲观锁 / D3 R2 sync 扩 `revokeAllForAccount` 收 tx / D4 scheduler 每日 cron / D5 sms purpose / D6 匿名化不删码行
+- [X] T001 [Server] 装 `@nestjs/schedule`（`pnpm -C apps/server add @nestjs/schedule`）+ `ScheduleModule.forRoot()` 注册进 `apps/server/src/app.module.ts`（或 `account.module.ts`）+ verify typecheck/build 绿（mono 首个 scheduler）。锚定 plan 6 决策：D1 用 DB `account_sms_code`（已 db-pull 无 migration）/ D2 affected-count 非悲观锁 / D3 R2 sync 扩 `revokeAllForAccount` 收 tx / D4 scheduler 每日 cron / D5 sms purpose / D6 匿名化不删码行
 
 ## Phase 2: Foundational（阻塞多 US — security 扩 + account.rules + sms infra）
 

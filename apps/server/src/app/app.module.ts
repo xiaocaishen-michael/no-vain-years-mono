@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
 import { ClsModule, ClsService } from 'nestjs-cls';
 import { AuthModule } from '../auth/auth.module.js';
@@ -32,6 +33,9 @@ import { AppService } from './app.service.js';
  */
 @Module({
   imports: [
+    // mono's first scheduler (per plan D4): account-anonymization daily cron.
+    // forRoot() once at the root; @Cron handlers live in account/ schedulers.
+    ScheduleModule.forRoot(),
     AuthModule,
     HealthModule,
     MetricsModule,
