@@ -106,7 +106,7 @@ created_at: '2026-05-26'
 
 ## Phase 8: User Story 9 — 限流 (P2)
 
-- [ ] T031 [US9] [Server-IT] `deletion.us9-rate-limit.it.spec.ts`（全 boot + `beforeEach` Redis flushall）：8 规则各超限 → 429 + `Retry-After`（del-code account 第 2/IP 第 6 · del-submit account 第 6/IP 第 11 · cancel-code phone 第 2/IP 第 6 · cancel-submit phone 第 6/IP 第 11）+ 限流命中时未触账号加载/未写码行（验证账号状态不变）
+- [X] T031 [US9] [Server-IT] `deletion.us9-rate-limit.it.spec.ts`（全 boot + `beforeEach` Redis flushall）：8 规则各超限 → 429 + `Retry-After`（del-code account 第 2/IP 第 6 · del-submit account 第 6/IP 第 11 · cancel-code phone 第 2/IP 第 6 · cancel-submit phone 第 6/IP 第 11）+ 限流命中时未触账号加载/未写码行（验证账号状态不变）
 
 ---
 
