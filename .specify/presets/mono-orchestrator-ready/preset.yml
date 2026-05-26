@@ -1,13 +1,15 @@
 id: mono-orchestrator-ready
-version: 0.5.0
+version: 0.6.0
 description: |
   mono-repo spec-kit 自动编排 + 执行支持。把 spec / plan / tasks 三大 template
   升级到 orchestrator-friendly 形态:
 
-    - YAML frontmatter (跨文档级元数据)
-    - JSON fenced block (宏观架构 / 沙盒配置 / API contracts)
-    - HTML 注释内塞 JSON marker (微观 DAG / per-task meta)
-    - Zod schema 校验契约 (.specify/schemas/mono-orchestrator-ready/spec.zod.ts)
+    - spec.md: 上游 prose-only (US heading / `- **FR**:` / `- **SC**:`)
+      + YAML frontmatter (跨文档级治理元数据)。orchestrator 改 prose 抽取 (0.6.0)
+    - plan.md: JSON fenced block (宏观架构 / 沙盒配置 / entities / API contracts)
+    - tasks.md: HTML 注释内塞 JSON marker (微观 DAG / per-task meta)
+    - Zod schema 校验契约 (.specify/schemas/mono-orchestrator-ready/spec.zod.ts
+      管 frontmatter 治理;orchestrator 自有 schema + parse-gate 管制品契约)
 
   0.2.0 增量 (post-A-002 retro):
     - spec frontmatter v2 字段: web_compat / agent_friction_observed
@@ -77,6 +79,25 @@ description: |
       Strangler·mockup), 链 mono docs/conventions/{server,mobile}-impl-playbook.md,
       orchestrator inject 进 implement prompt
     - tasks-template: Server 段补 per-branch IT 指引, Mobile 段补 RHF 逻辑测指引
+
+  0.6.0 增量 (双流对齐 p1 — orchestrator 消费契约 prose 化):
+    - spec-template: 回归上游 prose-only — 删 us-meta / fr-meta / cl-meta HTML
+      注释 marker + 删 Key Entities JSON 块 (entities 迁 plan)。spec 只供 prose
+      需求文本 (US heading / `- **FR**:` / `- **SC**:`);frontmatter 治理字段
+      不变 (仍由 lefthook spec-frontmatter-check 强制)
+    - plan-template:
+      · orchestrator_config 加 entities[] 块 (迁自 spec;api_contracts 本就以
+        E<n> 引用,二者同属 HOW 工件)
+      · 修 api_contracts auth enum 注释/示例 user|admin → public|bearer|api_key
+        (对齐 orchestrator EndpointSchema)
+      · 修 plan status 生命周期注释 tasks-ready|implementing → drafted|approved|
+        superseded (对齐 PlanFrontmatterSchema)
+    - tasks-template: kind 注释补全 enum (migration|docs|config);status 注释补 blocked
+    - 配套 mono schema (PR #209 + #210, 同 p1): spec frontmatter 放宽 (version
+      字段 optional, 非 strict 前向兼容) + entities 迁 OrchestratorConfig +
+      module_boundaries `_`-前缀豁免;TaskKindSchema 加 verification (schema 终于
+      跟上 0.2.2 模板) + parallel optional + verification 容空 files。钉死
+      orchestrator-parse-gate (lefthook + CI),制品漂即红
 
   配合 scripts/orchestrator/*.ts 使用。仅适用于 monorepo (nx workspaces),
   因为 orchestrator 需要在单仓内同时调度 server / api-client / mobile 多 workspace。

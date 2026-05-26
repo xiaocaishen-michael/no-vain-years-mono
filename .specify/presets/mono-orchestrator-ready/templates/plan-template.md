@@ -15,14 +15,14 @@ context7_verified: []
 Frontmatter contract (parsed by scripts/orchestrator/parsers/plan.ts):
 - feature_id: must equal spec.md frontmatter feature_id
 - spec_ref: relative path to spec.md (orchestrator cross-loads)
-- status: drafted → tasks-ready → implementing → implemented → superseded
+- status: drafted → approved → superseded
 - adr_refs: list of ADR ids this plan depends on (e.g., ["0019", "0043"])
 - context7_verified: library names whose API surface was grounded via
   mcp__context7__query-docs during plan drafting (populated by
   context7-injection preset workflow)
 
 JSON fenced block contract (HARD requirement, validated by Zod):
-- orchestrator_config — workspaces + module_boundaries + sandbox + tech_constraints
+- orchestrator_config — workspaces + module_boundaries + entities + sandbox + tech_constraints
 - api_contracts        — endpoints + auth + request/response schemas
 - constitution_check   — passed boolean + violations array
 
@@ -42,6 +42,10 @@ Single JSON block, language tag MUST be `json orchestrator_config`.
 - workspaces[].verify_commands keys must match tasks-meta.verify_kind values
 - workspaces[].graphify_scope is the default AST scope per workspace
 - module_boundaries enforces eslint-plugin-boundaries at module level (per ADR-0032 / ADR-0043; ADR-0020 superseded)
+- module_boundaries: a `_`-prefixed key (e.g. "_note") is a human annotation, ignored by the parser
+- entities — the data model (migrated from spec.md). api_contracts.response_schema_ref points at these E<n> ids.
+    · domain: optional owning business module (free-form label, NOT a DDD subdomain)
+    · relations.kind: "1:1" | "1:N" | "N:1" | "N:N"
 - sandbox.cwd_template uses {feature_id} and {task_id} placeholders
 -->
 
@@ -71,6 +75,17 @@ Single JSON block, language tag MUST be `json orchestrator_config`.
       "forbidden_imports": ["apps/mobile/**/*"]
     }
   },
+  "entities": [
+    {
+      "id": "E1",
+      "name": "[EntityName]",
+      "domain": "<module>",
+      "attrs": [
+        { "name": "id", "type": "string" }
+      ],
+      "relations": []
+    }
+  ],
   "sandbox": {
     "cwd_template": "/tmp/orchestrator-{feature_id}-{task_id}",
     "cleanup_on_success": true,
@@ -93,8 +108,9 @@ Single JSON block, language tag MUST be `json orchestrator_config`.
 <!--
 Single JSON block, language tag MUST be `json api_contracts`.
 - endpoints[].id is referenced by tasks-meta.trace_ep (impl/gen tasks)
-- endpoints[].response_schema_ref points to an entity id from spec.md
-- auth values: "public" | "user" | "admin"
+- endpoints[].response_schema_ref points to an entity id from orchestrator_config.entities
+  above — shapes: "E<n>" | "array(E<n>)" | "union(E<n>, E<m>, ...)"
+- auth values: "public" | "bearer" | "api_key"
 - request/response use JSON Schema subset (type, properties, required)
 -->
 
@@ -105,7 +121,7 @@ Single JSON block, language tag MUST be `json api_contracts`.
       "id": "EP1",
       "method": "GET",
       "path": "/v1/<resource>",
-      "auth": "user",
+      "auth": "bearer",
       "request": {
         "type": "object",
         "properties": {},

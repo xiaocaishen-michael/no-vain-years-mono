@@ -63,11 +63,13 @@ Frontmatter contract (parsed by scripts/orchestrator/parsers/spec.ts):
 - status: draft → clarified → planned → tasks-ready → implementing → implemented
          → superseded → archived
 
-Marker contract (parsed by HTML-comment JSON):
-- us-meta: every User Story heading
-- fr-meta: every Functional Requirement bullet
-- cl-meta: every resolved Clarifications entry
-- entities: a single JSON fenced block in Key Entities
+Body is PROSE-ONLY (no HTML-comment metadata). The orchestrator extracts what it
+needs straight from prose — keep these shapes exact:
+- User Story:          ### User Story <n> — <title> (Priority: P<n>)
+- Functional Req:      - **FR-NNN**: <text>   (prose carries no priority → orchestrator defaults 'should')
+- Success Criterion:   - **SC-NNN**: <text>
+The data model (entities) lives in plan.md's orchestrator_config, NOT here — the
+api_contracts endpoints reference entities by E<n>, so both sit in the HOW artifact.
 
 If the user-journey-mermaid preset is installed, a "## User Journey Diagram"
 section is prepended above this file. Do not duplicate it here.
@@ -75,12 +77,11 @@ section is prepended above this file. Do not duplicate it here.
 
 ## Clarifications
 
-<!-- pending: run /speckit-clarify to populate. Each resolved entry gets a cl-meta marker. -->
+<!-- pending: run /speckit-clarify to populate (prose Q→A bullets under a ### Session heading). -->
 
 ## User Scenarios & Testing
 
 ### User Story 1 — [story title] (Priority: P1)
-<!-- us-meta: {"id":"US1","priority":"P1","independent_test":"<one-line testable assertion>","trace_fr":["FR-001"]} -->
 
 **Why this priority**: [why this story comes first]
 
@@ -90,7 +91,6 @@ section is prepended above this file. Do not duplicate it here.
 2. **Given** [precondition], **When** [action], **Then** [expected outcome]
 
 ### User Story 2 — [story title] (Priority: P2)
-<!-- us-meta: {"id":"US2","priority":"P2","independent_test":"<one-line testable assertion>","trace_fr":["FR-002"]} -->
 
 **Why this priority**: [why this story comes second]
 
@@ -115,45 +115,21 @@ marker needed.
 ### Functional Requirements
 
 <!--
-Every FR bullet MUST carry an fr-meta marker. trace_us accepts US ids OR the
-literal string "GLOBAL" for infrastructure FRs that span all user stories.
-trace_sc MAY be empty for infrastructure FRs (no metric to attach).
+One bullet per requirement, prose only: `- **FR-NNN**: <text>`. Tasks trace back
+to these ids via tasks.md task-meta.trace_fr (the orchestrator validates
+trace_fr ⊆ the FR ids parsed here). Prose carries no priority — the orchestrator
+defaults each FR to 'should'. The data model (entities) is in plan.md, not here.
 -->
 
-- **FR-001**: System MUST [requirement] <!-- fr-meta: {"id":"FR-001","priority":"must","needs_clarification":false,"questions":[],"trace_us":["US1"],"trace_sc":["SC-001"]} -->
-- **FR-002**: System MUST [requirement] <!-- fr-meta: {"id":"FR-002","priority":"must","needs_clarification":false,"questions":[],"trace_us":["US1"],"trace_sc":["SC-002"]} -->
-- **FR-003**: [global / infra requirement] <!-- fr-meta: {"id":"FR-003","priority":"must","needs_clarification":false,"questions":[],"trace_us":["GLOBAL"],"trace_sc":[]} -->
-
-### Key Entities
-
-<!--
-Single JSON fenced block. Orchestrator extracts the whole block at once and
-validates with the EntitySchema (scripts/orchestrator/schemas/spec.ts).
-- domain: optional — owning business module this entity lives in (free-form label, NOT a DDD subdomain)
-- relations.kind: "1:1" | "1:N" | "N:1" | "N:N"
--->
-
-```json entities
-{
-  "entities": [
-    {
-      "id": "E1",
-      "name": "[EntityName]",
-      "domain": "<module>",
-      "attrs": [
-        { "name": "id", "type": "string" }
-      ],
-      "relations": []
-    }
-  ]
-}
-```
+- **FR-001**: System MUST [requirement]
+- **FR-002**: System MUST [requirement]
+- **FR-003**: [global / infra requirement]
 
 ## Success Criteria
 
 <!--
-SC entries use markdown bold ID only (no marker). Trace direction is inverse:
-FR.fr-meta.trace_sc points here. Orchestrator builds the reverse index.
+One bullet per criterion, prose only: `- **SC-NNN**: <text>`. Tasks may trace to
+these ids via tasks.md task-meta.trace_sc (e.g. perf-IT tasks).
 -->
 
 - **SC-001**: [measurable success criterion — include the metric + target value]
