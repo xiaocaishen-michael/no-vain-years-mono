@@ -55,9 +55,11 @@ analyzer / schema 必须对 **additive 变更前向兼容**：
 1. spec.md frontmatter 哪些字段 orchestrator parse 仍需（`feature_id` 必需；其余进 orchestrator 还是只 lefthook 用）？
 2. FR 优先级缺省 `should` 对 prompt 质量的影响（p2 可量化）？
 
-## 5. 验收
+## 5. 验收（✅ 全达成，2026-05-26 — mono #209/#210/#211 + presets#19）
 
-- 干净跑一个命令流 feature（`/speckit-specify·plan·tasks`，spec 为 vanilla prose）→ `orchestrate <feature> --dry-run` **parse 通过**（spec/plan/tasks 端到端）。
-- orchestrator-parse-gate 在 CI 生效：故意往某 spec/plan 注入 drift → red。
-- `pnpm exec nx affected -t lint typecheck test build` 绿（orchestrator 自身单测覆盖新 parser）。
-- spec-template 回 prose 后，`/speckit-specify` 产出无 metadata 也能被 orchestrator 消费（Layer 0 消解）。
+- ✅ 干净跑一个命令流 feature（spec 为 prose）→ 端到端 parse 通过：黄金参照 **002 复活**（`pnpm tsx scripts/orchestrator/parse-gate.ts` → `✅ 002-account-profile`），001/003/004/005（manual-SDD，无 `orchestrator_config`）自动豁免。
+- ✅ orchestrator-parse-gate 在 lefthook + CI 生效；「往 orchestrator-shaped feature 注入 drift → red」钉成 `parse-gate.spec.ts` 不变量。
+- ✅ `nx affected -t lint typecheck test build runtime-smoke` 绿（orchestrator 342 测，含 §2.1 前向兼容 + 向后兼容 + gate 红绿）。
+- ✅ spec-template（presets 0.6.0）回 prose 后，prose 抽取 + 放宽 frontmatter schema 使无-metadata spec 可被消费（Layer 0 消解）。
+
+> **实施偏差记录**：原 §3 把「task-meta `parallel`/`kind` 加 `verification`」归在 preset 模板侧；实证发现是 **mono schema 侧**（`schemas/tasks.ts`）—— 模板早有、schema 从未跟上。拆为 **PR1.5（#210）** 单独落地（详见 [master § p1 落地记录](05-26-orchestrator-command-parity-master.md)）。
