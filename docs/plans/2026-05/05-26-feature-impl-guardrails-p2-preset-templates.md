@@ -1,5 +1,7 @@
 # p2 — preset 仓 3 template 烘焙 + 同步回 mono
 
+> **状态：✅ ship（mono install 同步 #205 / `ab3e175`，preset 0.5.0）** — spec/plan/tasks 三 template 烘焙 + preset.yml 0.5.0 changelog 落地。
+>
 > 隶属 [master](05-26-feature-impl-guardrails-master.md)。本子 plan = **template 烘焙层**（每个新 spec/plan/tasks 自带精华提示）。**依赖 p1**（template 内 link 指向 p1 的 conventions，link 目标须先存在）。跨仓 roundtrip，per [`preset-modification.md`](../../../.claude/rules/preset-modification.md) 5 步流程。
 
 ## 交付物

@@ -1,5 +1,7 @@
 # p1 — mono 单源沉淀（conventions + rules + closure 扩）
 
+> **状态：✅ ship（#204 / `72ed137`）** — 2 conventions + 2 rules + closure stop-signals + master/3 子 plan 全落地。
+>
 > 隶属 [master](05-26-feature-impl-guardrails-master.md)。本子 plan = **canonical 详版 + 手动流 path-trigger**，自包含、无外部依赖、单独 ship 即让 command 流受益。遵守 master § 2 全局不变量（去重 / phase-sliced / 单源）。
 
 ## 交付物（file-by-file）

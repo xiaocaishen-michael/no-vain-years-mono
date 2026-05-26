@@ -49,9 +49,9 @@
 
 | 子 plan | 范围 | 依赖 | PR | 状态 |
 |---|---|---|---|---|
-| [p1](05-26-feature-impl-guardrails-p1-mono-source.md) | mono 单源：2 conventions + 2 rules + 扩 closure(stop-signals) | 无 | mono docs PR（含 master + 3 子 plan 文件）| 🟡 进行中 |
-| [p2](05-26-feature-impl-guardrails-p2-preset-templates.md) | preset 仓 3 template phase-sliced + bump 0.5.0 + 同步回 mono | p1 | preset PR + mono install 同步 PR | ⬜ 待 |
-| [p3](05-26-feature-impl-guardrails-p3-dogfood.md) | sacrificial `999-guardrail-smoke` 跑完整 SDD 验全流程 | p1+p2 | throwaway（不 merge）| ⬜ 待 |
+| [p1](05-26-feature-impl-guardrails-p1-mono-source.md) | mono 单源：2 conventions + 2 rules + 扩 closure(stop-signals) | 无 | #204（含 master + 3 子 plan 文件）| ✅ ship |
+| [p2](05-26-feature-impl-guardrails-p2-preset-templates.md) | preset 仓 3 template phase-sliced + bump 0.5.0 + 同步回 mono | p1 | #205（mono install 同步）| ✅ ship |
+| [p3](05-26-feature-impl-guardrails-p3-dogfood.md) | sacrificial `999-guardrail-smoke` 跑完整 SDD 验全流程 | p1+p2 | throwaway（不 merge）| ✅ 验收通过（a–g 全 PASS，详见 §9）|
 
 ## 6. 跨 plan Verification
 
@@ -72,4 +72,34 @@
 
 ## 8. 执行序
 
-p1（本 PR）→ p2（preset roundtrip + 同步）→ p3（dogfood 验收）。每子 plan 独立 PR。
+p1（✅ #204）→ p2（✅ #205，preset 0.5.0 roundtrip + 同步）→ **p3（✅ 2026-05-26 验收通过，§9）**。每子 plan 独立 PR；p3 为 throwaway 不 merge。
+
+## 9. p3 dogfood 验收结论（2026-05-26）
+
+sacrificial `999-guardrail-smoke`（登录活动计数 server use case，刻意非迁移 + 命中最丰富后端 guardrail）跑完整手动 SDD（specify→clarify→plan→tasks→analyze→implement）+ orchestrator dry-run。**a–g 全 PASS**：
+
+| 断言 | 验证 | 证据 |
+|---|---|---|
+| **a** spec 烘焙 | spec.md `state_branches` 自带并发/反枚举引导 + 内联强制「只 WHAT 不写 HOW」；0 HOW-leak | resolve_template→Priority 2 烘焙模板 |
+| **b** plan 烘焙 | plan.md Architecture Notes 自带 `🚨 Impl Guardrails` callout（affected-count/outbox/反枚举），与 Testing Invariants 平级 | setup-plan.sh resolve |
+| **c** tasks 烘焙 | tasks.md 出独立并发 IT（T004/T005）+ 原子回滚 IT（T006）+ 反枚举 IT（T007），honoring per-branch 引导 | tasks-template L64-66 |
+| **d** 路径触发 | 碰 spec/schema/usecase 时 server-bounded-context-decision / server-impl-playbook / implement-task-closure / migration-rules / api-contract-trigger 5 条 rule 自动加载 | 实测 context 注入 |
+| **e** orchestrator 注入 | dry-run prompt 的 `specSection` + `architectureNotesSection`（2932 字符）含全部烘焙精华（affected-count/FOR UPDATE/publish(tx/反枚举/字节级/playbook 链）| `index.ts --dry-run` |
+| **f** 塑形产出 | impl 真守 guardrail：affected-count（非 FOR UPDATE）/ outbox 同 tx 原子回滚 / moat 0 违规；typecheck + lint 绿 + **4 testcontainer IT 全绿** | nx test/lint + check-server-moat |
+| **g** 去 Java | 全程 0 旧 Java/meta 依赖（mbw-account 仅存历史 experience 档案，与本 feature 无关）| Gate 0.3 sweep |
+
+### 副产发现：command 流 vs orchestrator 流 schema drift（非 p1/p2 引入，pre-existing）
+
+跑 orchestrator dry-run 时连撞 **5 处** template-authored 制品不符 orchestrator 严格 Zod schema（既有 004 同样 parse 失败，证实非本 feature 引入）：
+
+1. entity `relations[].to` 须 `/^E\d+$/`（不可写自由文本）
+2. cl-meta 须 `{id:CL-\d{3}, trace_fr:[...]}`（vs 模板示例的自由格式）
+3. api_contracts `auth` enum 实为 `public|bearer|api_key`（plan-template 注释误写 `public|user|admin`）
+4. task-meta `parallel` 字段 orchestrator **required**（tasks-template 注释标 optional）
+5. task-meta `kind` enum **不含 `verification`**（但 tasks-template 旗舰 T003 smoke 正用 `kind:verification` + `files:[]` 违反 min(1)）
+
+**结论**：manual SDD 流（skill + path-rule）与 orchestrator 流（严格 Zod parser）的契约已 drift —— 手写 spec/plan/tasks 不经调整无法喂 orchestrator。p1/p2 烘焙本身两流皆生效（断言 a–e 证），但**两流共享底座的"一次沉淀双流应用"前提，在 schema 契约层有未弥合缝隙**。建议后续：对齐 tasks-template/plan-template 注释与 orchestrator schema（或加一道 spec→orchestrator lint），不在本 master scope。
+
+### 清理
+
+sacrificial 代码 commit 于 throwaway 分支 `999-guardrail-smoke`（c2fe954，含 schema/migration/login-activity 模块/4 IT），**不 merge**；验收留痕后 `git branch -D`。
