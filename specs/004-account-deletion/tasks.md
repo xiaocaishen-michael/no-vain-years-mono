@@ -112,7 +112,7 @@ created_at: '2026-05-26'
 
 ## Phase 9: Contract（类型同步链，Constitution V）
 
-- [ ] T032 [Contract] `nx run server:export-openapi` 产 `apps/server/openapi.json`（含 4 端点：me/deletion-codes · me/deletion · auth/cancel-deletion/sms-codes · auth/cancel-deletion）→ `nx run api-client:generate`（Orval regen）→ 生成 typed 调用 + react-query hooks（**函数式非 class** ✓）+ api-client/mobile typecheck 绿。deletion 端点也 regen（供后续 settings shell；本批不接 UI）
+- [X] T032 [Contract] `nx run server:export-openapi` 产 `apps/server/openapi.json`（含 4 端点：me/deletion-codes · me/deletion · auth/cancel-deletion/sms-codes · auth/cancel-deletion）→ `nx run api-client:generate`（Orval regen）→ 生成 typed 调用 + react-query hooks（**函数式非 class** ✓）+ api-client/mobile typecheck 绿。deletion 端点也 regen（供后续 settings shell；本批不接 UI）
 
 ---
 
