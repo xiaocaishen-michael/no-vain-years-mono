@@ -382,6 +382,9 @@ importers:
       ioredis:
         specifier: ^5.10.1
         version: 5.10.1
+      ip2region.js:
+        specifier: 3.1.8
+        version: 3.1.8
       nestjs-pino:
         specifier: ^4.6.1
         version: 4.6.1(@nestjs/common@11.1.21(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.1)
@@ -6860,6 +6863,9 @@ packages:
   ip-regex@4.3.0:
     resolution: {integrity: sha512-B9ZWJxHHOHUhUjCPrMpLD4xEq35bUTClHM1S6CBU5ixQnkZmwipwgc96vAd7AAGM9TGHvJR+Uss+/Ak6UphK+Q==}
     engines: {node: '>=8'}
+
+  ip2region.js@3.1.8:
+    resolution: {integrity: sha512-USvUDme5Gyh0qs21Xpjb7QAXN5eRFDe5ZNtPVk3Ns2wYOc5eLIC57zPXZYBbN9kvA2yK0dBpJImArf1ekobSNA==}
 
   ipaddr.js@1.9.1:
     resolution: {integrity: sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==}
@@ -18786,6 +18792,8 @@ snapshots:
       - supports-color
 
   ip-regex@4.3.0: {}
+
+  ip2region.js@3.1.8: {}
 
   ipaddr.js@1.9.1:
     optional: true

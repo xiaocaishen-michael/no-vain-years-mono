@@ -12,7 +12,14 @@
         "outputPath": "apps/server/dist",
         "main": "apps/server/src/main.ts",
         "tsConfig": "apps/server/tsconfig.app.json",
-        "assets": ["apps/server/src/assets"],
+        "assets": [
+          "apps/server/src/assets",
+          {
+            "glob": "**/*.xdb",
+            "input": "apps/server/src/security/data",
+            "output": "./security/data"
+          }
+        ],
         "swcrc": "apps/server/.swcrc",
         "stripLeadingPaths": true
       },

@@ -32,7 +32,7 @@ created_at: '2026-05-26'
 
 ## Phase 1: Setup & 决策（D1/D6）
 
-- [ ] T001 [Server] 装 `ip2region.js@3.1.8`（`pnpm -C apps/server add ip2region.js@3.1.8`）+ 从 upstream `lionsoul2014/ip2region` `data/ip2region_v4.xdb` 取文件 commit 到 `apps/server/src/security/data/ip2region_v4.xdb` + `apps/server/project.json` `build` target `assets` 数组加 `{ "glob": "**/*.xdb", "input": "apps/server/src/security/data", "output": "./data" }` + verify `nx build server --skip-nx-cache` 后 `dist/apps/server/data/ip2region_v4.xdb` 存在。锚定 plan：D1 库选型 / D6 资产投递（SWC 不拷非 TS 资产，IPv4-only）
+- [X] T001 [Server] 装 `ip2region.js@3.1.8`（`pnpm -C apps/server add ip2region.js@3.1.8`）+ 从 upstream `lionsoul2014/ip2region` `data/ip2region_v4.xdb` 取文件 commit 到 `apps/server/src/security/data/ip2region_v4.xdb` + `apps/server/project.json` `build` target `assets` 数组加 `{ "glob": "**/*.xdb", "input": "apps/server/src/security/data", "output": "./data" }` + verify `nx build server --skip-nx-cache` 后 `dist/apps/server/data/ip2region_v4.xdb` 存在。锚定 plan：D1 库选型 / D6 资产投递（SWC 不拷非 TS 资产，IPv4-only）
 
 ## Phase 2: Foundational（阻塞 US — security geo + refresh-token 扩 + auth event/exception）
 
