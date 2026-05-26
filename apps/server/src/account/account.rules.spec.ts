@@ -1,17 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import {
   AccountStatus,
+  ANONYMIZED_DISPLAY_NAME,
+  canAnonymize,
+  canCancelFromFrozen,
+  canFreeze,
+  FREEZE_DURATION_DAYS,
   isActive,
   isAnonymized,
   isFrozen,
+  isFrozenInGrace,
   normalizeDisplayName,
   normalizePhone,
 } from './account.rules';
 import type { Account } from '../generated/prisma/client';
 
-// Minimal raw `Account` row — rules only read `.status`, rest is padding to
-// satisfy the generated type shape (per ADR-0043 贫血: data = Prisma row).
-const row = (status: string): Account =>
+// Minimal raw `Account` row — rules only read `.status` / `.freezeUntil`, rest
+// is padding to satisfy the generated type shape (per ADR-0043 贫血: data = Prisma row).
+const row = (status: string, freezeUntil: Date | null = null): Account =>
   ({
     id: 1n,
     phone: '+8613800138000',
@@ -20,7 +26,7 @@ const row = (status: string): Account =>
     updatedAt: new Date(),
     lastLoginAt: null,
     displayName: null,
-    freezeUntil: null,
+    freezeUntil,
     previousPhoneHash: null,
   }) as Account;
 
@@ -48,6 +54,64 @@ describe('account.rules — 纯函数不变量 (per ADR-0043 §2)', () => {
     expect(isActive(unknown)).toBe(false);
     expect(isFrozen(unknown)).toBe(false);
     expect(isAnonymized(unknown)).toBe(false);
+  });
+});
+
+describe('account.rules — 状态转换门槛 (FR-S03 freeze / FR-S09 cancel / FR-S13 anonymize)', () => {
+  it('constants pin the lifecycle (FR-S03 15d / FR-S14 匿名化展示名)', () => {
+    expect(FREEZE_DURATION_DAYS).toBe(15);
+    expect(ANONYMIZED_DISPLAY_NAME).toBe('已注销用户');
+  });
+
+  it('canFreeze true only for ACTIVE (freezeUntil irrelevant)', () => {
+    expect(canFreeze(row(AccountStatus.ACTIVE))).toBe(true);
+    expect(canFreeze(row(AccountStatus.FROZEN, new Date()))).toBe(false);
+    expect(canFreeze(row(AccountStatus.ANONYMIZED))).toBe(false);
+    expect(canFreeze(row('PENDING_DELETION'))).toBe(false);
+  });
+
+  // Grace boundary table — freezeUntil at now-1ms / now / now+1ms across each
+  // status. `>` (in-grace, cancel) vs `<=` (expired, anonymize) MUST partition
+  // the freezeUntil===now instant strictly: at the boundary anonymize wins,
+  // cancel loses (plan §2 concurrency 互斥 + FR-S16).
+  const now = new Date('2026-06-01T03:00:00.000Z');
+  const before = new Date(now.getTime() - 1); // grace expired
+  const exact = new Date(now.getTime()); // boundary instant
+  const after = new Date(now.getTime() + 1); // still in grace
+
+  describe('isFrozenInGrace / canCancelFromFrozen (FROZEN ∧ freezeUntil > now)', () => {
+    it('true only when FROZEN and freezeUntil strictly after now', () => {
+      expect(isFrozenInGrace(row(AccountStatus.FROZEN, after), now)).toBe(true);
+      expect(isFrozenInGrace(row(AccountStatus.FROZEN, exact), now)).toBe(false); // boundary → not in grace
+      expect(isFrozenInGrace(row(AccountStatus.FROZEN, before), now)).toBe(false);
+      expect(isFrozenInGrace(row(AccountStatus.FROZEN, null), now)).toBe(false);
+      expect(isFrozenInGrace(row(AccountStatus.ACTIVE, after), now)).toBe(false);
+      expect(isFrozenInGrace(row(AccountStatus.ANONYMIZED, after), now)).toBe(false);
+    });
+
+    it('canCancelFromFrozen mirrors isFrozenInGrace exactly', () => {
+      for (const f of [after, exact, before, null]) {
+        const a = row(AccountStatus.FROZEN, f);
+        expect(canCancelFromFrozen(a, now)).toBe(isFrozenInGrace(a, now));
+      }
+    });
+  });
+
+  describe('canAnonymize (FROZEN ∧ freezeUntil != null ∧ freezeUntil <= now)', () => {
+    it('true only when FROZEN and freezeUntil at-or-before now', () => {
+      expect(canAnonymize(row(AccountStatus.FROZEN, before), now)).toBe(true);
+      expect(canAnonymize(row(AccountStatus.FROZEN, exact), now)).toBe(true); // boundary → anonymize wins
+      expect(canAnonymize(row(AccountStatus.FROZEN, after), now)).toBe(false);
+      expect(canAnonymize(row(AccountStatus.FROZEN, null), now)).toBe(false);
+      expect(canAnonymize(row(AccountStatus.ACTIVE, before), now)).toBe(false);
+      expect(canAnonymize(row(AccountStatus.ANONYMIZED, before), now)).toBe(false);
+    });
+
+    it('boundary is mutually exclusive: at freezeUntil===now exactly one of cancel/anonymize holds', () => {
+      const a = row(AccountStatus.FROZEN, exact);
+      expect(canCancelFromFrozen(a, now)).toBe(false);
+      expect(canAnonymize(a, now)).toBe(true);
+    });
   });
 });
 

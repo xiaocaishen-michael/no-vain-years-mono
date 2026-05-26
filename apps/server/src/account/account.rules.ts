@@ -18,6 +18,37 @@ export const isFrozen = (a: Account): boolean => a.status === AccountStatus.FROZ
 export const isAnonymized = (a: Account): boolean => a.status === AccountStatus.ANONYMIZED;
 
 /**
+ * 注销生命周期常量 (FR-S03 / FR-S14)。
+ *  - FREEZE_DURATION_DAYS: 注销发起后冻结期，期满方可匿名化。
+ *  - ANONYMIZED_DISPLAY_NAME: 匿名化后 displayName 占位（phone 置空后的展示名）。
+ */
+export const FREEZE_DURATION_DAYS = 15;
+export const ANONYMIZED_DISPLAY_NAME = '已注销用户';
+
+/**
+ * 状态转换门槛纯函数 (ACTIVE → FROZEN → {ACTIVE | ANONYMIZED})。仅只读判定;
+ * 真正的 conditional UPDATE 由 account 的 Commit*UseCase 落地 (affected-count,
+ * per plan D2)。这里的谓词与 UPDATE 的 WHERE 子句一一对应，作为单测可验的不变量真相源。
+ *
+ * grace 边界 (freezeUntil === now) 严格划分: 撤销用 `>`、匿名化用 `<=` ——
+ * 同一瞬间至多一个谓词成立，匿名化恒赢 (plan §2 互斥 + FR-S16)。
+ */
+
+// FR-S03: 仅 ACTIVE 账号可发起注销 → 冻结。
+export const canFreeze = (a: Account): boolean => isActive(a);
+
+// FR-S09: 冻结期内 (freezeUntil 尚未到) 的 FROZEN 账号可撤销注销。freezeUntil
+// 双作 grace deadline; null (异常态) 视为不在 grace 内。
+export const isFrozenInGrace = (a: Account, now: Date): boolean =>
+  isFrozen(a) && a.freezeUntil !== null && a.freezeUntil.getTime() > now.getTime();
+
+export const canCancelFromFrozen = (a: Account, now: Date): boolean => isFrozenInGrace(a, now);
+
+// FR-S13: 冻结期满 (freezeUntil <= now) 的 FROZEN 账号可匿名化。边界归此分支。
+export const canAnonymize = (a: Account, now: Date): boolean =>
+  isFrozen(a) && a.freezeUntil !== null && a.freezeUntil.getTime() <= now.getTime();
+
+/**
  * 输入校验纯函数 (per ADR-0043 §2 + R-VO 拍平 VO 为纯函数)。Phone / DisplayName
  * 原 Value Object 降维:校验 + trim 归一,返回规范化 string (零 class / 零装箱)。
  * 失败抛 Error,由 ProblemDetailFilter 映射 HTTP 400。
