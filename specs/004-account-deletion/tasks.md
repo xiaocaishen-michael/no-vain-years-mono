@@ -52,7 +52,7 @@ created_at: '2026-05-26'
 
 - [X] T008 [US1] [Server] `send-deletion-code.usecase.ts` in `apps/server/src/auth/`：注入 `InspectAccountStatusByIdUseCase`（注入点 `// CROSS-CONTEXT-SYNC: auth→account 读账号状态门槛`）+ `DeletionCodeStore` + `SmsGateway` → `inspectAccountStatusById(accountId)` 非 ACTIVE → throw `UnauthorizedException('INVALID_CREDENTIALS')`（反枚举折叠）→ `generateSmsCode` + HMAC → `store.issue(accountId, DELETE_ACCOUNT, hash, now+10min)` → `sendCode(phone, code, DELETE_ACCOUNT)` + 单测（mock：ACTIVE→发码 / FROZEN→401 / ANONYMIZED→401 / NOT_FOUND→401，字节级一致）
 - [X] T009 [US1] [Server] `account-deletion.controller.ts` in `apps/server/src/auth/`（`@Controller('v1/accounts')`，挂 `JwtAuthGuard`）：`@Post('me/deletion-codes')` `@HttpCode(204)`（EP1，accountId from JWT sub，phone from account）+ Swagger（204/401/429/503）+ register `auth.module.ts`（controller + usecase provider）+ named throttler `del-code-account` 1/60s（AccountIdThrottlerGuard 复用）+ `del-code-ip` 5/60s + `@SkipThrottle` 其余桶（反污染）+ 单测（mock usecase 映射 + 204）
-- [ ] T010 [US1] [Server-IT] `apps/server/test/integration/deletion.us1-send-code.it.spec.ts`（Testcontainers PG+Redis 全 boot）：ACTIVE 账号 login 取 token → 发码 → 204 + DB 1 条 active DELETE_ACCOUNT 码（codeHash 非空 / expiresAt≈+10min / usedAt null）；FROZEN 账号（freezeUntil 未来）持旧 token → 401 `INVALID_CREDENTIALS` 字节级一致（与无 token 比），无新码行
+- [X] T010 [US1] [Server-IT] `apps/server/test/integration/deletion.us1-send-code.it.spec.ts`（Testcontainers PG+Redis 全 boot）：ACTIVE 账号 login 取 token → 发码 → 204 + DB 1 条 active DELETE_ACCOUNT 码（codeHash 非空 / expiresAt≈+10min / usedAt null）；FROZEN 账号（freezeUntil 未来）持旧 token → 401 `INVALID_CREDENTIALS` 字节级一致（与无 token 比），无新码行
 
 ---
 
