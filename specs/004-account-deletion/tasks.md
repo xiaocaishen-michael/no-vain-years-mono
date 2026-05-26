@@ -131,7 +131,7 @@ created_at: '2026-05-26'
 ## Phase 11: Polish & Verify
 
 - [X] T036 [Server] catalog Operation 清单新增 8 行：`server-bounded-context-catalog.md` § Operation Catalog 已实装表加 `send-deletion-code`/`delete-account`/`send-cancel-deletion-code`/`cancel-deletion`（auth 编排）+ `commit-account-freeze`/`commit-account-cancellation`/`commit-account-anonymization`/`anonymize-frozen-accounts`（account）+ `revoke-all-refresh-tokens` 标注扩 tx 重载 + 三 R3 事件（`auth.account.deletion-requested` / `auth.account.deletion-cancelled` / `account.account.anonymized`，per analyze I1）；从 anticipated 表移除已实装的 `freeze-account`（注明实装为 delete-account R2-sync 非预设 R3，记差异）；spec frontmatter `status: clarified→implemented`；plan frontmatter `status: planned→done`
-- [ ] T037 [Verify] **全门绿**（`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main --skip-nx-cache`）：lint+typecheck（4 projects 0）/ test（server 全 Testcontainers IT 含 US1-US9；mobile cancel-deletion + frozen modal 单测；api-client）/ build / runtime-smoke（server-boot-smoke 真 boot 探 4 端点契约 + mobile `expo export -p web` + playwright e2e 含 T035）+ `check-server-moat.ts` **0 违规**（跨 ctx 注释齐）+ 真后端冒烟（注销→冻结→撤销 主路径 curl 或 IT 等价）
+- [X] T037 [Verify] **全门绿**（`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main --skip-nx-cache`）：lint+typecheck（4 projects 0）/ test（server 全 Testcontainers IT 含 US1-US9；mobile cancel-deletion + frozen modal 单测；api-client）/ build / runtime-smoke（server-boot-smoke 真 boot 探 4 端点契约 + mobile `expo export -p web` + playwright e2e 含 T035）+ `check-server-moat.ts` **0 违规**（跨 ctx 注释齐）+ 真后端冒烟（注销→冻结→撤销 主路径 curl 或 IT 等价）
 
 ---
 
