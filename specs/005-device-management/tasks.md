@@ -75,7 +75,7 @@ created_at: '2026-05-26'
 
 ## Phase 8: Contract（类型同步链，Constitution V）
 
-- [ ] T015 [Contract] `nx run server:export-openapi` 产 `apps/server/openapi.json`（含 2 端点：GET `v1/auth/devices` · DELETE `v1/auth/devices/:recordId`）→ `nx run api-client:generate`（Orval regen）→ 生成 typed 调用 + react-query hooks（**函数式非 class** ✓）+ api-client/mobile typecheck 绿。**本批 mobile 不消费**（登录管理屏延后），device 端点 regen 供后续 settings shell
+- [X] T015 [Contract] `nx run server:export-openapi` 产 `apps/server/openapi.json`（含 2 端点：GET `v1/auth/devices` · DELETE `v1/auth/devices/:recordId`）→ `nx run api-client:generate`（Orval regen）→ 生成 typed 调用 + react-query hooks（**函数式非 class** ✓）+ api-client/mobile typecheck 绿。**本批 mobile 不消费**（登录管理屏延后），device 端点 regen 供后续 settings shell
 
 ## Phase 9: Polish & Verify
 

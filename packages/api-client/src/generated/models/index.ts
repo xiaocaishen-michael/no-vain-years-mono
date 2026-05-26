@@ -10,6 +10,8 @@ export * from './accountProfileResponse';
 export * from './accountProfileResponseStatus';
 export * from './cancelDeletionRequest';
 export * from './deleteAccountRequest';
+export * from './deviceListItem';
+export * from './deviceListResponse';
 export * from './healthControllerLive200';
 export * from './healthControllerLive200Details';
 export * from './healthControllerLive200Error';
