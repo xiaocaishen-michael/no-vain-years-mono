@@ -12,8 +12,8 @@ import {
 } from './refresh-token.rules';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** 设备列表分页上限 (FR-S01 size 上限 100,超限截断)。 */
-const MAX_DEVICE_PAGE_SIZE = 100;
+/** 设备列表分页上限 (FR-S01 size 上限 100,超限截断)。auth list-devices 编排层共享同一上限算 envelope。 */
+export const MAX_DEVICE_PAGE_SIZE = 100;
 
 /**
  * 事务客户端 —— caller 持有的 `$transaction` 回调参数 (Omit 掉 $transaction 等
