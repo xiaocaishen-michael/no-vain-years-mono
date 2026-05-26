@@ -6,3 +6,8 @@
 
 # graphify's own output — avoid self-indexing
 graphify-out/
+
+# Ephemeral orchestrator run logs (gitignored, machine-local, ~17% of all nodes —
+# run artifacts, never architecturally meaningful). graphify reads .graphifyignore
+# but NOT .gitignore, so this must be listed explicitly.
+.spec-kit/runs/
