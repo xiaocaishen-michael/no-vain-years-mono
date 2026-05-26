@@ -61,7 +61,7 @@ created_at: '2026-05-26'
 
 **Independent Test**（spec US3）：不存在 vs 跨账号 404 字节级一致；N 并发撤同行 → 恰 1×(撤+事件) + (N-1)×幂等 200。
 
-- [ ] T012 [US3] [Server-IT] `apps/server/test/integration/devices.us3-anti-enum-concurrency.it.spec.ts`：①「不存在 recordId」与「他人账号 recordId」两类 DELETE 响应剥 traceId 后 ProblemDetail 深等（字节级一致，均 404 `DEVICE_NOT_FOUND`）②预置 1 未撤销行，5 并发持同 recordId DELETE（service 层直测绕限流）→ 恰 1×（真撤销 won=true + 发 1 事件）+ 4× 幂等 200（won=false），DB `revokedAt` 单次落定 + outbox `auth.device.revoked` 恰 1 条（重复跑 N 次稳定）
+- [X] T012 [US3] [Server-IT] `apps/server/test/integration/devices.us3-anti-enum-concurrency.it.spec.ts`：①「不存在 recordId」与「他人账号 recordId」两类 DELETE 响应剥 traceId 后 ProblemDetail 深等（字节级一致，均 404 `DEVICE_NOT_FOUND`）②预置 1 未撤销行，5 并发持同 recordId DELETE（service 层直测绕限流）→ 恰 1×（真撤销 won=true + 发 1 事件）+ 4× 幂等 200（won=false），DB `revokedAt` 单次落定 + outbox `auth.device.revoked` 恰 1 条（重复跑 N 次稳定）
 
 ## Phase 6: User Story 4 — 限流 (P2)
 
