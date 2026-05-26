@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { Controller } from 'react-hook-form';
 import { Pressable, Text, View } from 'react-native';
 
-import { PHONE_REGEX, useLoginForm } from '~/auth';
+import { cancelDeletionPath, PHONE_REGEX, remainingFreezeDays, useLoginForm } from '~/auth';
 import {
   Button,
   ErrorRow,
@@ -46,10 +46,55 @@ function SuccessOverlay() {
   );
 }
 
+// FR-C03 拦截 modal — login 撞 FROZEN 账号时覆盖在表单上。撤销 → 跳撤销屏（手机号
+// 路由参数预填）；保持 → dismissFreeze 清 form 留登录页。scrim + 卡片走 theme 令牌
+// (bg-modal-overlay / shadow-modal)。
+function FreezeModal({
+  remainingDays,
+  onCancel,
+  onKeep,
+}: {
+  remainingDays: number;
+  onCancel: () => void;
+  onKeep: () => void;
+}) {
+  return (
+    <View className="absolute inset-0 items-center justify-center bg-modal-overlay px-lg">
+      <View className="w-full rounded-2xl bg-surface p-lg gap-3 shadow-modal">
+        <Text className="text-xl font-semibold text-ink text-center">账号注销冷静期</Text>
+        <Text className="text-sm text-ink-muted text-center">
+          这个账号正在注销冷静期，还有 {remainingDays} 天将永久注销。撤销注销即可立即恢复使用。
+        </Text>
+        <View className="mt-2 gap-2.5">
+          <Button label="撤销注销" onPress={onCancel} />
+          <Pressable
+            onPress={onKeep}
+            accessibilityRole="button"
+            accessibilityLabel="保持注销"
+            className="h-11 items-center justify-center"
+          >
+            <Text className="text-base text-ink-muted">保持注销</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function LoginScreen() {
   const router = useRouter();
-  const { form, state, smsCountdown, errorToast, errorScope, requestSms, submit, clearError } =
-    useLoginForm();
+  const {
+    form,
+    state,
+    smsCountdown,
+    errorToast,
+    errorScope,
+    freezeUntil,
+    requestSms,
+    submit,
+    clearError,
+    dismissFreeze,
+  } = useLoginForm();
   const { control, formState } = form;
 
   const requesting = state === 'requesting_sms';
@@ -147,6 +192,15 @@ export default function LoginScreen() {
           />
         </View>
       </View>
+
+      {/* FR-C03 — FROZEN 拦截 modal 覆盖在表单上（state === 'frozen'）。 */}
+      {state === 'frozen' && freezeUntil ? (
+        <FreezeModal
+          remainingDays={remainingFreezeDays(freezeUntil)}
+          onCancel={() => router.push(cancelDeletionPath(form.getValues('phone')))}
+          onKeep={dismissFreeze}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

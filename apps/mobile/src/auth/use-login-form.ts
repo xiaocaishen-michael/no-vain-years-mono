@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { phoneSmsAuthSchema, type PhoneSmsAuthValues } from './login-form.schema';
 import { usePhoneSmsAuth } from './phone-sms-auth';
+import { extractProblemDetail, isFreezePeriod } from '~/core/api/errors';
 
 // FR-C11 state machine. requesting_sms / submitting are *derived* from pending
 // flags (not setState'd) so loading has a single source (铁律 3); idle / sms_sent
@@ -14,7 +15,9 @@ export type LoginFormState =
   | 'sms_sent'
   | 'submitting'
   | 'success'
-  | 'error';
+  | 'error'
+  // FR-C03 — login 撞 FROZEN 账号（403 ACCOUNT_IN_FREEZE_PERIOD）→ 弹拦截 modal。
+  | 'frozen';
 
 const SMS_COUNTDOWN_SECONDS = 60;
 
@@ -55,10 +58,11 @@ export function useLoginForm() {
   const smsRequest = useAccountSmsCodeControllerRequest();
   const auth = usePhoneSmsAuth();
 
-  const [phase, setPhase] = useState<'idle' | 'sms_sent' | 'success' | 'error'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'sms_sent' | 'success' | 'error' | 'frozen'>('idle');
   const [smsCountdown, setSmsCountdown] = useState(0);
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const [errorScope, setErrorScope] = useState<ErrorScope>(null);
+  const [freezeUntil, setFreezeUntil] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(
@@ -110,6 +114,14 @@ export function useLoginForm() {
       await auth.mutateAsync({ data: { phone: values.phone, code: values.code } });
       setPhase('success');
     } catch (e) {
+      // FR-C03 — FROZEN disclosure (403) 不进通用错误通道，弹拦截 modal。
+      // 识别走 canonical ProblemDetail 层（~/core/api/errors，单一真理源）。
+      const freeze = extractProblemDetail(e);
+      if (isFreezePeriod(freeze)) {
+        setFreezeUntil(freeze.freezeUntil);
+        setPhase('frozen');
+        return;
+      }
       setErrorToast(loginErrorToast(e));
       setErrorScope('submit');
       setPhase('error');
@@ -122,6 +134,13 @@ export function useLoginForm() {
     setErrorScope(null);
     setPhase((prev) => (prev === 'error' ? 'idle' : prev));
   }, []);
+
+  // FR-C03 「保持注销」分支 — 清 form + 关 modal 留在登录页。
+  const dismissFreeze = useCallback(() => {
+    form.reset({ phone: '', code: '' });
+    setFreezeUntil(null);
+    setPhase('idle');
+  }, [form]);
 
   const { isSubmitting } = form.formState;
   const state: LoginFormState = isSubmitting
@@ -136,9 +155,11 @@ export function useLoginForm() {
     smsCountdown,
     errorToast,
     errorScope,
+    freezeUntil,
     requestSms,
     submit,
     clearError,
+    dismissFreeze,
     isSubmitting,
   };
 }
