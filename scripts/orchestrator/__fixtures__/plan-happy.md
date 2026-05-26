@@ -31,7 +31,8 @@ GET / PATCH `/v1/account/profile` 两个 endpoint。
         "test": "pnpm nx test server --watch=false",
         "lint": "pnpm nx lint server",
         "typecheck": "pnpm nx run server:typecheck",
-        "e2e": "pnpm nx run server:e2e"
+        "e2e": "pnpm nx run server:e2e",
+        "smoke": "pnpm tsx scripts/ci/server-boot-smoke.ts"
       },
       "graphify_scope": "apps/server/src/account/**/*"
     },

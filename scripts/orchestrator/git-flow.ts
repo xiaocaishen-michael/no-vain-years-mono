@@ -329,6 +329,7 @@ const KIND_TO_CONVENTIONAL_TYPE: Record<TaskKind, string> = {
   migration: 'feat',
   docs: 'docs',
   config: 'chore',
+  verification: 'test',
 };
 
 /** Per § 5.3.12 commit message example: `feat(account): add phone-sms-auth (T001)`. */
