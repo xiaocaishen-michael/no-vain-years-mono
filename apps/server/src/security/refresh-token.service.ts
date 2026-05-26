@@ -12,6 +12,8 @@ import {
 } from './refresh-token.rules';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** 设备列表分页上限 (FR-S01 size 上限 100,超限截断)。 */
+const MAX_DEVICE_PAGE_SIZE = 100;
 
 /**
  * 事务客户端 —— caller 持有的 `$transaction` 回调参数 (Omit 掉 $transaction 等
@@ -40,8 +42,9 @@ export interface RotatedTokens {
  * RefreshTokenService —— refresh-token 全生命周期, security 平台层持有
  * (PrismaService 直注无 repository + 贫血 Prisma row, per ADR-0043 §1)。
  * persist (签发即落库) / findActiveByHash (查活) / rotate (原子轮换) /
- * revokeAllForAccount (全端登出); auth 编排层经 DI 调用 (R2 跨 ctx 写,
- * rotate 失败抛 → auth 回滚整请求)。
+ * revokeAllForAccount (全端登出) / listActiveByAccount + findById +
+ * revokeOneForAccount (005 设备列表 + 单行撤销); auth 编排层经 DI 调用
+ * (R2 跨 ctx 读/写, rotate / revokeOne 失败抛 → auth 回滚整请求)。
  *
  * T004 骨架: 方法签名占位 + 注册进 SecurityModule providers/exports。
  * 构造器 DI 与各方法体由实现 task 增量补入 (TS noUnusedLocals 不允许提前声明
@@ -155,5 +158,55 @@ export class RefreshTokenService {
       where: { accountId, revokedAt: null },
       data: { revokedAt: now },
     });
+  }
+
+  /**
+   * 列某账号全部 active (revokedAt=null) 行 → createdAt DESC 分页 + total
+   * (偏索引 idx_refresh_token_account_id_active 驱动)。`size` clamp [1, 100]
+   * (FR-S01 上限 100 超限截断),`page` 0-based。findMany + count 在同一 read tx
+   * 内取快照,避免并发写下 rows 与 total 不一致。供 auth 设备列表 query 投影 (R2 只读)。
+   */
+  async listActiveByAccount(
+    accountId: bigint,
+    page: number,
+    size: number,
+  ): Promise<{ rows: RefreshToken[]; total: number }> {
+    const take = Math.min(Math.max(Math.trunc(size), 1), MAX_DEVICE_PAGE_SIZE);
+    const skip = Math.max(Math.trunc(page), 0) * take;
+    const where = { accountId, revokedAt: null };
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.refreshToken.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.refreshToken.count({ where }),
+    ]);
+    return { rows, total };
+  }
+
+  /**
+   * 按行 PK 查 → row | null (不过滤 revokedAt/expiresAt:供 auth 撤销编排做
+   * 404/409 guard 的快照判定;活跃性由 conditional UPDATE affected-count 兜底)。
+   */
+  async findById(recordId: bigint): Promise<RefreshToken | null> {
+    return this.prisma.refreshToken.findUnique({ where: { id: recordId } });
+  }
+
+  /**
+   * 条件撤单行 (affected-count 乐观锁): updateMany WHERE {id, accountId, revokedAt:null}
+   * set revokedAt → won = count===1。`WHERE accountId` 双保险防越权撤;已撤 / 竞态败者 /
+   * 跨账号 → count=0 → won=false (幂等 200,不发事件)。READ COMMITTED 即够 (同行写锁
+   * 串行化并发撤;偏索引 SSI 假冲突 → 禁 SERIALIZABLE/FOR UPDATE, per memory
+   * prisma_serializable_p2002_and_p2034)。`tx` 传入 → 撤入 caller tx (auth revoke 编排
+   * 撤 + 发事件原子, R2 sync);缺省 → service 自己的 PrismaService。
+   */
+  async revokeOneForAccount(
+    recordId: bigint,
+    accountId: bigint,
+    now: Date,
+    tx?: TxClient,
+  ): Promise<{ won: boolean }> {
+    const { count } = await (tx ?? this.prisma).refreshToken.updateMany({
+      where: { id: recordId, accountId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+    return { won: count === 1 };
   }
 }
