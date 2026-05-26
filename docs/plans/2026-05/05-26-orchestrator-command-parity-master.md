@@ -24,8 +24,19 @@
 
 | 子 plan | 范围 | 依赖 | 状态 |
 |---|---|---|---|
-| [p1](05-26-orchestrator-command-parity-p1-consumption-contract.md) | 消费契约重组（spec→prose / entities→plan / plan·tasks schema 对齐 / 钉死 gate / 前向兼容） | 无（承 dogfood 根因） | ⬜ 待 |
-| [p2](05-26-orchestrator-command-parity-p2-impl-flow-compare.md) | impl 双流质量对比实验（both Sonnet + 都自治，8 维，N 组模拟真实业务 feature） | p1 | ⬜ 待 |
+| [p1](05-26-orchestrator-command-parity-p1-consumption-contract.md) | 消费契约重组（spec→prose / entities→plan / plan·tasks schema 对齐 / 钉死 gate / 前向兼容） | 无（承 dogfood 根因） | ✅ ship（2026-05-26，4 PR，见下） |
+| [p2](05-26-orchestrator-command-parity-p2-impl-flow-compare.md) | impl 双流质量对比实验（both Sonnet + 都自治，8 维，N 组模拟真实业务 feature） | p1 | ⬜ 待（下一步） |
+
+### p1 落地记录（2026-05-26）
+
+| PR | 仓 | 内容 |
+|---|---|---|
+| #209 | mono | spec→prose 抽取（去 us/fr/cl-meta 硬依赖，向后兼容）+ `SpecFrontmatterSchema` 放宽（feature_id+治理四件套必需、version 字段 optional、非 strict）+ entities 迁 `OrchestratorConfig` + `module_boundaries` `_`-前缀豁免 + `parse-gate`（lefthook + CI；plan 含 `orchestrator_config` 即强制，manual-SDD 自动豁免） |
+| #210 | mono | **计划外**：tasks-template 在 0.2.2 就用 `kind:verification`/空 files/省 parallel，但 `TaskKindSchema` 从未跟上 → 新模板产物会被 #209 gate 拒。修 `schemas/tasks.ts`（加 verification + parallel optional + files 去 blanket min(1)，parser 守「非 verification 必 ≥1 file」） |
+| [presets#19](https://github.com/xiaocaishen-michael/michael-speckit-presets/pull/19) | preset | `mono-orchestrator-ready` 0.5.0→0.6.0：spec prose-only / plan 加 `entities[]` + 修 auth enum(`user\|admin`→`public\|bearer\|api_key`)·status 注释 / tasks 注释补全 |
+| #211 | mono | install 0.6.0 同步 |
+
+**gate 收获**：parse-gate 跑通时刨出 002 第二处 drift（除 master §1.2 记的 `_note`，`tasks.md` 还有 `status: complete` 应为 `completed`）；两处都修，002 黄金参照复活并端到端 parse。
 
 ## 4. 全局原则（两子 plan 遵守）
 
