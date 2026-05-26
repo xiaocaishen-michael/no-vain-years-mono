@@ -28,3 +28,14 @@ paths:
 **常见反模式**：写完 impl 喊 /commit、事后再开 PR 改 tasks.md → 应 impl PR 内**同 commit** stage tasks.md `[X]`。
 
 **`✅` 标记兼容**：早期部分 tasks.md 用 `✅` emoji 标完成；新 use case 一律走 `[X]`。lefthook `tasks-md-drift` 两种 marker 都识别。
+
+## Stop signals（impl 期停下问 user，别自作主张往下冲）
+
+per-task 默认直接 commit（上文），但撞到下列任一**停下**、不闷头继续：
+
+1. **spec 歧义**：实现中发现 spec 有多种合理解释 / 关键行为未定 → 停，回 `/speckit-clarify` 或问 user，**不默认挑一个**。
+2. **新依赖**：需引入未锁定的 runtime 依赖（npm 包 / 二进制资产）→ 停 + flag（与已锁定项去重，列选型理由）；尤其二进制入仓 / 跨仓改动。
+3. **不可逆 / 高风险 op**：DB 不可逆变更 / 删大量代码 / secrets / 生产资源命名 → 停，PR 描述 flag「建议人工合并」，不接 auto-merge。
+4. **跨 PR 边界**：发现改动超出本 feature task 范围（牵动他 feature / 平台层大改）→ 停，确认是否拆独立 PR，别把无关改动夹进来。
+
+详版工程机制见 [`docs/conventions/server-impl-playbook.md`](../../docs/conventions/server-impl-playbook.md) / [`mobile-impl-playbook.md`](../../docs/conventions/mobile-impl-playbook.md)。
