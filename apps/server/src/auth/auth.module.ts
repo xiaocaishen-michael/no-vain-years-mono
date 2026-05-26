@@ -19,7 +19,11 @@ import { SMS_GATEWAY } from './sms-gateway.port.js';
 import { TIMING_DEFENSE_EXECUTOR } from './timing-defense.port.js';
 import { PhoneSmsAuthUseCase } from './phone-sms-auth.usecase.js';
 import { RequestSmsCodeUseCase } from './request-sms-code.usecase.js';
-import { AliyunSmsGateway } from './aliyun-sms.gateway.js';
+import { AliyunSmsGateway, type SmsTemplateOverrides } from './aliyun-sms.gateway.js';
+import { SmsPurpose } from './deletion-code.rules.js';
+import { DeletionCodeStore } from './deletion-code.store.js';
+import { SendDeletionCodeUseCase } from './send-deletion-code.usecase.js';
+import { AccountDeletionController } from './account-deletion.controller.js';
 import { AuthFailureLockService } from './auth-failure-lock.service.js';
 import { BcryptTimingDefenseExecutor } from './bcrypt-timing-defense.executor.js';
 import { CockatielRetryExecutor } from './cockatiel-retry.executor.js';
@@ -140,13 +144,38 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
                 );
               },
             },
+            // FR-S18 (004 EP1 注销发码): per-account 1/60s (JwtAuthGuard 先填 req.user)
+            {
+              name: 'del-code-account',
+              limit: 1,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const user = req['user'] as { accountId?: unknown } | undefined;
+                return Promise.resolve(`del-code-account:${user?.accountId ?? 'unauthenticated'}`);
+              },
+            },
+            // FR-S18 (004 EP1 注销发码): per-IP 5/60s
+            {
+              name: 'del-code-ip',
+              limit: 5,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const ip = req['ip'];
+                return Promise.resolve(`del-code-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+              },
+            },
           ],
           storage: new ThrottlerStorageRedisService(cfg.url),
         };
       },
     }),
   ],
-  controllers: [AccountSmsCodeController, AccountPhoneSmsAuthController, AccountTokenController],
+  controllers: [
+    AccountSmsCodeController,
+    AccountPhoneSmsAuthController,
+    AccountTokenController,
+    AccountDeletionController,
+  ],
   providers: [
     {
       // Per ADR-0023: HMAC-SHA256 + timingSafeEqual 替换 bcrypt cost=12.
@@ -168,7 +197,21 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
             signName: cfg.signName,
             templateCode: cfg.templateCode,
           });
-          return new AliyunSmsGateway(client, cfg.signName, cfg.templateCode, retryExecutor);
+          // purpose → 模板覆盖 (注销/撤销码独立模板, FR-S05/S08); 缺配置 → 回退默认。
+          const templateOverrides: SmsTemplateOverrides = {};
+          if (cfg.deleteAccountTemplateCode) {
+            templateOverrides[SmsPurpose.DELETE_ACCOUNT] = cfg.deleteAccountTemplateCode;
+          }
+          if (cfg.cancelDeletionTemplateCode) {
+            templateOverrides[SmsPurpose.CANCEL_DELETION] = cfg.cancelDeletionTemplateCode;
+          }
+          return new AliyunSmsGateway(
+            client,
+            cfg.signName,
+            cfg.templateCode,
+            retryExecutor,
+            templateOverrides,
+          );
         }
         return new MockSmsGateway();
       },
@@ -181,6 +224,8 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
     PhoneSmsAuthUseCase,
     RefreshTokenUseCase,
     LogoutAllUseCase,
+    DeletionCodeStore,
+    SendDeletionCodeUseCase,
     JwtAccessGuard,
     SmsPhoneThrottlerGuard,
     // ProblemDetailFilter (APP_FILTER) moved to SecurityModule in PR-5a —

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type Dysmsapi from '@alicloud/dysmsapi20170525';
 import { AliyunSmsGateway } from './aliyun-sms.gateway';
+import { SmsPurpose } from './deletion-code.rules';
 import type { RetryExecutor } from './retry-executor.port';
 
 /**
@@ -66,6 +67,45 @@ describe('AliyunSmsGateway', () => {
 
     await expect(gateway.sendCode(phone, code)).rejects.toThrow('network timeout');
     expect(retryExecutor.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('purpose 选独立模板 (T007 FR-S05/S08): 配置的 purpose → override templateCode', async () => {
+    const sendSms = vi.fn().mockResolvedValue({ body: { code: 'OK', bizId: 'biz-del' } });
+    const mockClient = { sendSms } as unknown as Dysmsapi;
+    const gateway = new AliyunSmsGateway(
+      mockClient,
+      SIGN_NAME,
+      TEMPLATE_CODE,
+      buildPassThroughRetryMock(),
+      {
+        [SmsPurpose.DELETE_ACCOUNT]: 'SMS_DEL_777',
+        [SmsPurpose.CANCEL_DELETION]: 'SMS_CANCEL_888',
+      },
+    );
+
+    await gateway.sendCode(phone, code, SmsPurpose.DELETE_ACCOUNT);
+    expect(sendSms.mock.calls[0]![0].templateCode).toBe('SMS_DEL_777');
+
+    await gateway.sendCode(phone, code, SmsPurpose.CANCEL_DELETION);
+    expect(sendSms.mock.calls[1]![0].templateCode).toBe('SMS_CANCEL_888');
+  });
+
+  it('未配 purpose 模板 / 无 purpose → 回退默认 templateCode (001 登录码不变)', async () => {
+    const sendSms = vi.fn().mockResolvedValue({ body: { code: 'OK', bizId: 'biz-fb' } });
+    const mockClient = { sendSms } as unknown as Dysmsapi;
+    // overrides 空 → 任何 purpose 都回退默认
+    const gateway = new AliyunSmsGateway(
+      mockClient,
+      SIGN_NAME,
+      TEMPLATE_CODE,
+      buildPassThroughRetryMock(),
+    );
+
+    await gateway.sendCode(phone, code, SmsPurpose.DELETE_ACCOUNT);
+    expect(sendSms.mock.calls[0]![0].templateCode).toBe(TEMPLATE_CODE);
+
+    await gateway.sendCode(phone, code); // 无 purpose (登录/注册码)
+    expect(sendSms.mock.calls[1]![0].templateCode).toBe(TEMPLATE_CODE);
   });
 
   it('non-+86 phone 保持原样 (国际号未来扩展)', async () => {

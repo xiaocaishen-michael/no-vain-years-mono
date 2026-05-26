@@ -1,8 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Dysmsapi, { SendSmsRequest } from '@alicloud/dysmsapi20170525';
 import { $OpenApiUtil } from '@alicloud/openapi-core';
+import type { SmsPurpose } from './deletion-code.rules';
 import type { RetryExecutor } from './retry-executor.port';
 import type { SmsGateway } from './sms-gateway.port';
+
+/** purpose → Aliyun templateCode 覆盖表 (缺 → 回退默认 templateCode)。 */
+export type SmsTemplateOverrides = Partial<Record<SmsPurpose, string>>;
 
 export interface AliyunSmsGatewayCredentials {
   accessKeyId: string;
@@ -39,6 +43,9 @@ export class AliyunSmsGateway implements SmsGateway {
     private readonly signName: string,
     private readonly templateCode: string,
     private readonly retryExecutor: RetryExecutor,
+    // purpose → templateCode 覆盖; 注销/撤销码用独立模板 (FR-S05/S08)。缺省 {} →
+    // 一律用默认 templateCode (001 登录/注册码 + 未配模板的 purpose 回退)。
+    private readonly templateOverrides: SmsTemplateOverrides = {},
   ) {}
 
   static createClient(cred: AliyunSmsGatewayCredentials): Dysmsapi {
@@ -51,13 +58,14 @@ export class AliyunSmsGateway implements SmsGateway {
     return new Dysmsapi(config);
   }
 
-  async sendCode(phone: string, code: string): Promise<void> {
+  async sendCode(phone: string, code: string, purpose?: SmsPurpose): Promise<void> {
     const phoneNumber = phone.startsWith('+86') ? phone.slice(3) : phone;
+    const templateCode = (purpose && this.templateOverrides[purpose]) || this.templateCode;
 
     const request = new SendSmsRequest({
       phoneNumbers: phoneNumber,
       signName: this.signName,
-      templateCode: this.templateCode,
+      templateCode,
       templateParam: JSON.stringify({ code }),
     });
 

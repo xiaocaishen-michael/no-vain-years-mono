@@ -7,6 +7,8 @@ const ENV_KEYS = [
   'ALIYUN_ACCESS_KEY_SECRET',
   'ALIYUN_SMS_SIGN_NAME',
   'ALIYUN_SMS_TEMPLATE_CODE',
+  'ALIYUN_SMS_TEMPLATE_CODE_DELETE_ACCOUNT',
+  'ALIYUN_SMS_TEMPLATE_CODE_CANCEL_DELETION',
 ] as const;
 
 describe('smsConfig discriminated union', () => {
@@ -51,6 +53,23 @@ describe('smsConfig discriminated union', () => {
       accessKeySecret: 's',
       signName: 'sn',
       templateCode: 'tc',
+    });
+  });
+
+  it('parses optional per-purpose template codes (T007 注销/撤销码独立模板)', () => {
+    process.env.SMS_GATEWAY = 'aliyun';
+    process.env.ALIYUN_ACCESS_KEY_ID = 'k';
+    process.env.ALIYUN_ACCESS_KEY_SECRET = 's';
+    process.env.ALIYUN_SMS_SIGN_NAME = 'sn';
+    process.env.ALIYUN_SMS_TEMPLATE_CODE = 'tc';
+    process.env.ALIYUN_SMS_TEMPLATE_CODE_DELETE_ACCOUNT = 'tc_del';
+    process.env.ALIYUN_SMS_TEMPLATE_CODE_CANCEL_DELETION = 'tc_cancel';
+    const cfg = smsConfig();
+    expect(cfg).toMatchObject({
+      kind: 'aliyun',
+      templateCode: 'tc',
+      deleteAccountTemplateCode: 'tc_del',
+      cancelDeletionTemplateCode: 'tc_cancel',
     });
   });
 });

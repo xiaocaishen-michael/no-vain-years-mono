@@ -46,7 +46,7 @@ const SCHEMA_PATH = `${SERVER_ROOT}/prisma/schema.prisma`;
 /**
  * 业务 context 的 Prisma model 归属 (accessor = camelCase model 名)。
  * 只声明**已落地**的 model; dormant model (db pull 带入但尚未接线的
- * accountSmsCode / credential / realnameProfile) 故意不列 —
+ * credential / realnameProfile) 故意不列 —
  * 它们 0 访问, 一旦未来被跨 ctx 访问, Check 1 会以「未声明归属」报错, 逼迫
  * 接线者显式声明 owner (defense-in-depth, 不让新表悄悄绕过护城河)。
  */
@@ -55,6 +55,9 @@ const MODEL_OWNERSHIP: Record<string, string> = {
   outboxEvent: 'security',
   // refreshToken 归 security 平台层: RefreshTokenService 持久化/轮换/撤销 (003-tokens)。
   refreshToken: 'security',
+  // accountSmsCode 归 auth: 注销/撤销码生命周期由 auth 编排 (DeletionCodeStore, 004),
+  // 镜像 login 的 Redis sms-code.store; account ctx 不碰码行 (匿名化不删码, plan D6)。
+  accountSmsCode: 'auth',
 };
 
 const WRITE_OPS = new Set([
