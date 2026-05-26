@@ -8,6 +8,8 @@ import { execFileSync } from 'node:child_process';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
 import { JwtTokenService } from '../../src/security/jwt-token.service';
+import { MockSmsGateway } from '../../src/auth/mock-sms.gateway';
+import { SMS_GATEWAY } from '../../src/auth/sms-gateway.port';
 
 const SERVER_DIR = process.cwd();
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -21,6 +23,7 @@ describe('US1 设备列表 (Testcontainers PG + Redis + Fastify)', () => {
   let app: NestFastifyApplication;
   let prisma: PrismaService;
   let jwt: JwtTokenService;
+  let mockSms: MockSmsGateway;
   let seq = 0;
 
   beforeAll(async () => {
@@ -52,6 +55,7 @@ describe('US1 设备列表 (Testcontainers PG + Redis + Fastify)', () => {
     await app.getHttpAdapter().getInstance().ready();
     prisma = moduleRef.get(PrismaService);
     jwt = moduleRef.get(JwtTokenService);
+    mockSms = moduleRef.get<MockSmsGateway>(SMS_GATEWAY);
   }, 180_000);
 
   afterAll(async () => {
@@ -186,5 +190,41 @@ describe('US1 设备列表 (Testcontainers PG + Redis + Fastify)', () => {
     const token = jwt.signAccessToken({ accountId: D.id });
     const res = await listDevices(token, { query: '?page=abc' });
     expect(res.statusCode).toBe(400);
+  });
+
+  // FR-S14 采集补强 e2e: 经真 login controller 带 x-device-name/x-device-type 头 → persist
+  // 落库 → GET devices 该设备显真实名/类型 (验 @Headers 抽取 → usecase → persist 全链)。
+  // 不带头的存量行降级 null/UNKNOWN 由 persist.spec + usecase 单测覆盖。
+  async function loginWithDeviceHeaders(
+    phone: string,
+    deviceId: string,
+    name: string,
+    type: string,
+  ) {
+    await app.inject({ method: 'POST', url: '/api/v1/accounts/sms-codes', payload: { phone } });
+    const code = mockSms.getLastCode(phone)!;
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/accounts/phone-sms-auth',
+      headers: { 'x-device-id': deviceId, 'x-device-name': name, 'x-device-type': type },
+      payload: { phone, code },
+    });
+    expect(res.statusCode).toBe(200);
+    return (res.json() as { accessToken: string }).accessToken;
+  }
+
+  it('FR-S14: login 带 x-device-name/x-device-type 头 → 设备列表显真实名/类型', async () => {
+    const phone = '+8613800145005';
+    await prisma.account.create({ data: { phone, status: 'ACTIVE' } });
+    const token = await loginWithDeviceHeaders(phone, 'fr-s14-dev', 'Pixel 8', 'phone');
+
+    const res = await listDevices(token, { deviceId: 'fr-s14-dev' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { items: Array<Record<string, unknown>> };
+    const row = body.items.find((i) => i.deviceId === 'fr-s14-dev');
+    expect(row).toBeDefined();
+    expect(row!.deviceName).toBe('Pixel 8');
+    expect(row!.deviceType).toBe('PHONE'); // normalizeDeviceType('phone') → PHONE
+    expect(row!.isCurrent).toBe(true);
   });
 });

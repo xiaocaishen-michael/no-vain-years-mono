@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -8,6 +8,10 @@ import { execFileSync } from 'node:child_process';
 import { AppModule } from '../../src/app/app.module';
 import { PrismaService } from '../../src/security/prisma.service';
 import { JwtTokenService } from '../../src/security/jwt-token.service';
+import {
+  OUTBOX_PUBLISHER,
+  type OutboxPublisher,
+} from '../../src/security/outbox/outbox-publisher.port';
 import { DEVICE_REVOKED_EVENT_TYPE } from '../../src/auth/device-revoked.event';
 
 const SERVER_DIR = process.cwd();
@@ -21,6 +25,7 @@ describe('US2 撤销单设备 (Testcontainers PG + Redis + Fastify)', () => {
   let app: NestFastifyApplication;
   let prisma: PrismaService;
   let jwt: JwtTokenService;
+  let outbox: OutboxPublisher;
   let seq = 0;
 
   beforeAll(async () => {
@@ -52,6 +57,7 @@ describe('US2 撤销单设备 (Testcontainers PG + Redis + Fastify)', () => {
     await app.getHttpAdapter().getInstance().ready();
     prisma = moduleRef.get(PrismaService);
     jwt = moduleRef.get(JwtTokenService);
+    outbox = moduleRef.get(OUTBOX_PUBLISHER);
   }, 180_000);
 
   afterAll(async () => {
@@ -176,5 +182,24 @@ describe('US2 撤销单设备 (Testcontainers PG + Redis + Fastify)', () => {
     // 行未被撤。
     const row = await prisma.refreshToken.findUniqueOrThrow({ where: { id: target.id } });
     expect(row.revokedAt).toBeNull();
+  });
+
+  it('原子性 (FR-S11): 注入 outbox publish 失败 → 整 tx 回滚 (行未撤 + 无事件)', async () => {
+    const A = await prisma.account.create({ data: { phone: '+8613800146006', status: 'ACTIVE' } });
+    await seedRow(A.id, 'A-current');
+    const target = await seedRow(A.id, 'dev-B');
+    const token = jwt.signAccessToken({ accountId: A.id });
+
+    // 注入: outbox.publish 抛 → revoke usecase tx 内发事件步失败 → 整 tx 回滚。
+    const spy = vi.spyOn(outbox, 'publish').mockRejectedValueOnce(new Error('outbox fixture boom'));
+    const res = await revokeDevice(target.id, token, 'A-current');
+    // 未捕获 infra 错 → ProblemDetailFilter 映射 500 (不静默成功)。
+    expect(res.statusCode).toBe(500);
+    spy.mockRestore();
+
+    // 回滚: 行未撤 (revokedAt 仍 null) + 无事件。
+    const row = await prisma.refreshToken.findUniqueOrThrow({ where: { id: target.id } });
+    expect(row.revokedAt).toBeNull();
+    expect(await deviceRevokedEvents(A.id)).toHaveLength(0);
   });
 });
