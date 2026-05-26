@@ -23,6 +23,7 @@ import { AliyunSmsGateway, type SmsTemplateOverrides } from './aliyun-sms.gatewa
 import { SmsPurpose } from './deletion-code.rules.js';
 import { DeletionCodeStore } from './deletion-code.store.js';
 import { SendDeletionCodeUseCase } from './send-deletion-code.usecase.js';
+import { DeleteAccountUseCase } from './delete-account.usecase.js';
 import { AccountDeletionController } from './account-deletion.controller.js';
 import { AuthFailureLockService } from './auth-failure-lock.service.js';
 import { BcryptTimingDefenseExecutor } from './bcrypt-timing-defense.executor.js';
@@ -164,6 +165,28 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
                 return Promise.resolve(`del-code-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
               },
             },
+            // FR-S18 (004 EP2 注销提交): per-account 5/60s (JwtAuthGuard 先填 req.user)
+            {
+              name: 'del-submit-account',
+              limit: 5,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const user = req['user'] as { accountId?: unknown } | undefined;
+                return Promise.resolve(
+                  `del-submit-account:${user?.accountId ?? 'unauthenticated'}`,
+                );
+              },
+            },
+            // FR-S18 (004 EP2 注销提交): per-IP 10/60s
+            {
+              name: 'del-submit-ip',
+              limit: 10,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const ip = req['ip'];
+                return Promise.resolve(`del-submit-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+              },
+            },
           ],
           storage: new ThrottlerStorageRedisService(cfg.url),
         };
@@ -226,6 +249,7 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
     LogoutAllUseCase,
     DeletionCodeStore,
     SendDeletionCodeUseCase,
+    DeleteAccountUseCase,
     JwtAccessGuard,
     SmsPhoneThrottlerGuard,
     // ProblemDetailFilter (APP_FILTER) moved to SecurityModule in PR-5a —
