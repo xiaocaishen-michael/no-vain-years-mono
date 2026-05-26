@@ -42,6 +42,7 @@
 
 import 'reflect-metadata';
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
@@ -94,6 +95,17 @@ async function runSmokeTest(): Promise<void> {
     env: process.env,
     stdio: 'inherit',
   });
+
+  // [asset] 005: built dist 必含 ip2region v4 xdb (SWC 不拷非 TS 资产 → 靠 project.json
+  // build assets glob)。缺失则 IpGeoService.onModuleInit readFileSync 在 prod 抛 ENOENT。
+  // 显式探活 (boot 前): 给清晰失败信号, 不靠 boot crash 反推。
+  const xdbPath = path.resolve(SERVER_DIST, 'security/data/ip2region_v4.xdb');
+  log(`[asset] verifying built dist ip2region xdb at ${xdbPath}…`);
+  if (!existsSync(xdbPath)) {
+    throw new Error(
+      `[ASSERT-XDB] built dist missing ip2region_v4.xdb — check apps/server/project.json build assets glob (output ./security/data)`,
+    );
+  }
 
   log('[2/6] booting Testcontainers (Postgres + Redis)…');
   const pgContainer: StartedPostgreSqlContainer = await new PostgreSqlContainer(
@@ -254,8 +266,26 @@ async function runSmokeTest(): Promise<void> {
       );
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // [devices] 005: GET /api/v1/auth/devices 端点契约探活 (invalid bearer → 401)。
+    // boot 成功本身已隐式验 IpGeoService.onModuleInit 载 xdb (否则 crash); 此探针显式
+    // 确认 device 路由挂载 + JwtAccessGuard 活 (route 真注册进 AppModule)。
+    // ─────────────────────────────────────────────────────────────────────
+    const devicesUrl = `http://127.0.0.1:${address.port}/api/v1/auth/devices`;
+    log(`       probing ${devicesUrl} with invalid bearer (expect 401, device route mounted)…`);
+    const devRes = await fetch(devicesUrl, {
+      method: 'GET',
+      headers: { Accept: 'application/problem+json', Authorization: 'Bearer smoke.invalid.token' },
+    });
+    if (devRes.status !== 401) {
+      const devBody = (await devRes.json()) as ProblemDetail;
+      throw new Error(
+        `[ASSERT-DEV] GET /v1/auth/devices expected 401 (JwtAccessGuard), got ${devRes.status}; body=${JSON.stringify(devBody)}`,
+      );
+    }
+
     log(
-      `✅ ALL ASSERTIONS PASSED — 401 traceId=${body.traceId}, 400 code=${postBody.code} invalidAttributes=${postBody.invalidAttributes.length} entries`,
+      `✅ ALL ASSERTIONS PASSED — 401 traceId=${body.traceId}, 400 code=${postBody.code} invalidAttributes=${postBody.invalidAttributes.length} entries, devices 401 ✓, xdb asset ✓`,
     );
   } catch (err) {
     console.error('[smoke] ❌ FAILED:', err);

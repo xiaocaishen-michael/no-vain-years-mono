@@ -80,7 +80,7 @@ created_at: '2026-05-26'
 ## Phase 9: Polish & Verify
 
 - [X] T016 [Server] catalog Operation 清单新增 6 行：`server-bounded-context-catalog.md` § Operation Catalog 加 `list-devices`/`revoke-device`（auth 编排）+ `list-active-refresh-tokens`/`find-refresh-token-by-id`/`revoke-one-refresh-token`（security 扩 `RefreshTokenService`）+ `resolve-ip-location`（security `IpGeoService`，platform infra）；标注 `auth.device.revoked` R3 事件；spec frontmatter `status: clarified→implemented`；plan frontmatter `status: planned→done`
-- [ ] T017 [Verify] **全门绿**（`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main --skip-nx-cache`）：lint+typecheck（server + api-client 0）/ test（server 全 Testcontainers IT 含 US1-US4；ip-geo + refresh-token 扩单测；api-client）/ build / runtime-smoke（server-boot-smoke 真 boot 探 2 端点契约 + **built dist `data/ip2region_v4.xdb` 资产探活**）+ `check-server-moat.ts` **0 违规**（auth→security 跨 ctx 注释齐：服务注入 `// CROSS-CONTEXT-SYNC` / outbox `// CROSS-CONTEXT-ASYNC`；auth 不直碰 `prisma.refreshToken` 故无 `CROSS-CONTEXT-READ` 逃生口）+ 真后端冒烟（login→list devices→revoke 主路径 curl 或 IT 等价）
+- [X] T017 [Verify] **全门绿**（`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main --skip-nx-cache`）：lint+typecheck（server + api-client 0）/ test（server 全 Testcontainers IT 含 US1-US4；ip-geo + refresh-token 扩单测；api-client）/ build / runtime-smoke（server-boot-smoke 真 boot 探 2 端点契约 + **built dist `data/ip2region_v4.xdb` 资产探活**）+ `check-server-moat.ts` **0 违规**（auth→security 跨 ctx 注释齐：服务注入 `// CROSS-CONTEXT-SYNC` / outbox `// CROSS-CONTEXT-ASYNC`；auth 不直碰 `prisma.refreshToken` 故无 `CROSS-CONTEXT-READ` 逃生口）+ 真后端冒烟（login→list devices→revoke 主路径 curl 或 IT 等价）
 
 ---
 
