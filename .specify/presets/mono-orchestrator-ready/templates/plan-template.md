@@ -247,6 +247,18 @@ explicitly forbidden.
 > - **No Repositories**: NEVER create Repository interfaces/adapters for your own tables. Inject `PrismaService` directly into UseCases. Put business invariants in pure functions (`*.rules.ts`).
 > - **The Moat**: NEVER write `tx.<otherTable>.*`. Cross-context access MUST go through the target module's UseCase (use the Two-step Inspect+Commit saga only when caller validation must sit between read and write).
 
+### 🚨 Impl Guardrails（并发 / 安全 / 前端 — 详版见 mono conventions）
+
+<!--
+Injected verbatim into the implement prompt (architectureNotesSection). 详版 +
+实证锚见 docs/conventions/{server,mobile}-impl-playbook.md（单源）。保持 fierce —
+LLM 默认走简单路径，机制不显式禁就踩。仅留本 feature 适用的条目。
+-->
+
+- **并发/事务**：单行状态转换用 conditional UPDATE **affected-count**（`updateMany where {id,<前置>}` → count===1 won / 0 lost，READ COMMITTED）；**NEVER** 单行 `FOR UPDATE` / Serializable（偏索引 SSI 假冲突）。并发 insert 确需 Serializable 时 catch **P2002 + P2034 双形态**。outbox 事件 `publish(tx,…)` 与状态写**同 tx**。scheduler 逐行独立 tx。外部 I/O **split-tx**（禁 tx 内持锁等 HTTP）。→ `../../docs/conventions/server-impl-playbook.md`
+- **安全**：失败分支**字节级一致折叠** + dummy-hash constant-time pad（反枚举）；码/token 比较 **HMAC constant-time**，**NEVER bcrypt** 新代码；PII **AES-GCM** + 唯一 hash 防占位 + 终态才解密+掩码。
+- **前端（mobile）**：表单 **RHF + zodResolver** 4 铁律（Controller≠register / 表单态≠副作用态 / isSubmitting 单源 / 错误+a11y）；port 走 **Strangler-Fig**（复用 `~/theme`+`~/ui`、Orval 函数式 hook 非 class、axios 不删）；mockup 走 Claude Design 2 段模板。→ `../../docs/conventions/mobile-impl-playbook.md`
+
 (Write any feature-specific architecture notes here — reuse decisions, schema state, masking points, etc.)
 
 ## Complexity Tracking
