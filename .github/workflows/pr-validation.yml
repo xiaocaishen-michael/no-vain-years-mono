@@ -141,6 +141,16 @@ jobs:
         # runs inside the required validate-and-test job, no ruleset change needed.
         run: pnpm tsx scripts/checks/check-server-moat.ts
 
+      - name: Enforce orchestrator consumption contract (per orchestrator-command-parity p1)
+        # Pins command-flow features to the orchestrator parser/schema contract:
+        # a feature is enforced iff its plan.md declares `orchestrator_config`;
+        # manual-SDD features skip by construction. Full-scan (not nx affected —
+        # specs/ isn't an nx project, so a spec-only edit wouldn't trigger the
+        # orchestrator test target). lefthook orchestrator-parse-gate 的云端镜像
+        # (--no-verify 绕不过这里). Runs inside the required validate-and-test job,
+        # no ruleset change needed.
+        run: pnpm tsx scripts/orchestrator/parse-gate.ts
+
       - name: Run Nx Affected Pipeline
         # base=origin/main for PR diff; nx affected computes which projects'
         # cache hashes change, triggers lint/typecheck/test/build/runtime-smoke

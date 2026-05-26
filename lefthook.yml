@@ -251,6 +251,20 @@ pre-commit:
       glob: 'apps/server/src/**/*.ts'
       run: pnpm tsx scripts/checks/check-server-moat.ts
 
+    orchestrator-parse-gate:
+      tags: sdd orchestrator
+      # Pin command-flow features to the orchestrator consumption contract
+      # (orchestrator-command-parity p1). A feature is enforced iff its plan.md
+      # declares the `orchestrator_config` block; manual-SDD features are skipped
+      # by construction (self-maintaining, no ignore-list). glob only decides
+      # whether to run — the script ignores args and full-scans specs/* (holistic
+      # invariant, same shape as check-server-moat). Catches the silent off-schema
+      # drift that broke the 002 golden reference before any orchestrator run.
+      # CI mirror: pr-validation.yml validate-and-test step (same name).
+      # Emergency exit: git commit --no-verify.
+      glob: 'specs/*/{spec,plan,tasks}.md'
+      run: pnpm tsx scripts/orchestrator/parse-gate.ts
+
     markdownlint:
       tags: lint
       # Per memory feedback_markdownlint_preflight — pre-flight catches

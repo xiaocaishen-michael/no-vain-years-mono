@@ -61,12 +61,26 @@ GET / PATCH `/v1/account/profile` 两个 endpoint。
     }
   ],
   "module_boundaries": {
+    "_note": "human annotation — must be ignored by the parser (forward-compat)",
     "server-app": {
       "modules": ["account"],
       "allowed_imports": ["@nestjs/*", "libs/db"],
       "forbidden_imports": ["apps/mobile/**/*"]
     }
   },
+  "entities": [
+    {
+      "id": "E1",
+      "name": "Account",
+      "domain": "account",
+      "attrs": [
+        { "name": "id", "type": "string" },
+        { "name": "displayName", "type": "string", "max_len": 50 },
+        { "name": "phone", "type": "string", "format": "E.164" }
+      ],
+      "relations": []
+    }
+  ],
   "sandbox": {
     "cwd_template": "/tmp/orchestrator-{feature_id}-{task_id}",
     "cleanup_on_success": true,

@@ -2,7 +2,7 @@
 feature_id: 002-account-profile
 spec_ref: ./spec.md
 plan_ref: ./plan.md
-status: complete
+status: completed
 created_at: "2026-05-20"
 updated_at: "2026-05-25"
 orchestrator_compat: ">=0.1.0"

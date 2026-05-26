@@ -85,7 +85,7 @@ export function summarize(state: FeatureState): FeatureSummary {
     tasksStatus: state.tasks.frontmatter.status,
     workspaces: state.plan.config.workspaces.map((w) => w.id),
     endpoints: state.plan.contracts.endpoints.length,
-    entities: state.spec.entities.length,
+    entities: state.plan.config.entities.length,
     userStories: state.spec.userStories.length,
     functionalRequirements: state.spec.functionalRequirements.length,
     totalTasks: state.tasks.tasks.length,

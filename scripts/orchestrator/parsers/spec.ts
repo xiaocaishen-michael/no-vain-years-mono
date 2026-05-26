@@ -1,26 +1,16 @@
 import * as fs from 'node:fs';
-import {
-  ClMetaSchema,
-  EntitiesBlockSchema,
-  FrMetaSchema,
-  SpecFrontmatterSchema,
-  UsMetaSchema,
-  type ClMeta,
-  type Entity,
-  type FrMeta,
-  type SpecFrontmatter,
-  type UsMeta,
-} from '../schemas/spec.js';
+import { SpecFrontmatterSchema, type FrPriority, type SpecFrontmatter } from '../schemas/spec.js';
 import { parseFrontmatterRaw } from './common/gray-matter-wrap.js';
-import { parseJson5 } from './common/json5-cleanse.js';
 
 export interface UserStory {
-  meta: UsMeta;
+  id: string; // "US<n>"
+  priority?: string; // "P<n>" if declared in the heading
   title: string;
 }
 
 export interface FunctionalRequirement {
-  meta: FrMeta;
+  id: string; // "FR-NNN"
+  priority: FrPriority; // prose carries none → defaults to 'should' (p1 §2)
   text: string;
 }
 
@@ -30,7 +20,7 @@ export interface SuccessCriterion {
 }
 
 export interface Clarification {
-  meta: ClMeta;
+  text: string;
 }
 
 export interface ParsedSpec {
@@ -40,9 +30,15 @@ export interface ParsedSpec {
   userStories: UserStory[];
   edgeCases: string;
   functionalRequirements: FunctionalRequirement[];
-  entities: Entity[];
   successCriteria: SuccessCriterion[];
   assumptions: string;
+}
+
+// Strip a trailing `<!-- ... -->` HTML comment (e.g. legacy us-meta/fr-meta
+// annotations) so prose extraction yields clean text from both vanilla and
+// legacy meta-bearing specs.
+function stripTrailingComment(s: string): string {
+  return s.replace(/\s*<!--[\s\S]*?-->\s*$/, '');
 }
 
 export class SpecAnalyzer {
@@ -58,7 +54,6 @@ export class SpecAnalyzer {
     const userJourneyMermaid = this.extractMermaid(body);
     const userStories = this.extractUserStories(body);
     const functionalRequirements = this.extractFunctionalRequirements(body);
-    const entities = this.extractEntities(body);
     const successCriteria = this.extractSuccessCriteria(body);
     const clarifications = this.extractClarifications(body);
     const edgeCases = this.extractSection(body, 'Edge Cases', 3);
@@ -71,7 +66,6 @@ export class SpecAnalyzer {
       userStories,
       edgeCases,
       functionalRequirements,
-      entities,
       successCriteria,
       assumptions,
     };
@@ -83,42 +77,37 @@ export class SpecAnalyzer {
   }
 
   private extractUserStories(body: string): UserStory[] {
-    // Heading `### User Story N — title (Priority: PX)` followed (possibly after blanks)
-    // by `<!-- us-meta: {...} -->`.
-    const regex = /^###\s+User Story[^\n]*?\n+\s*<!--\s*us-meta:\s*([\s\S]*?)\s*-->/gm;
+    // Prose heading: `### User Story <n> [—/–/-] <title> (Priority: P<n>)`.
+    // The title separator and the trailing `(Priority: ...)` are both optional;
+    // any legacy `<!-- us-meta -->` on the following line is ignored.
+    const regex = /^###\s+User Story\s+(\d+)\b(.*)$/gm;
     const out: UserStory[] = [];
     let m: RegExpExecArray | null;
     while ((m = regex.exec(body)) !== null) {
-      const headingLine = body.slice(0, m.index).split('\n').pop() ?? '';
-      // Re-extract the heading line for title (m.index points to the `###` line start)
-      const lineEnd = body.indexOf('\n', m.index);
-      const heading = body.slice(m.index, lineEnd === -1 ? body.length : lineEnd);
-      const title = heading.replace(/^###\s+/, '').trim();
-      const meta = parseJson5(m[1], UsMetaSchema);
-      out.push({ meta, title });
-      void headingLine;
+      const id = `US${m[1]}`;
+      let rest = m[2].trim();
+      let priority: string | undefined;
+      const pm = rest.match(/\(Priority:\s*(P\d+)\)\s*$/i);
+      if (pm) {
+        priority = pm[1].toUpperCase();
+        rest = rest.slice(0, pm.index).trim();
+      }
+      const title = rest.replace(/^[—–\-:\s]+/, '').trim();
+      out.push({ id, priority, title });
     }
     return out;
   }
 
   private extractFunctionalRequirements(body: string): FunctionalRequirement[] {
-    // Line shape: `- **FR-NNN**: text <!-- fr-meta: {...} -->`
-    const regex = /^-\s+\*\*FR-\d{3}\*\*:\s*([\s\S]*?)\s*<!--\s*fr-meta:\s*([\s\S]*?)\s*-->/gm;
+    // Prose line: `- **FR-NNN**: text`. Prose carries no priority → 'should'.
+    const regex = /^-\s+\*\*(FR-\d{3})\*\*:\s*(.+)$/gm;
     const out: FunctionalRequirement[] = [];
     let m: RegExpExecArray | null;
     while ((m = regex.exec(body)) !== null) {
-      const text = m[1].trim();
-      const meta = parseJson5(m[2], FrMetaSchema);
-      out.push({ meta, text });
+      const text = stripTrailingComment(m[2]).trim();
+      out.push({ id: m[1], priority: 'should', text });
     }
     return out;
-  }
-
-  private extractEntities(body: string): Entity[] {
-    const m = body.match(/```json\s+entities\s*\n([\s\S]*?)\n```/);
-    if (!m) return [];
-    const block = parseJson5(m[1], EntitiesBlockSchema);
-    return block.entities;
   }
 
   private extractSuccessCriteria(body: string): SuccessCriterion[] {
@@ -128,20 +117,23 @@ export class SpecAnalyzer {
     const out: SuccessCriterion[] = [];
     let m: RegExpExecArray | null;
     while ((m = regex.exec(sectionRaw)) !== null) {
-      out.push({ id: m[1], text: m[2].trim() });
+      out.push({ id: m[1], text: stripTrailingComment(m[2]).trim() });
     }
     return out;
   }
 
   private extractClarifications(body: string): Clarification[] {
+    // Prose-tolerant + best-effort: each bullet under `## Clarifications`
+    // becomes one entry (legacy `<!-- cl-meta -->` comments are ignored).
+    // Unused by the executor — kept for summary/visibility only.
     const sectionRaw = this.extractSection(body, 'Clarifications');
     if (!sectionRaw) return [];
-    const regex = /<!--\s*cl-meta:\s*([\s\S]*?)\s*-->/g;
+    const regex = /^-\s+(.+)$/gm;
     const out: Clarification[] = [];
     let m: RegExpExecArray | null;
     while ((m = regex.exec(sectionRaw)) !== null) {
-      const meta = parseJson5(m[1], ClMetaSchema);
-      out.push({ meta });
+      const text = stripTrailingComment(m[1]).trim();
+      if (text) out.push({ text });
     }
     return out;
   }

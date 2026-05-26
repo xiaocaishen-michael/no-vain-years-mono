@@ -11,6 +11,7 @@
   "scripts": {
     "postinstall": "if command -v git >/dev/null 2>&1; then lefthook install; fi",
     "orchestrate": "tsx scripts/orchestrator/index.ts",
+    "orchestrator:parse-gate": "tsx scripts/orchestrator/parse-gate.ts",
     "db:migrate": "tsx scripts/prisma-migrate.ts"
   },
   "pnpm": {
