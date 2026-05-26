@@ -6,7 +6,7 @@ import { RequestSmsCodeUseCase } from './request-sms-code.usecase';
 import { RequestSmsCodeRequest } from './request-sms-code.request';
 import { RequestSmsCodeResponse } from './request-sms-code.response';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
-import { ALL_DELETION_BUCKETS } from '../security/throttler-skip-buckets';
+import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip-buckets';
 import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard';
 
 /**
@@ -36,6 +36,7 @@ export class AccountSmsCodeController {
     'logout-all-ip': true,
     'logout-all-account': true,
     ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
   })
   @ApiOperation({
     summary: 'Request an SMS verification code',

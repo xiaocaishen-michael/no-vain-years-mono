@@ -7,7 +7,7 @@ import { RefreshTokenRequest } from './refresh-token.request';
 import { PhoneSmsAuthResponse } from './phone-sms-auth.response';
 import { JwtAccessGuard, type AuthenticatedUser } from './jwt-access.guard';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
-import { ALL_DELETION_BUCKETS } from '../security/throttler-skip-buckets';
+import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip-buckets';
 
 /**
  * 凭证端点 (auth 编排层):
@@ -38,6 +38,7 @@ export class AccountTokenController {
     'logout-all-ip': true,
     'logout-all-account': true,
     ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
   })
   @ApiOperation({
     summary: 'Rotate a refresh token',
@@ -89,6 +90,7 @@ export class AccountTokenController {
     'refresh-ip': true,
     'refresh-token': true,
     ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
   })
   @ApiBearerAuth()
   @ApiOperation({
