@@ -38,9 +38,9 @@ describe('InspectAccountStatusByIdUseCase — by-id read-only 状态探查 (refr
     expect(findUnique).toHaveBeenCalledWith({ where: { id: 7n } });
   });
 
-  it('ACTIVE row → { kind: ACTIVE }', async () => {
+  it('ACTIVE row → { kind: ACTIVE, phone } (send-deletion-code 需手机号发码)', async () => {
     findUnique.mockResolvedValue(baseRow);
-    expect(await useCase.execute(7n)).toEqual({ kind: 'ACTIVE' });
+    expect(await useCase.execute(7n)).toEqual({ kind: 'ACTIVE', phone: '+8613800138701' });
   });
 
   it('account 不存在 → { kind: NOT_FOUND }', async () => {

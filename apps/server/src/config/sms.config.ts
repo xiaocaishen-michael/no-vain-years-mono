@@ -16,6 +16,10 @@ const SmsConfigSchema = z.discriminatedUnion('kind', [
     accessKeySecret: z.string().min(1, 'ALIYUN_ACCESS_KEY_SECRET required when SMS_GATEWAY=aliyun'),
     signName: z.string().min(1, 'ALIYUN_SMS_SIGN_NAME required when SMS_GATEWAY=aliyun'),
     templateCode: z.string().min(1, 'ALIYUN_SMS_TEMPLATE_CODE required when SMS_GATEWAY=aliyun'),
+    // 注销/撤销码独立模板 (FR-S05/S08, 004)。可选 — 缺省则 auth.module 不下发覆盖,
+    // AliyunSmsGateway 回退默认 templateCode (登录码模板)。
+    deleteAccountTemplateCode: z.string().min(1).optional(),
+    cancelDeletionTemplateCode: z.string().min(1).optional(),
   }),
 ]);
 
@@ -30,6 +34,8 @@ export const smsConfig = registerAs('sms', (): SmsConfig => {
       accessKeySecret: process.env.ALIYUN_ACCESS_KEY_SECRET,
       signName: process.env.ALIYUN_SMS_SIGN_NAME,
       templateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE,
+      deleteAccountTemplateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE_DELETE_ACCOUNT,
+      cancelDeletionTemplateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE_CANCEL_DELETION,
     });
   }
   return SmsConfigSchema.parse({ kind: 'mock' });

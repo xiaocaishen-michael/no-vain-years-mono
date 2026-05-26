@@ -196,3 +196,64 @@ describe('useLoginForm (errors + anti-enum)', () => {
     });
   });
 });
+
+describe('useLoginForm (FR-C03 FROZEN 拦截)', () => {
+  beforeEach(() => {
+    h.smsMutateAsync.mockReset().mockResolvedValue({ data: {} });
+    h.authMutateAsync
+      .mockReset()
+      .mockResolvedValue({ data: { accountId: '1', accessToken: 'a', refreshToken: 'r' } });
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Full RFC 9457 ProblemDetail body — extractProblemDetail unwraps only when
+  // status + title are present (mirrors the real server 403 disclosure).
+  const freezeError = {
+    isAxiosError: true,
+    response: {
+      status: 403,
+      data: {
+        type: 'about:blank',
+        title: 'Forbidden',
+        status: 403,
+        code: 'ACCOUNT_IN_FREEZE_PERIOD',
+        freezeUntil: '2026-06-10T00:00:00Z',
+      },
+    },
+  };
+
+  it('submit hitting a FROZEN account → frozen state + freezeUntil (no error toast)', async () => {
+    h.authMutateAsync.mockReset().mockRejectedValue(freezeError);
+    const { result } = renderHook(() => useLoginForm());
+    act(() => {
+      result.current.form.setValue('phone', validPhone);
+      result.current.form.setValue('code', validCode);
+    });
+    await act(async () => {
+      await result.current.submit();
+    });
+    expect(result.current.state).toBe('frozen');
+    expect(result.current.freezeUntil).toBe('2026-06-10T00:00:00Z');
+    expect(result.current.errorToast).toBeNull();
+  });
+
+  it('dismissFreeze (保持注销) → idle + cleared form', async () => {
+    h.authMutateAsync.mockReset().mockRejectedValue(freezeError);
+    const { result } = renderHook(() => useLoginForm());
+    act(() => {
+      result.current.form.setValue('phone', validPhone);
+      result.current.form.setValue('code', validCode);
+    });
+    await act(async () => {
+      await result.current.submit();
+    });
+    expect(result.current.state).toBe('frozen');
+    act(() => result.current.dismissFreeze());
+    expect(result.current.state).toBe('idle');
+    expect(result.current.freezeUntil).toBeNull();
+    expect(result.current.form.getValues()).toEqual({ phone: '', code: '' });
+  });
+});

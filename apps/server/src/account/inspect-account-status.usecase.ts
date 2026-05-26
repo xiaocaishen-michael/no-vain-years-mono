@@ -13,7 +13,9 @@ import { isAnonymized, isFrozen } from './account.rules';
 export type AccountStatusInspection =
   | { kind: 'NOT_FOUND' }
   | { kind: 'ACTIVE' }
-  | { kind: 'FROZEN'; freezeUntil: Date | null }
+  // accountId 随 FROZEN 暴露 (server-internal, 不外泄): 撤销发码/提交 (004 US4/US5)
+  // 据此 key account_sms_code 码行 (该表以 accountId 为键, 无 phone 列)。
+  | { kind: 'FROZEN'; accountId: bigint; freezeUntil: Date | null }
   | { kind: 'ANONYMIZED' };
 
 @Injectable()
@@ -27,7 +29,7 @@ export class InspectAccountStatusUseCase {
       return { kind: 'NOT_FOUND' };
     }
     if (isFrozen(account)) {
-      return { kind: 'FROZEN', freezeUntil: account.freezeUntil };
+      return { kind: 'FROZEN', accountId: account.id, freezeUntil: account.freezeUntil };
     }
     if (isAnonymized(account)) {
       return { kind: 'ANONYMIZED' };

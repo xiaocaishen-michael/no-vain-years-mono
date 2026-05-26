@@ -8,6 +8,8 @@
 
 export * from './accountProfileResponse';
 export * from './accountProfileResponseStatus';
+export * from './cancelDeletionRequest';
+export * from './deleteAccountRequest';
 export * from './healthControllerLive200';
 export * from './healthControllerLive200Details';
 export * from './healthControllerLive200Error';
@@ -31,4 +33,5 @@ export * from './problemDetailResponseInvalidAttributesItem';
 export * from './refreshTokenRequest';
 export * from './requestSmsCodeRequest';
 export * from './requestSmsCodeResponse';
+export * from './sendCancelCodeRequest';
 export * from './updateDisplayNameRequest';

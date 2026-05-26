@@ -7,8 +7,8 @@ import { z } from 'zod';
  * `x-trace-id` → nestjs-cls middleware) 取, out-of-request 场景 (cron / worker
  * trigger) publisher 合成 `out-of-request-<uuid>` fallback。
  *
- * `producer_context` 当前 publisher 写死 `'auth'` (per ADR-0033 决策点 4 起步阶段);
- * Plan 2 跨 context publisher 出现时切 event_type prefix 推或 caller 显式传。
+ * `producer_context` 由 publisher.publish() 的 `producerContext` 入参决定 (默认 `'auth'`,
+ * per ADR-0033 决策点 4); account 自持 tx 产的事件 (AnonymizedEvent) 显式传 `'account'` (T004)。
  *
  * Envelope 在 publisher.publish() 入口被 `OutboxEventEnvelopeSchema.parse()`
  * 拦截; 任何字段缺失 / 类型错都 fail-fast 拒写表, 不会留 partial row。

@@ -80,6 +80,28 @@ describe('OutboxEventPrismaPublisher (Testcontainers PG)', () => {
     expect(payload.data).toEqual(data);
   });
 
+  it('publish(..., producerContext) stamps envelope metadata.producer_context (T004 account 发 AnonymizedEvent)', async () => {
+    const publisher = new OutboxEventPrismaPublisher(makeCls('producer-ctx-trace'));
+    const eventType = 'account.account.anonymized';
+
+    await publisher.publish(prisma, eventType, { accountId: '7' }, 'account');
+
+    const row = (await prisma.outboxEvent.findMany({ where: { eventType } }))[0]!;
+    const payload = row.payload as { metadata: { producer_context: string } };
+    expect(payload.metadata.producer_context).toBe('account');
+  });
+
+  it('publish without producerContext → defaults to auth (003 既有不破)', async () => {
+    const publisher = new OutboxEventPrismaPublisher(makeCls('default-ctx-trace'));
+    const eventType = 'auth.default.producer';
+
+    await publisher.publish(prisma, eventType, { y: 2 });
+
+    const row = (await prisma.outboxEvent.findMany({ where: { eventType } }))[0]!;
+    const payload = row.payload as { metadata: { producer_context: string } };
+    expect(payload.metadata.producer_context).toBe('auth');
+  });
+
   it('publish without ClsService → synthesizes out-of-request-* trace_id fallback', async () => {
     const publisher = new OutboxEventPrismaPublisher();
     const eventType = 'auth.outbox.fallback';

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import type { RefreshToken } from '../generated/prisma/client';
+import type { Prisma, RefreshToken } from '../generated/prisma/client';
 import { JwtTokenService } from './jwt-token.service';
 import { PrismaService } from './prisma.service';
 import { hashRefreshToken } from './refresh-token-hasher';
@@ -12,6 +12,13 @@ import {
 } from './refresh-token.rules';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 事务客户端 —— caller 持有的 `$transaction` 回调参数 (Omit 掉 $transaction 等
+ * deny-list 方法的 PrismaClient)。跨 ctx 写传入则操作入 caller 的 tx (R2 sync,
+ * 撤/写 token 失败回滚整请求, plan D3)；缺省 → 用 service 自己的 PrismaService。
+ */
+export type TxClient = Prisma.TransactionClient;
 
 /** persist 入参 —— device 元数据来自登录控制器透传 (X-Device-Id 头 + clientIp)。 */
 export interface PersistRefreshTokenInput {
@@ -57,9 +64,10 @@ export class RefreshTokenService {
     accountId: bigint,
     rawToken: string,
     meta: PersistRefreshTokenInput,
+    tx?: TxClient,
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * DAY_MS);
-    await this.prisma.refreshToken.create({
+    await (tx ?? this.prisma).refreshToken.create({
       data: {
         tokenHash: hashRefreshToken(rawToken),
         accountId,
@@ -138,9 +146,12 @@ export class RefreshTokenService {
    * 全端登出: 撤该账号全部 active refresh-token 行 (含当前 device)。
    * `updateMany where {accountId, revokedAt:null}` set revokedAt=now —— **幂等**:
    * count 忽略 (0/1/N 均 ok),已撤销行因 `revokedAt:null` 过滤不被重写 (时间戳不变)。
+   *
+   * `tx` 传入 → 撤销入 caller 的事务 (delete/cancel/anonymize 跨 ctx 原子撤 token,
+   * R2 sync); 缺省 → service 自己的 PrismaService (003 全端登出既有行为不变)。
    */
-  async revokeAllForAccount(accountId: bigint, now: Date): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
+  async revokeAllForAccount(accountId: bigint, now: Date, tx?: TxClient): Promise<void> {
+    await (tx ?? this.prisma).refreshToken.updateMany({
       where: { accountId, revokedAt: null },
       data: { revokedAt: now },
     });
