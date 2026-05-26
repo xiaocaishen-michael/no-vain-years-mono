@@ -193,11 +193,13 @@ export default function LoginScreen() {
         </View>
       </View>
 
-      {/* FR-C03 — FROZEN 拦截 modal 覆盖在表单上（state === 'frozen'）。 */}
+      {/* FR-C03 — FROZEN 拦截 modal 覆盖在表单上（state === 'frozen'）。撤销用
+          replace 而非 push：撤销是横向切流程，login（含 phase=frozen 的 modal）应
+          卸载，避免 back stack 留 stale 拦截屏。 */}
       {state === 'frozen' && freezeUntil ? (
         <FreezeModal
           remainingDays={remainingFreezeDays(freezeUntil)}
-          onCancel={() => router.push(cancelDeletionPath(form.getValues('phone')))}
+          onCancel={() => router.replace(cancelDeletionPath(form.getValues('phone')))}
           onKeep={dismissFreeze}
         />
       ) : null}
