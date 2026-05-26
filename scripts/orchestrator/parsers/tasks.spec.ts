@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { TaskMetaSchema } from '../schemas/tasks.js';
 import { PlanAnalyzer, type ParsedPlan } from './plan.js';
 import { SpecAnalyzer, type ParsedSpec } from './spec.js';
 import { TasksAnalyzer } from './tasks.js';
@@ -101,13 +102,71 @@ describe('TasksAnalyzer', () => {
     );
   });
 
-  it('throws when task.trace_ep is not in plan.api_contracts', () => {
+  it('throws when a non-verification task declares empty files', () => {
     const bad = happyTasks.replace(
-      '"trace_fr":["FR-001"],"trace_ep":["EP1"]',
-      '"trace_fr":["FR-001"],"trace_ep":["EP99"]',
+      '"files":[{"path":"apps/server/src/account/profile.controller.ts","op":"create"},{"path":"apps/server/src/account/profile.service.ts","op":"create"}]',
+      '"files":[]',
     );
     expect(() => analyzer.parseContent(bad, plan, spec)).toThrowError(
-      /trace_ep 'EP99' not in plan\.api_contracts/,
+      /T001 has empty files \(only kind:verification may omit files\)/,
     );
+  });
+
+  it('parses a verification runtime-gate task with empty files + smoke verify_kind', () => {
+    const verificationTasks = `---
+feature_id: 002-account-profile-base
+spec_ref: ./spec.md
+plan_ref: ./plan.md
+status: not-started
+created_at: 2026-05-20
+updated_at: 2026-05-20
+orchestrator_compat: ">=0.1.0"
+---
+
+# Tasks: 002-account-profile-base
+
+## Server
+
+- [ ] T001 server impl
+  <!-- task-meta: {"id":"T001","workspace":"server-app","deps":[],"trace_us":["US1"],"trace_fr":["FR-001"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/server/src/account/profile.controller.ts","op":"create"}]} -->
+
+- [ ] T002 Verify Backend Physics — runtime smoke
+  <!-- task-meta: {"id":"T002","workspace":"server-app","deps":["T001"],"trace_us":["US1"],"trace_fr":["FR-001"],"kind":"verification","verify_kind":"smoke","files":[]} -->
+`;
+    const result = analyzer.parseContent(verificationTasks, plan, spec);
+    expect(result.tasks).toHaveLength(2);
+    const smoke = result.tasks.find((t) => t.id === 'T002')!;
+    expect(smoke.kind).toBe('verification');
+    expect(smoke.files).toEqual([]);
+    // parallel omitted in task-meta → schema default false
+    expect(smoke.parallel).toBe(false);
+  });
+});
+
+describe('TaskMetaSchema (post-PR1.5 contract)', () => {
+  const base = {
+    id: 'T001',
+    workspace: 'server-app',
+    deps: [],
+    trace_us: ['US1'],
+    trace_fr: ['FR-001'],
+    kind: 'impl' as const,
+    verify_kind: 'test',
+    files: [{ path: 'apps/server/src/account/x.ts', op: 'create' as const }],
+  };
+
+  it('accepts kind "verification"', () => {
+    const r = TaskMetaSchema.safeParse({ ...base, kind: 'verification' });
+    expect(r.success).toBe(true);
+  });
+
+  it('defaults parallel to false when omitted', () => {
+    const r = TaskMetaSchema.parse(base);
+    expect(r.parallel).toBe(false);
+  });
+
+  it('accepts an empty files array at schema level (parser enforces the kind rule)', () => {
+    const r = TaskMetaSchema.safeParse({ ...base, kind: 'verification', files: [] });
+    expect(r.success).toBe(true);
   });
 });

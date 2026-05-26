@@ -34,6 +34,10 @@ export const TaskKindSchema = z.enum([
   'migration',
   'docs',
   'config',
+  // Runtime gate task per ADR-0040 (e.g. server-boot smoke): runs a
+  // verify_command but produces no files. Excluded from BULK_KINDS
+  // (drift-classifier) and allowed to declare empty `files` (see below).
+  'verification',
 ]);
 
 export const TaskMetaSchema = z.object({
@@ -46,7 +50,9 @@ export const TaskMetaSchema = z.object({
   trace_sc: z.array(z.string().regex(/^SC-\d{3}$/)).optional(),
   kind: TaskKindSchema,
   verify_kind: z.string(),
-  files: z.array(TaskFileOpSchema).min(1),
+  // Non-empty for file-producing tasks; the parser (validateTask) enforces
+  // `≥ 1` for every kind except `verification` (a runtime gate has no files).
+  files: z.array(TaskFileOpSchema),
   /**
    * Optional explicit "bulk-output scope" for gen / migration tasks. When the
    * LLM legitimately touches files outside `files` but inside one of these
@@ -60,7 +66,10 @@ export const TaskMetaSchema = z.object({
    */
   gen_dirs: z.array(z.string()).optional(),
   graphify_scope_override: z.string().optional(),
-  parallel: z.boolean(),
+  // Optional, default serial (`false`). The orchestrator only honors parallel
+  // within a batch under the `--parallel` flag; PoC default is serial for
+  // Ralph-loop traceability, so authors may omit it.
+  parallel: z.boolean().optional().default(false),
   tdd_red_expected: z.boolean().optional(),
   tdd_pair: z
     .string()

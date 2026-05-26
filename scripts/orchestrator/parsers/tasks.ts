@@ -69,6 +69,13 @@ export class TasksAnalyzer {
   }
 
   private validateTask(t: ParsedTask, plan: ParsedPlan, spec: ParsedSpec): void {
+    // Every file-producing task needs ≥ 1 file; only a `verification` runtime
+    // gate (ADR-0040 smoke) may declare none. (Schema drops the blanket min(1)
+    // so verification can express empty `files`; this keeps the guard for the rest.)
+    if (t.kind !== 'verification' && t.files.length === 0) {
+      throw new Error(`task ${t.id} has empty files (only kind:verification may omit files)`);
+    }
+
     const ws = plan.config.workspaces.find((w) => w.id === t.workspace);
     if (!ws) {
       throw new Error(`task ${t.id} workspace '${t.workspace}' not in plan.workspaces`);
