@@ -87,7 +87,7 @@ export class TasksAnalyzer {
     }
     // trace_fr cross-doc: each FR must exist in spec.functionalRequirements
     for (const fr of t.trace_fr) {
-      if (!spec.functionalRequirements.find((s) => s.meta.id === fr)) {
+      if (!spec.functionalRequirements.find((s) => s.id === fr)) {
         throw new Error(`task ${t.id} trace_fr '${fr}' not in spec.requirements`);
       }
     }

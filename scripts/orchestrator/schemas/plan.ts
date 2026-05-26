@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IsoDateString } from './common.js';
+import { IsoDateString, stripUnderscoreKeys } from './common.js';
 
 export const PlanFrontmatterSchema = z.object({
   feature_id: z.string().regex(/^\d{3}-[a-z0-9-]+$/),
@@ -25,16 +25,45 @@ export const WorkspaceSchema = z.object({
   graphify_scope: z.string(),
 });
 
-export const OrchestratorConfigSchema = z.object({
-  workspaces: z.array(WorkspaceSchema).min(1),
-  module_boundaries: z.record(
-    z.string(),
+// Data model. Migrated from spec.md (p1 §2): plan.md is the HOW artifact and the
+// api_contracts endpoints already reference entities by `E<n>`, so entities now
+// live alongside them in plan's orchestrator_config rather than in spec prose.
+export const EntitySchema = z.object({
+  id: z.string().regex(/^E\d+$/),
+  name: z.string().min(1),
+  domain: z.string().optional(),
+  attrs: z.array(
     z.object({
-      modules: z.array(z.string()),
-      allowed_imports: z.array(z.string()),
-      forbidden_imports: z.array(z.string()),
+      name: z.string(),
+      type: z.string(),
+      max_len: z.number().optional(),
+      format: z.string().optional(),
     }),
   ),
+  relations: z.array(
+    z.object({
+      to: z.string().regex(/^E\d+$/),
+      kind: z.enum(['1:1', '1:N', 'N:1', 'N:N']),
+    }),
+  ),
+});
+
+export const OrchestratorConfigSchema = z.object({
+  workspaces: z.array(WorkspaceSchema).min(1),
+  // `_`-prefixed keys (e.g. a human `_note`) are dropped before validation so an
+  // annotation never trips the per-workspace value schema (forward-compat, p1 §2.1).
+  module_boundaries: z.preprocess(
+    stripUnderscoreKeys,
+    z.record(
+      z.string(),
+      z.object({
+        modules: z.array(z.string()),
+        allowed_imports: z.array(z.string()),
+        forbidden_imports: z.array(z.string()),
+      }),
+    ),
+  ),
+  entities: z.array(EntitySchema).optional().default([]),
   sandbox: z.object({
     cwd_template: z.string(),
     cleanup_on_success: z.boolean(),
@@ -83,6 +112,7 @@ export const ConstitutionCheckSchema = z.object({
 
 export type PlanFrontmatter = z.infer<typeof PlanFrontmatterSchema>;
 export type Workspace = z.infer<typeof WorkspaceSchema>;
+export type Entity = z.infer<typeof EntitySchema>;
 export type OrchestratorConfig = z.infer<typeof OrchestratorConfigSchema>;
 export type Endpoint = z.infer<typeof EndpointSchema>;
 export type ApiContracts = z.infer<typeof ApiContractsSchema>;

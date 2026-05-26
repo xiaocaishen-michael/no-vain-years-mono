@@ -33,6 +33,36 @@ describe('PlanAnalyzer', () => {
     expect(result.architectureNotes).toContain('ProfileController');
   });
 
+  it('parses entities migrated into orchestrator_config (spec → plan, p1 §2)', () => {
+    const result = analyzer.parseContent(happy);
+    expect(result.config.entities).toHaveLength(1);
+    expect(result.config.entities[0].id).toBe('E1');
+    expect(result.config.entities[0].attrs.find((a) => a.name === 'phone')?.format).toBe('E.164');
+  });
+
+  it('defaults config.entities to [] when the entities array is absent (optional)', () => {
+    const noEntities = happy.replace(/"entities": \[[\s\S]*?\],\n\s*"sandbox"/, '"sandbox"');
+    const result = analyzer.parseContent(noEntities);
+    expect(result.config.entities).toEqual([]);
+    expect(result.config.workspaces).toHaveLength(3);
+  });
+
+  it('forward-compat: a `_`-prefixed key in module_boundaries is ignored (§2.1)', () => {
+    // happy fixture already carries a `_note`; assert it neither breaks parse
+    // nor leaks into the parsed record.
+    const result = analyzer.parseContent(happy);
+    expect(Object.keys(result.config.module_boundaries)).toEqual(['server-app']);
+  });
+
+  it('forward-compat: an undeclared orchestrator_config key does not break parse (§2.1)', () => {
+    const withExtra = happy.replace(
+      '"workspaces": [',
+      '"some_future_field": { "anything": true },\n  "workspaces": [',
+    );
+    const result = analyzer.parseContent(withExtra);
+    expect(result.config.workspaces).toHaveLength(3);
+  });
+
   it('rejects frontmatter feature_id with wrong format', () => {
     const bad = happy.replace('feature_id: 002-account-profile-base', 'feature_id: ProfileBase');
     expect(() => analyzer.parseContent(bad)).toThrowError(/feature_id/);

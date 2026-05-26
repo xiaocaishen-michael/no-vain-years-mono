@@ -29,12 +29,13 @@ sequenceDiagram
 
 ## Clarifications
 
-<!-- cl-meta: {"id":"CL-001","resolved":true,"resolved_at":"2026-05-20","trace_fr":["FR-001"]} -->
+### Session 2026-05-20
+
+- Q: profile 返回是否包含完整手机号? → A: 否,中间 4 位掩码 (covers FR-002)
 
 ## User Scenarios & Testing
 
 ### User Story 1 — 查看个人信息 (Priority: P1)
-<!-- us-meta: {"id":"US1","priority":"P1","independent_test":"Login with valid phone → see profile","trace_fr":["FR-001"]} -->
 
 **Why this priority**: 用户必须能查看自己的资料。
 
@@ -50,28 +51,8 @@ sequenceDiagram
 
 ### Functional Requirements
 
-- **FR-001**: System MUST return account profile <!-- fr-meta: {"id":"FR-001","priority":"must","needs_clarification":false,"questions":[],"trace_us":["US1"],"trace_sc":["SC-001"]} -->
-- **FR-002**: System MUST mask phone middle 4 digits <!-- fr-meta: {"id":"FR-002","priority":"must","needs_clarification":false,"questions":[],"trace_us":["US1"],"trace_sc":["SC-002"]} -->
-
-### Key Entities
-
-```json entities
-{
-  "entities": [
-    {
-      "id": "E1",
-      "name": "Account",
-      "domain": "account",
-      "attrs": [
-        { "name": "id", "type": "string" },
-        { "name": "displayName", "type": "string", "max_len": 50 },
-        { "name": "phone", "type": "string", "format": "E.164" }
-      ],
-      "relations": []
-    }
-  ]
-}
-```
+- **FR-001**: System MUST return account profile
+- **FR-002**: System MUST mask phone middle 4 digits
 
 ## Success Criteria
 

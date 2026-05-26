@@ -33,7 +33,7 @@ export function buildPrompt(input: BuildPromptInput): string {
   const sections: string[] = [];
 
   sections.push(taskHeader(task));
-  sections.push(specSection(task, spec));
+  sections.push(specSection(task, spec, plan));
   sections.push(paradigmSection());
   sections.push(architectureNotesSection(plan));
   sections.push(techConstraintsSection(plan));
@@ -58,24 +58,24 @@ function taskHeader(task: ParsedTask): string {
   ].join('\n');
 }
 
-function specSection(task: ParsedTask, spec: ParsedSpec): string {
+function specSection(task: ParsedTask, spec: ParsedSpec, plan: ParsedPlan): string {
   const lines: string[] = ['## Spec context'];
 
-  const usMatched = spec.userStories.filter((us) => task.trace_us.includes(us.meta.id));
+  const usMatched = spec.userStories.filter((us) => task.trace_us.includes(us.id));
   if (usMatched.length > 0) {
     lines.push('');
     lines.push('### User stories');
     for (const us of usMatched) {
-      lines.push(`- ${us.meta.id} [${us.meta.priority}] ${us.title}`);
+      lines.push(`- ${us.id}${us.priority ? ` [${us.priority}]` : ''} ${us.title}`);
     }
   }
 
-  const frMatched = spec.functionalRequirements.filter((fr) => task.trace_fr.includes(fr.meta.id));
+  const frMatched = spec.functionalRequirements.filter((fr) => task.trace_fr.includes(fr.id));
   if (frMatched.length > 0) {
     lines.push('');
     lines.push('### Functional requirements');
     for (const fr of frMatched) {
-      lines.push(`- ${fr.meta.id} [${fr.meta.priority}] ${fr.text}`);
+      lines.push(`- ${fr.id} [${fr.priority}] ${fr.text}`);
     }
   }
 
@@ -89,10 +89,12 @@ function specSection(task: ParsedTask, spec: ParsedSpec): string {
     }
   }
 
-  if (spec.entities.length > 0) {
+  // Entities migrated spec → plan (p1 §2): read from plan.config.
+  const entities = plan.config.entities;
+  if (entities.length > 0) {
     lines.push('');
     lines.push('### Entities');
-    for (const e of spec.entities) {
+    for (const e of entities) {
       const attrs = e.attrs.map((a) => `${a.name}: ${a.type}`).join(', ');
       lines.push(`- ${e.id} ${e.name}${e.domain ? ` (${e.domain})` : ''} { ${attrs} }`);
     }
