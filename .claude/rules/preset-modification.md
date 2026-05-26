@@ -1,15 +1,21 @@
 ---
 paths:
   - '.specify/presets/**'
+  - '.specify/templates/**'
   - '.specify/schemas/**'
   - '.specify/extensions.yml'
 ---
 
-# Preset 修改纪律（path-triggered，触及 `.specify/presets/` 自动加载）
+# Preset / 模板修改纪律（path-triggered，触及 `.specify/presets/` 或 `.specify/templates/` 自动加载）
 
 ## 硬性规则
 
-**不准直接修改 `.specify/presets/<id>/` 下任何 vendored 文件**（`preset.yml` / `templates/*` / `schemas/*` / `lefthook.yml.fragment` ...）。这些是 install.sh 从 preset 库 (`~/Documents/projects/michael-speckit-presets`) 复制来的快照。
+**不准在 mono 内直接改任何 spec-kit 模板 / preset 制品** —— 两处都不行：
+
+- `.specify/presets/<id>/`（preset vendored 快照：`preset.yml` / `templates/*` / `schemas/*` / `lefthook.yml.fragment` ...）—— install.sh 从 preset 库 (`~/Documents/projects/michael-speckit-presets`) 复制来的。
+- `.specify/templates/`（spec-kit **P4 core / vanilla** 裸模板）—— spec-kit upgrade 会覆盖，且改它**不跨项目复用**。
+
+任何「想让 `/speckit-specify·plan·tasks` 产出变化」的需求，**一律回 preset 库改 + install 回来**（下方流程），多项目共享同一份定制。
 
 **必须走的流程**：
 
@@ -18,6 +24,17 @@ paths:
 3. 开 PR + auto-merge（参考 [git-workflow](../../docs/conventions/git-workflow.md) AI agent 默认接 auto-merge）
 4. 回 mono 跑 `~/Documents/projects/michael-speckit-presets/scripts/install.sh --repo . --preset <id>` re-install
 5. mono 这边 commit 是"install `<id>` X.Y.Z"性质的同步 commit，**不**包含 ad-hoc 内容编辑
+
+## 机制速记（为什么 mono 内改哪层都不对）
+
+运行期 4 层 resolver 选模板，命中即停：P1 `templates/overrides/` > P2 `presets/<id>/templates/` > P3 `extensions/<id>/templates/` > P4 `templates/`(core)。**`strategy: replace` 是这个优先级语义、不物理替换文件** —— P4 core 永远是 vanilla。
+
+**命令接 resolver 不对称（2026-05-26 实证）**：
+
+- `/speckit-plan`·`/speckit-tasks`：SKILL 跑 `setup-{plan,tasks}.sh` → `resolve_template` → 命中 **P2 preset**。改 P4 对它们无效。
+- `/speckit-specify`：SKILL **硬编码 `cp .specify/templates/spec-template.md`、不经 resolver** → 永远拿 **P4 vanilla**（无 frontmatter / 无 us-meta）。改 P2 对它无效；要改 specify 产出得覆盖命令本身（参上游 `scaffold` preset / `git` extension）。
+
+→ 模板定制唯一正确落点 = preset 库，install 回 mono。P2 vendored 与 P4 core 都不要碰。
 
 ## 为什么
 
