@@ -88,7 +88,7 @@ created_at: '2026-05-26'
 - [X] T022 [US5] [Server] `cancel-deletion.usecase.ts` in `apps/server/src/auth/`（**auth 持 tx，public**）：phone→accountId 解析 → 预生成 tokens（signAccess + genRefresh，纯）→ `$transaction`：`account.commitAccountCancellation(tx, accountId, now)`（`won=false`→throw）+ `store.findActive(CANCEL_DELETION)+markUsed(tx)` + HMAC compare（失败 throw）+ `security.persist(accountId, refresh, meta, tx)` + `outbox.publish(tx, CancelledEvent)` → 返 `LoginResponse`。5 类失败（未注册/ACTIVE/ANONYMIZED/grace 过/码失败）折叠 `UnauthorizedException('INVALID_CREDENTIALS')`，phone-class 分支前置 `timingDefense.pad()`；跨 ctx 注释齐 + 单测（mock：happy / 5 失败折叠 + phone-class pad / token persist 抛→回滚无事件无 token）
 - [X] T023 [US5] [Server] `cancel-deletion.controller.ts` 加 `@Post()` `@HttpCode(200)`（EP4，复用 `PhoneSmsAuthResponse`）+ `cancel-deletion.request.ts`（`{ phone, code }`，缺字段→400）+ Swagger + named throttler `cancel-submit` 5/60s + `cancel-submit-ip` 10/60s（phone-hash guard）+ 单测（mock 映射）
 - [X] T024 [US5] [Server-IT] `cancel.us5-unfreeze.it.spec.ts`（全 boot）：发撤销码 → 提交正确码 → 200 + 新 access/refresh；DB 账号 ACTIVE / freezeUntil null / 码 usedAt 置 / 新 1 条 active refresh token(30d) / outbox 1 条 `account.deletion-cancelled`；**原子性**：注入 persist 失败 → 账号仍 FROZEN / freezeUntil 不变 / 码仍 active / 无事件 / 无新 token
-- [ ] T025 [US6] [Server-IT] `cancel.us6-anti-enum-concurrency.it.spec.ts`：①5 类失败响应字节级一致（均 401 `INVALID_CREDENTIALS`）+ 缺字段 400 ②5 并发持同码（service 层直测）→ 恰 1×200 + 4×401，DB ACTIVE 单次 + outbox CancelledEvent 恰 1 条 + 新 token 恰 1 条
+- [X] T025 [US6] [Server-IT] `cancel.us6-anti-enum-concurrency.it.spec.ts`：①5 类失败响应字节级一致（均 401 `INVALID_CREDENTIALS`）+ 缺字段 400 ②5 并发持同码（service 层直测）→ 恰 1×200 + 4×401，DB ACTIVE 单次 + outbox CancelledEvent 恰 1 条 + 新 token 恰 1 条
 
 ---
 
