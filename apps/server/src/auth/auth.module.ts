@@ -25,6 +25,7 @@ import { DeletionCodeStore } from './deletion-code.store.js';
 import { SendDeletionCodeUseCase } from './send-deletion-code.usecase.js';
 import { DeleteAccountUseCase } from './delete-account.usecase.js';
 import { SendCancelDeletionCodeUseCase } from './send-cancel-deletion-code.usecase.js';
+import { CancelDeletionUseCase } from './cancel-deletion.usecase.js';
 import { AccountDeletionController } from './account-deletion.controller.js';
 import { CancelDeletionController } from './cancel-deletion.controller.js';
 import { CancelCodePhoneThrottlerGuard } from './cancel-code-phone-throttler.guard.js';
@@ -203,6 +204,21 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
                 return Promise.resolve(`cancel-code-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
               },
             },
+            // FR-S18 (004 EP4 撤销提交, public): per-phone-hash 5/60s。无自带 getTracker
+            // → 走 CancelCodePhoneThrottlerGuard 的 phone-hash tracker (同 EP3 复用)。
+            { name: 'cancel-submit', limit: 5, ttl: 60_000 },
+            // FR-S18 (004 EP4 撤销提交, public): per-IP 10/60s
+            {
+              name: 'cancel-submit-ip',
+              limit: 10,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const ip = req['ip'];
+                return Promise.resolve(
+                  `cancel-submit-ip:${typeof ip === 'string' ? ip : 'unknown'}`,
+                );
+              },
+            },
           ],
           storage: new ThrottlerStorageRedisService(cfg.url),
         };
@@ -268,6 +284,7 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
     SendDeletionCodeUseCase,
     DeleteAccountUseCase,
     SendCancelDeletionCodeUseCase,
+    CancelDeletionUseCase,
     JwtAccessGuard,
     SmsPhoneThrottlerGuard,
     CancelCodePhoneThrottlerGuard,
