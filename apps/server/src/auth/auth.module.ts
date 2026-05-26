@@ -24,7 +24,10 @@ import { SmsPurpose } from './deletion-code.rules.js';
 import { DeletionCodeStore } from './deletion-code.store.js';
 import { SendDeletionCodeUseCase } from './send-deletion-code.usecase.js';
 import { DeleteAccountUseCase } from './delete-account.usecase.js';
+import { SendCancelDeletionCodeUseCase } from './send-cancel-deletion-code.usecase.js';
 import { AccountDeletionController } from './account-deletion.controller.js';
+import { CancelDeletionController } from './cancel-deletion.controller.js';
+import { CancelCodePhoneThrottlerGuard } from './cancel-code-phone-throttler.guard.js';
 import { AuthFailureLockService } from './auth-failure-lock.service.js';
 import { BcryptTimingDefenseExecutor } from './bcrypt-timing-defense.executor.js';
 import { CockatielRetryExecutor } from './cockatiel-retry.executor.js';
@@ -187,6 +190,19 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
                 return Promise.resolve(`del-submit-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
               },
             },
+            // FR-S18 (004 EP3 撤销发码, public): per-phone-hash 1/60s。无自带 getTracker
+            // → 走 CancelCodePhoneThrottlerGuard 的 phone-hash tracker (不明文落限流器)。
+            { name: 'cancel-code', limit: 1, ttl: 60_000 },
+            // FR-S18 (004 EP3 撤销发码, public): per-IP 5/60s
+            {
+              name: 'cancel-code-ip',
+              limit: 5,
+              ttl: 60_000,
+              getTracker: (req: Record<string, unknown>) => {
+                const ip = req['ip'];
+                return Promise.resolve(`cancel-code-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+              },
+            },
           ],
           storage: new ThrottlerStorageRedisService(cfg.url),
         };
@@ -198,6 +214,7 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
     AccountPhoneSmsAuthController,
     AccountTokenController,
     AccountDeletionController,
+    CancelDeletionController,
   ],
   providers: [
     {
@@ -250,8 +267,10 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
     DeletionCodeStore,
     SendDeletionCodeUseCase,
     DeleteAccountUseCase,
+    SendCancelDeletionCodeUseCase,
     JwtAccessGuard,
     SmsPhoneThrottlerGuard,
+    CancelCodePhoneThrottlerGuard,
     // ProblemDetailFilter (APP_FILTER) moved to SecurityModule in PR-5a —
     // it's a cross-context concern, owned by the platform infra layer.
   ],
