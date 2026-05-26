@@ -75,7 +75,7 @@ created_at: '2026-05-26'
 
 - [X] T017 [US4] [Server] `send-cancel-deletion-code.usecase.ts` in `apps/server/src/auth/`：注入 `InspectAccountStatusUseCase`（by phone，`// CROSS-CONTEXT-SYNC`）+ `DeletionCodeStore` + `SmsGateway` + `TIMING_DEFENSE_EXECUTOR`（复用 `bcrypt-timing-defense.executor`）→ inspect(phone)：**eligible**（FROZEN ∧ freezeUntil>now，用 `account.rules.isFrozenInGrace`）→ issue CANCEL_DELETION 码 + `sendCode(phone, code, CANCEL_DELETION)`；**4 ineligible**（未注册/ACTIVE/ANONYMIZED/grace 已过）→ `timingDefense.pad()` 不发不写 → 均返 void（控制器 200）+ 单测（mock：eligible 发码 / 4 ineligible 各跑 pad 且不发不写 / 响应无差异）
 - [X] T018 [US4] [Server] `cancel-deletion.controller.ts` in `apps/server/src/auth/`（`@Controller('v1/auth/cancel-deletion')`，**public 无 JwtGuard**）：`@Post('sms-codes')` `@HttpCode(200)`（EP3）+ `send-cancel-code.request.ts`（`{ phone }` `@Matches(E.164 大陆)`，非法→422 `INVALID_PHONE_FORMAT`）+ Swagger + 自定义 phone-hash throttler guard（镜像 `sms-phone-throttler.guard.ts`，`cancel-code` 1/60s + `cancel-code-ip` 5/60s，phone 哈希作 key）+ `@SkipThrottle` 其余 + register `auth.module.ts` + 单测（mock 映射 + phone 格式 422）
-- [ ] T019 [US4] [Server-IT] `cancel.us4-send-code-anti-enum.it.spec.ts`（全 boot）：FROZEN-in-grace 手机号 → 200 + DB 1 条 active CANCEL_DELETION 码 + mock gateway 收到 send；4 ineligible（未注册/ACTIVE/ANONYMIZED/grace 已过）各 → 200 + **无**码行 + **无** send；断言 eligible vs ineligible 响应 body/status 字节级一致 + 时序 diff P95 ≤ 50ms（dummy pad 对齐，N 次采样）
+- [X] T019 [US4] [Server-IT] `cancel.us4-send-code-anti-enum.it.spec.ts`（全 boot）：FROZEN-in-grace 手机号 → 200 + DB 1 条 active CANCEL_DELETION 码 + mock gateway 收到 send；4 ineligible（未注册/ACTIVE/ANONYMIZED/grace 已过）各 → 200 + **无**码行 + **无** send；断言 eligible vs ineligible 响应 body/status 字节级一致 + 时序 diff P95 ≤ 50ms（dummy pad 对齐，N 次采样）
 
 ---
 
