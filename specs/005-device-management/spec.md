@@ -2,7 +2,7 @@
 feature_id: 005-device-management
 modules: [security, auth]
 owners: ['@xiaocaishen-michael']
-status: clarified
+status: implemented
 created_at: '2026-05-26'
 updated_at: '2026-05-26'
 spec_kit_version: '>=0.8.5,<0.10.0'

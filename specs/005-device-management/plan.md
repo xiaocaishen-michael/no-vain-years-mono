@@ -1,7 +1,7 @@
 ---
 feature_id: 005-device-management
 spec_ref: ./spec.md
-status: planned
+status: done
 created_at: '2026-05-26'
 updated_at: '2026-05-26'
 adr_refs: ['0019', '0022', '0024', '0032', '0033', '0041', '0043']

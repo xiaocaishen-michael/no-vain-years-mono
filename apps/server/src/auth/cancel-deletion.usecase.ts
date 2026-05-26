@@ -100,7 +100,13 @@ export class CancelDeletionUseCase {
         await this.refreshTokenService.persist(
           accountId,
           refreshToken,
-          { deviceId: device.deviceId, clientIp: device.clientIp, loginMethod: 'PHONE_SMS' },
+          {
+            deviceId: device.deviceId,
+            deviceName: device.deviceName,
+            deviceType: device.deviceType,
+            clientIp: device.clientIp,
+            loginMethod: 'PHONE_SMS',
+          },
           tx,
         );
 

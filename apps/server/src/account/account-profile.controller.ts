@@ -7,7 +7,7 @@ import { UpdateDisplayNameUseCase } from './update-display-name.usecase';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard';
 import { AccountProfileResponse } from './account-profile.response';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
-import { ALL_DELETION_BUCKETS } from '../security/throttler-skip-buckets';
+import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip-buckets';
 import { UpdateDisplayNameRequest } from './update-display-name.request';
 
 /**
@@ -39,6 +39,7 @@ export class AccountProfileController {
     'logout-all-ip': true,
     'logout-all-account': true,
     ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
   })
   @Throttle({ 'me-get': { limit: 60, ttl: 60_000 } })
   @ApiOperation({
@@ -85,6 +86,7 @@ export class AccountProfileController {
     'logout-all-ip': true,
     'logout-all-account': true,
     ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
   })
   @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
   @ApiOperation({

@@ -59,3 +59,21 @@ export const ALL_DELETION_BUCKETS: Record<string, boolean> = {
   ...CANCEL_CODE_BUCKETS,
   ...CANCEL_SUBMIT_BUCKETS,
 };
+
+// 005 设备列表 (US1, authed) — list EP per-account 30/60s · per-IP 100/60s
+export const DEVICE_LIST_BUCKETS: Record<string, boolean> = {
+  'dev-list-account': true,
+  'dev-list-ip': true,
+};
+
+// 005 单设备撤销 (US2, authed) — revoke EP per-account 5/60s · per-IP 20/60s
+export const DEVICE_REVOKE_BUCKETS: Record<string, boolean> = {
+  'dev-revoke-account': true,
+  'dev-revoke-ip': true,
+};
+
+/** 005 全部设备桶 —— 既有 (001-004) 路由 spread 此跳过新桶 (device EP 互相也 spread 对方组)。 */
+export const DEVICE_BUCKETS: Record<string, boolean> = {
+  ...DEVICE_LIST_BUCKETS,
+  ...DEVICE_REVOKE_BUCKETS,
+};

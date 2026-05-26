@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, type ThrottlerOptions } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { Redis } from 'ioredis';
 import {
@@ -39,8 +39,55 @@ import { AccountSmsCodeController } from './account-sms-code.controller.js';
 import { AccountTokenController } from './account-token.controller.js';
 import { RefreshTokenUseCase } from './refresh-token.usecase.js';
 import { LogoutAllUseCase } from './logout-all.usecase.js';
+import { DeviceManagementController } from './device-management.controller.js';
+import { ListDevicesUseCase } from './list-devices.usecase.js';
+import { RevokeDeviceUseCase } from './revoke-device.usecase.js';
 import { JwtAccessGuard } from './jwt-access.guard.js';
 import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
+
+/**
+ * 005 设备 EP 限流桶 (FR-S13) —— 提取为模块常量,避免 ThrottlerModule useFactory
+ * 超 max-lines-per-function。list 30/account·100/IP;revoke 5/account·20/IP (均 /60s)。
+ * account 桶 getTracker 读 req.user.accountId (JwtAccessGuard 先填);IP 桶读 req.ip。
+ */
+const DEVICE_THROTTLERS: ThrottlerOptions[] = [
+  {
+    name: 'dev-list-account',
+    limit: 30,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const user = req['user'] as { accountId?: unknown } | undefined;
+      return Promise.resolve(`dev-list-account:${user?.accountId ?? 'unauthenticated'}`);
+    },
+  },
+  {
+    name: 'dev-list-ip',
+    limit: 100,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const ip = req['ip'];
+      return Promise.resolve(`dev-list-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+    },
+  },
+  {
+    name: 'dev-revoke-account',
+    limit: 5,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const user = req['user'] as { accountId?: unknown } | undefined;
+      return Promise.resolve(`dev-revoke-account:${user?.accountId ?? 'unauthenticated'}`);
+    },
+  },
+  {
+    name: 'dev-revoke-ip',
+    limit: 20,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const ip = req['ip'];
+      return Promise.resolve(`dev-revoke-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+    },
+  },
+];
 
 /**
  * Auth bounded context (per ADR-0032 + post-A-002 retro).
@@ -219,6 +266,8 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
                 );
               },
             },
+            // FR-S13 (005) 设备列表 + 单设备撤销 4 桶 (auth EP, 提取到模块常量见下)
+            ...DEVICE_THROTTLERS,
           ],
           storage: new ThrottlerStorageRedisService(cfg.url),
         };
@@ -231,6 +280,7 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
     AccountTokenController,
     AccountDeletionController,
     CancelDeletionController,
+    DeviceManagementController,
   ],
   providers: [
     {
@@ -280,6 +330,8 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
     PhoneSmsAuthUseCase,
     RefreshTokenUseCase,
     LogoutAllUseCase,
+    ListDevicesUseCase,
+    RevokeDeviceUseCase,
     DeletionCodeStore,
     SendDeletionCodeUseCase,
     DeleteAccountUseCase,

@@ -111,14 +111,29 @@ describe('PhoneSmsAuthUseCase ACTIVE path (US1)', () => {
     );
   });
 
-  it('threads device context (deviceId + clientIp) from controller into persist', async () => {
+  it('threads device context (deviceId/name/type + clientIp) into persist (FR-S14)', async () => {
     h.storeVerify.mockResolvedValue(true);
-    await h.useCase.execute(phone, code, { deviceId: 'dev-abc', clientIp: '8.8.8.8' });
+    await h.useCase.execute(phone, code, {
+      deviceId: 'dev-abc',
+      deviceName: 'iPhone 15',
+      deviceType: 'PHONE',
+      clientIp: '8.8.8.8',
+    });
     expect(h.persist).toHaveBeenCalledWith(42n, 'refresh-token-xyz', {
       deviceId: 'dev-abc',
+      deviceName: 'iPhone 15',
+      deviceType: 'PHONE',
       clientIp: '8.8.8.8',
       loginMethod: 'PHONE_SMS',
     });
+  });
+
+  it('不带 name/type 头 → persist 收 undefined (回归: 持久化层降级 null/UNKNOWN)', async () => {
+    h.storeVerify.mockResolvedValue(true);
+    await h.useCase.execute(phone, code, { deviceId: 'dev-abc', clientIp: '8.8.8.8' });
+    const meta = h.persist.mock.calls[0]![2] as Record<string, unknown>;
+    expect(meta.deviceName).toBeUndefined();
+    expect(meta.deviceType).toBeUndefined();
   });
 
   it('code mismatch → does NOT persist (持久化仅成功路径)', async () => {

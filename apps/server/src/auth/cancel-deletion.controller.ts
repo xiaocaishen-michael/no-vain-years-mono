@@ -8,6 +8,7 @@ import {
   DEFAULT_BUCKET,
   DEL_CODE_BUCKETS,
   DEL_SUBMIT_BUCKETS,
+  DEVICE_BUCKETS,
   ME_BUCKETS,
   SMS_CODE_BUCKETS,
   TOKEN_BUCKETS,
@@ -54,6 +55,7 @@ export class CancelDeletionController {
   @HttpCode(200)
   @SkipThrottle({
     ...DEFAULT_BUCKET,
+    ...DEVICE_BUCKETS,
     ...SMS_CODE_BUCKETS,
     ...ME_BUCKETS,
     ...TOKEN_BUCKETS,
@@ -100,6 +102,7 @@ export class CancelDeletionController {
   @HttpCode(200)
   @SkipThrottle({
     ...DEFAULT_BUCKET,
+    ...DEVICE_BUCKETS,
     ...SMS_CODE_BUCKETS,
     ...ME_BUCKETS,
     ...TOKEN_BUCKETS,
@@ -149,10 +152,14 @@ export class CancelDeletionController {
     @Body() body: CancelDeletionRequest,
     @Ip() clientIp: string,
     @Headers('x-device-id') deviceId?: string,
+    @Headers('x-device-name') deviceName?: string,
+    @Headers('x-device-type') deviceType?: string,
   ): Promise<PhoneSmsAuthResponse> {
     const phone = this.assertValidPhone(body.phone);
     const result = await this.cancelDeletionUseCase.execute(phone, body.code, {
       deviceId,
+      deviceName,
+      deviceType,
       clientIp,
     });
     return {

@@ -10,6 +10,7 @@ import {
   DEFAULT_BUCKET,
   DEL_CODE_BUCKETS,
   DEL_SUBMIT_BUCKETS,
+  DEVICE_BUCKETS,
   ME_BUCKETS,
   SMS_CODE_BUCKETS,
   TOKEN_BUCKETS,
@@ -38,6 +39,7 @@ export class AccountDeletionController {
   @HttpCode(204)
   @SkipThrottle({
     ...DEFAULT_BUCKET,
+    ...DEVICE_BUCKETS,
     ...SMS_CODE_BUCKETS,
     ...ME_BUCKETS,
     ...TOKEN_BUCKETS,
@@ -79,6 +81,7 @@ export class AccountDeletionController {
   @HttpCode(204)
   @SkipThrottle({
     ...DEFAULT_BUCKET,
+    ...DEVICE_BUCKETS,
     ...SMS_CODE_BUCKETS,
     ...ME_BUCKETS,
     ...TOKEN_BUCKETS,
