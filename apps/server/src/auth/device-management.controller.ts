@@ -1,14 +1,27 @@
-import { Controller, Get, Headers, HttpCode, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
 import { JwtAccessGuard, type AuthenticatedUser } from './jwt-access.guard';
 import { ListDevicesUseCase } from './list-devices.usecase';
+import { RevokeDeviceUseCase } from './revoke-device.usecase';
 import { DeviceListQuery } from './device-list.query';
 import { DeviceListResponse } from './device-list.response';
+import { ParseBigIntPipe } from './parse-bigint.pipe';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
 import {
   ALL_DELETION_BUCKETS,
   DEFAULT_BUCKET,
+  DEVICE_LIST_BUCKETS,
   DEVICE_REVOKE_BUCKETS,
   ME_BUCKETS,
   SMS_CODE_BUCKETS,
@@ -29,7 +42,10 @@ import {
 @ApiTags('devices')
 @Controller('v1/auth/devices')
 export class DeviceManagementController {
-  constructor(private readonly listDevices: ListDevicesUseCase) {}
+  constructor(
+    private readonly listDevices: ListDevicesUseCase,
+    private readonly revokeDevice: RevokeDeviceUseCase,
+  ) {}
 
   @Get()
   @HttpCode(200)
@@ -68,5 +84,59 @@ export class DeviceManagementController {
     @Headers('x-device-id') deviceId?: string,
   ): Promise<DeviceListResponse> {
     return this.listDevices.execute(req.user.accountId, deviceId ?? null, query.page, query.size);
+  }
+
+  @Delete(':recordId')
+  @HttpCode(200)
+  @UseGuards(JwtAccessGuard, ThrottlerGuard)
+  @SkipThrottle({
+    ...DEFAULT_BUCKET,
+    ...SMS_CODE_BUCKETS,
+    ...ME_BUCKETS,
+    ...TOKEN_BUCKETS,
+    ...ALL_DELETION_BUCKETS,
+    ...DEVICE_LIST_BUCKETS, // DELETE 不属列表桶
+  })
+  @ApiBearerAuth()
+  @ApiParam({
+    name: 'recordId',
+    description: 'refresh_token 行 PK (设备列表项 id)',
+    example: '1001',
+  })
+  @ApiOperation({
+    summary: 'Revoke a single device (remote logout)',
+    description:
+      'Revokes the target device refresh token (remote logout). Anti-enumeration: non-existent ' +
+      'and other-account recordId both fold to byte-identical 404 DEVICE_NOT_FOUND. The current ' +
+      'device (x-device-id match) returns 409 CANNOT_REMOVE_CURRENT_DEVICE (use logout instead). ' +
+      'Idempotent: already-revoked → 200, no duplicate event. Missing x-device-id → 401.',
+  })
+  @ApiResponse({ status: 200, description: 'Device revoked (or idempotent no-op)' })
+  @ApiResponse({
+    status: 401,
+    description: 'Missing / invalid access token, or missing x-device-id header (FR-S12)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'DEVICE_NOT_FOUND — not found or belongs to another account (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'CANNOT_REMOVE_CURRENT_DEVICE — target is the current device (use logout-all)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (FR-S13: per-account 5/60s, per-IP 20/60s)',
+    type: ProblemDetailResponse,
+  })
+  async revoke(
+    @Req() req: { user: AuthenticatedUser },
+    @Param('recordId', new ParseBigIntPipe()) recordId: bigint,
+    @Headers('x-device-id') deviceId?: string,
+  ): Promise<void> {
+    await this.revokeDevice.execute(req.user.accountId, recordId, deviceId ?? null);
   }
 }

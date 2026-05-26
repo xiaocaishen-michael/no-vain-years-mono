@@ -41,6 +41,7 @@ import { RefreshTokenUseCase } from './refresh-token.usecase.js';
 import { LogoutAllUseCase } from './logout-all.usecase.js';
 import { DeviceManagementController } from './device-management.controller.js';
 import { ListDevicesUseCase } from './list-devices.usecase.js';
+import { RevokeDeviceUseCase } from './revoke-device.usecase.js';
 import { JwtAccessGuard } from './jwt-access.guard.js';
 import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
 
@@ -330,6 +331,7 @@ const DEVICE_THROTTLERS: ThrottlerOptions[] = [
     RefreshTokenUseCase,
     LogoutAllUseCase,
     ListDevicesUseCase,
+    RevokeDeviceUseCase,
     DeletionCodeStore,
     SendDeletionCodeUseCase,
     DeleteAccountUseCase,
