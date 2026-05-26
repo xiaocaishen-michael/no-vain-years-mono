@@ -13,7 +13,7 @@ orchestrator_compat: ">=0.1.0"
 <!--
 Frontmatter contract (parsed by scripts/orchestrator/parsers/tasks.ts):
 - feature_id / spec_ref / plan_ref must match plan.md and spec.md
-- status: not-started → in-progress → completed
+- status: not-started → in-progress → completed (or blocked)
 - orchestrator_compat: bumped by orchestrator when schema breaks
 
 Task-meta marker contract (HTML comment immediately after each task heading):
@@ -25,9 +25,9 @@ Task-meta marker contract (HTML comment immediately after each task heading):
   "trace_fr":                 ["FR-001"],              // required, ≥ 1 functional requirement
   "trace_ep":                 ["EP1"],                 // optional, ≥ 1 endpoint (impl/gen tasks)
   "trace_sc":                 ["SC-001"],              // optional, ≥ 1 success criterion (perf IT tasks)
-  "kind":                     "impl",                  // required: impl | gen | test-unit | test-integration | test-e2e | verification
+  "kind":                     "impl",                  // required: impl | test-unit | test-integration | test-e2e | gen | migration | docs | config | verification
   "verify_kind":              "test",                  // required, must be a key of plan.workspaces[ws].verify_commands (extended w/ "smoke" for runtime boot probes per ADR-0040)
-  "files":                    [{"path":"...","op":"create"}],  // required, ops: create | modify | delete | rename
+  "files":                    [{"path":"...","op":"create"}],  // required (≥1) for every kind except "verification" (a runtime gate has no files); ops: create | modify | delete | rename
   "graphify_scope_override":  "...",                   // optional, narrows the workspace default AST scope
   "parallel":                 false,                   // optional default false (force serial during PoC for Ralph-loop traceability)
   "tdd_red_expected":         false                    // optional default false (true → test-unit tasks where the failing test ships first; orchestrator allows test red, typecheck must still pass)
