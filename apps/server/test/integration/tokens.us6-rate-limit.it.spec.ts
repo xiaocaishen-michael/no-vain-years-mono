@@ -81,15 +81,16 @@ describe('US6 限流 429 (Testcontainers PG + Redis + Fastify)', () => {
     let last;
     for (let i = 0; i < 6; i++) last = await refresh('same-token-for-rate-limit');
     expect(last!.statusCode).toBe(429);
-    // NOTE: ThrottlerException 的 Retry-After 头未经 ProblemDetailFilter 透出
-    // (filter 仅在 body.retryAfterSeconds 存在时设头) → 全 throttler 429 (含 shipped SMS)
-    // 都缺 Retry-After。pre-existing 跨切面 infra gap, 建议单独 fix ProblemDetailFilter。
+    // canonical Retry-After 由 RetryAfterThrottlerGuard → RateLimitExceededException
+    // → ProblemDetailFilter 透出 (取代 @nestjs/throttler v6 默认带桶名后缀的 Retry-After-<bucket>)。
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 
   it('refresh per-IP 100/60s: 同 IP 不同 token 第 101 次 → 429', async () => {
     let last;
     for (let i = 0; i < 101; i++) last = await refresh(`distinct-token-${i}`);
     expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 
   it('logout-all per-account 5/60s: 同账号第 6 次 → 429', async () => {
@@ -97,6 +98,7 @@ describe('US6 限流 429 (Testcontainers PG + Redis + Fastify)', () => {
     let last;
     for (let i = 0; i < 6; i++) last = await logoutAll(token);
     expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 
   it('logout-all per-IP 50/60s: 同 IP 不同账号第 51 次 → 429', async () => {
@@ -105,5 +107,6 @@ describe('US6 限流 429 (Testcontainers PG + Redis + Fastify)', () => {
       last = await logoutAll(jwt.signAccessToken({ accountId: 6100n + BigInt(i) }));
     }
     expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 });

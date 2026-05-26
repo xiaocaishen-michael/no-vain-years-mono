@@ -10,7 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle } from '@nestjs/throttler';
+import { RetryAfterThrottlerGuard } from '../security/retry-after-throttler.guard.js';
 import { JwtAccessGuard, type AuthenticatedUser } from './jwt-access.guard';
 import { ListDevicesUseCase } from './list-devices.usecase';
 import { RevokeDeviceUseCase } from './revoke-device.usecase';
@@ -49,8 +50,8 @@ export class DeviceManagementController {
 
   @Get()
   @HttpCode(200)
-  // JwtAccessGuard 先行填 req.user.accountId → ThrottlerGuard 读 dev-list-account tracker。
-  @UseGuards(JwtAccessGuard, ThrottlerGuard)
+  // JwtAccessGuard 先行填 req.user.accountId → RetryAfterThrottlerGuard 读 dev-list-account tracker。
+  @UseGuards(JwtAccessGuard, RetryAfterThrottlerGuard)
   @SkipThrottle({
     ...DEFAULT_BUCKET,
     ...SMS_CODE_BUCKETS,
@@ -88,7 +89,7 @@ export class DeviceManagementController {
 
   @Delete(':recordId')
   @HttpCode(200)
-  @UseGuards(JwtAccessGuard, ThrottlerGuard)
+  @UseGuards(JwtAccessGuard, RetryAfterThrottlerGuard)
   @SkipThrottle({
     ...DEFAULT_BUCKET,
     ...SMS_CODE_BUCKETS,

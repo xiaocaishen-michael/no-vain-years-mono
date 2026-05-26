@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { RetryAfterThrottlerGuard } from '../security/retry-after-throttler.guard.js';
 
 /**
  * Throttler tracker by **phone hash** for the public cancel-deletion sms-code
@@ -12,7 +12,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
  * 自带 IP getTracker (module 定义)。无 phone body → fallback IP 保守限流。
  */
 @Injectable()
-export class CancelCodePhoneThrottlerGuard extends ThrottlerGuard {
+export class CancelCodePhoneThrottlerGuard extends RetryAfterThrottlerGuard {
   protected override getTracker(req: Record<string, unknown>): Promise<string> {
     const body = req['body'] as { phone?: unknown } | undefined;
     if (body && typeof body.phone === 'string' && body.phone.length > 0) {

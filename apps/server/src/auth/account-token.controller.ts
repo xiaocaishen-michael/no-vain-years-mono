@@ -1,6 +1,7 @@
 import { Body, Controller, HttpCode, Ip, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle } from '@nestjs/throttler';
+import { RetryAfterThrottlerGuard } from '../security/retry-after-throttler.guard.js';
 import { RefreshTokenUseCase } from './refresh-token.usecase';
 import { LogoutAllUseCase } from './logout-all.usecase';
 import { RefreshTokenRequest } from './refresh-token.request';
@@ -28,7 +29,7 @@ export class AccountTokenController {
 
   @Post('refresh-token')
   @HttpCode(200)
-  @UseGuards(ThrottlerGuard)
+  @UseGuards(RetryAfterThrottlerGuard)
   @SkipThrottle({
     default: true,
     'sms-phone-24h': true,
@@ -79,8 +80,8 @@ export class AccountTokenController {
 
   @Post('logout-all')
   @HttpCode(204)
-  // JwtAccessGuard 先行 (填 req.user.accountId) → ThrottlerGuard 读 logout-all-account tracker。
-  @UseGuards(JwtAccessGuard, ThrottlerGuard)
+  // JwtAccessGuard 先行 (填 req.user.accountId) → RetryAfterThrottlerGuard 读 logout-all-account tracker。
+  @UseGuards(JwtAccessGuard, RetryAfterThrottlerGuard)
   @SkipThrottle({
     default: true,
     'sms-phone-24h': true,
