@@ -2,7 +2,7 @@
 feature_id: 004-account-deletion
 modules: [account, auth, security]
 owners: ['@xiaocaishen-michael']
-status: clarified
+status: implemented
 created_at: '2026-05-26'
 updated_at: '2026-05-26'
 spec_kit_version: '>=0.8.5,<0.10.0'
@@ -414,3 +414,4 @@ FROZEN 账号尝试手机短信登录时被拦截 modal 拦下，提示「账号
 - **冻结期内的部分功能降级 UI**（只读模式 / 倒计时常驻）→ 本 feature 冻结即不可登录，无降级态
 - **多登录方式撤销重发**（OAuth 等）→ 当前 `loginMethod` 仅手机短信
 - **settings shell（设置外壳）本体 + 注销发起屏（delete-account）** → delete-account 屏依赖未建的 settings 外壳，2026-05-26 clarify 定**延后**到 settings shell feature（含 FR-C01/C02 + US10 + SC-C01）；本 feature client 仅恢复闭环（cancel-deletion 屏 + FROZEN modal）
+- **撤销/登录后「恢复老账号 → 主页」的 displayName 回填**（2026-05-26 T035 e2e 暴露，定**延后**单独处理）→ cancel-deletion 成功（及普通 login）仅 `setSession({accountId, accessToken, refreshToken})`，LoginResponse 不带 `displayName`；`apps/mobile/src/core/api/use-me.ts`（拉 `/me` 回填 displayName）当前**未被任何屏挂载消费**（dead code）→ AuthGate 在 `displayName===null` 态把会话送 `/(app)/onboarding` 而非主页。**影响面超出 004**（普通老用户冷启动登录同样被丢去 onboarding）。本 feature e2e 据现状断言落 `/onboarding`；修复（挂载 useMe / LoginResponse 带 displayName 二选一）归后续独立 task
