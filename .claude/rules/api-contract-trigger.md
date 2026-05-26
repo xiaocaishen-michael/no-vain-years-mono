@@ -22,7 +22,7 @@ paths:
 mono 内 server → api-client → mobile 走 **Nx target 依赖链**（不装 `api-types-sync` preset，per W2.0 决策）：
 
 1. `apps/server` `@nestjs/swagger` 装饰器 → `nx run server:export-openapi` 启临时实例 curl `/docs-json` → 写 `apps/server/openapi.json`
-2. `packages/api-client` `nx run api-client:generate` 依赖 server openapi.json，跑 `openapi-typescript` 生成 TS client
+2. `packages/api-client` `nx run api-client:generate` 依赖 server openapi.json，跑 `orval` 生成 typed client（types + React Query hooks + axios，per `orval.config.ts`）
 3. `apps/mobile` 依赖 `packages/api-client`，`nx affected` 改 server endpoint 自动传导触发 api-client regen + mobile rebuild
 
 **PR 边界**：mono 单仓内 server impl + api-client regen + mobile 消费**可同 PR**；commit message `chore(api-client): sync types — <feature-slug>` 或并入主 PR commit message 备注 types 已 regen。
