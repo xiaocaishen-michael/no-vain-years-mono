@@ -57,10 +57,17 @@ export class AccountPhoneSmsAuthController {
     @Body() body: PhoneSmsAuthRequest,
     @Ip() clientIp: string,
     @Headers('x-device-id') deviceId?: string,
+    @Headers('x-device-name') deviceName?: string,
+    @Headers('x-device-type') deviceType?: string,
   ): Promise<PhoneSmsAuthResponse> {
     const phone = normalizePhone(body.phone);
     assertValidSmsCode(body.code);
-    const result = await this.useCase.execute(phone, body.code, { deviceId, clientIp });
+    const result = await this.useCase.execute(phone, body.code, {
+      deviceId,
+      deviceName,
+      deviceType,
+      clientIp,
+    });
     return {
       accountId: result.accountId.toString(),
       accessToken: result.accessToken,

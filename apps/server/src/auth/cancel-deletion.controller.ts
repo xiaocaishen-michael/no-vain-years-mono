@@ -152,10 +152,14 @@ export class CancelDeletionController {
     @Body() body: CancelDeletionRequest,
     @Ip() clientIp: string,
     @Headers('x-device-id') deviceId?: string,
+    @Headers('x-device-name') deviceName?: string,
+    @Headers('x-device-type') deviceType?: string,
   ): Promise<PhoneSmsAuthResponse> {
     const phone = this.assertValidPhone(body.phone);
     const result = await this.cancelDeletionUseCase.execute(phone, body.code, {
       deviceId,
+      deviceName,
+      deviceType,
       clientIp,
     });
     return {

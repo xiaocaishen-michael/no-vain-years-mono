@@ -71,7 +71,7 @@ created_at: '2026-05-26'
 
 ## Phase 7: 采集补强 (FR-S14, 独立可并行)
 
-- [ ] T014 [P] [Server] 设备名/类型采集补强：`account-phone-sms-auth.controller.ts`（login）+ `cancel-deletion.controller.ts` 加 `@Headers('x-device-name')` / `@Headers('x-device-type')` 透传到各自 usecase → `RefreshTokenService.persist` meta（`deviceName`/`deviceType`；`cancel-deletion.usecase.ts` L~100 现 `{ deviceId, clientIp, loginMethod }` 补这两字段）。**refresh（`account-token.controller.ts`）不改**（rotate 继承父行血缘）+ 单测（带 name/type 头 → 落库可读值；不带头 → `deviceName=null`/`deviceType=UNKNOWN` 既有行为回归不破）
+- [X] T014 [P] [Server] 设备名/类型采集补强：`account-phone-sms-auth.controller.ts`（login）+ `cancel-deletion.controller.ts` 加 `@Headers('x-device-name')` / `@Headers('x-device-type')` 透传到各自 usecase → `RefreshTokenService.persist` meta（`deviceName`/`deviceType`；`cancel-deletion.usecase.ts` L~100 现 `{ deviceId, clientIp, loginMethod }` 补这两字段）。**refresh（`account-token.controller.ts`）不改**（rotate 继承父行血缘）+ 单测（带 name/type 头 → 落库可读值；不带头 → `deviceName=null`/`deviceType=UNKNOWN` 既有行为回归不破）
 
 ## Phase 8: Contract（类型同步链，Constitution V）
 

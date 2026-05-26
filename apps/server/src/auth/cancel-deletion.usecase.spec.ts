@@ -109,6 +109,23 @@ describe('CancelDeletionUseCase (auth 持 tx 跨 3 ctx 编排, public)', () => {
     expect(pad).not.toHaveBeenCalled();
   });
 
+  it('threads device context (deviceId/name/type + clientIp) into persist (FR-S14)', async () => {
+    await usecase.execute(PHONE, CODE, {
+      deviceId: 'dev-c',
+      deviceName: 'iPad',
+      deviceType: 'TABLET',
+      clientIp: '8.8.8.8',
+    });
+    const meta = persist.mock.calls[0]![2] as Record<string, unknown>;
+    expect(meta).toMatchObject({
+      deviceId: 'dev-c',
+      deviceName: 'iPad',
+      deviceType: 'TABLET',
+      clientIp: '8.8.8.8',
+      loginMethod: 'PHONE_SMS',
+    });
+  });
+
   describe.each([
     ['未注册', { kind: 'NOT_FOUND' }],
     ['ACTIVE', { kind: 'ACTIVE' }],

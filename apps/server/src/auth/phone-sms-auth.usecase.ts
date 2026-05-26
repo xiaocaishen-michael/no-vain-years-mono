@@ -14,9 +14,15 @@ export interface PhoneSmsAuthResult {
   refreshToken: string;
 }
 
-/** 登录设备上下文 —— 由控制器从 X-Device-Id 头 + 请求 IP 透传 (签发即持久化用)。 */
+/**
+ * 登录设备上下文 —— 由控制器从 x-device-id / x-device-name / x-device-type 头 + 请求 IP
+ * 透传 (签发即持久化用)。deviceName/deviceType 为 005 采集补强 (FR-S14): client 已发,
+ * 不带头时 persist 降级 deviceName=null / deviceType=UNKNOWN (既有行为)。
+ */
 export interface LoginDeviceContext {
   deviceId?: string;
+  deviceName?: string;
+  deviceType?: string;
   clientIp?: string | null;
 }
 
@@ -103,6 +109,8 @@ export class PhoneSmsAuthUseCase {
     // 签发即持久化: 登录成功后落 1 条 active refresh-token 行 (device 血缘 + IP)。
     await this.refreshTokenService.persist(accountId, refreshToken, {
       deviceId: device.deviceId,
+      deviceName: device.deviceName,
+      deviceType: device.deviceType,
       clientIp: device.clientIp,
       loginMethod: 'PHONE_SMS',
     });
