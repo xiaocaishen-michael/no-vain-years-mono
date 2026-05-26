@@ -22,9 +22,9 @@ const SERVER_DIR = process.cwd();
 // + 限流命中时未触账号加载 / 未写码行 (429 在 guard 层短路, 不达 usecase)。
 // beforeEach flushall 隔离各规则桶 (Redis storage, 同 loopback IP 否则跨测污染)。
 //
-// NOTE: ThrottlerException 的 Retry-After 头未经 ProblemDetailFilter 透出 (filter 仅
-// body.retryAfterSeconds 存在时设头) → 全 throttler 429 缺 Retry-After。pre-existing
-// 跨切面 infra gap (per tokens.us6-rate-limit NOTE), 本 IT 不断言该头。
+// canonical Retry-After: RetryAfterThrottlerGuard (security/) 覆写 throwThrottlingException
+// 抛 RateLimitExceededException(retryAfterSeconds) → ProblemDetailFilter 透出 canonical
+// `Retry-After` 头 (取代 @nestjs/throttler v6 默认带桶名后缀的 Retry-After-<bucket>),各桶均断言。
 describe('US9 注销/撤销限流 429 (Testcontainers PG + Redis + Fastify)', () => {
   let pgContainer: StartedPostgreSqlContainer;
   let redisContainer: StartedRedisContainer;
@@ -117,6 +117,7 @@ describe('US9 注销/撤销限流 429 (Testcontainers PG + Redis + Fastify)', ()
     const second = await delCode(token);
     expect(first.statusCode).toBe(204);
     expect(second.statusCode).toBe(429);
+    expect(Number(second.headers['retry-after'])).toBeGreaterThan(0);
     // 429 在 guard 层短路 → 未达 usecase → 仅第 1 次写了码 (账号未被二次加载/发码)。
     const codes = await prisma.accountSmsCode.count({
       where: { accountId: id, purpose: SmsPurpose.DELETE_ACCOUNT },
@@ -131,6 +132,7 @@ describe('US9 注销/撤销限流 429 (Testcontainers PG + Redis + Fastify)', ()
       last = await delCode(token);
     }
     expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 
   it('del-submit per-account 5/60s: 同账号第 6 次 → 429', async () => {
@@ -138,6 +140,7 @@ describe('US9 注销/撤销限流 429 (Testcontainers PG + Redis + Fastify)', ()
     let last;
     for (let i = 0; i < 6; i++) last = await delSubmit(token); // 1-5 → 401 (无码), 6 → 429
     expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 
   it('del-submit per-IP 10/60s: 同 IP 不同账号第 11 次 → 429', async () => {
@@ -147,6 +150,7 @@ describe('US9 注销/撤销限流 429 (Testcontainers PG + Redis + Fastify)', ()
       last = await delSubmit(token);
     }
     expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 
   it('cancel-code per-phone-hash 1/60s: 同手机号第 2 次 → 429', async () => {
@@ -155,12 +159,14 @@ describe('US9 注销/撤销限流 429 (Testcontainers PG + Redis + Fastify)', ()
     const second = await cancelCode(phone);
     expect(first.statusCode).toBe(200); // 未注册 → ineligible 200 (反枚举)
     expect(second.statusCode).toBe(429);
+    expect(Number(second.headers['retry-after'])).toBeGreaterThan(0);
   });
 
   it('cancel-code per-IP 5/60s: 同 IP 不同手机号第 6 次 → 429', async () => {
     let last;
     for (let i = 0; i < 6; i++) last = await cancelCode(nextPhone());
     expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 
   it('cancel-submit per-phone-hash 5/60s: 同手机号第 6 次 → 429', async () => {
@@ -168,11 +174,13 @@ describe('US9 注销/撤销限流 429 (Testcontainers PG + Redis + Fastify)', ()
     let last;
     for (let i = 0; i < 6; i++) last = await cancelSubmit(phone); // 1-5 → 401 (未注册), 6 → 429
     expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 
   it('cancel-submit per-IP 10/60s: 同 IP 不同手机号第 11 次 → 429', async () => {
     let last;
     for (let i = 0; i < 11; i++) last = await cancelSubmit(nextPhone());
     expect(last!.statusCode).toBe(429);
+    expect(Number(last!.headers['retry-after'])).toBeGreaterThan(0);
   });
 });

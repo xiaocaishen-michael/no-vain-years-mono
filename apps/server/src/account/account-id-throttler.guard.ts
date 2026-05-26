@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { RetryAfterThrottlerGuard } from '../security/retry-after-throttler.guard.js';
 import type { AuthenticatedUser } from './jwt-auth.guard';
 
 /**
@@ -17,7 +17,7 @@ import type { AuthenticatedUser } from './jwt-auth.guard';
  * which would itself be a bug. Conservative IP cap then prevents abuse.
  */
 @Injectable()
-export class AccountIdThrottlerGuard extends ThrottlerGuard {
+export class AccountIdThrottlerGuard extends RetryAfterThrottlerGuard {
   protected override getTracker(req: Record<string, unknown>): Promise<string> {
     const user = req['user'] as AuthenticatedUser | undefined;
     if (user && user.accountId !== undefined && user.accountId !== null) {

@@ -29,7 +29,7 @@ state_branches:
   - 'revoke-device: 事务任一步失败（撤销写 / outbox 发布）→ 整体回滚（行未撤、无事件）'
   - 'revoke-device: 缺 x-device-id 设备标识（无法判定当前设备防自撤）/ 未认证 → 401'
   - '采集补强: token 签发路径（login / cancel-deletion controller，refresh 继承父行血缘不读头）补读 x-device-name / x-device-type（client 已发，setup.ts 实证），新登录设备落可读名称/类型；存量行降级 null/UNKNOWN'
-  - '限流超限（list 30/account·100/IP；revoke 5/account·20/IP，均 /60s，无公网 IP 时跳过 IP 桶）→ 429 + Retry-After'
+  - '限流超限（list 30/account·100/IP；revoke 5/account·20/IP，均 /60s，IP 桶按 socket IP 计）→ 429 + Retry-After'
 ---
 
 # Feature Specification: Device / Login Management（登录设备列表 + 单设备远程撤销）
@@ -138,7 +138,7 @@ state_branches:
 
 **Why this priority**: 防滥用加固，非 MVP 阻塞；复用既有 throttler 设施成本低。
 
-**Independent Test**: Testcontainers + Redis flushall；list 桶超限（account 第 31 / IP 第 101）、revoke 桶超限（account 第 6 / IP 第 21）→ 429 + `Retry-After`；无公网 IP 时 IP 桶跳过。
+**Independent Test**: Testcontainers + Redis flushall；list 桶超限（account 第 31 / IP 第 101）、revoke 桶超限（account 第 6 / IP 第 21）→ 429 + `Retry-After`（IP 桶按 socket IP 计，loopback 仅测试环境）。
 
 **Acceptance Scenarios**:
 
@@ -173,7 +173,7 @@ state_branches:
 - **FR-S10**: 撤销成功（`affected==1`）→ MUST 在**同一事务**内向 outbox 写 `DeviceRevokedEvent`（payload 含 `accountId` / `recordId` / `deviceId` / `revokedAt` / `occurredAt`）。
 - **FR-S11**: 撤销 DB 写 + outbox 写 MUST 原子：任一步失败整体回滚（行未撤、无事件）。
 - **FR-S12**: 撤销请求缺 `x-device-id` 头（无法判定当前设备）/ 未认证 → MUST 401（保证 FR-S07 防自撤前置）。
-- **FR-S13**: 系统 MUST 对两端点限流：list 30/account·100/IP，revoke 5/account·20/IP（均 /60s，无公网 IP 时跳过 IP 桶），超限 429 + `Retry-After`。
+- **FR-S13**: 系统 MUST 对两端点限流：list 30/account·100/IP，revoke 5/account·20/IP（均 /60s；IP 桶按 socket IP 计 —— 当前直连部署 trustProxy 未启用、恒见真实公网 IP，故无单独的“无公网 IP 跳过”分支；若后续前置反代 / LB 致源 IP 收敛再议），超限 429 + `Retry-After`。
 - **FR-S14**: 系统 MUST 在 token 签发路径（login / cancel-deletion controller，refresh 继承父行血缘不读头）补读 `x-device-name` / `x-device-type` 头并入库（client 已发，`core/api/setup.ts` 实证；persist 服务已支持存储），使新登录设备具可读名称 / 类型；存量行降级展示（`null` / `UNKNOWN`）。**回归**：既有 001/003/004 token 签发路径（无 name/type 头时）行为不变。
 
 ### Key Entities _(数据涉及)_
