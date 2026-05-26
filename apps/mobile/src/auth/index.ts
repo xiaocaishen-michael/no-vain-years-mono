@@ -28,6 +28,13 @@ export {
 export { useLoginForm, loginErrorToast } from './use-login-form';
 export type { LoginFormState, ErrorScope } from './use-login-form';
 
+// cancel-deletion slice (004): cancel mutation wrapper + error map + form hook.
+// Reuses login-form.schema (CancelDeletionRequest 与 PhoneSmsAuthRequest 正则字节一致).
+export { useCancelDeletion } from './cancel-deletion';
+export { cancelDeletionErrorToast } from './cancel-deletion-errors';
+export { useCancelDeletionForm } from './use-cancel-deletion-form';
+export type { CancelDeletionFormState, CancelErrorScope } from './use-cancel-deletion-form';
+
 // onboarding slice (account-migration p3): displayName form schema + wrapper + hook.
 export { useUpdateDisplayName } from './update-display-name';
 export {
