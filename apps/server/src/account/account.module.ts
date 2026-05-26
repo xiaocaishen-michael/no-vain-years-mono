@@ -8,6 +8,7 @@ import { CommitPhoneLoginUseCase } from './commit-phone-login.usecase.js';
 import { CommitAccountFreezeUseCase } from './commit-account-freeze.usecase.js';
 import { CommitAccountCancellationUseCase } from './commit-account-cancellation.usecase.js';
 import { CommitAccountAnonymizationUseCase } from './commit-account-anonymization.usecase.js';
+import { AnonymizeFrozenAccountsScheduler } from './anonymize-frozen-accounts.scheduler.js';
 import { AccountProfileController } from './account-profile.controller.js';
 import { AccountIdThrottlerGuard } from './account-id-throttler.guard.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
@@ -42,6 +43,7 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     CommitAccountFreezeUseCase,
     CommitAccountCancellationUseCase,
     CommitAccountAnonymizationUseCase,
+    AnonymizeFrozenAccountsScheduler,
     JwtAuthGuard,
     AccountIdThrottlerGuard,
   ],
