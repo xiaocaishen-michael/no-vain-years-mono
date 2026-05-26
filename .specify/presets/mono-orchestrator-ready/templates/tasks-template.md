@@ -61,6 +61,10 @@ Status semantics (per task-closure preset):
   broken — Ralph-loop must roll back impl. Do not skip; do not split.
   -->
 
+<!-- 📋 Impl Guardrails (per plan § 🚨 Impl Guardrails): spec.md state_branches 的每条
+     **并发/竞态** 与 **反枚举** 分支 → 各配一个独立 kind:test-integration task
+     (exhaustive，per EXHAUSTIVE BRANCHING + docs/conventions/server-impl-playbook.md)。 -->
+
 ## API Client
 
 - [ ] T0XX [task title — typically OpenAPI export + codegen]
@@ -70,6 +74,10 @@ Status semantics (per task-closure preset):
 
 - [ ] T0XX [task title]
   <!-- task-meta: {"id":"T0XX","workspace":"mobile","deps":["T0XX"],"trace_us":["US1"],"trace_fr":["FR-001"],"trace_ep":["EP1"],"kind":"impl","verify_kind":"typecheck","files":[{"path":"apps/mobile/src/features/<module>/<file>.tsx","op":"create"}]} -->
+
+<!-- 📋 表单屏 → 配 RHF 逻辑测 task (kind:test-unit，vitest helper-level：错误映射 /
+     提交态 / 校验)；UI·render·a11y 走 E2E (per docs/conventions/mobile-impl-playbook.md
+     + 测试分层 vitest=logic·Playwright=UI)。 -->
 
 ## E2E (optional)
 

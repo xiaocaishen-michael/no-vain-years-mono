@@ -1,5 +1,5 @@
 id: mono-orchestrator-ready
-version: 0.4.0
+version: 0.5.0
 description: |
   mono-repo spec-kit 自动编排 + 执行支持。把 spec / plan / tasks 三大 template
   升级到 orchestrator-friendly 形态:
@@ -68,6 +68,15 @@ description: |
         (Flat + Anemic + Moat, fierce NEVER/MUST), orchestrator inject 进
         implement prompt
     - tasks-template: task-meta files 路径修扁平 src/<module>
+
+  0.5.0 增量 (impl guardrails 全流程吸纳 — p3 迁移引擎精华去 Java 化):
+    - spec-template: state_branches 指引补"必列分支类型"(并发/竞态 / 反枚举字节级
+      等价 / 安全·PII 作 FR·SC) — 只 WHAT 不写 HOW
+    - plan-template: Architecture Notes 加 ### 🚨 Impl Guardrails callout
+      (并发·事务 affected-count·禁 FOR UPDATE / 反枚举·HMAC·AES-GCM / 前端 RHF·
+      Strangler·mockup), 链 mono docs/conventions/{server,mobile}-impl-playbook.md,
+      orchestrator inject 进 implement prompt
+    - tasks-template: Server 段补 per-branch IT 指引, Mobile 段补 RHF 逻辑测指引
 
   配合 scripts/orchestrator/*.ts 使用。仅适用于 monorepo (nx workspaces),
   因为 orchestrator 需要在单仓内同时调度 server / api-client / mobile 多 workspace。

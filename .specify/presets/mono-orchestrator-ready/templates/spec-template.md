@@ -33,6 +33,10 @@ agent_friction_observed: false
 # "Auth/Guard/Filter 漏 cold-boot 分支" cascade bug。如当前 spec 含复杂
 # 状态流转 (Auth / Guard / Interceptor / 路由 / 权限),必须列出所有逻辑路径;
 # 不含 (e.g. 纯 CRUD 单实体 endpoint) 时可省。
+# **必列分支类型** (若适用;只列 WHAT/路径,不写 HOW 机制 — 机制归 plan Impl Guardrails):
+#   · 并发/竞态: "N 并发→恰一成功" 等竞态裁决路径
+#   · 反枚举字节级等价: "不存在 / 跨账号 / 未授权 → 同响应"
+#   · 安全/PII 边界: 作为 FR/SC (加密存 / 掩码返回 / 时序一致)
 # 0.2.2 阶段 optional;0.3.0 起 required (per master plan P3 sub-plan).
 # state_branches:
 #   - "isAuth:true, onboarded:true -> allowed (200)"
