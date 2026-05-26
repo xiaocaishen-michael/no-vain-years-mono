@@ -30,3 +30,18 @@
 ## 备选
 
 挂真实 `006-realname-verification`（批 E，天然重用后端 playbook：split-tx + PII AES-GCM + 反枚举）作首个实战 —— 代价：006 属迁移，断言 (g) 去-Java 验证打折。
+
+## 后续：根因深挖 + 独立 plan（2026-05-26）
+
+本 dogfood「副产发现」（orchestrator dry-run 撞 5 处 schema drift）跑全端后深挖，刨到根因：
+
+- **orchestrator 是 impl-only consumer**（只 Zod 解析现成 spec/plan/tasks，不生成）。
+- **Layer 0**：`/speckit-specify` 硬编码 P4 vanilla、不经 resolver → 干净命令流产零-metadata spec；plan/tasks 经 resolver→P2 烘焙（正常）。上游 v0.8+ 设计如此。
+- **Layer 2**：template ↔ orchestrator Zod schema 无钉死 gate → 静默漂，连黄金参照 `002`（A-002 PoC）都已 parse 失败（#77 往 `module_boundaries` 塞 `_note`）。
+- **meta 实证**：Ralph-loop task 的执行必需 meta 全在 plan/tasks/graphify，**零需 spec.md**；spec 只供 prompt 需求文本（大部分在 prose 里）。
+
+完整根因 + 修复（消费契约重组 + impl 双流质量对齐）已拆为独立 plan：
+
+→ **[双流对齐 master：orchestrator 流 ↔ 手动 command 流](05-26-orchestrator-command-parity-master.md)**
+
+至此本 [guardrails master](05-26-feature-impl-guardrails-master.md) 的 p1 / p2 / p3 全部完结。
