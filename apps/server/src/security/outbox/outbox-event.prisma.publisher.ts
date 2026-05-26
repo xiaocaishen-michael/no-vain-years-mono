@@ -43,19 +43,24 @@ type PrismaOutboxClient = {
 };
 
 const DEFAULT_EVENT_VERSION = 1;
-const PRODUCER_CONTEXT = 'auth';
+const DEFAULT_PRODUCER_CONTEXT = 'auth';
 
 @Injectable()
 export class OutboxEventPrismaPublisher implements OutboxPublisher {
   constructor(@Optional() private readonly cls?: ClsService) {}
 
-  async publish(client: unknown, eventType: string, data: Record<string, unknown>): Promise<void> {
+  async publish(
+    client: unknown,
+    eventType: string,
+    data: Record<string, unknown>,
+    producerContext: string = DEFAULT_PRODUCER_CONTEXT,
+  ): Promise<void> {
     const envelope: OutboxEventEnvelope = OutboxEventEnvelopeSchema.parse({
       metadata: {
         trace_id: this.resolveTraceId(),
         occurred_at: new Date().toISOString(),
         event_version: DEFAULT_EVENT_VERSION,
-        producer_context: PRODUCER_CONTEXT,
+        producer_context: producerContext,
       },
       data,
     });
