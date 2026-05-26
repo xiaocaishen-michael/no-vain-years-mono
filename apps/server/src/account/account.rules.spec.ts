@@ -10,6 +10,7 @@ import {
   isAnonymized,
   isFrozen,
   isFrozenInGrace,
+  isWithinGrace,
   normalizeDisplayName,
   normalizePhone,
 } from './account.rules';
@@ -93,6 +94,21 @@ describe('account.rules — 状态转换门槛 (FR-S03 freeze / FR-S09 cancel / 
       for (const f of [after, exact, before, null]) {
         const a = row(AccountStatus.FROZEN, f);
         expect(canCancelFromFrozen(a, now)).toBe(isFrozenInGrace(a, now));
+      }
+    });
+
+    // isWithinGrace = status-free `>` 边界 (auth 仅持 inspection freezeUntil 时复用)。
+    // 严格与 isFrozenInGrace 的时间分量同源: FROZEN row 套用必一致。
+    it('isWithinGrace: freezeUntil 严格晚于 now (null / 边界 / 过去 → false)', () => {
+      expect(isWithinGrace(after, now)).toBe(true);
+      expect(isWithinGrace(exact, now)).toBe(false); // 边界 → 不在 grace (匿名化恒赢)
+      expect(isWithinGrace(before, now)).toBe(false);
+      expect(isWithinGrace(null, now)).toBe(false);
+    });
+
+    it('isFrozenInGrace(FROZEN row) === isWithinGrace(freezeUntil) (委托一致)', () => {
+      for (const f of [after, exact, before, null]) {
+        expect(isFrozenInGrace(row(AccountStatus.FROZEN, f), now)).toBe(isWithinGrace(f, now));
       }
     });
   });

@@ -37,10 +37,15 @@ export const ANONYMIZED_DISPLAY_NAME = '已注销用户';
 // FR-S03: 仅 ACTIVE 账号可发起注销 → 冻结。
 export const canFreeze = (a: Account): boolean => isActive(a);
 
-// FR-S09: 冻结期内 (freezeUntil 尚未到) 的 FROZEN 账号可撤销注销。freezeUntil
-// 双作 grace deadline; null (异常态) 视为不在 grace 内。
+// 冻结宽限期边界 (FR-S09 grace deadline): freezeUntil 严格晚于 now → 在宽限期内;
+// null (异常态) 视为不在 grace。抽出供 auth 编排在仅持 inspection (无完整 Account
+// row) 时复用同一 `>` 边界 —— 单一边界真相源, 避免在 auth 内重复判定 drift (plan §2 互斥)。
+export const isWithinGrace = (freezeUntil: Date | null, now: Date): boolean =>
+  freezeUntil !== null && freezeUntil.getTime() > now.getTime();
+
+// FR-S09: 冻结期内 (freezeUntil 尚未到) 的 FROZEN 账号可撤销注销。
 export const isFrozenInGrace = (a: Account, now: Date): boolean =>
-  isFrozen(a) && a.freezeUntil !== null && a.freezeUntil.getTime() > now.getTime();
+  isFrozen(a) && isWithinGrace(a.freezeUntil, now);
 
 export const canCancelFromFrozen = (a: Account, now: Date): boolean => isFrozenInGrace(a, now);
 

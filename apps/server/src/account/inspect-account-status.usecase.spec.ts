@@ -53,10 +53,14 @@ describe('InspectAccountStatusUseCase — read-only 状态探查 (两段式 Saga
     expect(await useCase.execute('+8613800138701')).toEqual({ kind: 'ACTIVE' });
   });
 
-  it('FROZEN row → FROZEN with freezeUntil', async () => {
+  it('FROZEN row → FROZEN with accountId + freezeUntil', async () => {
     const freezeUntil = new Date('2026-06-17T00:00:00Z');
     findUnique.mockResolvedValue({ ...baseRow, status: 'FROZEN', freezeUntil });
-    expect(await useCase.execute('+8613800138701')).toEqual({ kind: 'FROZEN', freezeUntil });
+    expect(await useCase.execute('+8613800138701')).toEqual({
+      kind: 'FROZEN',
+      accountId: baseRow.id,
+      freezeUntil,
+    });
   });
 
   it('ANONYMIZED row → ANONYMIZED', async () => {
