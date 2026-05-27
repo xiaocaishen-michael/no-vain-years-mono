@@ -252,11 +252,21 @@ describe('buildSpawnEnv', () => {
     const parent: NodeJS.ProcessEnv = { CLAUDECODE: '1', FOO: 'bar' };
     buildSpawnEnv(parent);
     expect(parent.CLAUDECODE).toBe('1');
+    // The NX_DAEMON injection also must not leak back into the parent.
+    expect(parent.NX_DAEMON).toBeUndefined();
   });
 
-  it('is a no-op when CLAUDECODE is already absent', () => {
+  // F6 (p2 §7): the agent subprocess gets NX_DAEMON=false ambiently so its
+  // own `pnpm nx build`/`nx test` self-verify runs daemon-off WITHOUT an
+  // env-var prefix the `Bash(pnpm *)` allowedTools entry can't match.
+  it('forces NX_DAEMON=false even when the parent did not set it', () => {
     const env = buildSpawnEnv({ FOO: 'bar' });
-    expect(env).toEqual({ FOO: 'bar' });
+    expect(env).toEqual({ FOO: 'bar', NX_DAEMON: 'false' });
+  });
+
+  it('forces NX_DAEMON=false over an inherited NX_DAEMON=true', () => {
+    const env = buildSpawnEnv({ NX_DAEMON: 'true', FOO: 'bar' });
+    expect(env.NX_DAEMON).toBe('false');
   });
 });
 

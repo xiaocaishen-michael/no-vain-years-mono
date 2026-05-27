@@ -267,6 +267,16 @@ export function buildClaudeArgs(prompt: string, opts: LlmInvokeOptions): string[
 export function buildSpawnEnv(parentEnv: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...parentEnv };
   delete env.CLAUDECODE;
+  // F6 (p2 §7): force NX_DAEMON=false for the agent subprocess too, mirroring
+  // RealShell (F4). The agent often wants daemon-off determinism for its own
+  // `nx build` / `nx test` self-verification (the macOS nx daemon emits
+  // spurious TS6059), so it prefixes commands with `NX_DAEMON=false pnpm …` —
+  // but the `Bash(pnpm *)` allowedTools entry does NOT match an env-var prefix
+  // (`NX_DAEMON=false pnpm …` ≠ a `pnpm` head), so the self-verify gets DENIED
+  // (999 v5 run T001: agent's `NX_DAEMON=false pnpm nx build server` denied,
+  // denials=1). Injecting it ambiently lets the agent run a plain
+  // `pnpm nx build` that is BOTH allowed AND daemon-off — no prefix needed.
+  env.NX_DAEMON = 'false';
   return env;
 }
 
