@@ -1,27 +1,42 @@
 // Pure routing decision for AuthGate (apps/mobile/app/_layout.tsx). Extracted
-// so the 3-state truth table (per spec FR-014 / CL-009 决议) can be unit-tested
-// without mocking expo-router / react-native.
+// so the truth table (per spec FR-014 / CL-009 决议) can be unit-tested without
+// mocking expo-router / react-native.
 //
-// Three states:
-//   1. !isAuthenticated                       → /(auth)/login
-//   2. isAuthenticated && displayName == null → /(app)/onboarding
-//   3. isAuthenticated && displayName != null → /(app)/(tabs)/profile
+// States:
+//   1. !isAuthenticated                            → /(auth)/login
+//   2. auth + displayName == null + !profileLoaded → wait (hold splash)
+//   3. auth + displayName == null + profileLoaded  → /(app)/onboarding
+//   4. auth + displayName != null                  → /(app)/(tabs)/profile
 //
-// Each state maps to a target route, with `noop` when the user is already
-// where they should be (avoids replace-loop + needless re-renders).
+// State 2 (`wait`) closes the fresh-login backfill gap: a returning user with a
+// set displayName logs in carrying only tokens in the session — LoginResponse
+// omits displayName for byte-level anti-enumeration (see
+// apps/server/src/auth/phone-sms-auth.response.ts), so store.displayName is
+// momentarily null until useMe (GET /me) rehydrates it. Without the gate
+// AuthGate would flash /(app)/onboarding before the profile lands. We hold a
+// splash until the profile query settles, then route on the real displayName.
+// Cold-start returning users skip the wait — displayName is restored from
+// persisted SecureStore (store.ts partialize), so state 4 hits directly.
 
 export interface AuthGateInput {
   isAuthenticated: boolean;
   displayName: string | null;
+  // GET /me has settled (success OR error); false while the profile query is in
+  // flight or disabled. Gates the displayName==null branch so a returning user
+  // is not misrouted to onboarding before /me rehydrates displayName.
+  profileLoaded: boolean;
   inAuthGroup: boolean;
   inOnboarding: boolean;
   inTabs: boolean;
 }
 
-export type AuthGateDecision = { kind: 'noop' } | { kind: 'replace'; target: string };
+export type AuthGateDecision =
+  | { kind: 'noop' }
+  | { kind: 'wait' }
+  | { kind: 'replace'; target: string };
 
 export function decideAuthRoute(input: AuthGateInput): AuthGateDecision {
-  const { isAuthenticated, displayName, inAuthGroup, inOnboarding, inTabs } = input;
+  const { isAuthenticated, displayName, profileLoaded, inAuthGroup, inOnboarding, inTabs } = input;
 
   if (!isAuthenticated) {
     if (inAuthGroup) return { kind: 'noop' };
@@ -29,7 +44,11 @@ export function decideAuthRoute(input: AuthGateInput): AuthGateDecision {
   }
 
   if (displayName === null) {
+    // Already on onboarding (a genuine new user filling the form) — stay put;
+    // don't flash a splash over their input regardless of profile-load state.
     if (inOnboarding) return { kind: 'noop' };
+    // Profile not settled yet → hold a splash rather than assume "new user".
+    if (!profileLoaded) return { kind: 'wait' };
     return { kind: 'replace', target: '/(app)/onboarding' };
   }
 

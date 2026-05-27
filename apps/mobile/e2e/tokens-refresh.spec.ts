@@ -3,13 +3,13 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 // T024 — Expo Web e2e for 003-tokens US7 透明续期 (SC-C04).
 //
 // Pre-seeds nvy-auth with a refreshToken but NO accessToken (accessToken is
-// in-memory only → null on cold boot). AuthGate (authed + displayName null)
-// lands on /(app)/onboarding. Submitting the nickname PATCHes /me with no
+// in-memory only → null on cold boot). On boot AuthGate issues GET /me with no
 // Authorization header → server 401 → the response interceptor (003-tokens
-// T022) single-flights one POST /refresh-token, then retries the PATCH with the
-// fresh access token → 200 → AuthGate redirects to /profile. Proves
-// 401 → 透明续期 → 业务请求成功 end-to-end through the real client stack
-// (axios response interceptor + Orval + RHF), not just unit mocks.
+// T022) single-flights one POST /refresh-token, then retries GET /me with the
+// fresh access token → 200 (displayName null) → onboarding. The nickname submit
+// then PATCHes /me with the already-refreshed token → 200 → AuthGate redirects
+// to /profile. Proves 401 → 透明续期 → 业务请求成功 end-to-end through the real
+// client stack (axios response interceptor + Orval + RHF), not just unit mocks.
 //
 // Backend is mocked at the network boundary (page.route); server endpoints are
 // covered by Testcontainers ITs (tokens.us2-rotate / accounts.us2-002). axios
@@ -98,6 +98,23 @@ test('US7 — PATCH /me 401 → transparent refresh + retry once → redirect to
       return;
     }
     if (route.request().headers()['authorization'] === `Bearer ${REFRESHED_ACCESS}`) {
+      // AuthGate's GET /me (post-refresh) returns null → user stays on onboarding;
+      // the form submit's PATCH /me returns the new name → AuthGate routes to tabs.
+      if (route.request().method() !== 'PATCH') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          headers: CORS,
+          body: JSON.stringify({
+            accountId: 'acc-e2e-refresh-1',
+            phone: '+8613800138000',
+            displayName: null,
+            status: 'ACTIVE',
+            createdAt: '2026-05-25T00:00:00.000Z',
+          }),
+        });
+        return;
+      }
       meAuthedCalls += 1;
       await route.fulfill({
         status: 200,

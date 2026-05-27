@@ -61,13 +61,35 @@ async function bootOnboarding(page: Page) {
 test('US13 happy — fill nickname → PATCH /me → redirect into (tabs)/profile (SC-019)', async ({
   page,
 }) => {
-  await mockJson(page, ME_URL, 200, {
-    accountId: 'acc-e2e-onboarding-1',
-    phone: '+8613800138000',
-    displayName: NEW_NAME,
-    status: 'ACTIVE',
-    createdAt: '2026-05-25T00:00:00.000Z',
-  });
+  // AuthGate's cold-boot GET /me: a new user has no name yet → null → stays on
+  // onboarding (the wait gate settles, then routes to onboarding).
+  await mockJson(
+    page,
+    ME_URL,
+    200,
+    {
+      accountId: 'acc-e2e-onboarding-1',
+      phone: '+8613800138000',
+      displayName: null,
+      status: 'ACTIVE',
+      createdAt: '2026-05-25T00:00:00.000Z',
+    },
+    'GET',
+  );
+  // Form submit PATCHes /me → new name → store.displayName set → redirect.
+  await mockJson(
+    page,
+    ME_URL,
+    200,
+    {
+      accountId: 'acc-e2e-onboarding-1',
+      phone: '+8613800138000',
+      displayName: NEW_NAME,
+      status: 'ACTIVE',
+      createdAt: '2026-05-25T00:00:00.000Z',
+    },
+    'PATCH',
+  );
 
   await bootOnboarding(page);
 

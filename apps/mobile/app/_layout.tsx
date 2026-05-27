@@ -18,6 +18,7 @@ import { useAuthStore } from '~/auth';
 import { decideAuthRoute } from '~/core/auth-gate-decision';
 import { queryClient } from '~/core/api/query-client';
 import { setupAxios } from '~/core/api/setup';
+import { useMe } from '~/core/api/use-me';
 import { ErrorBoundary } from '~/core/error-boundary';
 
 // One-shot axios install — baseURL + x-trace-id + Authorization Bearer
@@ -45,6 +46,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const [navReady, setNavReady] = useState(false);
   const [hasHydrated, setHasHydrated] = useState(() => useAuthStore.persist.hasHydrated());
 
+  // GET /me — disabled until authenticated; on success it rehydrates
+  // displayName / accountId / phone into the store (see use-me.ts). `isFetched`
+  // flips true once the query settles (success OR error, never deadlocks), and
+  // gates the AuthGate decision: a returning user whose LoginResponse omits
+  // displayName (byte-level anti-enumeration, phone-sms-auth.response.ts) is
+  // held on a splash until /me lands instead of flashing /(app)/onboarding.
+  const profile = useMe();
+  const profileLoaded = profile.isFetched;
+
   // Wait for the navigation container to actually mount before any
   // router.replace — Expo Router asserts navigationRef.isReady() and throws
   // "Attempted to navigate before mounting the Root Layout component" otherwise.
@@ -68,21 +78,27 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     return useAuthStore.persist.onFinishHydration(() => setHasHydrated(true));
   }, []);
 
+  const decision = decideAuthRoute({
+    isAuthenticated,
+    displayName,
+    profileLoaded,
+    inAuthGroup: segments[0] === '(auth)',
+    inOnboarding: segments.includes('onboarding'),
+    inTabs: segments.includes('(tabs)'),
+  });
+  const redirectTarget = decision.kind === 'replace' ? decision.target : null;
+
   useEffect(() => {
     if (!navReady || !hasHydrated) return;
-    const decision = decideAuthRoute({
-      isAuthenticated,
-      displayName,
-      inAuthGroup: segments[0] === '(auth)',
-      inOnboarding: segments.includes('onboarding'),
-      inTabs: segments.includes('(tabs)'),
-    });
-    if (decision.kind === 'replace') {
-      router.replace(decision.target as Parameters<typeof router.replace>[0]);
+    if (redirectTarget) {
+      router.replace(redirectTarget as Parameters<typeof router.replace>[0]);
     }
-  }, [navReady, hasHydrated, isAuthenticated, displayName, segments, router]);
+  }, [navReady, hasHydrated, redirectTarget, router]);
 
+  // `wait` = authenticated but displayName still null while /me is in flight —
+  // hold the splash rather than let `children` paint onboarding for a frame.
   if (!hasHydrated) return <SplashPlaceholder />;
+  if (decision.kind === 'wait') return <SplashPlaceholder />;
   return <>{children}</>;
 }
 
