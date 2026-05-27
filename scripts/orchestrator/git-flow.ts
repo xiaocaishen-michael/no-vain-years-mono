@@ -320,22 +320,6 @@ export class FakeGit implements Git {
   }
 }
 
-/**
- * F5 (p2 §7): tool surface for the hook-ralph `claude -p` round. Deliberately
- * OMITS `Bash(git *)` — the orchestrator owns the per-task commit boundary.
- *
- * An agent that runs `git commit` itself moves HEAD mid-flow, desyncing
- * commitTask's headBefore bookkeeping: 999 orch run4 T002 had the hook-ralph
- * agent self-commit `28b39a9` (impl + moat registration + tasks.md) to clear a
- * server-moat-check rejection, after which the orchestrator's own retry commit
- * had nothing left to commit → spurious `hook-ralph-failed` even though the
- * work had actually landed. Mirrors orphan-ralph's `['Read']` lockdown, but
- * hook-ralph still needs file-edit tools (it must fix the lint/format/registry
- * issue the lefthook rejected) — it just must NOT touch git. The agent edits,
- * the orchestrator commits.
- */
-export const HOOK_RALPH_ALLOWED_TOOLS = ['Read', 'Edit', 'Write', 'Bash(pnpm *)', 'Glob', 'Grep'];
-
 const KIND_TO_CONVENTIONAL_TYPE: Record<TaskKind, string> = {
   impl: 'feat',
   'test-unit': 'test',
@@ -694,6 +678,10 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
   let lastFeedback: string | undefined = first.feedback;
   const archive = input.archive;
   let hookProjector: LiveProjector | undefined;
+  // F5 (p2 §7): set when the hook-ralph agent committed its own fix (HEAD
+  // moved during a round). The orchestrator then defers to that commit
+  // instead of re-committing, and reports `llm-self-committed`.
+  let selfCommittedDuringHook = false;
   const ralph = await ralphLoop({
     phase: 'git-hook',
     maxRetries: input.maxHookRetries,
@@ -702,8 +690,22 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
     attempt: async () => {
       if (hookProjector) hookProjector.stop();
       hookProjector = undefined;
-      // rescanGovernance=true: this round's agent may have touched a new
-      // governance file to clear the hook (F5) — pick it up before staging.
+      // F5 (p2 §7) — "ralph 做好兼容": the hook-ralph agent is free to commit
+      // its OWN fix (it wrote the code; the lefthook ran on ITS commit). If it
+      // did, HEAD moved — accept that commit rather than re-committing. A blind
+      // retry would find nothing to commit and desync → spurious
+      // hook-ralph-failed even though the work landed cleanly (999 run4 T002 =
+      // 28b39a9: a complete commit — moat registered, tasks.md flipped,
+      // conventional `(T002)` message). Mirrors Step C' (PoC #9), but inside
+      // the hook-recovery loop. The orchestrator commits ONLY when the agent
+      // chose not to.
+      const headNow = await git.revParseHead({ cwd: repoRoot });
+      if (headNow !== headBefore) {
+        selfCommittedDuringHook = true;
+        return { ok: true };
+      }
+      // Agent edited but did not commit → orchestrator commits. rescanGovernance
+      // picks up any new governance file the agent touched to clear the hook.
       const r = await performCommit(true);
       lastFeedback = r.feedback;
       return r;
@@ -715,11 +717,7 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
       return { onEvent: (e) => hookProjector?.onEvent(e) };
     },
     llm,
-    // F5 (p2 §7): force the no-git tool surface for hook-ralph rounds. The
-    // hook-ralph prepareRound above only adds `onEvent`, so this is the
-    // effective allowedTools for the round; the orchestrator commits, not
-    // the agent.
-    llmInvokeOpts: { ...llmInvokeOpts, allowedTools: HOOK_RALPH_ALLOWED_TOOLS },
+    llmInvokeOpts,
     onRound: archive
       ? async (round) => {
           const attN = archive.reserveAttempt('hook-ralph');
@@ -741,7 +739,7 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
     if (orphan) return { ...orphan, ralph, drift: driftRecord, orphanRalph };
     return {
       ok: true,
-      reason: finalReason,
+      reason: selfCommittedDuringHook ? 'llm-self-committed' : finalReason,
       ralph,
       drift: driftRecord,
       orphanRalph,
@@ -788,9 +786,9 @@ export function buildHookRetryPrompt(
     `model's owner in scripts/checks/check-server-moat.ts, or wiring a module into app.module.ts).`,
     `Do NOT change business logic — that's already verified.`,
     ``,
-    `🚨 CRITICAL — the orchestrator owns committing. You MUST NOT run \`git commit\`, \`git add\`,`,
-    `\`git restore\`, or ANY git command. Just edit the file(s); the orchestrator stages and commits`,
-    `the instant you finish. Running git yourself moves HEAD mid-flow and corrupts the per-task commit.`,
+    `You may either commit the fix yourself (conventional message, and flip this task's \`[ ]\`→\`[X]\``,
+    `in tasks.md so the commit passes tasks-md-drift), OR just leave the edits staged/unstaged and the`,
+    `orchestrator will commit them — both work; the orchestrator reconciles whichever you choose.`,
     ``,
     `Hook scope is this task's staged files: ${stagedFiles.join(', ')}`,
     `(plus any cross-cutting governance file the hook explicitly tells you to edit).`,

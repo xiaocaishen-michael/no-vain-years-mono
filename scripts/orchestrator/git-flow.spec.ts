@@ -11,7 +11,6 @@ import {
   filesToStage,
   GitCli,
   GitCommitError,
-  HOOK_RALPH_ALLOWED_TOOLS,
   type CommitTaskInput,
   type Git,
 } from './git-flow.js';
@@ -313,15 +312,17 @@ describe('commitTask', () => {
     expect(r.ralph?.attempts).toBe(1);
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
 
-    // Sequence: revParseHead, diffNameOnly (Step B), add, commit (fail),
-    // restoreStaged, [LLM retry], diffNameOnly (F5 hook-ralph governance
-    // re-scan), add, commit (ok), statusPorcelain
+    // Sequence: revParseHead (Step C'), diffNameOnly (Step B), add, commit
+    // (fail), restoreStaged, [LLM retry], revParseHead (F5 self-commit
+    // reconcile check — HEAD unchanged here so orchestrator commits),
+    // diffNameOnly (F5 governance re-scan), add, commit (ok), statusPorcelain
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
       'diffNameOnly',
       'add',
       'commit',
       'restoreStaged',
+      'revParseHead',
       'diffNameOnly',
       'add',
       'commit',
@@ -561,34 +562,36 @@ describe('commitTask', () => {
     expect(git.calls.some((c) => c.method === 'commit')).toBe(false);
   });
 
-  // F5 (p2 §7): the hook-ralph `claude -p` round must NOT be able to git
-  // commit — the orchestrator owns the per-task commit boundary. 999 run4 T002
-  // had the agent self-commit during hook-ralph (28b39a9), moving HEAD and
-  // desyncing the orchestrator's own retry → spurious hook-ralph-failed. Lock
-  // the tool surface to file-edit tools (no `Bash(git *)`), forced regardless
-  // of what allowedTools the task-level invoke opts carried.
-  it('F5: hook-ralph LLM round runs with the no-git tool surface', async () => {
+  // F5 (p2 §7) — "ralph 做好兼容": the hook-ralph agent is allowed to commit
+  // its own fix (it wrote the code; the lefthook ran on ITS commit). When it
+  // does, HEAD moves DURING a hook-ralph round (not at Step C'). The
+  // orchestrator must reconcile — accept that commit (llm-self-committed)
+  // rather than blindly re-committing, which would desync → spurious
+  // hook-ralph-failed even though the work landed (999 run4 T002 = 28b39a9, a
+  // complete commit: moat registered, tasks.md flipped, conventional message).
+  it('F5: agent self-commit DURING hook-ralph is reconciled (llm-self-committed, no re-commit)', async () => {
     const initial = '- [ ] T001 Hello\n';
     const { repoRoot, tasksMdPath } = makeRepo(initial);
-    const git = new FakeGit([
-      { ok: false, stderr: 'check-server-moat: model unmapped' },
-      { ok: true }, // retry succeeds after the agent edits (not commits)
-    ]);
-    const llm = new FakeLlmClient([llmOk('registered model')]);
-    // Task-level opts deliberately carry a git-capable surface to prove the
-    // hook-ralph override wins.
-    const r = await commitTask(
-      makeInput(git, llm, tasksMdPath, repoRoot, {
-        llmInvokeOpts: { cwd: '/tmp/sandbox', allowedTools: ['Read', 'Edit', 'Bash(git *)'] },
-      }),
-    );
+    // Only ONE commit response: the orchestrator's first (failing) commit. If
+    // the reconcile path wrongly re-committed, FakeGit would throw (no scripted
+    // response left) — so this also asserts performCommit is NOT re-run.
+    const git = new FakeGit([{ ok: false, stderr: 'check-server-moat: model unmapped' }]);
+    // Step C' sees HEAD unchanged (h0); the hook-ralph round sees it moved (h1)
+    // because the agent committed its fix.
+    git.enqueueHeadSha('h0', 'h1');
+    const llm = new FakeLlmClient([llmOk('fixed + committed myself')]);
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot, { headBefore: 'h0' }));
 
     expect(r.ok).toBe(true);
-    expect(llm.calls).toHaveLength(1);
-    const tools = llm.calls[0].opts.allowedTools ?? [];
-    expect(tools).toEqual(HOOK_RALPH_ALLOWED_TOOLS);
-    expect(tools).not.toContain('Bash(git *)');
-    expect(tools).toContain('Edit'); // can still fix the rejected file
+    expect(r.reason).toBe('llm-self-committed');
+    expect(llm.calls).toHaveLength(1); // one hook-ralph round
+    // Exactly one commit attempt (the orchestrator's first, which failed); the
+    // reconcile path did NOT add/commit again.
+    expect(git.calls.filter((c) => c.method === 'commit')).toHaveLength(1);
+    // Reconcile ran a HEAD check then the post-commit orphan assert.
+    const methods = git.calls.map((c) => c.method);
+    expect(methods.filter((m) => m === 'revParseHead')).toHaveLength(2); // Step C' + hook-ralph reconcile
+    expect(methods).toContain('statusPorcelain');
   });
 
   // F5 (p2 §7): a governance file the agent touches DURING hook-ralph (after
