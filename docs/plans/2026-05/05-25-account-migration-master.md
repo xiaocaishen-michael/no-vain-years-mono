@@ -1,6 +1,6 @@
 # Master Plan:mbw-account 16 use case 业务迁移
 
-> **统领 3 个子 plan**:p1 工具链 POC(Ralph loop)/ p2 新范式 + 业务调研 + 依赖顺序 / p3 逐 use case 迁移步骤。本文**不下钻子 plan 内部**,只锁主目标 / 跨契约 / 执行顺序。
+> **统领 4 个子 plan**:p1-p3 后端迁移三层(p1 工具链 POC Ralph loop / p2 新范式 + 业务调研 + 依赖顺序 / p3 逐 use case 迁移步骤)+ p4 client UI 链(settings shell A→B→C,**占位待建**)。本文**不下钻子 plan 内部**,只锁主目标 / 跨契约 / 执行顺序。
 >
 > **主目标**:旧 Java `mbw-account` **16 use case 全部迁移**到 mono(NestJS + Prisma),mobile per-feature 同步,`pnpm nx affected` 全绿。
 > **子目标(先行)**:搭 Ralph loop 工具链 POC,支撑迁移自动化(已大体落地,见 p1)。
@@ -17,7 +17,7 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 
 **迁移目标新范式**(大重构后):ADR-0043 扁平贫血 + ADR-0032 bounded context + ADR-0019 Prisma 贫血层 + ADR-0030 包 5→2。**业务调研源**:旧 meta 仓 `~/Documents/projects/no-vain-years/`(meta specs + Java `my-beloved-server/` + 旧 app)仍在。
 
-**为什么拆 3 个子 plan**:迁移有三层关注点 —— 工具链(怎么自动化跑)、分析(按什么顺序迁、每个业务做什么)、执行(单 use case 逐步骤)。三层各自独立演进 + 各自 review gate。
+**为什么拆 4 个子 plan**:后端迁移有三层关注点 —— 工具链(怎么自动化跑)、分析(按什么顺序迁、每个业务做什么)、执行(单 use case 逐步骤),各自独立演进 + 各自 review gate。**p4 是后加的正交维度** —— 前端 client UI 链(settings shell 聚合容器),不在后端 use case 迁移拓扑内(详见下 §「子 plan 4」)。
 
 ## 子 plan 拆分
 
@@ -26,6 +26,7 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 | 1 | [`p1-toolchain-ralph-loop`](05-25-account-migration-p1-toolchain-ralph-loop.md) | 工具链(先行) | 无 | 模型路由 + orchestrator + Ralph loop + workflow override | ✅ 大体落地;缺 workflow.yml 2 步 + run-implement.ts(待触发) |
 | 2 | [`p2-usecase-dependency`](05-25-account-migration-p2-usecase-dependency.md) | 分析/规划 | 无(可与 p1 并行) | 新范式锚定 + 业务级调研 + 16 uc 依赖关系 + 迁移顺序 | 🟡 依赖/顺序已成;业务卡逐 uc 待展开 |
 | 3 | [`p3-usecase-steps`](05-25-account-migration-p3-usecase-steps.md) | 执行 | **p2(顺序)+ p1(工具链)** | 逐 use case 详细迁移过程 + 步骤 | 🟢 **已填充**(2026-05-25 plan 会话:一条引擎 + Step 1 两模式 + Step 4 两形态;本轮全程手动不用 orchestrator) |
+| 4 | [`p4-client-ui-shell-chain`](05-25-account-migration-p4-client-ui-shell-chain.md) | client UI(前端,正交后端迁移) | 002 spec A 已 ship;可与批 E 并行 | settings shell(spec B)+ A→B→C 链规划:聚合 003/004/005 延后 client 入口 | ⬜ **占位**(待后续 session 建真 plan) |
 
 ## 跨契约(master 锁定,子 plan 不得违反)
 
@@ -71,6 +72,12 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 
 🟢 **已填充**(2026-05-25)。定义为**一条手动迁移引擎 + 两处分叉**:Step 1 两模式(1a 抽取重写 fresh / 1b de-stale 已有 spec 的 client 段)→ Step 2 plan+tasks(ADR-0043 扁平 + 三位一体同 tasks.md)→ Step 3 analyze → Step 4 impl(server 9 条并发/事务手译注意 + 前端 Strangler-Fig + RHF Golden Sample);Step 4 前端两形态(port 旧 app 成品 / 批 E mockup)。**本轮全程手动,不用 p1 orchestrator**。详见 [`p3`](05-25-account-migration-p3-usecase-steps.md)。
 
+### 子 plan 4 — client UI 链（settings shell，占位待建）
+
+⬜ **占位**（**本段 p4 = 本 master 第 4 子 plan，≠ 下 § Out of Scope 的顶层「Plan 4」mobile build/PKM**）。前端有一条**正交后端迁移**的 client UI 拆分链 A→B→C(源 `002-account-profile` spec 内部),从未被统领规划 —— **spec B(`account-settings-shell`,从 profile ⚙️ 进入的「设置 / 账号与安全」导航栈,落 `(app)/settings/*`、`(tabs)` 之外)至今无 spec、无排期**,而 003(登出)/ 004(注销发起屏)/ 005(登录设备管理屏)三个 feature 的 client 入口**都已 server-ready(#196 / #198 / #201)、都延后挂这个壳**,使 settings shell 成隐式累积的前端债。
+
+p4 补这条链的规划。**建真 plan 所需的全部 context(A→B→C 定义 + spec B scope + 三延后挂载项 + 参考源 + 开放点)见占位文件** [`p4`](05-25-account-migration-p4-client-ui-shell-chain.md)。后续独立 session 读 p4 + 本段后据此 `/speckit-specify` spec B(前走跨契约 § 硬 gate);p4 与批 E(`006` server)可并行(前端正交,无共享可变状态)。
+
 ## Out of Scope（整体不做）
 
 - ❌ 生产部署(Plan 3 已先行完成)
@@ -80,7 +87,7 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 
 ## Verification（master plan 自身)
 
-- ☐ 3 子 plan 文件齐全 + 顶部均回指 master + master 表 3 链接可达
+- ☐ 4 子 plan 文件齐全(p4 为占位骨架) + 顶部均回指 master + master 表 4 链接可达
 - ☐ p3 在 p2 完成后经独立 `/plan` 会话 + ExitPlanMode 填充
 - ☐ Plan 2 graduation:16 use case 全 ship + `pnpm nx affected --target=test,lint,build,typecheck` 全绿 + mobile 登录→5 phase 主流程跑通
 
