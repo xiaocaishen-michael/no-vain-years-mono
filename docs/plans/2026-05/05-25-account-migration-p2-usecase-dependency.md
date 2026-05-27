@@ -8,7 +8,7 @@
 
 ## 1. Context
 
-mbw-account 后端 16 use case 从旧 Java/Spring 迁移到 mono(NestJS + Prisma)。Plan 1 PoC(`UnifiedPhoneSmsAuth`)+ 批 A(`002-account-profile`)+ 批 B(`003-tokens`:RefreshToken + LogoutAllSessions,#196)+ 批 C(`004-account-deletion`:5 use case,#198)已 ship,剩 5 个 use case(批 D `005-device-management` + 批 E `006-realname-verification`)待迁。
+mbw-account 后端 16 use case 从旧 Java/Spring 迁移到 mono(NestJS + Prisma)。Plan 1 PoC(`UnifiedPhoneSmsAuth`)+ 批 A(`002-account-profile`)+ 批 B(`003-tokens`:RefreshToken + LogoutAllSessions,#196)+ 批 C(`004-account-deletion`:5 use case,#198)+ 批 D(`005-device-management`:ListDevices + RevokeDevice,#201,server-only — mobile 登录管理屏延后到 settings shell)已 ship,剩 3 个 use case(批 E `006-realname-verification`)待迁。
 
 迁移走 per-feature SDD(详见 [master § 跨契约](05-25-account-migration-master.md));本子 plan 先把"**怎么迁、按什么顺序迁、每个 use case 业务上做什么**"分析清楚,避免逐 feature 起手时临时摸索。技术栈预研已在 Plan 1 完成(Prisma / jose / throttler / Testcontainers 全验证);**本子 plan 聚焦业务语义 + 依赖拓扑**。
 
@@ -77,13 +77,13 @@ W1.4 `db pull` 已把旧 Java 全部 **6 张表**反推进 `apps/server/prisma/s
 | model | 写入方 use case | 读取方 use case |
 |---|---|---|
 | `account` | UnifiedPhoneSmsAuth(create+lastLogin)✅ · UpdateDisplayName✅ · DeleteAccount(→FROZEN)✅ · CancelDeletion(→ACTIVE)✅ · AnonymizeFrozenAccount(→ANONYMIZED)✅ | GetAccountProfile✅ · RefreshToken✅ · DeleteAccount✅ · CancelDeletion✅ · InitiateRealname |
-| `refresh_token` | UnifiedPhoneSmsAuth(save)✅ · RefreshToken(rotate)✅ · LogoutAllSessions(revoke all)✅ · DeleteAccount(revoke all)✅ · CancelDeletion(save)✅ · AnonymizeFrozenAccount(strategy)✅ | ListDevices · RevokeDevice · RefreshToken✅ |
+| `refresh_token` | UnifiedPhoneSmsAuth(save)✅ · RefreshToken(rotate)✅ · LogoutAllSessions(revoke all)✅ · DeleteAccount(revoke all)✅ · CancelDeletion(save)✅ · AnonymizeFrozenAccount(strategy)✅ | ListDevices✅ · RevokeDevice✅ · RefreshToken✅ |
 | `account_sms_code` | SendDeletionCode✅ · SendCancelDeletionCode✅ · DeleteAccount(used)✅ · CancelDeletion(used)✅ · AnonymizeFrozenAccount(实装不删码:HMAC 非 PII,留 expiresAt 失效)✅ | DeleteAccount✅ · CancelDeletion✅ |
 | `realname_profile` | InitiateRealname(PENDING) · ConfirmRealname(VERIFIED/FAILED) | QueryRealnameStatus · ConfirmRealname |
 | `credential` | UnifiedPhoneSmsAuth(register 分支)✅ | — |
-| `outbox_event` | DeleteAccount✅ · CancelDeletion✅ · RevokeDevice · AnonymizeFrozenAccount(事件发布)✅ | outbox cron publisher(skeleton ✅,真消费方 deferred:004 仅发布,消费侧归后续批次 per 004 Out of Scope) |
+| `outbox_event` | DeleteAccount✅ · CancelDeletion✅ · RevokeDevice✅ · AnonymizeFrozenAccount(事件发布)✅ | outbox cron publisher(skeleton ✅,真消费方 deferred:004 仅发布,消费侧归后续批次 per 004 Out of Scope) |
 
-(✅ = 该读/写路径已随 Plan 1 / 批 A-C 在 mono ship)
+(✅ = 该读/写路径已随 Plan 1 / 批 A-D 在 mono ship)
 
 ### 4.3 use case 间依赖链(有向:A → B 表示 B 依赖 A)
 
@@ -91,7 +91,7 @@ W1.4 `db pull` 已把旧 Java 全部 **6 张表**反推进 `apps/server/prisma/s
 
 1. **RequestSmsCode → UnifiedPhoneSmsAuth**(验码消费发码)— ✅ 均已 ship
 2. **UnifiedPhoneSmsAuth → RefreshToken**(登录发的 refresh token 由 refresh 流轮换)— ✅ 均已 ship(批 B #196)
-3. **UnifiedPhoneSmsAuth/RefreshToken → {LogoutAllSessions, ListDevices, RevokeDevice}**(共操作 `refresh_token` 同一资源)— LogoutAllSessions ✅(批 B);ListDevices/RevokeDevice 待迁(批 D)
+3. **UnifiedPhoneSmsAuth/RefreshToken → {LogoutAllSessions, ListDevices, RevokeDevice}**(共操作 `refresh_token` 同一资源)— LogoutAllSessions ✅(批 B);ListDevices/RevokeDevice ✅(批 D #201)
 4. **SendDeletionCode → DeleteAccount**(发码 → 验码冻结)— ✅ 均已 ship(批 C #198)
 5. **DeleteAccount(→FROZEN) → {SendCancelDeletionCode, CancelDeletion}**(仅 FROZEN-in-grace 可取消)— ✅ 均已 ship(批 C)
 6. **CancelDeletion → RefreshToken**(恢复 ACTIVE 后重发 token)— ✅ 均已 ship(批 B/C)
@@ -102,15 +102,15 @@ W1.4 `db pull` 已把旧 Java 全部 **6 张表**反推进 `apps/server/prisma/s
 
 ### 4.4 Phase A-E 迁移顺序(依赖校准 + mono 状态）
 
-顺序逻辑:批 A/B 立 account + token 基座 → 批 C 依赖 token 基座做删除/冻结 → 批 D 复用 refresh_token 读侧 → 批 E 自成一域(realname,仅依赖 account)。**批 D / E 在批 B 完成后可与批 C 并行**(无共享可变状态)。**当前状态(2026-05-26):批 A/B/C 已 ship,基座 + 删除/冻结链全落;批 D/E 待迁(可并行)。**
+顺序逻辑:批 A/B 立 account + token 基座 → 批 C 依赖 token 基座做删除/冻结 → 批 D 复用 refresh_token 读侧 → 批 E 自成一域(realname,仅依赖 account)。**批 D / E 在批 B 完成后可与批 C 并行**(无共享可变状态)。**当前状态(2026-05-27):批 A/B/C/D 已 ship(D=#201 设备列表+撤销,server-only,mobile 登录管理屏延后到 settings shell),基座 + 删除/冻结 + 设备管理全落;批 E(realname)待迁(下一个)。**
 
 | # | feature spec | use case | mono 状态 | 复杂度 | 关键依赖 / 风险 | 并发控制 |
 |---|---|---|---|---|---|---|
 | **A** | `002-account-profile` | GetAccountProfile + UpdateDisplayName | ✅ **已 ship**(#65) | 低 | 仅 `account` 读写 | 无 |
 | **B** | `003-tokens` | RefreshToken + LogoutAllSessions | ✅ **已 ship**(#196) | 中 | token 基座(jose 已有)+ 并发续期 | 乐观锁(revoke count) |
 | **C** | `004-account-deletion` | SendDeletionCode / DeleteAccount / SendCancelDeletionCode / CancelDeletion / AnonymizeFrozenAccount | ✅ **已 ship**(#198) | **高** | outbox 发布侧(真消费方 deferred)+ 串行链 + 反枚举 timing | **悲观锁**(CancelDeletion ⟷ Anonymize 互斥)+ outbox 同 tx |
-| **D** | `005-device-management` | ListDevices + RevokeDevice | ⬜ 待迁(**下一个**,可与 E 并行) | 中 | ip2region geo + DeviceRevokedEvent | 乐观锁(revoke count) |
-| **E** | `006-realname-verification` | Initiate + Confirm + QueryRealnameStatus | ⬜ 待迁(可与 D 并行) | **最高** | **split-tx**(外部 HTTP 不可在 tx 内持锁)+ cloudauth + 加密字段 | DataIntegrityViolation(idCardHash 唯一) |
+| **D** | `005-device-management` | ListDevices + RevokeDevice | ✅ **已 ship**(#201,server-only) | 中 | ip2region geo + DeviceRevokedEvent | 乐观锁(revoke count) |
+| **E** | `006-realname-verification` | Initiate + Confirm + QueryRealnameStatus | ⬜ 待迁(**下一个**) | **最高** | **split-tx**(外部 HTTP 不可在 tx 内持锁)+ cloudauth + 加密字段 | DataIntegrityViolation(idCardHash 唯一) |
 
 每个 feature = 1 个 `specs/NNN-<slug>/` 目录(per ADR-0024 扁平布局)。逐 use case 的详细迁移步骤见 [子 plan 3](05-25-account-migration-p3-usecase-steps.md)。
 

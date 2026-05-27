@@ -2,9 +2,9 @@
 feature_id: 001-phone-sms-auth
 modules: [auth, security, account]
 owners: ['@xiaocaishen-michael']
-status: implementing
+status: implemented
 created_at: '2026-05-04'
-updated_at: '2026-05-17'
+updated_at: '2026-05-27'
 spec_kit_version: '>=0.8.5,<0.10.0'
 orchestrator_compat: '>=0.2.0'
 
