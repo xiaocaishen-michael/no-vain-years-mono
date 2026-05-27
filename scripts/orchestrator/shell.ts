@@ -35,7 +35,15 @@ export class RealShell implements Shell {
     return new Promise<ShellRunResult>((resolve, reject) => {
       const child = spawn('/bin/sh', ['-c', command], {
         cwd: opts.cwd,
-        env: { ...process.env, ...opts.env },
+        // F4 (p2 §7): the orchestrator runs verify commands (`nx build/test/lint`)
+        // locally on macOS, where the Nx daemon intermittently emits a SPURIOUS
+        // TS6059 "not under rootDir" build failure (nx itself flags the task
+        // "flaky"). A verify false-fail then sends a correct task into a doomed
+        // ralph loop that burns turns trying to "fix" a non-error. Default the
+        // daemon OFF for orchestrator subprocesses (harmless on CI/Linux; only
+        // affects nx). Forced over process.env so an inherited NX_DAEMON=true
+        // can't reintroduce the bug; an explicit per-call opts.env still wins.
+        env: { ...process.env, NX_DAEMON: 'false', ...opts.env },
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
