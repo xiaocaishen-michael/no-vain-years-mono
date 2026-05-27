@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { TaskArchive } from './archive.js';
-import { classifyDrift, normalizePath } from './drift-classifier.js';
+import { classifyDrift, isGovernanceFile, normalizePath } from './drift-classifier.js';
 import { startLiveProjector, type LiveProjector } from './live-projector.js';
 import type { LlmClient, LlmInvokeOptions } from './llm-client.js';
 import { runOrphanRalph, type OrphanRalphResult } from './orphan-ralph.js';
@@ -391,6 +391,7 @@ export type CommitTaskTerminalReason =
   | 'gen-fenced'
   | 'orphan-resolved-expand'
   | 'orphan-resolved-revert'
+  | 'orphan-drift-warned'
   | 'orphan-stuck'
   | 'llm-self-committed'
   | 'hook-ralph-failed'
@@ -410,6 +411,7 @@ export interface CommitDriftRecord {
     | 'gen-fenced'
     | 'orphan-resolved-expand'
     | 'orphan-resolved-revert'
+    | 'orphan-drift-warned'
     | 'orphan-stuck'
     | 'llm-self-committed-skipped';
   /** task.files-derived declared list at commit time. */
@@ -489,6 +491,18 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
   // Step D: declared list (mutable — orphan-ralph expand may grow it).
   let declared = filesToStage(task).map(normalizePath);
 
+  // Step D' (F1, p2 §7): fold any cross-cutting governance files the LLM
+  // touched into `declared`. These shared registries (moat ownership, module
+  // wiring, schema, eslint boundaries, openapi) are a legitimate ripple of
+  // almost any task and MUST ship in the same commit — otherwise the orphan
+  // scope-gate reverts them and deadlocks against the lefthook that requires
+  // them. Treating them as implicitly declared makes them non-orphans here
+  // and stages them below; downstream gates still validate correctness.
+  const governanceTouched = actual.filter((f) => isGovernanceFile(f));
+  if (governanceTouched.length > 0) {
+    declared = [...new Set([...declared, ...governanceTouched])];
+  }
+
   // Step F: classify drift.
   const decision = classifyDrift(task, declared, actual);
 
@@ -535,20 +549,35 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
       });
       if (orphanProjector) orphanProjector.stop();
       if (!orphanRalph.ok) {
-        // stuck / max-retries / invalid / llm-error all surface as orphan-stuck
-        // to the caller; the per-reason history is preserved on the result.
-        return {
-          ok: false,
-          reason: 'orphan-stuck',
-          orphanRalph,
-          drift: {
-            resolution: 'orphan-stuck',
-            declared,
-            actual,
-            orphans,
-          },
-          lastStderr: `orphan-ralph terminated: ${orphanRalph.reason}`,
-        };
+        if (orphanRalph.reason === 'stuck') {
+          // The LLM explicitly asked for a human (it cannot decide). This is
+          // the ONE remaining hard halt — surfaced to the operator by
+          // run-feature's warnOrphanStuck.
+          return {
+            ok: false,
+            reason: 'orphan-stuck',
+            orphanRalph,
+            drift: { resolution: 'orphan-stuck', declared, actual, orphans },
+            lastStderr: `orphan-ralph terminated: ${orphanRalph.reason}`,
+          };
+        }
+        // F1-b (p2 §7 + [[reference-agent-file-scope-industry-verdict]]):
+        // max-retries / invalid-intent / llm-error are NOT hard halts. Don't
+        // revert the agent's verify-passed work or stop the whole feature run
+        // over a scope-gate miss — stage the orphans, record a drift warning,
+        // and continue. The real safety net is the downstream gates (lefthook
+        // moat / eslint boundaries / IT / boot-smoke), which still run.
+        console.error(
+          `⚠️  Task ${task.id} orphan-drift-warned — orphan-ralph could not resolve ` +
+            `(${orphanRalph.reason}); staging orphans and continuing (NOT a hard halt). ` +
+            `Orphans: ${orphanRalph.finalOrphans.join(', ') || '(none)'}`,
+        );
+        const warnedOrphans = orphanRalph.finalOrphans.map(normalizePath);
+        declared = [...new Set([...declared, ...warnedOrphans])];
+        stageList = declared.slice();
+        orphans = warnedOrphans;
+        resolution = 'orphan-drift-warned';
+        break;
       }
       // Resolved. declared may have grown (expand) or stayed same (revert).
       declared = orphanRalph.finalDeclared;
@@ -566,16 +595,38 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
   const commitMessage = buildCommitMsg(task, plan, workspace);
 
   // One atomic commit attempt: flip → stage → commit; on failure roll back.
-  const performCommit = async (): Promise<{
+  //
+  // `rescanGovernance` (F5, p2 §7): hook-ralph rounds may REACTIVELY edit a
+  // cross-cutting governance file to satisfy the very lefthook that rejected
+  // the commit — e.g. registering a new Prisma model in check-server-moat.ts,
+  // or wiring a module into app.module.ts (999 run4 T002: moat rejection →
+  // agent edits check-server-moat.ts). Those edits land AFTER the Step-B
+  // `actual` snapshot that built `allStaged`, so they'd be left orphaned
+  // post-commit (orphan-after-commit) even though they're a required ripple.
+  // On hook-ralph rounds we re-scan touched governance files at commit time
+  // and fold any new ones into the stage set. The first (happy-path) commit
+  // passes false: its governance set is already covered by Step D'.
+  const performCommit = async (
+    rescanGovernance = false,
+  ): Promise<{
     ok: boolean;
     feedback?: string;
   }> => {
+    let staged = allStaged;
+    if (rescanGovernance) {
+      const nowActual = (await git.diffNameOnly(headBefore, { cwd: repoRoot })).map(normalizePath);
+      const newGovernance = nowActual.filter(
+        (f) => isGovernanceFile(f) && f !== tasksMdRel && !allStaged.includes(f),
+      );
+      if (newGovernance.length > 0) staged = [...allStaged, ...newGovernance];
+    }
+
     const original = await fs.readFile(tasksMdPath, 'utf-8');
     const flipped = flipCheckbox(original, task.id);
     await fs.writeFile(tasksMdPath, flipped);
 
     try {
-      await git.add(allStaged, { cwd: repoRoot });
+      await git.add(staged, { cwd: repoRoot });
       await git.commit(commitMessage, { cwd: repoRoot });
       return { ok: true };
     } catch (e) {
@@ -587,7 +638,7 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
         }
         throw e;
       }
-      await git.restoreStaged(allStaged, { cwd: repoRoot });
+      await git.restoreStaged(staged, { cwd: repoRoot });
       await fs.writeFile(tasksMdPath, original);
       return { ok: false, feedback: e.stderr };
     }
@@ -600,7 +651,9 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
         ? 'gen-fenced'
         : resolution === 'orphan-resolved-expand'
           ? 'orphan-resolved-expand'
-          : 'orphan-resolved-revert';
+          : resolution === 'orphan-drift-warned'
+            ? 'orphan-drift-warned'
+            : 'orphan-resolved-revert';
   const driftRecord: CommitDriftRecord = {
     resolution,
     declared,
@@ -625,6 +678,10 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
   let lastFeedback: string | undefined = first.feedback;
   const archive = input.archive;
   let hookProjector: LiveProjector | undefined;
+  // F5 (p2 §7): set when the hook-ralph agent committed its own fix (HEAD
+  // moved during a round). The orchestrator then defers to that commit
+  // instead of re-committing, and reports `llm-self-committed`.
+  let selfCommittedDuringHook = false;
   const ralph = await ralphLoop({
     phase: 'git-hook',
     maxRetries: input.maxHookRetries,
@@ -633,7 +690,23 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
     attempt: async () => {
       if (hookProjector) hookProjector.stop();
       hookProjector = undefined;
-      const r = await performCommit();
+      // F5 (p2 §7) — "ralph 做好兼容": the hook-ralph agent is free to commit
+      // its OWN fix (it wrote the code; the lefthook ran on ITS commit). If it
+      // did, HEAD moved — accept that commit rather than re-committing. A blind
+      // retry would find nothing to commit and desync → spurious
+      // hook-ralph-failed even though the work landed cleanly (999 run4 T002 =
+      // 28b39a9: a complete commit — moat registered, tasks.md flipped,
+      // conventional `(T002)` message). Mirrors Step C' (PoC #9), but inside
+      // the hook-recovery loop. The orchestrator commits ONLY when the agent
+      // chose not to.
+      const headNow = await git.revParseHead({ cwd: repoRoot });
+      if (headNow !== headBefore) {
+        selfCommittedDuringHook = true;
+        return { ok: true };
+      }
+      // Agent edited but did not commit → orchestrator commits. rescanGovernance
+      // picks up any new governance file the agent touched to clear the hook.
+      const r = await performCommit(true);
       lastFeedback = r.feedback;
       return r;
     },
@@ -666,7 +739,7 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
     if (orphan) return { ...orphan, ralph, drift: driftRecord, orphanRalph };
     return {
       ok: true,
-      reason: finalReason,
+      reason: selfCommittedDuringHook ? 'llm-self-committed' : finalReason,
       ralph,
       drift: driftRecord,
       orphanRalph,
@@ -708,9 +781,17 @@ export function buildHookRetryPrompt(
 ): string {
   return [
     `Task ${task.id} verify_command already passed (tests green) but \`git commit\` was rejected by a lefthook.`,
-    `Please fix code-style / docs-sync issues ONLY. Do NOT change business logic — that's already verified.`,
+    `Fix ONLY what the hook is complaining about — a lint/format issue, a docs-sync drift, or a`,
+    `required governance-registry edit the hook explicitly demands (e.g. registering a new Prisma`,
+    `model's owner in scripts/checks/check-server-moat.ts, or wiring a module into app.module.ts).`,
+    `Do NOT change business logic — that's already verified.`,
     ``,
-    `Hook scope is limited to this task's staged files: ${stagedFiles.join(', ')}.`,
+    `You may either commit the fix yourself (conventional message, and flip this task's \`[ ]\`→\`[X]\``,
+    `in tasks.md so the commit passes tasks-md-drift), OR just leave the edits staged/unstaged and the`,
+    `orchestrator will commit them — both work; the orchestrator reconciles whichever you choose.`,
+    ``,
+    `Hook scope is this task's staged files: ${stagedFiles.join(', ')}`,
+    `(plus any cross-cutting governance file the hook explicitly tells you to edit).`,
     `The rejection is necessarily in a file you edited.`,
     ``,
     `Hook stderr:`,

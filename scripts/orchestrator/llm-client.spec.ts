@@ -6,6 +6,7 @@ import {
   describeClaudeError,
   extractClaudeMetrics,
   FakeLlmClient,
+  getDefaultTimeoutMs,
   isClaudeJsonError,
   LlmInvokeError,
   type LlmInvokeOptions,
@@ -145,6 +146,42 @@ describe('buildClaudeArgs', () => {
   });
 });
 
+describe('getDefaultTimeoutMs (F2, p2 §7)', () => {
+  it('defaults to 20 minutes when ORCHESTRATOR_TIMEOUT_MIN is unset', () => {
+    const old = process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    try {
+      delete process.env.ORCHESTRATOR_TIMEOUT_MIN;
+      expect(getDefaultTimeoutMs()).toBe(20 * 60 * 1000);
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_TIMEOUT_MIN = old;
+    }
+  });
+
+  it('honors ORCHESTRATOR_TIMEOUT_MIN (minutes → ms)', () => {
+    const old = process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    try {
+      process.env.ORCHESTRATOR_TIMEOUT_MIN = '40';
+      expect(getDefaultTimeoutMs()).toBe(40 * 60 * 1000);
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_TIMEOUT_MIN = old;
+      else delete process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    }
+  });
+
+  it('ignores malformed / non-positive ORCHESTRATOR_TIMEOUT_MIN (falls back to 20min)', () => {
+    const old = process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    try {
+      for (const bad of ['nope', '0', '-5']) {
+        process.env.ORCHESTRATOR_TIMEOUT_MIN = bad;
+        expect(getDefaultTimeoutMs()).toBe(20 * 60 * 1000);
+      }
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_TIMEOUT_MIN = old;
+      else delete process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    }
+  });
+});
+
 describe('FakeLlmClient', () => {
   function ok(stdout: string): LlmInvokeResult {
     return { exitCode: 0, stdout, stderr: '', durationMs: 1 };
@@ -215,11 +252,21 @@ describe('buildSpawnEnv', () => {
     const parent: NodeJS.ProcessEnv = { CLAUDECODE: '1', FOO: 'bar' };
     buildSpawnEnv(parent);
     expect(parent.CLAUDECODE).toBe('1');
+    // The NX_DAEMON injection also must not leak back into the parent.
+    expect(parent.NX_DAEMON).toBeUndefined();
   });
 
-  it('is a no-op when CLAUDECODE is already absent', () => {
+  // F6 (p2 §7): the agent subprocess gets NX_DAEMON=false ambiently so its
+  // own `pnpm nx build`/`nx test` self-verify runs daemon-off WITHOUT an
+  // env-var prefix the `Bash(pnpm *)` allowedTools entry can't match.
+  it('forces NX_DAEMON=false even when the parent did not set it', () => {
     const env = buildSpawnEnv({ FOO: 'bar' });
-    expect(env).toEqual({ FOO: 'bar' });
+    expect(env).toEqual({ FOO: 'bar', NX_DAEMON: 'false' });
+  });
+
+  it('forces NX_DAEMON=false over an inherited NX_DAEMON=true', () => {
+    const env = buildSpawnEnv({ NX_DAEMON: 'true', FOO: 'bar' });
+    expect(env.NX_DAEMON).toBe('false');
   });
 });
 

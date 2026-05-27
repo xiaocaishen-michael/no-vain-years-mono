@@ -88,4 +88,21 @@ describe('RealShell', () => {
     expect(Buffer.concat(outChunks).toString('utf-8').trim()).toBe('OUT');
     expect(Buffer.concat(errChunks).toString('utf-8').trim()).toBe('ERR');
   });
+
+  // F4 (p2 §7): default NX_DAEMON=false so verify commands don't hit the
+  // flaky macOS nx-daemon TS6059 false-positive.
+  it('defaults NX_DAEMON=false in the spawn env', async () => {
+    const sh = new RealShell();
+    const r = await sh.run('echo "$NX_DAEMON"', { cwd: process.cwd() });
+    expect(r.stdout.trim()).toBe('false');
+  });
+
+  it('lets opts.env override the NX_DAEMON default', async () => {
+    const sh = new RealShell();
+    const r = await sh.run('echo "$NX_DAEMON"', {
+      cwd: process.cwd(),
+      env: { NX_DAEMON: 'true' },
+    });
+    expect(r.stdout.trim()).toBe('true');
+  });
 });

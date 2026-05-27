@@ -200,8 +200,25 @@ function partialMessagesEnabled(): boolean {
 // 2026-05-20 A-002 PoC surfaced blind spot 7: 5min wall-clock is too tight
 // when max_turns=30 and each turn takes 10-30s. T001 (Expo workspace bootstrap)
 // timed out mid-stream after burning research turns + file writes. Bumped to
-// 20min. Future: per-task timeout override via tasks-meta + env var.
-const DEFAULT_TIMEOUT_MS = 20 * 60 * 1000;
+// 20min.
+//
+// 2026-05-27 (p2 §7 F2): 20min is still too tight for greenfield tasks that
+// reverse-guess conventions (999 orch run2 T002 timed out at 20min, 0 commits,
+// work lost). Mirror getDefaultMaxTurns' escape hatch: ORCHESTRATOR_TIMEOUT_MIN
+// env var widens the per-attempt wall-clock (e.g. ORCHESTRATOR_TIMEOUT_MIN=40).
+// Per-task override via tasks-meta remains the long-term fix.
+const DEFAULT_TIMEOUT_MIN_FALLBACK = 20;
+
+/** Exported for tests (the live use site in `invoke` spawns a real process and
+ *  can't be unit-tested). Mirrors getDefaultMaxTurns' env-override pattern. */
+export function getDefaultTimeoutMs(): number {
+  const env = process.env.ORCHESTRATOR_TIMEOUT_MIN;
+  if (env) {
+    const n = parseInt(env, 10);
+    if (Number.isFinite(n) && n > 0) return n * 60 * 1000;
+  }
+  return DEFAULT_TIMEOUT_MIN_FALLBACK * 60 * 1000;
+}
 
 /**
  * Build the argv vector for the live `claude -p` invocation. Exported
@@ -250,6 +267,16 @@ export function buildClaudeArgs(prompt: string, opts: LlmInvokeOptions): string[
 export function buildSpawnEnv(parentEnv: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...parentEnv };
   delete env.CLAUDECODE;
+  // F6 (p2 §7): force NX_DAEMON=false for the agent subprocess too, mirroring
+  // RealShell (F4). The agent often wants daemon-off determinism for its own
+  // `nx build` / `nx test` self-verification (the macOS nx daemon emits
+  // spurious TS6059), so it prefixes commands with `NX_DAEMON=false pnpm …` —
+  // but the `Bash(pnpm *)` allowedTools entry does NOT match an env-var prefix
+  // (`NX_DAEMON=false pnpm …` ≠ a `pnpm` head), so the self-verify gets DENIED
+  // (999 v5 run T001: agent's `NX_DAEMON=false pnpm nx build server` denied,
+  // denials=1). Injecting it ambiently lets the agent run a plain
+  // `pnpm nx build` that is BOTH allowed AND daemon-off — no prefix needed.
+  env.NX_DAEMON = 'false';
   return env;
 }
 
@@ -351,7 +378,7 @@ export class ClaudeCliClient implements LlmClient {
 
   async invoke(prompt: string, opts: LlmInvokeOptions): Promise<LlmInvokeResult> {
     const args = buildClaudeArgs(prompt, opts);
-    const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const timeoutMs = opts.timeoutMs ?? getDefaultTimeoutMs();
     const start = Date.now();
 
     return new Promise<LlmInvokeResult>((resolve, reject) => {

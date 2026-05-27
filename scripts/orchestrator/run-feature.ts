@@ -3,7 +3,11 @@ import * as path from 'node:path';
 import { TaskArchive } from './archive.js';
 import { applyFileOpPlan, FileOpApplyError, planFileOps } from './fs-ops.js';
 import { buildCommitMsg, commitTask, type CommitTaskResult, type Git } from './git-flow.js';
-import { queryGraph, resolveDefaultGraphPath, type CodeContext } from './graphify-client.js';
+import {
+  queryGraphWithExemplars,
+  resolveDefaultGraphPath,
+  type CodeContext,
+} from './graphify-client.js';
 import {
   isClaudeMaxTurnsError,
   LlmInvokeError,
@@ -73,6 +77,7 @@ export type TaskRunReason =
   | 'gen-fenced'
   | 'orphan-resolved-expand'
   | 'orphan-resolved-revert'
+  | 'orphan-drift-warned'
   | 'orphan-stuck'
   | 'llm-self-committed'
   | 'verify-ralph-failed'
@@ -278,6 +283,8 @@ function mapCommitReason(
         return 'orphan-resolved-expand';
       case 'orphan-resolved-revert':
         return 'orphan-resolved-revert';
+      case 'orphan-drift-warned':
+        return 'orphan-drift-warned';
       case 'llm-self-committed':
         return 'llm-self-committed';
       default:
@@ -313,7 +320,9 @@ async function runTaskInner(
   progress?.update('📦 Loading code context (graphify)');
   const graphJsonPath = deps.graphJsonPath ?? resolveDefaultGraphPath(repoRoot);
   const scope = task.graphify_scope_override ?? workspace.graphify_scope;
-  const codeCtx: CodeContext = queryGraph(graphJsonPath, scope);
+  // F3 (p2 §7): glob-normalized prefix match + greenfield sibling fallback —
+  // a brand-new module's own scope is empty, so inject sibling golden samples.
+  const codeCtx: CodeContext = queryGraphWithExemplars(graphJsonPath, scope);
 
   // 2. buildPrompt
   const prompt = buildPrompt({

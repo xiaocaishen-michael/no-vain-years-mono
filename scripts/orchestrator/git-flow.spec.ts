@@ -312,13 +312,18 @@ describe('commitTask', () => {
     expect(r.ralph?.attempts).toBe(1);
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
 
-    // Sequence: revParseHead, diffNameOnly, add, commit (fail), restoreStaged, [LLM retry], add, commit (ok), statusPorcelain
+    // Sequence: revParseHead (Step C'), diffNameOnly (Step B), add, commit
+    // (fail), restoreStaged, [LLM retry], revParseHead (F5 self-commit
+    // reconcile check — HEAD unchanged here so orchestrator commits),
+    // diffNameOnly (F5 governance re-scan), add, commit (ok), statusPorcelain
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
       'diffNameOnly',
       'add',
       'commit',
       'restoreStaged',
+      'revParseHead',
+      'diffNameOnly',
       'add',
       'commit',
       'statusPorcelain',
@@ -485,6 +490,137 @@ describe('commitTask', () => {
     expect(r.ok).toBe(true);
     expect(r.reason).toBe('llm-self-committed');
     expect(git.calls.map((c) => c.method)).toEqual(['revParseHead', 'statusPorcelain']);
+  });
+
+  // F1 (p2 §7) regression: the LLM touched a cross-cutting governance file
+  // (check-server-moat.ts — registering a new model's owner) outside its
+  // declared task.files. This is a legitimate ripple, not a hallucination.
+  // It must NOT trip the orphan scope-gate (which would revert it and deadlock
+  // against the very lefthook that requires it — 999 orch run1: $2.25/47 turns).
+  // Instead it's folded into `declared`, staged, and committed; orphan-ralph
+  // never engages. See drift-classifier.GOVERNANCE_ALLOWLIST.
+  it('governance-file drift is folded into declared + staged (no orphan-ralph)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([{ ok: true }]);
+    git.enqueueDiffNameOnly(['scripts/checks/check-server-moat.ts']);
+    const llm = new FakeLlmClient(); // no orphan-ralph response scripted — must NOT be invoked
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('success'); // no-drift, NOT orphan-resolved-*
+    expect(llm.calls).toHaveLength(0); // orphan-ralph never engaged
+    // The governance file is staged into THIS task's commit (allStaged includes it).
+    const addCall = git.calls.find((c) => c.method === 'add')!;
+    expect(addCall.args[0]).toContain('scripts/checks/check-server-moat.ts');
+    // Drift telemetry reflects the fold: declared grew, zero orphans.
+    expect(r.drift?.resolution).toBe('no-drift');
+    expect(r.drift?.declared).toContain('scripts/checks/check-server-moat.ts');
+    expect(r.drift?.orphans).toEqual([]);
+  });
+
+  // F1-b (p2 §7): when orphan-ralph CANNOT resolve a (non-governance) orphan,
+  // the old behavior halted the whole feature run (orphan-stuck) with a dirty
+  // tree. Per the industry verdict, a scope-gate miss is not a hard halt — we
+  // stage the orphans, record a drift warning, and continue; downstream gates
+  // (lefthook / IT / lint) are the real safety net. Here orphan-ralph errors
+  // (empty LLM queue → llm-error), which must now drift-warn, not halt.
+  it('orphan-ralph failure (llm-error) → drift-warned: stages orphans + continues (F1-b)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([{ ok: true }]);
+    git.enqueueDiffNameOnly(['apps/server/src/unrelated/random-orphan.ts']);
+    const llm = new FakeLlmClient(); // empty queue → orphan-ralph's invoke throws → reason='llm-error'
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('orphan-drift-warned');
+    expect(r.orphanRalph?.reason).toBe('llm-error');
+    expect(r.drift?.resolution).toBe('orphan-drift-warned');
+    expect(r.drift?.orphans).toContain('apps/server/src/unrelated/random-orphan.ts');
+    // The orphan is staged into THIS task's commit (so the worktree is clean
+    // afterward → no orphan-after-commit).
+    const addCall = git.calls.find((c) => c.method === 'add')!;
+    expect(addCall.args[0]).toContain('apps/server/src/unrelated/random-orphan.ts');
+  });
+
+  // F1-b keeps exactly ONE hard halt: the LLM explicitly returning `stuck`
+  // ("I cannot decide, need a human"). That still stops the run.
+  it('orphan-ralph stuck (LLM asks for a human) → still a hard halt (orphan-stuck)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([]); // commit must NOT be reached
+    git.enqueueDiffNameOnly(['apps/server/src/unrelated/random-orphan.ts']);
+    const llm = new FakeLlmClient([
+      llmOk(JSON.stringify({ action: 'stuck', reason: 'cannot decide' })),
+    ]);
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('orphan-stuck');
+    expect(r.orphanRalph?.reason).toBe('stuck');
+    expect(git.calls.some((c) => c.method === 'commit')).toBe(false);
+  });
+
+  // F5 (p2 §7) — "ralph 做好兼容": the hook-ralph agent is allowed to commit
+  // its own fix (it wrote the code; the lefthook ran on ITS commit). When it
+  // does, HEAD moves DURING a hook-ralph round (not at Step C'). The
+  // orchestrator must reconcile — accept that commit (llm-self-committed)
+  // rather than blindly re-committing, which would desync → spurious
+  // hook-ralph-failed even though the work landed (999 run4 T002 = 28b39a9, a
+  // complete commit: moat registered, tasks.md flipped, conventional message).
+  it('F5: agent self-commit DURING hook-ralph is reconciled (llm-self-committed, no re-commit)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    // Only ONE commit response: the orchestrator's first (failing) commit. If
+    // the reconcile path wrongly re-committed, FakeGit would throw (no scripted
+    // response left) — so this also asserts performCommit is NOT re-run.
+    const git = new FakeGit([{ ok: false, stderr: 'check-server-moat: model unmapped' }]);
+    // Step C' sees HEAD unchanged (h0); the hook-ralph round sees it moved (h1)
+    // because the agent committed its fix.
+    git.enqueueHeadSha('h0', 'h1');
+    const llm = new FakeLlmClient([llmOk('fixed + committed myself')]);
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot, { headBefore: 'h0' }));
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('llm-self-committed');
+    expect(llm.calls).toHaveLength(1); // one hook-ralph round
+    // Exactly one commit attempt (the orchestrator's first, which failed); the
+    // reconcile path did NOT add/commit again.
+    expect(git.calls.filter((c) => c.method === 'commit')).toHaveLength(1);
+    // Reconcile ran a HEAD check then the post-commit orphan assert.
+    const methods = git.calls.map((c) => c.method);
+    expect(methods.filter((m) => m === 'revParseHead')).toHaveLength(2); // Step C' + hook-ralph reconcile
+    expect(methods).toContain('statusPorcelain');
+  });
+
+  // F5 (p2 §7): a governance file the agent touches DURING hook-ralph (after
+  // the Step-B `actual` snapshot) must be re-scanned and staged into this
+  // commit. Otherwise it's left orphaned post-commit (orphan-after-commit)
+  // even though it's the required ripple that clears the hook (999 run4 T002:
+  // moat rejection → agent registers loginActivityCounter in check-server-moat.ts).
+  it('F5: governance file touched during hook-ralph is re-scanned + staged (no orphan)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([
+      { ok: false, stderr: 'check-server-moat: loginActivityCounter unmapped' },
+      { ok: true }, // hook-ralph retry succeeds once the moat file is registered
+    ]);
+    // Step B: LLM touched only declared files (no governance yet → no drift).
+    git.enqueueDiffNameOnly([]);
+    // hook-ralph round: agent reactively registers the model in the moat file.
+    git.enqueueDiffNameOnly(['scripts/checks/check-server-moat.ts']);
+    const llm = new FakeLlmClient([llmOk('registered loginActivityCounter')]);
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('success');
+    const addCalls = git.calls.filter((c) => c.method === 'add');
+    expect(addCalls).toHaveLength(2);
+    // The hook-ralph commit re-staged the governance file the agent just touched.
+    expect(addCalls[1].args[0]).toContain('scripts/checks/check-server-moat.ts');
+    // The first (happy-path) add did NOT include it — it wasn't touched yet.
+    expect(addCalls[0].args[0]).not.toContain('scripts/checks/check-server-moat.ts');
   });
 });
 

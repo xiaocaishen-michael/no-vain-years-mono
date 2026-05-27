@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   __testing,
   classifyDrift,
+  isGovernanceFile,
   normalizePath,
   resolveGenScope,
   type DriftDecision,
@@ -305,5 +306,39 @@ describe('__testing internals', () => {
     ];
     const branches = new Set(samples.map((s) => s.kind));
     expect(branches.size).toBe(3);
+  });
+});
+
+describe('isGovernanceFile (F1, p2 §7)', () => {
+  it('recognizes the cross-cutting governance registries', () => {
+    for (const f of [
+      'scripts/checks/check-server-moat.ts',
+      'apps/server/src/app/app.module.ts',
+      'apps/server/prisma/schema.prisma',
+      'eslint.config.mjs',
+      'apps/server/eslint.config.mjs',
+      'apps/server/openapi.json',
+    ]) {
+      expect(isGovernanceFile(f)).toBe(true);
+    }
+  });
+
+  it('normalizes the input before matching (leading ./, backslashes)', () => {
+    expect(isGovernanceFile('./scripts/checks/check-server-moat.ts')).toBe(true);
+    expect(isGovernanceFile('scripts\\checks\\check-server-moat.ts')).toBe(true);
+  });
+
+  it('does NOT exempt ordinary feature files', () => {
+    for (const f of [
+      'apps/server/src/login-activity/login-activity.usecase.ts',
+      'apps/server/src/auth/auth.module.ts', // a feature module, not the ROOT app.module
+      'scripts/checks/check-spec-frontmatters.ts',
+    ]) {
+      expect(isGovernanceFile(f)).toBe(false);
+    }
+  });
+
+  it('the allowlist stays the documented narrow set (guards accidental widening)', () => {
+    expect(__testing.GOVERNANCE_ALLOWLIST.size).toBe(6);
   });
 });
