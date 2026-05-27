@@ -117,6 +117,22 @@ export interface ExemplarOptions extends QueryGraphOptions {
 }
 
 /**
+ * Sibling dirs that are NOT hand-written business modules and make poor
+ * exemplars (F3). Ranking siblings by raw node count otherwise picks the
+ * Prisma `generated/` client (largest by far) as the #1 "golden sample" and
+ * floods the budget with auto-gen noise — the "junk drawer" failure mode.
+ * These are infra / generated / framework wiring, not modules to imitate.
+ */
+const NON_EXEMPLAR_DIRS: ReadonlySet<string> = new Set([
+  'generated',
+  'app',
+  'config',
+  'assets',
+  '__smoke__',
+  'observability',
+]);
+
+/**
  * queryGraph + greenfield fallback (p2 §7 F3). When the primary scope matches
  * zero nodes — a brand-new module that doesn't exist in the graph yet — fall
  * back to sibling modules under the same parent dir: the established
@@ -163,7 +179,7 @@ export function queryGraphWithExemplars(
     const slash = rest.indexOf('/');
     if (slash < 0) continue; // a file directly under parent, not a module dir
     const mod = rest.slice(0, slash);
-    if (mod === targetModule) continue;
+    if (mod === targetModule || NON_EXEMPLAR_DIRS.has(mod)) continue;
     counts.set(mod, (counts.get(mod) ?? 0) + 1);
   }
   if (counts.size === 0) return primary;
@@ -174,20 +190,31 @@ export function queryGraphWithExemplars(
     .slice(0, maxSiblings)
     .map(([mod]) => `${parent}/${mod}`);
 
+  // Cap nodes PER sibling so the budget is shared fairly — otherwise the first
+  // (largest) sibling fills `maxNodes` and later siblings contribute nothing.
   const max = options.maxNodes ?? DEFAULT_MAX_NODES;
+  const perSibling = Math.max(1, Math.floor(max / siblings.length));
   const nodes: GraphifyNode[] = [];
+  let truncated = false;
   for (const sib of siblings) {
+    let taken = 0;
     for (const n of allNodes) {
       const sf = n.source_file ?? '';
-      if (sf === sib || sf.startsWith(sib + '/')) nodes.push(n);
+      if (sf !== sib && !sf.startsWith(sib + '/')) continue;
+      if (taken >= perSibling) {
+        truncated = true;
+        break;
+      }
+      nodes.push(n);
+      taken += 1;
     }
   }
   return {
     scope,
     graphPath: graphJsonPath,
-    nodes: nodes.slice(0, max),
+    nodes,
     warnings: [],
-    truncated: nodes.length > max,
+    truncated,
     exemplarOf: siblings.join(', '),
   };
 }

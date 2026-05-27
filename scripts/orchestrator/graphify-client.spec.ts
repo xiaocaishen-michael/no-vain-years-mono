@@ -162,6 +162,46 @@ describe('queryGraphWithExemplars (F3 greenfield fallback)', () => {
     expect(ctx.nodes.some((n) => n.id === 'm')).toBe(false);
   });
 
+  it('excludes infra/generated dirs from exemplars even when they have the most nodes', () => {
+    const nodes: GraphifyNode[] = [];
+    // generated: 100 nodes (largest — would win a naive node-count ranking)
+    for (let i = 0; i < 100; i++) {
+      nodes.push({
+        id: `g${i}`,
+        label: `G${i}`,
+        source_file: `apps/server/src/generated/g${i}.ts`,
+      });
+    }
+    nodes.push({ id: 'a1', label: 'A1', source_file: 'apps/server/src/auth/a1.ts' });
+    nodes.push({ id: 'a2', label: 'A2', source_file: 'apps/server/src/auth/a2.ts' });
+    nodes.push({ id: 'c', label: 'C', source_file: 'apps/server/src/account/c.ts' });
+    const p = writeGraph(nodes);
+    const ctx = queryGraphWithExemplars(p, 'apps/server/src/login-activity/**/*', {
+      maxSiblings: 2,
+    });
+    // generated is excluded → real business modules win despite fewer nodes
+    expect(ctx.exemplarOf).toBe('apps/server/src/auth, apps/server/src/account');
+    expect(ctx.nodes.some((n) => n.id.startsWith('g'))).toBe(false);
+  });
+
+  it('caps nodes per sibling so the budget is shared (largest does not crowd out)', () => {
+    const nodes: GraphifyNode[] = [];
+    for (let i = 0; i < 20; i++) {
+      nodes.push({ id: `a${i}`, label: `A${i}`, source_file: `apps/server/src/auth/a${i}.ts` });
+    }
+    for (let i = 0; i < 20; i++) {
+      nodes.push({ id: `c${i}`, label: `C${i}`, source_file: `apps/server/src/account/c${i}.ts` });
+    }
+    const p = writeGraph(nodes);
+    const ctx = queryGraphWithExemplars(p, 'apps/server/src/login-activity/**/*', {
+      maxSiblings: 2,
+      maxNodes: 10, // → 5 per sibling
+    });
+    expect(ctx.nodes.filter((n) => n.id.startsWith('a'))).toHaveLength(5);
+    expect(ctx.nodes.filter((n) => n.id.startsWith('c'))).toHaveLength(5);
+    expect(ctx.truncated).toBe(true);
+  });
+
   it('returns the empty primary unchanged when there are no siblings', () => {
     const p = writeGraph([{ id: 'm', label: 'main', source_file: 'apps/server/src/main.ts' }]);
     const ctx = queryGraphWithExemplars(p, 'apps/server/src/login-activity/**/*');
