@@ -320,6 +320,22 @@ export class FakeGit implements Git {
   }
 }
 
+/**
+ * F5 (p2 §7): tool surface for the hook-ralph `claude -p` round. Deliberately
+ * OMITS `Bash(git *)` — the orchestrator owns the per-task commit boundary.
+ *
+ * An agent that runs `git commit` itself moves HEAD mid-flow, desyncing
+ * commitTask's headBefore bookkeeping: 999 orch run4 T002 had the hook-ralph
+ * agent self-commit `28b39a9` (impl + moat registration + tasks.md) to clear a
+ * server-moat-check rejection, after which the orchestrator's own retry commit
+ * had nothing left to commit → spurious `hook-ralph-failed` even though the
+ * work had actually landed. Mirrors orphan-ralph's `['Read']` lockdown, but
+ * hook-ralph still needs file-edit tools (it must fix the lint/format/registry
+ * issue the lefthook rejected) — it just must NOT touch git. The agent edits,
+ * the orchestrator commits.
+ */
+export const HOOK_RALPH_ALLOWED_TOOLS = ['Read', 'Edit', 'Write', 'Bash(pnpm *)', 'Glob', 'Grep'];
+
 const KIND_TO_CONVENTIONAL_TYPE: Record<TaskKind, string> = {
   impl: 'feat',
   'test-unit': 'test',
@@ -595,16 +611,38 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
   const commitMessage = buildCommitMsg(task, plan, workspace);
 
   // One atomic commit attempt: flip → stage → commit; on failure roll back.
-  const performCommit = async (): Promise<{
+  //
+  // `rescanGovernance` (F5, p2 §7): hook-ralph rounds may REACTIVELY edit a
+  // cross-cutting governance file to satisfy the very lefthook that rejected
+  // the commit — e.g. registering a new Prisma model in check-server-moat.ts,
+  // or wiring a module into app.module.ts (999 run4 T002: moat rejection →
+  // agent edits check-server-moat.ts). Those edits land AFTER the Step-B
+  // `actual` snapshot that built `allStaged`, so they'd be left orphaned
+  // post-commit (orphan-after-commit) even though they're a required ripple.
+  // On hook-ralph rounds we re-scan touched governance files at commit time
+  // and fold any new ones into the stage set. The first (happy-path) commit
+  // passes false: its governance set is already covered by Step D'.
+  const performCommit = async (
+    rescanGovernance = false,
+  ): Promise<{
     ok: boolean;
     feedback?: string;
   }> => {
+    let staged = allStaged;
+    if (rescanGovernance) {
+      const nowActual = (await git.diffNameOnly(headBefore, { cwd: repoRoot })).map(normalizePath);
+      const newGovernance = nowActual.filter(
+        (f) => isGovernanceFile(f) && f !== tasksMdRel && !allStaged.includes(f),
+      );
+      if (newGovernance.length > 0) staged = [...allStaged, ...newGovernance];
+    }
+
     const original = await fs.readFile(tasksMdPath, 'utf-8');
     const flipped = flipCheckbox(original, task.id);
     await fs.writeFile(tasksMdPath, flipped);
 
     try {
-      await git.add(allStaged, { cwd: repoRoot });
+      await git.add(staged, { cwd: repoRoot });
       await git.commit(commitMessage, { cwd: repoRoot });
       return { ok: true };
     } catch (e) {
@@ -616,7 +654,7 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
         }
         throw e;
       }
-      await git.restoreStaged(allStaged, { cwd: repoRoot });
+      await git.restoreStaged(staged, { cwd: repoRoot });
       await fs.writeFile(tasksMdPath, original);
       return { ok: false, feedback: e.stderr };
     }
@@ -664,7 +702,9 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
     attempt: async () => {
       if (hookProjector) hookProjector.stop();
       hookProjector = undefined;
-      const r = await performCommit();
+      // rescanGovernance=true: this round's agent may have touched a new
+      // governance file to clear the hook (F5) — pick it up before staging.
+      const r = await performCommit(true);
       lastFeedback = r.feedback;
       return r;
     },
@@ -675,7 +715,11 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
       return { onEvent: (e) => hookProjector?.onEvent(e) };
     },
     llm,
-    llmInvokeOpts,
+    // F5 (p2 §7): force the no-git tool surface for hook-ralph rounds. The
+    // hook-ralph prepareRound above only adds `onEvent`, so this is the
+    // effective allowedTools for the round; the orchestrator commits, not
+    // the agent.
+    llmInvokeOpts: { ...llmInvokeOpts, allowedTools: HOOK_RALPH_ALLOWED_TOOLS },
     onRound: archive
       ? async (round) => {
           const attN = archive.reserveAttempt('hook-ralph');
@@ -739,9 +783,17 @@ export function buildHookRetryPrompt(
 ): string {
   return [
     `Task ${task.id} verify_command already passed (tests green) but \`git commit\` was rejected by a lefthook.`,
-    `Please fix code-style / docs-sync issues ONLY. Do NOT change business logic — that's already verified.`,
+    `Fix ONLY what the hook is complaining about — a lint/format issue, a docs-sync drift, or a`,
+    `required governance-registry edit the hook explicitly demands (e.g. registering a new Prisma`,
+    `model's owner in scripts/checks/check-server-moat.ts, or wiring a module into app.module.ts).`,
+    `Do NOT change business logic — that's already verified.`,
     ``,
-    `Hook scope is limited to this task's staged files: ${stagedFiles.join(', ')}.`,
+    `🚨 CRITICAL — the orchestrator owns committing. You MUST NOT run \`git commit\`, \`git add\`,`,
+    `\`git restore\`, or ANY git command. Just edit the file(s); the orchestrator stages and commits`,
+    `the instant you finish. Running git yourself moves HEAD mid-flow and corrupts the per-task commit.`,
+    ``,
+    `Hook scope is this task's staged files: ${stagedFiles.join(', ')}`,
+    `(plus any cross-cutting governance file the hook explicitly tells you to edit).`,
     `The rejection is necessarily in a file you edited.`,
     ``,
     `Hook stderr:`,

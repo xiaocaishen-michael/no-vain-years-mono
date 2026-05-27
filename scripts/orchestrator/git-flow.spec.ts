@@ -11,6 +11,7 @@ import {
   filesToStage,
   GitCli,
   GitCommitError,
+  HOOK_RALPH_ALLOWED_TOOLS,
   type CommitTaskInput,
   type Git,
 } from './git-flow.js';
@@ -312,13 +313,16 @@ describe('commitTask', () => {
     expect(r.ralph?.attempts).toBe(1);
     expect(fs.readFileSync(tasksMdPath, 'utf-8')).toBe('- [X] T001 Hello\n');
 
-    // Sequence: revParseHead, diffNameOnly, add, commit (fail), restoreStaged, [LLM retry], add, commit (ok), statusPorcelain
+    // Sequence: revParseHead, diffNameOnly (Step B), add, commit (fail),
+    // restoreStaged, [LLM retry], diffNameOnly (F5 hook-ralph governance
+    // re-scan), add, commit (ok), statusPorcelain
     expect(git.calls.map((c) => c.method)).toEqual([
       'revParseHead',
       'diffNameOnly',
       'add',
       'commit',
       'restoreStaged',
+      'diffNameOnly',
       'add',
       'commit',
       'statusPorcelain',
@@ -555,6 +559,65 @@ describe('commitTask', () => {
     expect(r.reason).toBe('orphan-stuck');
     expect(r.orphanRalph?.reason).toBe('stuck');
     expect(git.calls.some((c) => c.method === 'commit')).toBe(false);
+  });
+
+  // F5 (p2 §7): the hook-ralph `claude -p` round must NOT be able to git
+  // commit — the orchestrator owns the per-task commit boundary. 999 run4 T002
+  // had the agent self-commit during hook-ralph (28b39a9), moving HEAD and
+  // desyncing the orchestrator's own retry → spurious hook-ralph-failed. Lock
+  // the tool surface to file-edit tools (no `Bash(git *)`), forced regardless
+  // of what allowedTools the task-level invoke opts carried.
+  it('F5: hook-ralph LLM round runs with the no-git tool surface', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([
+      { ok: false, stderr: 'check-server-moat: model unmapped' },
+      { ok: true }, // retry succeeds after the agent edits (not commits)
+    ]);
+    const llm = new FakeLlmClient([llmOk('registered model')]);
+    // Task-level opts deliberately carry a git-capable surface to prove the
+    // hook-ralph override wins.
+    const r = await commitTask(
+      makeInput(git, llm, tasksMdPath, repoRoot, {
+        llmInvokeOpts: { cwd: '/tmp/sandbox', allowedTools: ['Read', 'Edit', 'Bash(git *)'] },
+      }),
+    );
+
+    expect(r.ok).toBe(true);
+    expect(llm.calls).toHaveLength(1);
+    const tools = llm.calls[0].opts.allowedTools ?? [];
+    expect(tools).toEqual(HOOK_RALPH_ALLOWED_TOOLS);
+    expect(tools).not.toContain('Bash(git *)');
+    expect(tools).toContain('Edit'); // can still fix the rejected file
+  });
+
+  // F5 (p2 §7): a governance file the agent touches DURING hook-ralph (after
+  // the Step-B `actual` snapshot) must be re-scanned and staged into this
+  // commit. Otherwise it's left orphaned post-commit (orphan-after-commit)
+  // even though it's the required ripple that clears the hook (999 run4 T002:
+  // moat rejection → agent registers loginActivityCounter in check-server-moat.ts).
+  it('F5: governance file touched during hook-ralph is re-scanned + staged (no orphan)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([
+      { ok: false, stderr: 'check-server-moat: loginActivityCounter unmapped' },
+      { ok: true }, // hook-ralph retry succeeds once the moat file is registered
+    ]);
+    // Step B: LLM touched only declared files (no governance yet → no drift).
+    git.enqueueDiffNameOnly([]);
+    // hook-ralph round: agent reactively registers the model in the moat file.
+    git.enqueueDiffNameOnly(['scripts/checks/check-server-moat.ts']);
+    const llm = new FakeLlmClient([llmOk('registered loginActivityCounter')]);
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('success');
+    const addCalls = git.calls.filter((c) => c.method === 'add');
+    expect(addCalls).toHaveLength(2);
+    // The hook-ralph commit re-staged the governance file the agent just touched.
+    expect(addCalls[1].args[0]).toContain('scripts/checks/check-server-moat.ts');
+    // The first (happy-path) add did NOT include it — it wasn't touched yet.
+    expect(addCalls[0].args[0]).not.toContain('scripts/checks/check-server-moat.ts');
   });
 });
 
