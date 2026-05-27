@@ -99,6 +99,43 @@ const MIN_DECLARED_FILES_FOR_AUTO_LCD = 2;
 const MIN_AUTO_LCD_DEPTH = 3;
 
 /**
+ * Cross-cutting governance files (F1, per p2 §7 + [[reference-agent-file-scope-industry-verdict]]).
+ *
+ * These are shared repo-level registries that ANY task may legitimately need
+ * to edit as a ripple of its declared work — e.g. an impl task that introduces
+ * a new Prisma model MUST register that model's owner in check-server-moat.ts,
+ * and MUST wire its NestJS module into app.module.ts. Those edits fall outside
+ * the task's declared `files` whitelist, so the orphan scope-gate used to
+ * revert them — which then deadlocked against the very lefthook (check-server-moat)
+ * that REQUIRES the edit (999 orch run1: $2.25 / 47 turns of hook-ralph thrash).
+ *
+ * Per the industry verdict (closed-world per-task file lists + hard-revert is
+ * an anti-pattern; the real safety net is downstream guardrails — lefthook moat /
+ * eslint boundaries / IT / boot-smoke), edits to these files are treated as
+ * implicitly declared: they never count as orphans and are always staged into
+ * the task's own commit. The downstream gates still validate correctness.
+ *
+ * Repo-root-relative, normalized. Extend as new cross-cutting registries appear.
+ */
+const GOVERNANCE_ALLOWLIST: ReadonlySet<string> = new Set([
+  'scripts/checks/check-server-moat.ts', // data-ownership moat registry (MODEL_OWNERSHIP)
+  'apps/server/src/app/app.module.ts', // NestJS root module wiring
+  'apps/server/prisma/schema.prisma', // backend schema spine
+  'eslint.config.mjs', // repo-root eslint (module boundaries)
+  'apps/server/eslint.config.mjs', // server eslint boundaries
+  'apps/server/openapi.json', // generated OpenAPI contract
+]);
+
+/**
+ * True if `p` is a cross-cutting governance file any task may legitimately
+ * touch (see GOVERNANCE_ALLOWLIST). Input is normalized internally, so callers
+ * may pass raw repo-root-relative paths.
+ */
+export function isGovernanceFile(p: string): boolean {
+  return GOVERNANCE_ALLOWLIST.has(normalizePath(p));
+}
+
+/**
  * Pure classifier — no I/O. Inputs:
  *   - task: the parsed task (for kind + gen_dirs)
  *   - declared: paths the orchestrator would stage from `task.files`
@@ -108,6 +145,10 @@ const MIN_AUTO_LCD_DEPTH = 3;
  *
  * Both `declared` and `actual` MUST be normalized (forward slashes, no
  * leading `./`, no trailing `/`) — call `normalizePath` before passing in.
+ *
+ * NB: governance-file exemption (F1) is applied UPSTREAM in commitTask by
+ * folding touched governance files into `declared` before this runs, so this
+ * classifier stays a pure orphan calculator.
  */
 export function classifyDrift(
   task: ParsedTask,
@@ -234,6 +275,7 @@ function isUnderAny(file: string, dirs: readonly string[]): boolean {
 // aligned with the design doc.
 export const __testing = {
   AUTO_LCD_BLACKLIST: AUTO_LCD_BLACKLIST as ReadonlySet<string>,
+  GOVERNANCE_ALLOWLIST,
   MIGRATION_HARDCODED_PREFIX,
   MIN_DECLARED_FILES_FOR_AUTO_LCD,
   MIN_AUTO_LCD_DEPTH,

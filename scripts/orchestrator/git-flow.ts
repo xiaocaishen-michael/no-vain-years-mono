@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { TaskArchive } from './archive.js';
-import { classifyDrift, normalizePath } from './drift-classifier.js';
+import { classifyDrift, isGovernanceFile, normalizePath } from './drift-classifier.js';
 import { startLiveProjector, type LiveProjector } from './live-projector.js';
 import type { LlmClient, LlmInvokeOptions } from './llm-client.js';
 import { runOrphanRalph, type OrphanRalphResult } from './orphan-ralph.js';
@@ -391,6 +391,7 @@ export type CommitTaskTerminalReason =
   | 'gen-fenced'
   | 'orphan-resolved-expand'
   | 'orphan-resolved-revert'
+  | 'orphan-drift-warned'
   | 'orphan-stuck'
   | 'llm-self-committed'
   | 'hook-ralph-failed'
@@ -410,6 +411,7 @@ export interface CommitDriftRecord {
     | 'gen-fenced'
     | 'orphan-resolved-expand'
     | 'orphan-resolved-revert'
+    | 'orphan-drift-warned'
     | 'orphan-stuck'
     | 'llm-self-committed-skipped';
   /** task.files-derived declared list at commit time. */
@@ -489,6 +491,18 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
   // Step D: declared list (mutable — orphan-ralph expand may grow it).
   let declared = filesToStage(task).map(normalizePath);
 
+  // Step D' (F1, p2 §7): fold any cross-cutting governance files the LLM
+  // touched into `declared`. These shared registries (moat ownership, module
+  // wiring, schema, eslint boundaries, openapi) are a legitimate ripple of
+  // almost any task and MUST ship in the same commit — otherwise the orphan
+  // scope-gate reverts them and deadlocks against the lefthook that requires
+  // them. Treating them as implicitly declared makes them non-orphans here
+  // and stages them below; downstream gates still validate correctness.
+  const governanceTouched = actual.filter((f) => isGovernanceFile(f));
+  if (governanceTouched.length > 0) {
+    declared = [...new Set([...declared, ...governanceTouched])];
+  }
+
   // Step F: classify drift.
   const decision = classifyDrift(task, declared, actual);
 
@@ -535,20 +549,35 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
       });
       if (orphanProjector) orphanProjector.stop();
       if (!orphanRalph.ok) {
-        // stuck / max-retries / invalid / llm-error all surface as orphan-stuck
-        // to the caller; the per-reason history is preserved on the result.
-        return {
-          ok: false,
-          reason: 'orphan-stuck',
-          orphanRalph,
-          drift: {
-            resolution: 'orphan-stuck',
-            declared,
-            actual,
-            orphans,
-          },
-          lastStderr: `orphan-ralph terminated: ${orphanRalph.reason}`,
-        };
+        if (orphanRalph.reason === 'stuck') {
+          // The LLM explicitly asked for a human (it cannot decide). This is
+          // the ONE remaining hard halt — surfaced to the operator by
+          // run-feature's warnOrphanStuck.
+          return {
+            ok: false,
+            reason: 'orphan-stuck',
+            orphanRalph,
+            drift: { resolution: 'orphan-stuck', declared, actual, orphans },
+            lastStderr: `orphan-ralph terminated: ${orphanRalph.reason}`,
+          };
+        }
+        // F1-b (p2 §7 + [[reference-agent-file-scope-industry-verdict]]):
+        // max-retries / invalid-intent / llm-error are NOT hard halts. Don't
+        // revert the agent's verify-passed work or stop the whole feature run
+        // over a scope-gate miss — stage the orphans, record a drift warning,
+        // and continue. The real safety net is the downstream gates (lefthook
+        // moat / eslint boundaries / IT / boot-smoke), which still run.
+        console.error(
+          `⚠️  Task ${task.id} orphan-drift-warned — orphan-ralph could not resolve ` +
+            `(${orphanRalph.reason}); staging orphans and continuing (NOT a hard halt). ` +
+            `Orphans: ${orphanRalph.finalOrphans.join(', ') || '(none)'}`,
+        );
+        const warnedOrphans = orphanRalph.finalOrphans.map(normalizePath);
+        declared = [...new Set([...declared, ...warnedOrphans])];
+        stageList = declared.slice();
+        orphans = warnedOrphans;
+        resolution = 'orphan-drift-warned';
+        break;
       }
       // Resolved. declared may have grown (expand) or stayed same (revert).
       declared = orphanRalph.finalDeclared;
@@ -600,7 +629,9 @@ export async function commitTask(input: CommitTaskInput): Promise<CommitTaskResu
         ? 'gen-fenced'
         : resolution === 'orphan-resolved-expand'
           ? 'orphan-resolved-expand'
-          : 'orphan-resolved-revert';
+          : resolution === 'orphan-drift-warned'
+            ? 'orphan-drift-warned'
+            : 'orphan-resolved-revert';
   const driftRecord: CommitDriftRecord = {
     resolution,
     declared,

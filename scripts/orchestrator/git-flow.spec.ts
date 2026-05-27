@@ -486,6 +486,76 @@ describe('commitTask', () => {
     expect(r.reason).toBe('llm-self-committed');
     expect(git.calls.map((c) => c.method)).toEqual(['revParseHead', 'statusPorcelain']);
   });
+
+  // F1 (p2 §7) regression: the LLM touched a cross-cutting governance file
+  // (check-server-moat.ts — registering a new model's owner) outside its
+  // declared task.files. This is a legitimate ripple, not a hallucination.
+  // It must NOT trip the orphan scope-gate (which would revert it and deadlock
+  // against the very lefthook that requires it — 999 orch run1: $2.25/47 turns).
+  // Instead it's folded into `declared`, staged, and committed; orphan-ralph
+  // never engages. See drift-classifier.GOVERNANCE_ALLOWLIST.
+  it('governance-file drift is folded into declared + staged (no orphan-ralph)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([{ ok: true }]);
+    git.enqueueDiffNameOnly(['scripts/checks/check-server-moat.ts']);
+    const llm = new FakeLlmClient(); // no orphan-ralph response scripted — must NOT be invoked
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('success'); // no-drift, NOT orphan-resolved-*
+    expect(llm.calls).toHaveLength(0); // orphan-ralph never engaged
+    // The governance file is staged into THIS task's commit (allStaged includes it).
+    const addCall = git.calls.find((c) => c.method === 'add')!;
+    expect(addCall.args[0]).toContain('scripts/checks/check-server-moat.ts');
+    // Drift telemetry reflects the fold: declared grew, zero orphans.
+    expect(r.drift?.resolution).toBe('no-drift');
+    expect(r.drift?.declared).toContain('scripts/checks/check-server-moat.ts');
+    expect(r.drift?.orphans).toEqual([]);
+  });
+
+  // F1-b (p2 §7): when orphan-ralph CANNOT resolve a (non-governance) orphan,
+  // the old behavior halted the whole feature run (orphan-stuck) with a dirty
+  // tree. Per the industry verdict, a scope-gate miss is not a hard halt — we
+  // stage the orphans, record a drift warning, and continue; downstream gates
+  // (lefthook / IT / lint) are the real safety net. Here orphan-ralph errors
+  // (empty LLM queue → llm-error), which must now drift-warn, not halt.
+  it('orphan-ralph failure (llm-error) → drift-warned: stages orphans + continues (F1-b)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([{ ok: true }]);
+    git.enqueueDiffNameOnly(['apps/server/src/unrelated/random-orphan.ts']);
+    const llm = new FakeLlmClient(); // empty queue → orphan-ralph's invoke throws → reason='llm-error'
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBe('orphan-drift-warned');
+    expect(r.orphanRalph?.reason).toBe('llm-error');
+    expect(r.drift?.resolution).toBe('orphan-drift-warned');
+    expect(r.drift?.orphans).toContain('apps/server/src/unrelated/random-orphan.ts');
+    // The orphan is staged into THIS task's commit (so the worktree is clean
+    // afterward → no orphan-after-commit).
+    const addCall = git.calls.find((c) => c.method === 'add')!;
+    expect(addCall.args[0]).toContain('apps/server/src/unrelated/random-orphan.ts');
+  });
+
+  // F1-b keeps exactly ONE hard halt: the LLM explicitly returning `stuck`
+  // ("I cannot decide, need a human"). That still stops the run.
+  it('orphan-ralph stuck (LLM asks for a human) → still a hard halt (orphan-stuck)', async () => {
+    const initial = '- [ ] T001 Hello\n';
+    const { repoRoot, tasksMdPath } = makeRepo(initial);
+    const git = new FakeGit([]); // commit must NOT be reached
+    git.enqueueDiffNameOnly(['apps/server/src/unrelated/random-orphan.ts']);
+    const llm = new FakeLlmClient([
+      llmOk(JSON.stringify({ action: 'stuck', reason: 'cannot decide' })),
+    ]);
+    const r = await commitTask(makeInput(git, llm, tasksMdPath, repoRoot));
+
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('orphan-stuck');
+    expect(r.orphanRalph?.reason).toBe('stuck');
+    expect(git.calls.some((c) => c.method === 'commit')).toBe(false);
+  });
 });
 
 describe('buildHookRetryPrompt', () => {

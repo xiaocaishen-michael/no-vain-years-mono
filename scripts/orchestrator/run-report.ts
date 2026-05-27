@@ -397,6 +397,7 @@ function appendDriftSection(lines: string[], rows: TaskRow[]): void {
     'gen-fenced': 0,
     'orphan-resolved-expand': 0,
     'orphan-resolved-revert': 0,
+    'orphan-drift-warned': 0,
     'orphan-stuck': 0,
     'llm-self-committed-skipped': 0,
   };

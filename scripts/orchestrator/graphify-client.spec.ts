@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   formatCodeContext,
   queryGraph,
+  queryGraphWithExemplars,
   resolveDefaultGraphPath,
+  scopeToDirPrefix,
   type GraphifyNode,
 } from './graphify-client.js';
 
@@ -45,6 +47,18 @@ describe('queryGraph', () => {
     const ctx = queryGraph(p, 'apps/server');
     expect(ctx.nodes.map((n) => n.id)).toEqual(['a', 'b']);
     expect(ctx.truncated).toBe(false);
+  });
+
+  // p2 §7 F3: plans express scope as a glob ("…/auth/**/*"); the prefix-match
+  // must strip the trailing glob to a dir, else EVERY run is context-blind.
+  it('matches a glob scope by stripping the trailing /**/* (or /**, /*) to a dir', () => {
+    const p = writeGraph([
+      { id: 'a', label: 'A', source_file: 'apps/server/src/auth/auth.usecase.ts' },
+      { id: 'b', label: 'B', source_file: 'apps/server/src/account/x.ts' },
+    ]);
+    expect(queryGraph(p, 'apps/server/src/auth/**/*').nodes.map((n) => n.id)).toEqual(['a']);
+    expect(queryGraph(p, 'apps/server/src/auth/**').nodes.map((n) => n.id)).toEqual(['a']);
+    expect(queryGraph(p, 'apps/server/src/auth/*').nodes.map((n) => n.id)).toEqual(['a']);
   });
 
   it('treats trailing slash in scope idempotently', () => {
@@ -94,7 +108,91 @@ describe('queryGraph', () => {
   });
 });
 
+describe('scopeToDirPrefix (F3)', () => {
+  it('strips trailing glob segments to a directory', () => {
+    expect(scopeToDirPrefix('apps/server/src/auth/**/*')).toBe('apps/server/src/auth');
+    expect(scopeToDirPrefix('apps/server/src/auth/**')).toBe('apps/server/src/auth');
+    expect(scopeToDirPrefix('apps/server/src/auth/*')).toBe('apps/server/src/auth');
+    expect(scopeToDirPrefix('apps/server/src/auth/')).toBe('apps/server/src/auth');
+    expect(scopeToDirPrefix('apps/server/src/auth')).toBe('apps/server/src/auth');
+  });
+});
+
+describe('queryGraphWithExemplars (F3 greenfield fallback)', () => {
+  const files: string[] = [];
+  afterEach(() => {
+    for (const f of files.splice(0)) fs.rmSync(f, { force: true });
+  });
+  function writeGraph(nodes: GraphifyNode[]): string {
+    const p = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'orchestrator-graphify-ex-')),
+      'graph.json',
+    );
+    fs.writeFileSync(p, JSON.stringify({ nodes }));
+    files.push(p);
+    return p;
+  }
+
+  it('passes through when the target scope already has nodes (no fallback)', () => {
+    const p = writeGraph([
+      { id: 'a', label: 'A', source_file: 'apps/server/src/auth/auth.usecase.ts' },
+    ]);
+    const ctx = queryGraphWithExemplars(p, 'apps/server/src/auth/**/*');
+    expect(ctx.nodes.map((n) => n.id)).toEqual(['a']);
+    expect(ctx.exemplarOf).toBeUndefined();
+  });
+
+  it('greenfield target → injects top-N sibling modules ranked by node count', () => {
+    const p = writeGraph([
+      // auth: 3 nodes, account: 2 nodes, security: 1 node → top-2 = auth, account
+      { id: 'a1', label: 'A1', source_file: 'apps/server/src/auth/a1.ts' },
+      { id: 'a2', label: 'A2', source_file: 'apps/server/src/auth/a2.ts' },
+      { id: 'a3', label: 'A3', source_file: 'apps/server/src/auth/a3.ts' },
+      { id: 'c1', label: 'C1', source_file: 'apps/server/src/account/c1.ts' },
+      { id: 'c2', label: 'C2', source_file: 'apps/server/src/account/c2.ts' },
+      { id: 's1', label: 'S1', source_file: 'apps/server/src/security/s1.ts' },
+      { id: 'm', label: 'main', source_file: 'apps/server/src/main.ts' }, // not a module dir
+    ]);
+    const ctx = queryGraphWithExemplars(p, 'apps/server/src/login-activity/**/*', {
+      maxSiblings: 2,
+    });
+    expect(ctx.exemplarOf).toBe('apps/server/src/auth, apps/server/src/account');
+    expect(ctx.nodes.map((n) => n.id).sort()).toEqual(['a1', 'a2', 'a3', 'c1', 'c2']);
+    // the file directly under the parent (main.ts) is not treated as a sibling
+    expect(ctx.nodes.some((n) => n.id === 'm')).toBe(false);
+  });
+
+  it('returns the empty primary unchanged when there are no siblings', () => {
+    const p = writeGraph([{ id: 'm', label: 'main', source_file: 'apps/server/src/main.ts' }]);
+    const ctx = queryGraphWithExemplars(p, 'apps/server/src/login-activity/**/*');
+    expect(ctx.nodes).toEqual([]);
+    expect(ctx.exemplarOf).toBeUndefined();
+  });
+
+  it('does not fall back on a load error (warning present)', () => {
+    const ctx = queryGraphWithExemplars('/nonexistent/graph.json', 'apps/server/src/x/**/*');
+    expect(ctx.warnings).toHaveLength(1);
+    expect(ctx.exemplarOf).toBeUndefined();
+  });
+});
+
 describe('formatCodeContext', () => {
+  it('renders the greenfield golden-sample header when exemplarOf is set (F3)', () => {
+    const out = formatCodeContext({
+      scope: 'apps/server/src/login-activity/**/*',
+      graphPath: '/x',
+      nodes: [{ id: 'a', label: 'AuthService', source_file: 'apps/server/src/auth/auth.ts' }],
+      warnings: [],
+      truncated: false,
+      exemplarOf: 'apps/server/src/auth, apps/server/src/account',
+    });
+    expect(out).toMatch(/greenfield/);
+    expect(out).toMatch(/golden-sample/);
+    expect(out).toMatch(/IMITATE/);
+    expect(out).toMatch(/Do NOT copy their business logic/);
+    expect(out).toMatch(/AuthService @ apps\/server\/src\/auth\/auth\.ts/);
+  });
+
   it('reports warning when nodes empty + warnings present', () => {
     const out = formatCodeContext({
       scope: 'apps/server',

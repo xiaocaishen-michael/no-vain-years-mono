@@ -6,6 +6,7 @@ import {
   describeClaudeError,
   extractClaudeMetrics,
   FakeLlmClient,
+  getDefaultTimeoutMs,
   isClaudeJsonError,
   LlmInvokeError,
   type LlmInvokeOptions,
@@ -142,6 +143,42 @@ describe('buildClaudeArgs', () => {
   it('honors permissionMode override', () => {
     const args = buildClaudeArgs('x', { ...BASE_OPTS, permissionMode: 'plan' });
     expect(args[args.indexOf('--permission-mode') + 1]).toBe('plan');
+  });
+});
+
+describe('getDefaultTimeoutMs (F2, p2 §7)', () => {
+  it('defaults to 20 minutes when ORCHESTRATOR_TIMEOUT_MIN is unset', () => {
+    const old = process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    try {
+      delete process.env.ORCHESTRATOR_TIMEOUT_MIN;
+      expect(getDefaultTimeoutMs()).toBe(20 * 60 * 1000);
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_TIMEOUT_MIN = old;
+    }
+  });
+
+  it('honors ORCHESTRATOR_TIMEOUT_MIN (minutes → ms)', () => {
+    const old = process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    try {
+      process.env.ORCHESTRATOR_TIMEOUT_MIN = '40';
+      expect(getDefaultTimeoutMs()).toBe(40 * 60 * 1000);
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_TIMEOUT_MIN = old;
+      else delete process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    }
+  });
+
+  it('ignores malformed / non-positive ORCHESTRATOR_TIMEOUT_MIN (falls back to 20min)', () => {
+    const old = process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    try {
+      for (const bad of ['nope', '0', '-5']) {
+        process.env.ORCHESTRATOR_TIMEOUT_MIN = bad;
+        expect(getDefaultTimeoutMs()).toBe(20 * 60 * 1000);
+      }
+    } finally {
+      if (old !== undefined) process.env.ORCHESTRATOR_TIMEOUT_MIN = old;
+      else delete process.env.ORCHESTRATOR_TIMEOUT_MIN;
+    }
   });
 });
 
