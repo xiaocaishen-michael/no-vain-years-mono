@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { decideAuthRoute, type AuthGateInput } from './auth-gate-decision';
 
+// profileLoaded defaults to true so the legacy three-state cases below read as
+// "profile already settled" — the wait gate (profileLoaded:false) is exercised
+// in its own describe block.
 const base: AuthGateInput = {
   isAuthenticated: false,
   displayName: null,
+  profileLoaded: true,
   inAuthGroup: false,
   inOnboarding: false,
   inTabs: false,
@@ -110,5 +114,47 @@ describe('decideAuthRoute — A-002 FR-014 / CL-009 三态决策', () => {
         inTabs: true,
       }),
     ).toEqual({ kind: 'noop' });
+  });
+});
+
+describe('decideAuthRoute — profileLoaded gate (fresh-login displayName backfill)', () => {
+  // A returning user logs in with only tokens (LoginResponse omits displayName
+  // for anti-enumeration), so displayName is null until useMe rehydrates it.
+  // The gate must hold a splash (wait) instead of flashing onboarding.
+
+  it('auth + displayName null + !profileLoaded (outside onboarding) → wait (hold splash, no onboarding flash)', () => {
+    expect(decideAuthRoute({ ...base, isAuthenticated: true, profileLoaded: false })).toEqual({
+      kind: 'wait',
+    });
+  });
+
+  it('auth + displayName null + !profileLoaded + inAuthGroup → wait (returning user mid-login)', () => {
+    expect(
+      decideAuthRoute({ ...base, isAuthenticated: true, profileLoaded: false, inAuthGroup: true }),
+    ).toEqual({ kind: 'wait' });
+  });
+
+  it('auth + displayName null + !profileLoaded + inOnboarding → noop (new user already filling form; no splash over input)', () => {
+    expect(
+      decideAuthRoute({ ...base, isAuthenticated: true, profileLoaded: false, inOnboarding: true }),
+    ).toEqual({ kind: 'noop' });
+  });
+
+  it('auth + displayName SET + !profileLoaded → tabs (cold-start persisted name skips the wait)', () => {
+    expect(
+      decideAuthRoute({
+        ...base,
+        isAuthenticated: true,
+        displayName: '小明',
+        profileLoaded: false,
+      }),
+    ).toEqual({ kind: 'replace', target: '/(app)/(tabs)/profile' });
+  });
+
+  it('auth + displayName null + profileLoaded → onboarding (profile settled, genuinely no name)', () => {
+    expect(decideAuthRoute({ ...base, isAuthenticated: true, profileLoaded: true })).toEqual({
+      kind: 'replace',
+      target: '/(app)/onboarding',
+    });
   });
 });

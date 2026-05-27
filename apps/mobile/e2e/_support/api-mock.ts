@@ -9,9 +9,21 @@ import { type Page, type Route } from '@playwright/test';
 //
 // Extracted from the login slice (T066) so every API-calling UC e2e (onboarding
 // PATCH displayName, …) reuses the preflight handling instead of re-deriving it.
-export async function mockJson(page: Page, urlGlob: string, status: number, body: unknown) {
+//
+// `method` pins the handler to one verb (e.g. GET vs PATCH on the same /me glob):
+// a non-matching verb falls through to another handler registered for the same
+// glob. Needed since AuthGate now issues GET /me on every authed boot, which must
+// return a different body than the form's PATCH /me on the same URL.
+export async function mockJson(
+  page: Page,
+  urlGlob: string,
+  status: number,
+  body: unknown,
+  method?: string,
+) {
   await page.route(urlGlob, async (route: Route) => {
-    if (route.request().method() === 'OPTIONS') {
+    const reqMethod = route.request().method();
+    if (reqMethod === 'OPTIONS') {
       await route.fulfill({
         status: 204,
         headers: {
@@ -20,6 +32,10 @@ export async function mockJson(page: Page, urlGlob: string, status: number, body
           'access-control-allow-headers': '*',
         },
       });
+      return;
+    }
+    if (method && reqMethod !== method) {
+      await route.fallback();
       return;
     }
     await route.fulfill({

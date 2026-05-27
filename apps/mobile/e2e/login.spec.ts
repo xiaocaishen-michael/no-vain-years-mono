@@ -23,6 +23,7 @@ import { mockJson } from './_support/api-mock';
 
 const SMS_CODES_URL = '**/api/v1/accounts/sms-codes';
 const PHONE_SMS_AUTH_URL = '**/api/v1/accounts/phone-sms-auth';
+const ME_URL = '**/api/v1/accounts/me';
 
 const VALID_PHONE = '13800138000';
 const VALID_CODE = '123456';
@@ -64,6 +65,15 @@ test('US1 happy — phone → code → 登录 redirects into the authed area (SC
     accessToken: 'access-e2e-1',
     refreshToken: 'refresh-e2e-1',
   });
+  // AuthGate fires GET /me post-login; a fresh auto-register account has no
+  // displayName yet → null → onboarding (the post-redirect assertion below).
+  await mockJson(page, ME_URL, 200, {
+    accountId: 'acc-e2e-login-1',
+    phone: '+8613800138000',
+    displayName: null,
+    status: 'ACTIVE',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  });
 
   await bootLogin(page);
 
@@ -83,6 +93,42 @@ test('US1 happy — phone → code → 登录 redirects into the authed area (SC
   // Onboarding form (002 T045) replaced the old placeholder; assert its heading.
   await expect(page.getByText('完善个人资料')).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOT_DIR}/t066-login-success.png`, fullPage: true });
+});
+
+test('returning user — displayName from GET /me lands on tabs, NOT onboarding (login-displayname-backfill)', async ({
+  page,
+}) => {
+  await mockJson(page, SMS_CODES_URL, 201, { ttlSec: 300 });
+  // LoginResponse omits displayName (byte-level anti-enumeration) — identical
+  // token-only shape to a fresh login. The returning user's name lives behind
+  // GET /me, which AuthGate awaits (the `wait` splash) before routing.
+  await mockJson(page, PHONE_SMS_AUTH_URL, 200, {
+    accountId: 'acc-e2e-returning-1',
+    accessToken: 'access-e2e-2',
+    refreshToken: 'refresh-e2e-2',
+  });
+  await mockJson(page, ME_URL, 200, {
+    accountId: 'acc-e2e-returning-1',
+    phone: '+8613800138000',
+    displayName: '老用户',
+    status: 'ACTIVE',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  });
+
+  await bootLogin(page);
+  await requestSmsCode(page);
+  await page.getByLabel('验证码', { exact: true }).fill(VALID_CODE);
+  await page.getByRole('button', { name: '登录' }).tap();
+
+  // displayName backfilled from /me → AuthGate routes straight to tabs, never
+  // flashing onboarding. Pre-fix this misrouted to /(app)/onboarding.
+  await page.waitForURL(/profile/);
+  await expect(page.getByText('关注')).toBeVisible();
+  await expect(page.getByText('完善个人资料')).toHaveCount(0);
+  await page.screenshot({
+    path: `${SCREENSHOT_DIR}/login-returning-user-tabs.png`,
+    fullPage: true,
+  });
 });
 
 test('US3 — invalid code (401) → ErrorRow alert, stays on login, typing clears it (SC-C05)', async ({
