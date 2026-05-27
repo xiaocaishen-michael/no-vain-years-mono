@@ -28,7 +28,6 @@ import { useAuthStore } from '~/auth';
 
 export function useMe() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const setDisplayName = useAuthStore((s) => s.setDisplayName);
 
   const query = useAccountProfileControllerGetProfile<AccountProfileResponse>({
     query: {
@@ -41,18 +40,15 @@ export function useMe() {
 
   useEffect(() => {
     if (query.data) {
-      // sync zustand persist layer so AuthGate cold-start has data ready
+      // sync zustand persist layer so AuthGate has displayName ready (drives
+      // the route decision in apps/mobile/src/core/auth-gate-decision.ts)
       useAuthStore.setState({
         accountId: query.data.accountId,
         displayName: query.data.displayName,
         phone: query.data.phone,
       });
-      // setDisplayName intentionally referenced to keep the selector
-      // subscribed (devtools introspection); state.setState above also
-      // calls into the store
-      void setDisplayName;
     }
-  }, [query.data, setDisplayName]);
+  }, [query.data]);
 
   return query;
 }
