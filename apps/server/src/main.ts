@@ -39,6 +39,10 @@ async function bootstrap() {
   await app.register(fastifyCors, {
     origin: parseOrigins(cfg.corsAllowedOrigins),
     credentials: true,
+    // @fastify/cors defaults methods to the CORS-safelisted 'GET,HEAD,POST',
+    // which rejects PATCH /accounts/me + DELETE device-management preflights on
+    // the web build. List every verb the API actually serves.
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
   });
 
   app.useGlobalPipes(
