@@ -138,14 +138,13 @@ test('US2 — 账号与安全 nav, 手机号 masked, disabled rows stay put', as
   await expect(page.getByText('13900139000')).not.toBeVisible();
 
   // 登录管理 is now ACTIVE (B2 device-management amend 005 shipped — flips the
-  // 006 placeholder to a real push; see 005 tasks-client TC09). 注销账号 remains a
-  // disabled placeholder until B3 (account-deletion settings 入口 amend 004).
-  // Asserting disabled rather than tapping: react-native-web renders a disabled
-  // Pressable as `<button disabled aria-disabled="true">`, and Playwright's
-  // `.tap()` actionability waits for it to become enabled — tapping a by-design
-  // disabled row hangs until timeout. `toBeDisabled()` guarantees "stays put".
+  // 006 placeholder to a real push; see 005 tasks-client TC09). 注销账号 is now
+  // ACTIVE too (B3 account-deletion 发起屏 amend 004 shipped — TD05 flips the
+  // disabled placeholder to a real push; the full deletion flow is covered by
+  // delete-account.spec.ts). Both assert enabled rather than tapping here; the
+  // dedicated specs exercise the destinations.
   await expect(page.getByRole('button', { name: '登录管理', exact: true })).toBeEnabled();
-  await expect(page.getByRole('button', { name: '注销账号', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '注销账号', exact: true })).toBeEnabled();
 
   await page.screenshot({ path: `${SCREENSHOT_DIR}/us2-disabled-rows.png` });
 });

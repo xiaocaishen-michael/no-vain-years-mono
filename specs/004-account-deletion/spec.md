@@ -4,7 +4,7 @@ modules: [account, auth, security]
 owners: ['@xiaocaishen-michael']
 status: implemented
 created_at: '2026-05-26'
-updated_at: '2026-05-26'
+updated_at: '2026-05-29'
 spec_kit_version: '>=0.8.5,<0.10.0'
 orchestrator_compat: '>=0.2.0'
 perf_budgets:
@@ -25,7 +25,7 @@ perf_budgets:
     timing_defense:
       diff_p95_ms: 50
 web_compat: untested
-web_compat_notes: 'Client 段（2026-05-26 clarify 定）= 撤销注销屏（cancel-deletion，落 (auth)/）+ FROZEN 登录拦截 modal（改 (auth)/login，server 403 ACCOUNT_IN_FREEZE_PERIOD 已就位）。注销发起屏（delete-account）延后到 settings shell 就位（独立 feature），故本批 client 不含注销发起入口。Web export 路径冒烟 + web e2e 随 client 段落地补。'
+web_compat_notes: 'Client 段（2026-05-26 clarify 定）= 撤销注销屏（cancel-deletion，落 (auth)/）+ FROZEN 登录拦截 modal（改 (auth)/login，server 403 ACCOUNT_IN_FREEZE_PERIOD 已就位）。2026-05-29 amend（branch 004-account-deletion-client，p4 子 plan B3）：settings shell 已 ship（#221），注销发起屏（delete-account）解延后，落 (app)/settings/account-security/delete-account（US10 + FR-C01/C02 + SC-C01 激活），表单走 RHF Golden Sample（mirror cancel-deletion）。本 amend 纯 mobile（5 deletion 端点 #198 已就位，无 server 改）。'
 agent_friction_observed: false
 state_branches:
   - 'send-deletion-code: ACTIVE 账号 → 6 位数字码 SHA-256 持久化（purpose=DELETE_ACCOUNT, TTL 10min）+ SMS 下发 + 204；账号状态不变、不发事件'
@@ -93,6 +93,15 @@ state_branches:
 - Q: 004 client 段覆盖哪些屏？ → A: **恢复闭环优先** — 撤销注销屏（`(auth)/cancel-deletion`，(auth) 组已在）+ FROZEN 登录拦截 modal（改 `(auth)/login`，server 403 已就位）落 004；**注销发起屏（delete-account）延后**到 settings shell 就位（独立 feature）。代价：本批 client 不含注销发起入口 —— server 5 端点先就位、待 settings shell 落地后接入 delete-account 屏。
 - Q: public 撤销端点形态？ → A: **public unauthed 沿用旧路径** — `POST /api/v1/auth/cancel-deletion(/sms-codes)`（FROZEN 用户无 token；与 mono 公开 login / sms-code 端点一致）。
 - Q: SendDeletionCode 返回码（旧 controller 204 vs 旧 spec 散文 200）？ → A: **204 No Content**（与 send-code 无 body 语义一致）。
+
+### Session 2026-05-29（client amend — B3 注销发起屏）
+
+> p4 子 plan B3 起手。settings shell（006）已 ship（#221）→ 2026-05-26 clarify 定的「delete-account 延后」前提解除。spec-merge 约束多已在 Session 2026-05-26 锁（错误码口径 / 端点形态 / RHF Golden Sample）；本轮决落点 + 真分歧（user 确认 2026-05-29）。
+
+- Q: 本 client feature 落点？ → A: **amend 004 原地**（不吃新编号，realname 仍 `007`，per p4 决策 #3，与 B2 amend 005 同模式）；branch `004-account-deletion-client`；解 US10 / FR-C01 / FR-C02 / SC-C01 的 `[DEFERRED]`；新建 `tasks-client.md`（已 ship 的 server tasks 不动）。
+- Q: 是否含 server 改？ → A: **纯 mobile，无 server 改** —— 注销发码 / 提交 5 端点（US1-3）随 #198 已 ship，Orval `useAccountDeletionControllerSendDeletionCodeForMe`(void) / `SubmitDeletionForMe`({data: DeleteAccountRequest}) 已生成且经 `@nvy/api-client` 桶导出（无 B2 那种契约 quirk / 桶遗漏）。
+- Q: 注销发起屏路由落点 + RHF？ → A: 落 `(app)/settings/account-security/delete-account`（settings shell 之内，account-security index「注销账号」行 flip 激活）；表单 **RHF + zodResolver，mirror `use-cancel-deletion-form`**（复用皮、重写肉：双勾选解锁发码 → 6 位码 → 确认 → 清 session → login）。`deleteAccountErrorToast` 统一错误（authed `INVALID_DELETION_CODE` / 429 / 网络 / 未知），mirror `cancel-deletion-errors`。
+- Q: 注销成功后路由？ → A: **清本地会话 → login**（账号转 FROZEN 不可登录；delete 清 session ≠ cancel-deletion 的回主页）。无 displayName→onboarding 顾虑（清 session 后 AuthGate 直送 login，#216 回填仅影响有 session 的冷启动）。
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -247,11 +256,11 @@ FROZEN-in-grace 用户输入撤销码：系统在**单原子事务**内（并发
 
 ### User Story 10 — [Client] 注销账号屏（delete-account，authed，Priority: P2）
 
-> ⚠️ **[DEFERRED → settings shell]**（2026-05-26 clarify 定）：注销发起屏**不在 004 client scope**，待 settings shell feature 落地后接入。本 US 作前瞻文档保留（server 端点 US1-US3 本批已就位，待 UI 接入）。
+> ✅ **[ACTIVATED — 2026-05-29 amend / p4 B3]**：settings shell（006）已 ship（#221）→ 延后前提解除，本屏落地。落 `(app)/settings/account-security/delete-account`；account-security index「注销账号」行 flip 激活。server 端点 US1-US3（#198）已就位，本批纯 client 接入。
 
 已登录用户在「设置 → 账号安全 → 注销账号」屏：屏内展示 ≥ 2 行风险提示（① 15 天内可撤销恢复 ② 期满匿名化不可逆），用户须**双重确认勾选**才解锁「发送验证码」；发码后输入 6 位码点「确认注销」→ 成功后客户端被强制登出（清本地会话）并路由到登录页。表单走 RHF + zodResolver（[Golden Sample](../../docs/plans/2026-05/05-25-account-migration-master.md)）。
 
-**Why this priority**: P2——用户可见的注销发起入口；**已 clarify 定延后**到 settings shell feature（本 US 作前瞻文档）。
+**Why this priority**: P2——用户可见的注销发起入口；settings shell 已就位，本 amend（p4 B3）落地为 A→B→C 链最后一环。
 
 **Independent Test**: Playwright Expo Web e2e（复用 `apps/mobile/e2e/_support/api-mock.ts` 的 `mockJson`）：登录态进 delete-account 屏 → 未勾选时发码按钮禁用 → 勾选双确认 → 发码 → 输码 → 确认 → 断言调删除端点 + 本地会话清空 + 路由登录。
 
@@ -329,10 +338,10 @@ FROZEN 账号尝试手机短信登录时被拦截 modal 拦下，提示「账号
 
 ### Client Functional Requirements
 
-> ✅ 范围（2026-05-26 clarify 定）：**FR-C03 / FR-C04 / FR-C05 落 004**（FROZEN modal + 撤销屏）；**FR-C01 / FR-C02 延后**到 settings shell feature（注销发起屏），下列保留作前瞻文档。
+> ✅ 范围：**FR-C03 / FR-C04 / FR-C05** 随 004 ship（FROZEN modal + 撤销屏）；**FR-C01 / FR-C02** 2026-05-29 amend（p4 B3）**解延后激活**（注销发起屏，settings shell #221 已就位）。
 
-- **FR-C01** **[DEFERRED → settings shell]**: 注销账号屏 — 提供 authed 注销账号屏，展示 ≥ 2 行风险提示（15 天可撤销 / 期满不可逆），**双重确认勾选**前「发送验证码」MUST 禁用；发码 → 输 6 位码 → 确认注销；成功后 MUST 清本地会话 + 路由登录页。表单走 RHF + zodResolver。（不在 004 client scope）
-- **FR-C02** **[DEFERRED → settings shell]**: 注销错误展示 — 码失败展示**统一**错误提示（不区分子类，与 server 反枚举一致）。
+- **FR-C01** **[ACTIVATED — p4 B3]**: 注销账号屏 — 提供 authed 注销账号屏（落 `(app)/settings/account-security/delete-account`），展示 ≥ 2 行风险提示（15 天可撤销 / 期满不可逆），**双重确认勾选**前「发送验证码」MUST 禁用；发码 → 输 6 位码 → 确认注销；成功后 MUST 清本地会话 + 路由登录页。表单走 RHF + zodResolver（mirror `use-cancel-deletion-form` Golden Sample）。account-security index「注销账号」行 MUST 由 006 disabled 占位 flip 为真 push。
+- **FR-C02** **[ACTIVATED — p4 B3]**: 注销错误展示 — 码失败展示**统一**错误提示（`deleteAccountErrorToast`：authed `INVALID_DELETION_CODE` 码错 / 429 限流 / 网络 / 未知；不区分码失败子类，与 server 反枚举一致）。
 - **FR-C03**: FROZEN 登录拦截 modal — 手机短信登录撞 FROZEN 账号（服务端 403 disclosure 已就位）时 MUST 弹拦截 modal：展示剩余冻结天数 + 「撤销注销」/「保持注销」两分支；撤销 → 跳撤销屏（手机号路由参数预填）/ 保持 → 清 form 留登录页。
 - **FR-C04**: 撤销注销屏 — 提供 public 撤销注销屏：手机号（预填 / 可手填）→ 请求撤销码 → 输 6 位码 → 提交；成功后 MUST 以返回的登录态路由进主页。表单走 RHF + zodResolver。
 - **FR-C05**: 撤销错误展示 — 撤销失败展示**统一**错误提示（不区分子类，与 server 反枚举一致）。
@@ -387,9 +396,9 @@ FROZEN 账号尝试手机短信登录时被拦截 modal 拦下，提示「账号
 
 ### Client Measurable Outcomes
 
-> 范围（2026-05-26 clarify 定）：**SC-C02 / SC-C03 / SC-C04 落 004**；**SC-C01（注销屏）延后** settings shell。
+> 范围：**SC-C02 / SC-C03 / SC-C04** 随 004 ship；**SC-C01（注销屏流程）** 2026-05-29 amend（p4 B3）**激活**。
 
-- **SC-C01** **[DEFERRED → settings shell]**: 注销屏流程 — 未双确认时发码按钮禁用、双确认后可发码 → 输码 → 确认 → 清会话 + 路由登录（Playwright Web e2e）
+- **SC-C01** **[ACTIVATED — p4 B3]**: 注销屏流程 — 未双确认时发码按钮禁用、双确认后可发码 → 输码 → 确认 → 清会话 + 路由登录（Playwright Web e2e）；错误码失败统一展示（`deleteAccountErrorToast` vitest + e2e）
 - **SC-C02**: FROZEN 拦截与撤销 — 登录撞 FROZEN → 拦截 modal（剩余天数 + 两分支）→ 撤销跳屏手机号预填 → 请求码 → 输码 → 提交成功 → 路由主页；保持分支留登录清 form（Playwright Web e2e）
 - **SC-C03**: 错误统一展示 — 注销 / 撤销码失败展示统一错误提示（不区分子类，logic-level 单测 + e2e）
 - **SC-C04**: 真后端冒烟 — Playwright Web e2e 复用 `apps/mobile/e2e/_support/api-mock.ts`，跑通注销发起与撤销恢复主路径
@@ -413,5 +422,5 @@ FROZEN 账号尝试手机短信登录时被拦截 modal 拦下，提示「账号
 - **实名认证数据在匿名化时的擦除**（`RealnameProfile` 加密字段清理）→ 归 `006-realname-verification`（实名落地后再补匿名化擦除策略）
 - **冻结期内的部分功能降级 UI**（只读模式 / 倒计时常驻）→ 本 feature 冻结即不可登录，无降级态
 - **多登录方式撤销重发**（OAuth 等）→ 当前 `loginMethod` 仅手机短信
-- **settings shell（设置外壳）本体 + 注销发起屏（delete-account）** → delete-account 屏依赖未建的 settings 外壳，2026-05-26 clarify 定**延后**到 settings shell feature（含 FR-C01/C02 + US10 + SC-C01）；本 feature client 仅恢复闭环（cancel-deletion 屏 + FROZEN modal）
+- **settings shell（设置外壳）本体** → 仍非本 feature scope（归 `006-account-settings-shell`，已 ship #221）。~~注销发起屏（delete-account）延后~~ → **已解延后**：settings shell 就位后，2026-05-29 amend（p4 B3，branch `004-account-deletion-client`）落地 delete-account 屏（FR-C01/C02 + US10 + SC-C01 激活），见 § Clarifications Session 2026-05-29。
 - **撤销/登录后「恢复老账号 → 主页」的 displayName 回填**（2026-05-26 T035 e2e 暴露，定**延后**单独处理）→ cancel-deletion 成功（及普通 login）仅 `setSession({accountId, accessToken, refreshToken})`，LoginResponse 不带 `displayName`；`apps/mobile/src/core/api/use-me.ts`（拉 `/me` 回填 displayName）当前**未被任何屏挂载消费**（dead code）→ AuthGate 在 `displayName===null` 态把会话送 `/(app)/onboarding` 而非主页。**影响面超出 004**（普通老用户冷启动登录同样被丢去 onboarding）。本 feature e2e 据现状断言落 `/onboarding`；修复（挂载 useMe / LoginResponse 带 displayName 二选一）归后续独立 task
