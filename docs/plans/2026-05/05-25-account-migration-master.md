@@ -13,7 +13,7 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 |---|---|
 | Plan 1(后端栈 PoC) | ✅ ship(`UnifiedPhoneSmsAuth` + 4 stack 替换) |
 | **Plan 3(部署上线)** | ✅ **已先行完成**:server 上阿里云(`05-23-prod-cutover-meta-to-mono-swas` #144/#147)、Web 上 CF Pages(`05-24-client-deploy-p1` #177,live `app.xiaocaishen.me`)、mobile EAS/APK(`p2`/`p3` #180,🟡 真机冒烟 pending) |
-| **Plan 2(本 master,业务迁移)** | 🟡 **进行中**:批 A `002-account-profile` ✅(#65);剩批 B-E 14 use case 待迁 |
+| **Plan 2(本 master,业务迁移)** | 🟡 **进行中**:批 A-D 已 ship(13/16 use case:002 #65 / 003 #196 / 004 #198 / 005 #201);**剩批 E realname 3 use case 待迁**(spec 取 `007`)。p4 client UI 链(settings shell A→B→C)全 ship(B1 #221 / B2 #222 / B3 #223) |
 
 **迁移目标新范式**(大重构后):ADR-0043 扁平贫血 + ADR-0032 bounded context + ADR-0019 Prisma 贫血层 + ADR-0030 包 5→2。**业务调研源**:旧 meta 仓 `~/Documents/projects/no-vain-years/`(meta specs + Java `my-beloved-server/` + 旧 app)仍在。
 
@@ -26,7 +26,7 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 | 1 | [`p1-toolchain-ralph-loop`](05-25-account-migration-p1-toolchain-ralph-loop.md) | 工具链(先行) | 无 | 模型路由 + orchestrator + Ralph loop + workflow override | ✅ 大体落地;缺 workflow.yml 2 步 + run-implement.ts(待触发) |
 | 2 | [`p2-usecase-dependency`](05-25-account-migration-p2-usecase-dependency.md) | 分析/规划 | 无(可与 p1 并行) | 新范式锚定 + 业务级调研 + 16 uc 依赖关系 + 迁移顺序 | 🟡 依赖/顺序已成;业务卡逐 uc 待展开 |
 | 3 | [`p3-usecase-steps`](05-25-account-migration-p3-usecase-steps.md) | 执行 | **p2(顺序)+ p1(工具链)** | 逐 use case 详细迁移过程 + 步骤 | 🟢 **已填充**(2026-05-25 plan 会话:一条引擎 + Step 1 两模式 + Step 4 两形态;本轮全程手动不用 orchestrator) |
-| 4 | [`p4-client-ui-shell-chain`](05-25-account-migration-p4-client-ui-shell-chain.md) | client UI(前端,正交后端迁移) | 002 spec A 已 ship;可与批 E 并行 | settings shell(spec B)+ A→B→C 链规划:聚合 003/004/005 延后 client 入口 | 🟢 **已填充**(2026-05-29 plan 会话:分 3 feature B1 壳/B2 设备/B3 注销 + 决策 4 项) |
+| 4 | [`p4-client-ui-shell-chain`](05-25-account-migration-p4-client-ui-shell-chain.md) | client UI(前端,正交后端迁移) | 002 spec A 已 ship;可与批 E 并行 | settings shell(spec B)+ A→B→C 链规划:聚合 003/004/005 延后 client 入口 | ✅ **完成**(2026-05-29):B1 壳 #221 / B2 设备 #222 / B3 注销 #223 全 ship,A→B→C 链闭合 |
 
 ## 跨契约(master 锁定,子 plan 不得违反)
 
@@ -74,9 +74,9 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 
 ### 子 plan 4 — client UI 链（settings shell）
 
-🟢 **已填充**（2026-05-29 plan 会话；**本段 p4 = 本 master 第 4 子 plan，≠ 下 § Out of Scope 的顶层「Plan 4」mobile build/PKM**）。前端有一条**正交后端迁移**的 client UI 拆分链 A→B→C(源 `002-account-profile` spec 内部),从未被统领规划 —— **spec B(`account-settings-shell`,从 profile ⚙️ 进入的「设置 / 账号与安全」导航栈,落 `(app)/settings/*`、`(tabs)` 之外)** ,而 003(登出)/ 004(注销发起屏)/ 005(登录设备管理屏)三个 feature 的 client 入口**都已 server-ready(#196 / #198 / #201)、都延后挂这个壳**,曾使 settings shell 成隐式累积的前端债。
+✅ **完成**（2026-05-29 全 ship；**本段 p4 = 本 master 第 4 子 plan，≠ 下 § Out of Scope 的顶层「Plan 4」mobile build/PKM**）。三 feature 全合入(B1 `006` #221 / B2 设备 amend 005 #222 / B3 注销 amend 004 #223),A→B→C 链闭合 — 002 ⚙️ → settings → 账号与安全 → 登录管理 + 注销账号 全通。前端有一条**正交后端迁移**的 client UI 拆分链 A→B→C(源 `002-account-profile` spec 内部),从未被统领规划 —— **spec B(`account-settings-shell`,从 profile ⚙️ 进入的「设置 / 账号与安全」导航栈,落 `(app)/settings/*`、`(tabs)` 之外)** ,而 003(登出)/ 004(注销发起屏)/ 005(登录设备管理屏)三个 feature 的 client 入口**都已 server-ready(#196 / #198 / #201)、都延后挂这个壳**,曾使 settings shell 成隐式累积的前端债。
 
-p4 已定:**分 3 feature** —— B1 `006-account-settings-shell`(壳骨架 + primitives + maskPhone + 登出按钮,解锁 002 ⚙️) / B2 设备管理(amend 005) / B3 注销发起(amend 004);设备先于注销;realname 让号顺延 `007`;范围外项全 disabled 占位。每 feature 起手 `/speckit-specify` **前走跨契约 § 硬 gate**;p4 与批 E(`007` realname server)可并行(前端正交,无共享可变状态)。详见 [`p4`](05-25-account-migration-p4-client-ui-shell-chain.md)。
+p4 **分 3 feature 全 ship** —— B1 `006-account-settings-shell`(壳骨架 + primitives + maskPhone + 登出按钮,解锁 002 ⚙️,#221) / B2 设备管理(amend 005,#222) / B3 注销发起(amend 004,#223);设备先于注销;realname 让号顺延 `007`;范围外项全 disabled 占位(B2/B3 PR 内各 flip 自己那行 disabled→真 push)。p4 与批 E(`007` realname server)正交,无共享可变状态。详见 [`p4`](05-25-account-migration-p4-client-ui-shell-chain.md)。
 
 ## Out of Scope（整体不做）
 
