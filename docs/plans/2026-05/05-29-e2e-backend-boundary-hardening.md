@@ -54,12 +54,17 @@ mock 基建**已存在**：`apps/mobile/e2e/_support/api-mock.ts` 的 `mockJson(
 
 工作量：~0.5–1 天。依赖：无（mock 基建已就位）。**这是最高杠杆、解耦的一阶段，建议先单独 ship。**
 
-### P2 — 真后端 smoke + 契约守门
+### P2 — 真后端 smoke + 契约守门 ✅（已 ship）
 
 目标：补 1 条真链路 smoke + 守 stub 不漂移。
 
-1. 选 1 条核心旅程（登录 → 落鉴权区核心页）作**唯一**真后端 smoke：起 testcontainers PG+Redis + 真 server（复用 server IT 的 Testcontainers 设施）+ seed 一个真账号 + **程序化 API 登录**取真 token 注入：verify → 该 smoke 不 stub 任何网络仍绿。
-2. 契约守门：基于已有 `@nvy/api-client`（Orval 从 server `openapi.json` 生成）给 `GET /me` + refresh 加一个 typed shape 断言（轻量，非引入 Pact）：verify → 故意改 server DTO 字段，契约检查 fire（暴露 mock 将漂移）。
+1. ✅ 选 1 条核心旅程（登录 → 落鉴权区核心页）作**唯一**真后端 smoke：起 testcontainers PG+Redis + 真 server + **程序化 API 登录**取真 token 注入：verify → 该 smoke 不 stub 任何网络仍绿。
+   - 落地为 env-gated 独立 job（`RUN_REAL_BACKEND_SMOKE`，nightly 软信号，非 PR 阻断），不进 `nx affected` 主管线。
+   - **架构（Option B）**：standalone tsx orchestrator（`apps/mobile/e2e/_support/real-backend-runner.ts`）起容器 → `prisma migrate deploy` → spawn 真 server（`node apps/server/dist/main.js`，swc build 保留装饰器元数据，避开「Playwright globalSetup in-process boot 不发 decorator metadata → NestJS DI 炸」）→ 程序化登录 → 跑 Playwright → `finally` 拆容器。Nx target `mobile:e2e-real-backend`（dependsOn `build` + `server:build`）。
+   - **纯黑盒登录**：`phone-sms-auth` 首登自动注册（find-or-create）→ 无需 `@prisma/client` 耦合进 mobile；`issueSmsCode()` 在 `NODE_ENV=development && !VITEST` 返回固定 `999999` → 无需翻日志/DI 取码。登录后 `PATCH /me` 置 displayName，使 AuthGate 落鉴权区 tabs（null 名会走 onboarding）。
+   - **会话引导真实性**：浏览器只 seed 真 refreshToken（无 accessToken，与 web 端 in-memory-only 一致）→ cold boot → 真 `POST /refresh-token` → 真 `GET /me` → tabs。spec（`real-backend.spec.ts`）**零** `mockJson`/`page.route`。
+   - **负控已验**：把 refreshToken 改坏 → smoke 必 RED（真 server 拒续期 → clearSession → 弹 /login），证明真依赖后端非假绿。CI 见 `.github/workflows/e2e-real-backend.yml`。
+2. ✅ 契约守门：基于已有 `@nvy/api-client`（Orval 从 server `openapi.json` 生成）给 `GET /me` + refresh 加一个 typed shape 断言（轻量，非引入 Pact）：verify → 故意改 server DTO 字段，契约检查 fire（暴露 mock 将漂移）。落地 `apps/mobile/src/core/api/backend-contract.spec.ts`（放 `src/` 非 `e2e/`，因 mobile tsconfig exclude `e2e/`，守门放那永不 fire）。
 
 工作量：~1–2 天。依赖：P1 完成（先确定化主体，再加 smoke 不被噪声淹没）。
 

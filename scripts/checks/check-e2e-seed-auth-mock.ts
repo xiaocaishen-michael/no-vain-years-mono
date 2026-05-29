@@ -47,6 +47,15 @@ export interface SeedAuthViolation {
 const SEEDS_AUTH = /addInitScript/;
 const NVY_AUTH = /nvy-auth/;
 
+// Opt-out for the ONE intentionally non-hermetic spec: the 真后端 smoke
+// (real-backend.spec.ts, per 05-29-...-hardening P2). It seeds a REAL
+// refreshToken and MUST hit the real backend (refresh + GET /me), so requiring
+// a /me stub would defeat its purpose. The marker is explicit + grep-able so
+// the exemption can never apply by accident — a spec must declare it
+// deliberately. Tested on raw content (it is a comment, which stripLineComments
+// would otherwise strip).
+const REAL_BACKEND_EXEMPT = /e2e-seed-auth-mock-check:\s*real-backend-exempt/;
+
 // Strip whole-line comments so a commented-out example can't falsely satisfy
 // the interception check (mirrors check-env-sync's comment handling).
 function stripLineComments(content: string): string {
@@ -78,6 +87,7 @@ export function scanSpecFiles(files: Record<string, string>): SeedAuthViolation[
   const violations: SeedAuthViolation[] = [];
   for (const [file, raw] of Object.entries(files)) {
     if (!SEEDS_AUTH.test(raw) || !NVY_AUTH.test(raw)) continue;
+    if (REAL_BACKEND_EXEMPT.test(raw)) continue;
     const content = stripLineComments(raw);
     const interceptsMe = ME_MOCKJSON_GET.test(content) || ME_PAGE_ROUTE.test(content);
     if (!interceptsMe) {

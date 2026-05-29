@@ -19,6 +19,11 @@ const PORT = Number(process.env['EXPO_WEB_PORT'] ?? 4173);
 
 export default defineConfig({
   testDir: './e2e',
+  // real-backend.spec.ts is the ONE non-hermetic spec; it needs a real server +
+  // SMOKE_* env and runs ONLY via playwright.real-backend.config.ts (the
+  // e2e-real-backend target). Exclude it here so the hermetic runtime-smoke
+  // suite doesn't pick it up and crash at its import-time env guard.
+  testIgnore: 'real-backend.spec.ts',
   outputDir: './playwright-test-results',
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
