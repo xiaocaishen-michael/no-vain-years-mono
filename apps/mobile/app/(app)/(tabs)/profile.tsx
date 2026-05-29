@@ -293,10 +293,8 @@ export default function ProfileScreen() {
   const isSticky = scrollY >= STICKY_THRESHOLD;
 
   const noop = () => undefined;
-  // FR-017: settings stack lives at /(app)/settings (spec B owns impl).
-  // Cast through router.push's parameter type since the route doesn't yet
-  // exist in app/ and Expo Router's generated Href type would reject the string.
-  const pushSettings = () => router.push('/(app)/settings' as Parameters<typeof router.push>[0]);
+  // FR-017: settings stack at /(app)/settings — route now built (006-account-settings-shell).
+  const pushSettings = () => router.push('/(app)/settings');
 
   return (
     <SafeAreaView
