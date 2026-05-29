@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  decodeDeviceName,
   isActive,
   normalizeDeviceType,
   scrubPrivateIp,
@@ -71,6 +72,24 @@ describe('refresh-token.rules', () => {
       [undefined, null],
     ])('%s → %s', (ip, expected) => {
       expect(scrubPrivateIp(ip)).toBe(expected);
+    });
+  });
+
+  describe('decodeDeviceName (解 transport URL 编码 → 规范展示值)', () => {
+    it.each([
+      ['Web%20-%20Mozilla%2F5.0', 'Web - Mozilla/5.0'],
+      ['iPhone%2015%20Pro', 'iPhone 15 Pro'],
+      ['%E5%B0%8F%E6%98%8E%E7%9A%84%20iPad', '小明的 iPad'],
+      ['plain-name', 'plain-name'],
+      ['  Web%20App  ', 'Web App'],
+      // 截断的转义序列 (header 长度上限切断 %XX) → 回退原始串而非抛
+      ['Web%2', 'Web%2'],
+      ['', null],
+      ['   ', null],
+      [null, null],
+      [undefined, null],
+    ])('%s → %s', (raw, expected) => {
+      expect(decodeDeviceName(raw)).toBe(expected);
     });
   });
 });

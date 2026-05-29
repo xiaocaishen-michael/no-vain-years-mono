@@ -6,6 +6,7 @@ import { PrismaService } from './prisma.service';
 import { hashRefreshToken } from './refresh-token-hasher';
 import {
   REFRESH_TTL_DAYS,
+  decodeDeviceName,
   isActive,
   normalizeDeviceType,
   scrubPrivateIp,
@@ -60,8 +61,9 @@ export class RefreshTokenService {
 
   /**
    * 签发即持久化: hash token + create 1 条 active 行。
-   * expiresAt = now + 30d; deviceId 缺失 → 回退 uuid v4; clientIp 经 scrubPrivateIp
-   * (私网/回环/非法 → null); deviceType 经 normalizeDeviceType 归一; revokedAt 默认 null。
+   * expiresAt = now + 30d; deviceId 缺失 → 回退 uuid v4; deviceName 经 decodeDeviceName
+   * 解 transport 编码; clientIp 经 scrubPrivateIp (私网/回环/非法 → null);
+   * deviceType 经 normalizeDeviceType 归一; revokedAt 默认 null。
    */
   async persist(
     accountId: bigint,
@@ -76,7 +78,7 @@ export class RefreshTokenService {
         accountId,
         expiresAt,
         deviceId: meta.deviceId ?? randomUUID(),
-        deviceName: meta.deviceName ?? null,
+        deviceName: decodeDeviceName(meta.deviceName),
         deviceType: normalizeDeviceType(meta.deviceType),
         ipAddress: scrubPrivateIp(meta.clientIp),
         loginMethod: meta.loginMethod,
