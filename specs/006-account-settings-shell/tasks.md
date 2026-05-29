@@ -47,7 +47,7 @@ created_at: '2026-05-29'
 
 **Independent Test**（spec US2）：seed authed（store `phone=+8613900139000`）→ 进设置 → 点账号与安全 → URL 进二级页、手机号行显 `+86 139****9000`（无完整号）、登录管理/注销账号行 disabled 不导航。
 
-- [ ] T006 [US2] [Mobile] `apps/mobile/app/(app)/settings/account-security/_layout.tsx`（port：`<Stack>`，`index` title「账号与安全」；**只留 index Stack.Screen**，phone/delete-account/login-management 不建）+ `apps/mobile/app/(app)/settings/account-security/index.tsx`（port：ScrollView + 3 Card —— ① 手机号 Row value=`maskPhone(phone)`（`~/format/phone`）**disabled** + 实名认证 disabled + 第三方账号绑定 disabled ② **登录管理 Row disabled 占位**（加注释 `// B2 (device-management amend 005) 激活：去 disabled + onPress → push login-management`）③ 注销账号 Row destructive **disabled 占位**（加注释 `// B3 (account-deletion settings 入口 amend 004) 激活`）+ 安全小知识 disabled；`@nvy/auth`→`~/auth`(`useAuthStore` 读 `phone`)）
+- [X] T006 [US2] [Mobile] `apps/mobile/app/(app)/settings/account-security/_layout.tsx`（port：`<Stack>`，`index` title「账号与安全」；**只留 index Stack.Screen**，phone/delete-account/login-management 不建）+ `apps/mobile/app/(app)/settings/account-security/index.tsx`（port：ScrollView + 3 Card —— ① 手机号 Row value=`maskPhone(phone)`（`~/format/phone`）**disabled** + 实名认证 disabled + 第三方账号绑定 disabled ② **登录管理 Row disabled 占位**（加注释 `// B2 (device-management amend 005) 激活：去 disabled + onPress → push login-management`）③ 注销账号 Row destructive **disabled 占位**（加注释 `// B3 (account-deletion settings 入口 amend 004) 激活`）+ 安全小知识 disabled；`@nvy/auth`→`~/auth`(`useAuthStore` 读 `phone`)）
 - [ ] T007 [US2] [Mobile-E2E] `settings-shell.spec.ts` US2 段：seed authed（`phone=+8613900139000`）→ 设置 → 点账号与安全 → 断言进 `/(app)/settings/account-security`、手机号行文本含 `139****9000` 且 **不含 `13900139000` 完整号**、登录管理 & 注销账号行 `disabled`（点击不改变 URL）
 
 ## Phase 4: User Story 3 — 退出登录（P1）
