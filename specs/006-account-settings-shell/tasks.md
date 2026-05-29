@@ -41,14 +41,14 @@ created_at: '2026-05-29'
 
 - [X] T003 [US1] [Mobile] `apps/mobile/app/(app)/settings/_layout.tsx`（port 旧 app：`<Stack screenOptions headerShown>`，`index` title「设置」，`account-security` `headerShown:false`（嵌套自带 header）；**删 `legal` Stack.Screen**）+ `apps/mobile/app/(app)/settings/index.tsx`（port：ScrollView + 3 Card —— ① 账号与安全 Row→`router.push('/(app)/settings/account-security')` ② 通用/通知/隐私/关于 disabled ③ 切换账号 disabled + 退出登录 destructive busy→`confirmLogout`；**删法务页脚**；`@nvy/auth`→`~/auth`(`logoutAll`)；`confirmLogout` Platform 分支（Web `window.confirm` / native `Alert.alert`）**原样保留**（RN-Web Alert 单按钮 fallback 陷阱，load-bearing）；登出后 `logoutAll()` + 显式 `router.replace('/(auth)/login')` 双保险，plan D3）。**含 US3 登出 handler（同文件）**
 - [X] T004 [US1] [Mobile] `apps/mobile/app/(app)/(tabs)/profile.tsx` 去 ⚙️ 的 `router.push('/(app)/settings' as Parameters<...>)` 强转（route 已建，FR-C02）+ 全仓 grep 确认无残留 `as Parameters<typeof router.push>` 占位强转
-- [ ] T005 [US1] [Mobile-E2E] `apps/mobile/e2e/settings-shell.spec.ts` US1 段（seed authed via `addInitScript`）：profile 点 ⚙️（`getByRole`/accessibilityLabel）→ 断言进 `/(app)/settings`、设置卡片渲染（账号与安全 / 退出登录 可见）、**底 tab bar 不可见** → 系统返回 → 回 profile、底 tab 恢复。locator 优先 `getByRole`/`exact`，警惕中文子串撞
+- [X] T005 [US1] [Mobile-E2E] `apps/mobile/e2e/settings-shell.spec.ts` US1 段（seed authed via `addInitScript`）：profile 点 ⚙️（`getByRole`/accessibilityLabel）→ 断言进 `/(app)/settings`、设置卡片渲染（账号与安全 / 退出登录 可见）、**底 tab bar 不可见** → 系统返回 → 回 profile、底 tab 恢复。locator 优先 `getByRole`/`exact`，警惕中文子串撞
 
 ## Phase 3: User Story 2 — 账号与安全导航 + 手机号脱敏 + disabled 占位（P1）
 
 **Independent Test**（spec US2）：seed authed（store `phone=+8613900139000`）→ 进设置 → 点账号与安全 → URL 进二级页、手机号行显 `+86 139****9000`（无完整号）、登录管理/注销账号行 disabled 不导航。
 
 - [X] T006 [US2] [Mobile] `apps/mobile/app/(app)/settings/account-security/_layout.tsx`（port：`<Stack>`，`index` title「账号与安全」；**只留 index Stack.Screen**，phone/delete-account/login-management 不建）+ `apps/mobile/app/(app)/settings/account-security/index.tsx`（port：ScrollView + 3 Card —— ① 手机号 Row value=`maskPhone(phone)`（`~/format/phone`）**disabled** + 实名认证 disabled + 第三方账号绑定 disabled ② **登录管理 Row disabled 占位**（加注释 `// B2 (device-management amend 005) 激活：去 disabled + onPress → push login-management`）③ 注销账号 Row destructive **disabled 占位**（加注释 `// B3 (account-deletion settings 入口 amend 004) 激活`）+ 安全小知识 disabled；`@nvy/auth`→`~/auth`(`useAuthStore` 读 `phone`)）
-- [ ] T007 [US2] [Mobile-E2E] `settings-shell.spec.ts` US2 段：seed authed（`phone=+8613900139000`）→ 设置 → 点账号与安全 → 断言进 `/(app)/settings/account-security`、手机号行文本含 `139****9000` 且 **不含 `13900139000` 完整号**、登录管理 & 注销账号行 `disabled`（点击不改变 URL）
+- [X] T007 [US2] [Mobile-E2E] `settings-shell.spec.ts` US2 段：seed authed（`phone=+8613900139000`）→ 设置 → 点账号与安全 → 断言进 `/(app)/settings/account-security`、手机号行文本含 `139****9000` 且 **不含 `13900139000` 完整号**、登录管理 & 注销账号行 `disabled`（点击不改变 URL）
 
 ## Phase 4: User Story 3 — 退出登录（P1）
 
@@ -56,7 +56,7 @@ created_at: '2026-05-29'
 
 > 登出 UI + handler 已在 T003（`settings/index.tsx`，同文件）落地；本 phase = 其独立 e2e 验收。
 
-- [ ] T008 [US3] [Mobile-E2E] `settings-shell.spec.ts` US3 段（mock `_support/api-mock.ts` `mockJson` logout-all）：① 点退出登录 →（web 覆写 `window.confirm`→true）→ mock `POST /api/v1/accounts/logout-all` 204 → 断言 localStorage 会话清 + 落 `/(auth)/login` ② mock logout-all 500 → 仍落登录页（本地登出）③ `window.confirm`→false（取消）→ 留设置页、保持登录态
+- [X] T008 [US3] [Mobile-E2E] `settings-shell.spec.ts` US3 段（mock `_support/api-mock.ts` `mockJson` logout-all）：① 点退出登录 →（web 覆写 `window.confirm`→true）→ mock `POST /api/v1/accounts/logout-all` 204 → 断言 localStorage 会话清 + 落 `/(auth)/login` ② mock logout-all 500 → 仍落登录页（本地登出）③ `window.confirm`→false（取消）→ 留设置页、保持登录态
 
 ## Phase 5: Polish & Verify（跨 cutting）
 
