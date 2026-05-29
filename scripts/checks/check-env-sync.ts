@@ -36,6 +36,10 @@ const ALLOWLIST = new Set([
   'GITHUB_ACTIONS',
   'RUN_PERF_IT',
   'PERF_IT_REPS',
+  // Expo build-time public var (apps/mobile/src/core/api/setup.ts). EXPO_PUBLIC_*
+  // is an Expo framework prefix baked into the web bundle at export; mobile has
+  // no server-style .env/.env.example pair, so it is declared here.
+  'EXPO_PUBLIC_API_BASE_URL',
 ]);
 
 const SRC_DIRS = ['apps/server/src', 'apps/server/test', 'apps/mobile/src'];
@@ -74,7 +78,15 @@ async function findEnvRefs(): Promise<Set<string>> {
   for (const dir of SRC_DIRS) {
     const files = await walkTs(join(REPO_ROOT, dir));
     for (const f of files) {
-      const content = readFileSync(f, 'utf8');
+      // Drop whole-line comments so doc mentions of `process.env.X` in comments
+      // aren't mistaken for real refs (e.g. mobile setup.ts `EXPO_PUBLIC_*` note).
+      const content = readFileSync(f, 'utf8')
+        .split('\n')
+        .filter((line) => {
+          const t = line.trim();
+          return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*');
+        })
+        .join('\n');
       let m: RegExpExecArray | null;
       while ((m = re.exec(content)) !== null) {
         refs.add(m[1]);
