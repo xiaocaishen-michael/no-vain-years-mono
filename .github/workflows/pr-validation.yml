@@ -151,6 +151,16 @@ jobs:
         # no ruleset change needed.
         run: pnpm tsx scripts/orchestrator/parse-gate.ts
 
+      - name: Enforce e2e seed-auth backend boundary (per 05-29-e2e-backend-boundary-hardening P1)
+        # Every seed-authed Expo Web e2e spec (addInitScript + nvy-auth) MUST
+        # intercept GET /me (mockJson GET stub or raw page.route on /me), else
+        # boot useMe leaks to a real :3000 → env-dependent flake (profile.spec.ts
+        # was the named regression). lefthook e2e-seed-auth-mock-check 的云端镜像
+        # (--no-verify 绕不过这里). Full-scan, not nx affected — hermeticity is a
+        # holistic invariant. Runs inside the required validate-and-test job, no
+        # ruleset change needed.
+        run: pnpm tsx scripts/checks/check-e2e-seed-auth-mock.ts
+
       - name: Run Nx Affected Pipeline
         # base=origin/main for PR diff; nx affected computes which projects'
         # cache hashes change, triggers lint/typecheck/test/build/runtime-smoke

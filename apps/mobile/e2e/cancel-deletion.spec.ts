@@ -26,6 +26,11 @@ import { mockJson } from './_support/api-mock';
 const PHONE_SMS_AUTH_URL = '**/api/v1/accounts/phone-sms-auth';
 const CANCEL_SMS_URL = '**/api/v1/auth/cancel-deletion/sms-codes';
 const CANCEL_URL = '**/api/v1/auth/cancel-deletion';
+const ME_URL = '**/api/v1/accounts/me';
+const REFRESH_URL = '**/api/v1/accounts/refresh-token';
+
+// Post-cancel session id (mirrors the CANCEL_URL LoginResponse below).
+const CANCELLED_ACCOUNT_ID = 'acc-e2e-cancel-1';
 
 const VALID_PHONE = '13800138000';
 const VALID_CODE = '123456';
@@ -43,6 +48,33 @@ const FREEZE_403 = {
 
 test.beforeEach(async ({ page }) => {
   // No auth seed → cold boot unauthenticated → AuthGate lands on /(auth)/login.
+  //
+  // The 撤销 path authenticates mid-test (cancel-deletion → setSession), after
+  // which AuthGate's useMe fires GET /me. Stub it (displayName null → AuthGate
+  // routes to /onboarding, the asserted landing) so the suite stays hermetic vs
+  // a real :3000 (per 05-29-e2e-backend-boundary-hardening P1). Without it, a
+  // live backend rejects the mock token → fake-refresh fails → clearSession →
+  // lands /login, breaking the /onboarding assertion. The 保持 path never
+  // authenticates, so the stub is inert there.
+  await mockJson(
+    page,
+    ME_URL,
+    200,
+    {
+      accountId: CANCELLED_ACCOUNT_ID,
+      phone: '+8613800138000',
+      displayName: null,
+      status: 'ACTIVE',
+      createdAt: '2026-05-25T00:00:00.000Z',
+    },
+    'GET',
+  );
+  await mockJson(page, REFRESH_URL, 200, {
+    accountId: CANCELLED_ACCOUNT_ID,
+    accessToken: 'access-e2e-1',
+    refreshToken: 'refresh-e2e-1',
+  });
+
   page.on('console', (msg) => {
     if (msg.type() === 'error') console.log('[browser-console]', msg.text());
   });
@@ -77,7 +109,7 @@ test('US11 撤销 — FROZEN login → modal → cancel-deletion 屏预填 → �
   await mockJson(page, PHONE_SMS_AUTH_URL, 403, FREEZE_403);
   await mockJson(page, CANCEL_SMS_URL, 200, {});
   await mockJson(page, CANCEL_URL, 200, {
-    accountId: 'acc-e2e-cancel-1',
+    accountId: CANCELLED_ACCOUNT_ID,
     accessToken: 'access-e2e-1',
     refreshToken: 'refresh-e2e-1',
   });

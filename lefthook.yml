@@ -251,6 +251,20 @@ pre-commit:
       glob: 'apps/server/src/**/*.ts'
       run: pnpm tsx scripts/checks/check-server-moat.ts
 
+    e2e-seed-auth-mock-check:
+      tags: mobile test
+      # Per docs/plans/2026-05/05-29-e2e-backend-boundary-hardening.md P1 — every
+      # seed-authed Expo Web e2e spec (addInitScript + nvy-auth) MUST intercept
+      # GET /me, else boot useMe leaks to a real :3000 → env-dependent flake
+      # (profile.spec.ts was the named regression). Interception counts via either
+      # a mockJson GET /me stub or a raw page.route on /me (stateful SUT). glob
+      # only decides whether to run — the script ignores args and full-scans
+      # apps/mobile/e2e (holistic invariant, same shape as server-moat-check).
+      # CI mirror: pr-validation.yml validate-and-test step (same name).
+      # Emergency exit: git commit --no-verify.
+      glob: 'apps/mobile/e2e/**/*.spec.ts'
+      run: pnpm tsx scripts/checks/check-e2e-seed-auth-mock.ts
+
     orchestrator-parse-gate:
       tags: sdd orchestrator
       # Pin command-flow features to the orchestrator consumption contract
