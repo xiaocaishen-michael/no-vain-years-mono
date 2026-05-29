@@ -13,3 +13,4 @@ export { SmsInput, type SmsInputProps } from './SmsInput';
 export { DisplayNameInput, type DisplayNameInputProps } from './DisplayNameInput';
 export { LogoMark, type LogoMarkProps } from './LogoMark';
 export { SuccessCheck } from './SuccessCheck';
+export { TabBarIcon, type TabIconName } from './TabBarIcon';

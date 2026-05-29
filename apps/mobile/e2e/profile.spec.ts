@@ -124,11 +124,11 @@ test('US11 — bottom tab bar switches across 4 tabs', async ({ page }) => {
   await expect(page.getByText('首页内容即将推出')).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOT_DIR}/us11-tab-home.png`, fullPage: true });
 
-  await page.getByRole('tab', { name: '搜索' }).tap();
-  await expect(page.getByText('搜索内容即将推出')).toBeVisible();
-
   await page.getByRole('tab', { name: '外脑' }).tap();
   await expect(page.getByText('外脑内容即将推出')).toBeVisible();
+
+  await page.getByRole('tab', { name: '投资' }).tap();
+  await expect(page.getByText('投资内容即将推出')).toBeVisible();
 
   await page.getByRole('tab', { name: '我的' }).tap();
   await expect(page.getByText(SEED_DISPLAY_NAME)).toBeVisible();
