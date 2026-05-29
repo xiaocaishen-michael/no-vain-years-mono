@@ -23,7 +23,14 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: tokens.colors.brand[500],
         tabBarInactiveTintColor: tokens.colors.ink.subtle,
-        tabBarStyle: { paddingBottom: insets.bottom },
+        // 显式 height + 上下 padding：web 端 insets.bottom=0,仅靠默认高度会把
+        // 「图标+标签」挤到底边裁掉标签 descender。56 容纳 24 图标 + 11 标签 + 气口,
+        // 叠加 insets.bottom 给 iOS home indicator 留白。
+        tabBarStyle: {
+          height: 56 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: insets.bottom + 6,
+        },
       }}
     >
       {TABS.map(({ name, label, icon }) => (
