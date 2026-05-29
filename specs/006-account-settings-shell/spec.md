@@ -2,7 +2,7 @@
 feature_id: 006-account-settings-shell
 modules: [account, auth]
 owners: ['@xiaocaishen-michael']
-status: draft
+status: implemented
 created_at: '2026-05-29'
 updated_at: '2026-05-29'
 spec_kit_version: '>=0.8.5,<0.10.0'

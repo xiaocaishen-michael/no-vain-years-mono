@@ -8,7 +8,7 @@
 
 ## 1. Context
 
-mbw-account 后端 16 use case 从旧 Java/Spring 迁移到 mono(NestJS + Prisma)。Plan 1 PoC(`UnifiedPhoneSmsAuth`)+ 批 A(`002-account-profile`)+ 批 B(`003-tokens`:RefreshToken + LogoutAllSessions,#196)+ 批 C(`004-account-deletion`:5 use case,#198)+ 批 D(`005-device-management`:ListDevices + RevokeDevice,#201,server-only — mobile 登录管理屏延后到 settings shell)已 ship,剩 3 个 use case(批 E `006-realname-verification`)待迁。
+mbw-account 后端 16 use case 从旧 Java/Spring 迁移到 mono(NestJS + Prisma)。Plan 1 PoC(`UnifiedPhoneSmsAuth`)+ 批 A(`002-account-profile`)+ 批 B(`003-tokens`:RefreshToken + LogoutAllSessions,#196)+ 批 C(`004-account-deletion`:5 use case,#198)+ 批 D(`005-device-management`:ListDevices + RevokeDevice,#201,server-only — mobile 登录管理屏延后到 settings shell)已 ship,剩 3 个 use case(批 E `007-realname-verification`(007 — 006 已让号给 settings shell))待迁。
 
 迁移走 per-feature SDD(详见 [master § 跨契约](05-25-account-migration-master.md));本子 plan 先把"**怎么迁、按什么顺序迁、每个 use case 业务上做什么**"分析清楚,避免逐 feature 起手时临时摸索。技术栈预研已在 Plan 1 完成(Prisma / jose / throttler / Testcontainers 全验证);**本子 plan 聚焦业务语义 + 依赖拓扑**。
 
@@ -110,7 +110,7 @@ W1.4 `db pull` 已把旧 Java 全部 **6 张表**反推进 `apps/server/prisma/s
 | **B** | `003-tokens` | RefreshToken + LogoutAllSessions | ✅ **已 ship**(#196) | 中 | token 基座(jose 已有)+ 并发续期 | 乐观锁(revoke count) |
 | **C** | `004-account-deletion` | SendDeletionCode / DeleteAccount / SendCancelDeletionCode / CancelDeletion / AnonymizeFrozenAccount | ✅ **已 ship**(#198) | **高** | outbox 发布侧(真消费方 deferred)+ 串行链 + 反枚举 timing | **悲观锁**(CancelDeletion ⟷ Anonymize 互斥)+ outbox 同 tx |
 | **D** | `005-device-management` | ListDevices + RevokeDevice | ✅ **已 ship**(#201,server-only) | 中 | ip2region geo + DeviceRevokedEvent | 乐观锁(revoke count) |
-| **E** | `006-realname-verification` | Initiate + Confirm + QueryRealnameStatus | ⬜ 待迁(**下一个**) | **最高** | **split-tx**(外部 HTTP 不可在 tx 内持锁)+ cloudauth + 加密字段 | DataIntegrityViolation(idCardHash 唯一) |
+| **E** | `007-realname-verification` | Initiate + Confirm + QueryRealnameStatus | ⬜ 待迁(**下一个**) | **最高** | **split-tx**(外部 HTTP 不可在 tx 内持锁)+ cloudauth + 加密字段 | DataIntegrityViolation(idCardHash 唯一) |
 
 每个 feature = 1 个 `specs/NNN-<slug>/` 目录(per ADR-0024 扁平布局)。逐 use case 的详细迁移步骤见 [子 plan 3](05-25-account-migration-p3-usecase-steps.md)。
 
