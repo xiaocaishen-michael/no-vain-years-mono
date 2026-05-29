@@ -48,6 +48,12 @@ jobs:
         working-directory: apps/server
         run: npx prisma generate
 
+      # runtime-smoke 跑 Playwright e2e，需先装 chromium，否则 browserType.launch
+      # 报 "Executable doesn't exist at .cache/ms-playwright/chromium_headless_shell"。
+      # 与 pr-validation.yml / e2e-real-backend.yml 对齐（此前漏装，nightly 长期红）。
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Run Full Pipeline (No Cache)
         run: pnpm exec nx run-many -t lint typecheck test build runtime-smoke --all --skip-nx-cache
 
