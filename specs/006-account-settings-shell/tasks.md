@@ -60,7 +60,7 @@ created_at: '2026-05-29'
 
 ## Phase 5: Polish & Verify（跨 cutting）
 
-- [ ] T009 [Mobile] 全量验收：`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿（**含 `runtime-smoke`** —— mobile web export 路径靠它 + e2e 抓，per ADR-0040）+ `settings-shell.spec.ts` 全 3 US 段绿 + grep 确认无 `@nvy/auth`/`@nvy/design-tokens` 残留 import、无 `.js` 扩展相对 import、无 `as Parameters<...>` 残留强转
+- [X] T009 [Mobile] 全量验收：`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿（**含 `runtime-smoke`** —— mobile web export 路径靠它 + e2e 抓，per ADR-0040）+ `settings-shell.spec.ts` 全 3 US 段绿 + grep 确认无 `@nvy/auth`/`@nvy/design-tokens` 残留 import、无 `.js` 扩展相对 import、无 `as Parameters<...>` 残留强转
 
 ---
 
