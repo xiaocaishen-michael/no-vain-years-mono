@@ -66,6 +66,15 @@
         "command": "pnpm exec playwright test -c playwright.runtime-smoke.config.ts",
         "cwd": "apps/mobile"
       }
+    },
+    "e2e-real-backend": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/playwright-test-results"],
+      "dependsOn": ["build", { "projects": ["server"], "target": "build" }],
+      "options": {
+        "command": "pnpm exec tsx e2e/_support/real-backend-runner.ts",
+        "cwd": "apps/mobile"
+      }
     }
   }
 }

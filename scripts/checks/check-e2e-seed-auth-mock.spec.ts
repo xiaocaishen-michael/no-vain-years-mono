@@ -53,4 +53,10 @@ describe('check-e2e-seed-auth-mock', () => {
       // await mockJson(page, ME_URL, 200, { displayName: 'x' }, 'GET');`;
     expect(reasons(content)).toHaveLength(1);
   });
+
+  it('seed-authed + real-backend-exempt marker (真后端 smoke) → not checked', () => {
+    const content = `${SEED}
+      // e2e-seed-auth-mock-check: real-backend-exempt — hits the real backend.`;
+    expect(scanSpecFiles(files(content))).toHaveLength(0);
+  });
 });
