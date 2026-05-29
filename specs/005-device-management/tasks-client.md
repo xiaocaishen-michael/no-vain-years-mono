@@ -2,7 +2,7 @@
 feature_id: 005-device-management
 spec_ref: ./spec.md
 plan_ref: ./plan.md
-status: ready
+status: done
 created_at: '2026-05-29'
 amends: '#201 (server US1-4); p4 子 plan B2'
 ---
@@ -53,7 +53,7 @@ amends: '#201 (server US1-4); p4 子 plan B2'
 
 ## Phase 3: Polish & Verify
 
-- [ ] TC11 [Verify] 全量验收：`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿（含 `runtime-smoke` —— mobile web export，per ADR-0040）+ `login-management.spec.ts` 全段绿 + grep 断言：无 `@nvy/auth`/`@nvy/design-tokens` 残留 import、无 `.js` 扩展相对 import、**无 `Number(` / `as unknown as number` recordId 桥接**（SC-C05）、无 `[id]` 残留路由 param。**catalog 无需改**（FR-S15 纯注解，无新 operation / 无边界变更）。spec/plan frontmatter `status` → `implemented`/`done`
+- [x] TC11 [Verify] 全量验收：`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿（含 `runtime-smoke` —— mobile web export，per ADR-0040）+ `login-management.spec.ts` 全段绿 + grep 断言：无 `@nvy/auth`/`@nvy/design-tokens` 残留 import、无 `.js` 扩展相对 import、**无 `Number(` / `as unknown as number` recordId 桥接**（SC-C05）、无 `[id]` 残留路由 param。**catalog 无需改**（FR-S15 纯注解，无新 operation / 无边界变更）。spec/plan frontmatter `status` → `implemented`/`done`
 
 ---
 
