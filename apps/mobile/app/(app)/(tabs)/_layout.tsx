@@ -1,18 +1,19 @@
-// FR-013 / FR-024 — bottom tab bar registers 4 routes (首页 / 搜索 / 外脑 / 我的).
-// Labels only — no tabBarIcon this batch per FR-024 (图标系统 PHASE 2 mockup 决定).
-// FR-027 — explicit useSafeAreaInsets for tabBarStyle.paddingBottom (iOS home
-// indicator). Active-state visual uses Expo Router default + brand-tinted label.
+// FR-013 / FR-024 — bottom tab bar registers 4 routes (首页 / 外脑 / 投资 / 我的).
+// 图标系统 per portfolio handoff「底部 Tab 图标系统」(2026-05-29)：线性描边 24×24,
+// inactive 中性灰 (ink.subtle) / active 品牌蓝实心 (brand[500])，经 ~/ui TabBarIcon。
+// FR-027 — explicit useSafeAreaInsets for tabBarStyle.paddingBottom (iOS home indicator).
 
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tokens } from '~/theme';
+import { TabBarIcon, type TabIconName } from '~/ui';
 
-const TAB_LABELS = {
-  home: '首页',
-  search: '搜索',
-  pkm: '外脑',
-  profile: '我的',
-};
+const TABS: { name: string; label: string; icon: TabIconName }[] = [
+  { name: 'index', label: '首页', icon: 'home' },
+  { name: 'pkm', label: '外脑', icon: 'brain' },
+  { name: 'portfolio', label: '投资', icon: 'invest' },
+  { name: 'profile', label: '我的', icon: 'profile' },
+];
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -25,19 +26,19 @@ export default function TabsLayout() {
         tabBarStyle: { paddingBottom: insets.bottom },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{ title: TAB_LABELS.home, tabBarLabel: TAB_LABELS.home }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{ title: TAB_LABELS.search, tabBarLabel: TAB_LABELS.search }}
-      />
-      <Tabs.Screen name="pkm" options={{ title: TAB_LABELS.pkm, tabBarLabel: TAB_LABELS.pkm }} />
-      <Tabs.Screen
-        name="profile"
-        options={{ title: TAB_LABELS.profile, tabBarLabel: TAB_LABELS.profile }}
-      />
+      {TABS.map(({ name, label, icon }) => (
+        <Tabs.Screen
+          key={name}
+          name={name}
+          options={{
+            title: label,
+            tabBarLabel: label,
+            tabBarIcon: ({ focused, color, size }) => (
+              <TabBarIcon name={icon} focused={focused} color={color} size={size} />
+            ),
+          }}
+        />
+      ))}
     </Tabs>
   );
 }
