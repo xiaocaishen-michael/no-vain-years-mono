@@ -1,10 +1,10 @@
 ---
 feature_id: 005-device-management
 spec_ref: ./spec.md
-status: done
+status: in-progress
 created_at: '2026-05-26'
-updated_at: '2026-05-26'
-adr_refs: ['0019', '0022', '0024', '0032', '0033', '0041', '0043']
+updated_at: '2026-05-29'
+adr_refs: ['0019', '0022', '0024', '0030', '0032', '0033', '0040', '0041', '0043']
 context7_verified: []
 ---
 
@@ -180,4 +180,71 @@ _perf 预算 SoT = spec.md frontmatter `perf_budgets`。geo 解析为内存 xdb 
 
 ---
 
-**Plan Version**: 1.0.0 | **Created**: 2026-05-26 | **ID-namespace**: US1-4 / FR-S01..S14 / SC-S01..S10
+## Client UI Plan（2026-05-29 amend — US5 / B2，tasks → `tasks-client.md`）
+
+> **本段 = p4 子 plan B2 的 plan 回填**；server 段（上文）已 ship（#201）不动。branch `005-device-management-client`，server contract polish（FR-S15）+ mobile client 同 1 PR。
+> **UI 类别 = 类 1 标准 UI**（settings 列表/详情）。旧 app `login-management/` 已是 PHASE-2 mockup 成品 → **高保真 port，跳过占位阶段**（per [sdd.md § 类 1](../../docs/conventions/sdd.md) + memory `design_tokens_reuse_not_redesign`，禁重设计 token）。
+
+### 路由结构（最终态）
+
+```text
+# route 文件（仅这 3 个进 app/ —— Expo Router 扫 app/**/*.tsx 当 route）
+apps/mobile/app/(app)/settings/account-security/login-management/
+  _layout.tsx        # Stack：index title「登录管理」/ [recordId] title「登录设备详情」
+  index.tsx          # 设备列表（bespoke DeviceRow + 本机徽标 + 单页 size=100，无分页 CTA）
+  [recordId].tsx     # 设备详情（4 字段，读 list query cache）+ 移除按钮（仅 !isCurrent）
+
+# 非 route presentational 组件 → src/（禁进 app/，否则 phantom route，per memory expo_router_app_route_scan）
+apps/mobile/src/settings/login-management/
+  RemoveDeviceSheet.tsx  # 底部确认 sheet（RN Modal，3 态 default/submitting/error）
+  DeviceIcon.tsx         # deviceType → svg glyph（5 形态，react-native-svg 已在 deps）
+```
+
++ `account-security/index.tsx`「登录管理」行：006 disabled 占位 → **enabled push**（FR-C08，同 PR 一行 flip = 集成点）。
+
+### 复用资产 + port remap（旧 app → mono）
+
+| 旧 app | mono 落点 | 备注 |
+|---|---|---|
+| `@nvy/auth` `DeviceItem` / `DeviceListResult` | `@nvy/api-client` `DeviceListItem` / `DeviceListResponse` | Orval 生成，server 真相源；`id: string`（FR-S15 后 revoke `recordId: string` 一致） |
+| `lib/hooks/useDevicesQuery(page,size)` | `~/auth/use-devices.ts` `useDevices()` | 包 Orval `useDeviceManagementControllerList`，**单页** `{ axios:{ params:{ size:100 }}}`；queryKey = `getDeviceManagementControllerListQueryKey()`（`['/api/v1/auth/devices']`） |
+| 旧 `revokeDevice(recordId)` 裸 fn | `~/auth/use-devices.ts` `useRevokeDevice()` | 包 Orval `useDeviceManagementControllerRevoke`；`onSuccess` → `invalidateQueries(listQueryKey)`；**不导航**（屏状态机驱动，per `~/auth` wrapper 范式） |
+| `lib/error/device-errors.ts`（`@nvy/api-client` `ApiClientError`/`ResponseError`） | `~/auth/device-errors.ts` | **重写** for mono `AxiosError<ProblemDetailResponse>`：`isAxiosError(e)` + `e.response?.status` + `e.response?.data?.code`；映射 401 session / 403 `ACCOUNT_IN_FREEZE_PERIOD` frozen / 404 `DEVICE_NOT_FOUND` / 409 `CANNOT_REMOVE_CURRENT_DEVICE` / 429 rate / 5xx+TypeError network / unknown → 文案。**vitest（logic）** |
+| `lib/format/datetime.ts` `formatLastActive(iso, 'minute'\|'second')` | `~/format/datetime.ts` | UTC-invariant 纯 fn，**vitest**（minute/second 两 granularity + 边界） |
+| inline `Card` | `~/settings/primitives` `Card`（B1 已 port） | 复用 |
+| bespoke `ErrorRow`（list 全屏错误态，含 `onRetry` 按钮） | `~/ui` `ErrorRow`（仅 `{ text }`，**无 onRetry**） | list 错误态 = `~/ui ErrorRow`（text）+ **另置** 重试 `Pressable`（`refetch`）；sheet 内错误 = `~/ui ErrorRow`（message-only，契合）。**禁** import 旧 bespoke ErrorRow |
+| `colors.ink.*`（DeviceIcon/Chevron svg stroke，className 不收 svg） | `~/theme` `tokens.colors.ink.*` | svg stroke 必须 hex，从 token 取（非 className） |
+| `[id]` param + `Number(id)` | `[recordId]` param + **string 直用** | FR-S15 后无 `Number()`；`useLocalSearchParams<{recordId:string}>` |
+
+### 详情页数据源（FR-C04，sever 无单设备 GET）
+
+`[recordId].tsx`：`queryClient.getQueryData<DeviceListResponse>(listQueryKey)` → `items.find(x => x.id === recordId)`；miss → fallback `useDevices()` 重拉；仍缺 → 「设备不存在或已被移除」NotFound 态 + 返回。沿旧 app cache-read 范式（无 `GET /devices/{id}`）。
+
+### 撤销流（FR-C05/C06）
+
+`RemoveDeviceSheet`（port，3 态状态机自持）：confirm → `useRevokeDevice().mutateAsync({ recordId })` → 成功 invalidate 列表 + `onClose()` + `router.back()`；catch → `deviceErrorCopy(mapDeviceError(e))` 顶部 ErrorRow + 回 default 可重试。RN `Modal`（transparent slide）—— **RN-Web 兼容靠 e2e 验**（用 Modal+Pressable，**非 Alert**，规避 RN-Web Alert 单按钮陷阱，per memory `visual_smoke_unreachable_when_finally_clears_session` 邻域教训）。
+
+### FR-S15 server 改（同 PR，纯 contract 注解）
+
+`apps/server/src/auth/device-management.controller.ts` 的 revoke `@ApiParam({ name:'recordId', ... })` 加 `type: 'string'` → `pnpm exec nx affected -t generate`（server openapi → Orval regen）→ api-client revoke `recordId: number → string`。运行时不变（`@Param(ParseBigIntPipe) recordId: bigint` 已从路径 string 解析）；**无新 server 测**（行为不变，既有 revoke IT 回归绿即可）。
+
+### 测试分层（per memory `mono_mobile_test_layering`）
+
+- **vitest（logic）**：`formatLastActive`（granularity + 边界）；`mapDeviceError`/`deviceErrorCopy`（401/403/404/409/429/5xx/TypeError/unknown 全分支 + 文案）。
+- **Playwright Expo Web（UI/导航）**：US5 Independent Test 全程（mock list 混 current/legacy → 列表渲染 + 徽标 + 降级 → 详情 4 字段 → sheet → DELETE 200 行移除 / 409 / 404 错误态）。mock 走 `e2e/_support/api-mock.ts` `mockJson`；seed authed via `addInitScript`（仿 `settings-shell.spec.ts` / `profile.spec.ts`，含 `x-device-id`）。
+- **presentational（DeviceIcon / DeviceRow / RemoveDeviceSheet / [recordId] / index）**：无单测，typecheck/lint + e2e 覆盖。
+
+### Open Decisions (client)
+
+| # | 决策 | 结论 |
+|---|---|---|
+| DC1 | DeviceIcon / Chevron svg 依赖 | `react-native-svg@15.12.1` **已在 `apps/mobile/package.json`**（profile.tsx / LogoMark 在用）→ **无新依赖** |
+| DC2 | 详情页数据源 | list query cache（server 无单设备 GET）；miss→fallback 重拉→NotFound。沿旧 app 范式（DC2 资产 ground-truth 已 verify） |
+| DC3 | 错误映射落点 | 抽 `~/auth/device-errors.ts` helper（logic 可 vitest，per login `mapError` 先例），屏只消费文案 |
+| DC4 | 撤销确认 UX | `RemoveDeviceSheet` 底部 RN Modal（高保真 port）；非 Alert（RN-Web 兼容靠 e2e 验） |
+| DC5 | 分页 | 单页 `size=100`（无 CTA，PoC <10 设备，senior-eng test）；US5 Independent Test 不覆盖分页 |
+| DC6 | wrapper / error-map 落点 | `~/auth/`（设备端点属 `/auth/devices` 命名空间，与 `logout-all`/`cancel-deletion`/`useMe` 同 grouping） |
+
+---
+
+**Plan Version**: 1.0.0（server）/ 1.1.0（+client amend 2026-05-29） | **Created**: 2026-05-26 | **ID-namespace**: US1-4 / FR-S01..S15 / SC-S01..S10（server）· US5 / FR-C01..C09 / SC-C01..C05（client）

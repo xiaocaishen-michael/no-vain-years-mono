@@ -2,9 +2,9 @@
 feature_id: 005-device-management
 modules: [security, auth]
 owners: ['@xiaocaishen-michael']
-status: implemented
+status: implementing
 created_at: '2026-05-26'
-updated_at: '2026-05-26'
+updated_at: '2026-05-29'
 spec_kit_version: '>=0.8.5,<0.10.0'
 orchestrator_compat: '>=0.2.0'
 perf_budgets:
@@ -48,6 +48,7 @@ state_branches:
 - 设备元数据（`deviceId` / `deviceName` / `deviceType` / `ipAddress` / `loginMethod`）已随 Plan 1 token 持久化落在 `refresh_token` 表（含偏索引 `idx_refresh_token_account_device_active`）。**本 feature 不新增表、不改表结构。**
 - 首次落地 **`DeviceRevokedEvent`**（撤销成功同事务写 outbox）+ 首次落地 **IP → 地理位置解析**（ip2region 的 Node 等价，库选型归 plan）。
 - **本批 server-only**：2 端点 + 设备名/类型采集补强；mobile 登录管理屏延后（见 § Out of Scope，clarify 2026-05-26 定）。
+- **2026-05-29 amend（branch `005-device-management-client`，p4 子 plan B2）**：mobile 登录管理屏（US5）落地，高保真 port 旧 app；含**一处 server contract 注解修正**（FR-S15，`recordId` @ApiParam type:string + api-client regen，运行时行为不变）。本 amend = server contract polish + mobile client，server↔app 同 1 PR。
 
 ## Context
 
@@ -79,9 +80,18 @@ state_branches:
 - Q: `deviceName` / `deviceType` 是否本批补强服务端采集？（client 已发头，server controllers 只读 `x-device-id`，存量行 `null`/`UNKNOWN`） → A: **本批服务端补读** —— token 签发路径（login / cancel-deletion controller，refresh 继承父行血缘不读头）补读 `x-device-name` / `x-device-type` 入库（persist 服务已支持存储，仅 controller 入参缺）；新登录设备具可读名称/类型，存量行降级展示。
 - Q: 本批是否落地 mobile「登录管理」屏（US5）？ → A: **延后，server 先行** —— settings shell（spec B）未建、登录管理屏无正式入口；本批 server-only（2 端点 + 采集补强），mobile 屏随 settings shell 落地后单独接入（仿 004 delete-account 延后先例）。spec-merge 约束（字段口径 / 错误码 / user-journey）随之收敛：字段以 server 为真相源（Orval 生成）、错误码 `DEVICE_NOT_FOUND` / `CANNOT_REMOVE_CURRENT_DEVICE` 沿旧 Java、user-journey 留 client feature 再定。
 
+### Session 2026-05-29（client amend — B2）
+
+> p4 子 plan B2「设备管理 client」起手。spec-merge 约束多数已在 Session 2026-05-26 预锁（字段以 server 为真相源 / 错误码 / 路径参数）；本轮决 client 落点 + 真分歧（user 确认 2026-05-29）。
+
+- Q: 本 client feature 的 spec 落点？ → A: **amend 005 原地**（不吃新编号，realname 让号顺延 `007`，per p4 决策 #3）；branch `005-device-management-client`；本 spec 补 US5（client）+ Client FR/SC + 翻 Out of Scope 延后段；新建 `tasks-client.md`（已 ship 的 server tasks 不动）。
+- Q: 列表项 `id` 是 `string`（bigint JSON 安全），但 Orval 生成的 revoke `recordId` 是 `number`，类型不一致怎么处理？ → A: **修 server `@ApiParam` 加 `type:'string'` + regen api-client**（FR-S15），使 `recordId: string` 与列表 `id: string` 一致，消除 client 侧 `Number()` 精度风险。纯 contract 注解修正（`ParseBigIntPipe` 已从路径 string 解析 bigint，运行时行为不变）；故本 amend **含一处 server 改 + api-client regen**，server↔app 同 1 PR（不再纯 mobile）。
+- Q: 撤销交互形态？ → A: **高保真 port 旧 app** —— list 行 → `[recordId]` 详情页（4 字段：名/地点/方式/最近活跃）→ 「移除该设备」按钮（仅非当前设备）→ `RemoveDeviceSheet` 底部确认 sheet；详情页数据读自 list query cache（server 无单设备 GET 端点）。含 `DeviceIcon`（deviceType → glyph，UNKNOWN fallback）。
+- Q: 分页？（Orval `list()` fn 不带 page/size 参数，DeviceListResponse 有 page/totalPages） → A: **单页拉取**（`size=100` 经 axios `params` 注入，无「更多设备」CTA）—— PoC 用户设备数 <10，不为 <10 项造分页累加（senior-eng test）。
+
 ## User Scenarios & Testing _(mandatory)_
 
-> 本批 server-only（mobile 登录管理屏延后，见 § Out of Scope）。
+> Server 段（US1-4）已 ship（#201）；**US5 = 2026-05-29 client amend** 新增（见 § Clarifications Session 2026-05-29）。
 
 ### User Story 1 — [Server] 查看登录设备列表（ListDevices，Priority: P1）
 
@@ -147,6 +157,25 @@ state_branches:
 
 ---
 
+### User Story 5 — [Mobile] 登录管理屏（设备列表 + 远程撤销，Priority: P1）
+
+已登录用户从 `设置 → 账号与安全 → 登录管理` 进入，查看自己的活跃登录设备列表（图标 / 设备名 + 「本机」徽标 / 最近活跃·地点），点设备进详情，对**非当前**设备执行远程撤销。消费 US1/US2 server 端点，是 005 的 client 收口（p4 子 plan B2）。
+
+**Why this priority**: server 设备管理（US1-4）已 ship 但无 UI 入口，用户无法实际「看到 / 移除」设备；本屏是该能力对用户可见的唯一路径，闭合 005 价值。
+
+**Independent Test**（Playwright Expo Web，mock API via `e2e/_support/api-mock.ts` `mockJson`）：seed authed（client setup 注入 `x-device-id`）→ mock `GET /api/v1/auth/devices` 返回混 current 行 + 另一设备行 + legacy 行（`deviceName=null` / `deviceType=UNKNOWN` / `location=null`）→ 进登录管理屏 → 断言列表渲染、current 行显「本机」徽标、legacy 行显「未知设备」+ UNKNOWN fallback 图标 + 「—」地点 → 点非当前设备进 `[recordId]` 详情（4 字段）→ 「移除该设备」→ `RemoveDeviceSheet` 确认 → mock `DELETE /api/v1/auth/devices/{recordId}` 200 → sheet 关 + 返回 + 该行从列表消失；另测 mock 409（current）/ 404（不存在）→ 统一错误展示。
+
+**Acceptance Scenarios**:
+
+1. **Given** 列表混 current + 另一设备 + legacy 行（`deviceName=null` / `deviceType=UNKNOWN` / `location=null`），**When** 进登录管理屏，**Then** 渲染全部行、current 行显「本机」徽标且**无移除入口**、legacy 行 `deviceName`→「未知设备」/ `deviceType=UNKNOWN`→fallback 图标 / `location=null`→「—」
+2. **Given** 点击非当前设备行，**When** 进入，**Then** 路由 `account-security/login-management/[recordId]`、详情页显 4 字段（设备名 / 登录地点 / 登录方式中文标签 / 最近活跃秒级），数据**读自 list query cache**（server 无单设备 GET 端点；cache miss → fallback 重拉列表；仍缺 → NotFound 态）
+3. **Given** 详情页对非当前设备点「移除该设备」→ `RemoveDeviceSheet` 确认，**When** `DELETE` 成功 200，**Then** sheet 关 + 返回列表 + invalidate 重拉 + 该行不再出现
+4. **Given** 撤销返回 409 `CANNOT_REMOVE_CURRENT_DEVICE`（防御性，正常详情页对 current 无移除按钮），**When** 错误返回，**Then** 统一错误展示「无法移除当前设备，请改用退出登录」、行不变
+5. **Given** 撤销返回 404 `DEVICE_NOT_FOUND`（行已不存在 / 竞态），**When** 错误返回，**Then** 统一错误展示「设备不存在或已被移除」+ 刷新列表
+6. **Given** 006 account-security index「登录管理」行此前 disabled 占位，**When** B2 ship，**Then** 该行 enabled → push 登录管理屏（B1 占位激活点）
+
+---
+
 ### Edge Cases
 
 - 账号只有当前设备一条活跃 token → 列表返回 1 条且 `isCurrent=true`，无可撤销对象
@@ -156,6 +185,10 @@ state_branches:
 - ip2region 对公网 IP 解析失败 / 数据库无该段 → `location` 为空（不报错）
 - 撤销请求缺 `x-device-id` 头（无法判定 isCurrent / 防自撤）→ 401（拒绝，保证防自撤前置）
 - 撤销与「该设备自己刷新 token 轮换」竞态 → 轮换产生新行、撤销针对旧 recordId；affected-count 保证旧行恰一次撤销，新行不受影响
+- **[Mobile]** 列表仅当前设备一条 → 渲染 1 行 + 「本机」徽标、无可移除对象（详情页无移除按钮）
+- **[Mobile]** 列表加载失败（network / 5xx）→ 全屏 `ErrorRow` + 重试（refetch）
+- **[Mobile]** 详情页直链进入（深链 / 刷新）但 list cache 已空 → fallback 重拉列表；命中则正常、未命中显「设备不存在或已被移除」NotFound 态 + 返回
+- **[Mobile]** 撤销过程中设备列表被其他操作 invalidate → 以 server 重拉结果为准（撤销成功即从列表消失，幂等 200 同样消失）
 
 ## Requirements _(mandatory)_
 
@@ -175,6 +208,19 @@ state_branches:
 - **FR-S12**: 撤销请求缺 `x-device-id` 头（无法判定当前设备）/ 未认证 → MUST 401（保证 FR-S07 防自撤前置）。
 - **FR-S13**: 系统 MUST 对两端点限流：list 30/account·100/IP，revoke 5/account·20/IP（均 /60s；IP 桶按 socket IP 计 —— 当前直连部署 trustProxy 未启用、恒见真实公网 IP，故无单独的“无公网 IP 跳过”分支；若后续前置反代 / LB 致源 IP 收敛再议），超限 429 + `Retry-After`。
 - **FR-S14**: 系统 MUST 在 token 签发路径（login / cancel-deletion controller，refresh 继承父行血缘不读头）补读 `x-device-name` / `x-device-type` 头并入库（client 已发，`core/api/setup.ts` 实证；persist 服务已支持存储），使新登录设备具可读名称 / 类型；存量行降级展示（`null` / `UNKNOWN`）。**回归**：既有 001/003/004 token 签发路径（无 name/type 头时）行为不变。
+- **FR-S15**（2026-05-29 amend）: revoke 端点 `recordId` 路径参数 MUST 在 OpenAPI 声明 `type: 'string'`（`device-management.controller.ts` `@ApiParam` 加 `type:'string'`），使生成的 `@nvy/api-client` revoke 变量 `recordId: string` 与列表项 `id: string`（bigint JSON 安全序列化）类型一致，消除 client 侧 `Number()` 精度桥接。**纯 contract 注解修正**：server 运行时行为不变（`@Param(ParseBigIntPipe) recordId: bigint` 已从路径 string 解析），无 use case 逻辑 / bounded-context 边界改动；改后 MUST 跑 `nx affected --target=generate` regen api-client（per api-contract rule）。
+
+### Client Functional Requirements（2026-05-29 amend — US5）
+
+- **FR-C01**: 登录管理屏 MUST 经 `~/api-client` Orval hook（`useDeviceManagementControllerList`）拉设备列表，**禁手写 fetch/axios**（api-contract 硬 invariant）；单页拉取 `size=100`（经 axios `params` 注入，无「更多设备」分页 CTA）。
+- **FR-C02**: 列表项渲染 MUST 以 server 为真相源字段（`{id, deviceId, deviceName, deviceType, location, loginMethod, lastActiveAt, isCurrent}`）；降级口径：`deviceName=null`→「未知设备」、`deviceType` 非已知枚举（含 `UNKNOWN`）→ fallback 图标、`location=null`→「—」。
+- **FR-C03**: `isCurrent=true` 行 MUST 显「本机」徽标，且**不提供移除入口**（详情页对当前设备隐藏「移除该设备」按钮）。
+- **FR-C04**: 设备详情屏（`[recordId]`）数据 MUST 读自 list query cache（server 无单设备 GET 端点）；cache miss → fallback 重拉列表 query；仍缺失 → 「设备不存在或已被移除」NotFound 态 + 返回。
+- **FR-C05**: 撤销 MUST 经 Orval `useDeviceManagementControllerRevoke`（`DELETE /api/v1/auth/devices/{recordId}`）；成功后 MUST invalidate 设备列表 query 重拉；mutation `onSuccess` **不导航**，由屏状态机驱动（`RemoveDeviceSheet` 关 + `router.back()`），per `~/auth` wrapper 范式。
+- **FR-C06**: 撤销错误 MUST 统一映射展示（错误码沿用 server）：`409 CANNOT_REMOVE_CURRENT_DEVICE`→「无法移除当前设备，请改用退出登录」；`404 DEVICE_NOT_FOUND`→「设备不存在或已被移除」+ 刷新列表；`429`→ Retry-After 提示；network / unknown → 通用错误文案。
+- **FR-C07**: 登录管理屏路由 MUST 落 `apps/mobile/app/(app)/settings/account-security/login-management/` **仅 route 文件**（`_layout` Stack + `index` 列表 + `[recordId]` 详情）；**非 route 的 presentational 组件**（`DeviceIcon` / `RemoveDeviceSheet`）MUST 落 `apps/mobile/src/settings/login-management/`（**不进 `app/`** —— Expo Router 扫 `app/**/*.tsx` 当 route，co-locate 会生成 phantom route，per memory `expo_router_app_route_scan`；与 006 把 primitives 放 `~/settings` 同纪律）。路由 param 名 MUST 为 `recordId`（对齐 server，**非**旧 app `[id]`）。
+- **FR-C08**: `account-security/index.tsx`「登录管理」行 MUST 由 006 的 disabled 占位 flip 为 enabled → `router.push` 登录管理屏（B1 占位激活点；同 PR 内一行 flip = 集成点）。
+- **FR-C09**: port 文件 MUST 完成 import remap（`@nvy/auth`→`~/auth` / `@nvy/design-tokens`(`colors`)→`~/theme` 或 NativeWind class）+ 相对 import extensionless（Metro web 陷阱）；纯逻辑（`formatLastActive`）落 `~/format/datetime` + vitest（含 legacy `null`/`UNKNOWN` 降级用例）。
 
 ### Key Entities _(数据涉及)_
 
@@ -197,6 +243,14 @@ state_branches:
 - **SC-S09**: 列表端点（含地理解析）P95 ≤ 150ms、撤销端点 P95 ≤ 120ms（perf budget —— frontmatter `perf_budgets` 为 SoT；PoC 不逐 feature load-test，per 004 先例，不设独立 perf IT task）。
 - **SC-S10**: 采集补强后，新登录设备的 `deviceName` / `deviceType` 按 client 发送的头落库（集成测试：带 name/type 头登录 → 列表显示真实名/类型；不带头 → 降级 null/UNKNOWN，既有路径回归不破）。
 
+### Client Measurable Outcomes（2026-05-29 amend — US5）
+
+- **SC-C01**: 用户能在登录管理屏看到自己**全部活跃**设备，当前设备被「本机」徽标标记且无移除入口（Playwright：mock 多设备列表 → 断言徽标 / 图标 / 降级文案）。
+- **SC-C02**: 用户能对非当前设备执行远程撤销，成功后该行从列表消失（Playwright：mock `DELETE` 200 → invalidate 重拉 → 断言行移除）。
+- **SC-C03**: 撤销当前设备（409）/ 不存在设备（404）/ 限流（429）均有统一、可读的错误展示，不泄露内部细节（Playwright 各错误码分支断言）。
+- **SC-C04**: legacy 行（`deviceName=null` / `deviceType=UNKNOWN` / `location=null`）优雅降级（「未知设备」/ fallback 图标 / 「—」），不崩溃、不显原始 `null`（Playwright mock legacy 行断言 + `formatLastActive` vitest）。
+- **SC-C05**: 生成的 api-client revoke `recordId` 与列表 `id` 类型一致（均 `string`），client 侧**无** `Number()` / `as unknown as number` 数字精度桥接（typecheck + grep 断言）。
+
 ## Assumptions
 
 - **设备元数据已持久化**：`refresh_token` 设备列由 Plan 1 / 003 token 签发与轮换写入；本 feature 不新增表、不改表结构（已实证 schema 含全部列 + 偏索引）。
@@ -207,7 +261,7 @@ state_branches:
 
 ## Out of Scope（本 feature 不做）
 
-- **mobile 登录管理屏（原 US5）**：clarify 2026-05-26 定**延后** —— settings shell（spec B）未建、无正式入口（`profile.tsx` 的设置按钮指向尚未实现的 `/(app)/settings`）。本批 server 2 端点 + 采集补强先行；登录管理屏（设备列表 + DeviceIcon + 撤销交互，port 旧 app `login-management/`）随 settings shell 落地后作独立 client feature 接入（仿 004 delete-account 延后先例）。届时字段以 server 为真相源（Orval 生成）、错误码沿用本批 `DEVICE_NOT_FOUND` / `CANNOT_REMOVE_CURRENT_DEVICE`。
+- ~~**mobile 登录管理屏（原 US5）**：clarify 2026-05-26 定延后~~ → **已解延后**：settings shell（006-account-settings-shell）已 ship（#221），登录管理屏获正式入口；2026-05-29 经本 amend（branch `005-device-management-client`，p4 子 plan B2）落地为 **US5**（设备列表 + DeviceIcon + `[recordId]` 详情 + `RemoveDeviceSheet` 撤销，高保真 port 旧 app），见 § User Story 5 + § Client Functional Requirements。字段以 server 为真相源（Orval 生成）、错误码沿用 `DEVICE_NOT_FOUND` / `CANNOT_REMOVE_CURRENT_DEVICE`。
 - **设备会话审计 / 通知消费方**：`DeviceRevokedEvent` 本 feature 仅发布到 outbox，**无 in-process 消费方**（审计日志 / 异地登录提醒 / 推送归后续 feature）。
 - **「全端登出」**：已由 003 `LogoutAllSessions` 覆盖，不在此重做。
 - **设备重命名 / 信任设备 / 设备级 2FA**：超出列表 + 撤销范围。
