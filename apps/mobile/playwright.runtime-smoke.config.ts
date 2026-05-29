@@ -22,8 +22,12 @@ export default defineConfig({
   outputDir: './playwright-test-results',
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
-  retries: process.env['CI'] ? 2 : 0,
-  workers: process.env['CI'] ? 1 : undefined,
+  // Each spec stubs its own network boundary (per 05-29-e2e-backend-boundary-
+  // hardening P1), so the suite is hermetic and parallel-safe — workers:1 is no
+  // longer needed to avoid storageState cross-talk. retries:1 + trace stays only
+  // as a flake probe (quarantine + fix root cause, per Fowler nonDeterminism),
+  // NOT as the retries:2 mask that previously hid env-dependent failures.
+  retries: process.env['CI'] ? 1 : 0,
   reporter: [['html', { outputFolder: 'playwright-report', open: 'never' }]],
   use: {
     baseURL: `http://localhost:${PORT}`,
