@@ -60,13 +60,10 @@
     },
     "runtime-smoke": {
       "executor": "nx:run-commands",
-      "outputs": [
-        "{projectRoot}/dist",
-        "{projectRoot}/playwright-report",
-        "{projectRoot}/playwright-test-results"
-      ],
+      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/playwright-test-results"],
+      "dependsOn": ["build"],
       "options": {
-        "command": "npx expo export -p web && pnpm exec playwright test -c playwright.runtime-smoke.config.ts",
+        "command": "pnpm exec playwright test -c playwright.runtime-smoke.config.ts",
         "cwd": "apps/mobile"
       }
     }
