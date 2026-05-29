@@ -86,6 +86,7 @@ export default function LoginScreen() {
   const {
     form,
     state,
+    smsSent,
     smsCountdown,
     errorToast,
     errorScope,
@@ -104,10 +105,6 @@ export default function LoginScreen() {
   // SMS request is gated on a valid phone (server would 400 otherwise).
   const phoneValid = PHONE_REGEX.test(form.watch('phone'));
 
-  const handleClose = () => {
-    if (router.canGoBack()) router.back();
-  };
-
   // success → overlay; AuthGate observes isAuthenticated (set by the mutation's
   // onSuccess) and router.replace's into /(app)/.
   if (state === 'success') return <SuccessOverlay />;
@@ -121,17 +118,10 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View className="flex-1 bg-surface px-lg pb-lg">
-        {/* TopBar — close (FR-C08: back if history, else noop) */}
-        <View className="flex-row items-center h-11 px-1">
-          <Pressable
-            onPress={handleClose}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="关闭"
-          >
-            <Text className="text-2xl text-ink leading-none">×</Text>
-          </Pressable>
-        </View>
+        {/* TopBar spacer — close × removed per product decision (was FR-C08 noop:
+            login is the entry route, no history → router.back was a no-op). Spacer
+            kept so the header keeps its vertical rhythm (matches SuccessOverlay). */}
+        <View className="flex-row items-center h-11 px-1" />
 
         {/* Header */}
         <View className="mt-3 items-center gap-2">
@@ -187,7 +177,7 @@ export default function LoginScreen() {
           <Button
             label={submitting ? '登录中…' : '登录'}
             loading={submitting}
-            disabled={!formState.isValid}
+            disabled={!smsSent || !formState.isValid}
             onPress={() => void submit()}
           />
         </View>

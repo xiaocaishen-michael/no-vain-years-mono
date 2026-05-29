@@ -15,7 +15,7 @@ import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthStore } from '~/auth';
-import { decideAuthRoute } from '~/core/auth-gate-decision';
+import { decideAuthRoute, resolveDisplayName } from '~/core/auth-gate-decision';
 import { queryClient } from '~/core/api/query-client';
 import { setupAxios } from '~/core/api/setup';
 import { useMe } from '~/core/api/use-me';
@@ -55,6 +55,14 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const profile = useMe();
   const profileLoaded = profile.isFetched;
 
+  // Route on the freshly-fetched /me displayName, NOT the store value alone:
+  // useMe syncs displayName into the store via a useEffect that commits one frame
+  // AFTER /me settles, so on the settle frame the store is still null while
+  // profile.data already has the name. Reading the store alone misroutes a
+  // returning user to onboarding for a frame (then races expo-router's bounce).
+  // resolveDisplayName closes that gap (see auth-gate-decision.ts).
+  const effectiveDisplayName = resolveDisplayName(displayName, profile.data?.displayName);
+
   // Wait for the navigation container to actually mount before any
   // router.replace — Expo Router asserts navigationRef.isReady() and throws
   // "Attempted to navigate before mounting the Root Layout component" otherwise.
@@ -80,7 +88,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   const decision = decideAuthRoute({
     isAuthenticated,
-    displayName,
+    displayName: effectiveDisplayName,
     profileLoaded,
     inAuthGroup: segments[0] === '(auth)',
     inOnboarding: segments.includes('onboarding'),

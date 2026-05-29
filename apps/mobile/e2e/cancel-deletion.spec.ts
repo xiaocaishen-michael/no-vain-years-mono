@@ -23,6 +23,7 @@ import { mockJson } from './_support/api-mock';
 // SuccessOverlay frame (per memory feedback_visual_smoke_unreachable_when_finally
 // _clears_session — the hook does NOT clearSession on success).
 
+const LOGIN_SMS_URL = '**/api/v1/accounts/sms-codes';
 const PHONE_SMS_AUTH_URL = '**/api/v1/accounts/phone-sms-auth';
 const CANCEL_SMS_URL = '**/api/v1/auth/cancel-deletion/sms-codes';
 const CANCEL_URL = '**/api/v1/auth/cancel-deletion';
@@ -74,6 +75,9 @@ test.beforeEach(async ({ page }) => {
     accessToken: 'access-e2e-1',
     refreshToken: 'refresh-e2e-1',
   });
+  // Login 登录 is gated until a code has actually been requested (smsSent latch),
+  // so triggerFreezeModal must hit /sms-codes first — stub it for both US11 paths.
+  await mockJson(page, LOGIN_SMS_URL, 201, { ttlSec: 300 });
 
   page.on('console', (msg) => {
     if (msg.type() === 'error') console.log('[browser-console]', msg.text());
@@ -89,11 +93,13 @@ async function bootLogin(page: Page) {
   await expect(page.getByLabel('手机号')).toBeVisible({ timeout: 90_000 });
 }
 
-// Fill login phone + code, submit → mocked 403 freeze → assert the FreezeModal
-// (剩余天数文案 + 撤销/保持两分支). The 验证码 field is editable without a prior SMS
-// request, so the form validates and 登录 enables purely from the filled fields.
+// Fill login phone, request the SMS code (登录 is gated on smsSent), fill code,
+// submit → mocked 403 freeze → assert the FreezeModal (剩余天数文案 + 撤销/保持两分支).
 async function triggerFreezeModal(page: Page) {
   await page.getByLabel('手机号').fill(VALID_PHONE);
+  await page.getByRole('button', { name: '获取验证码' }).tap();
+  // sms_sent → the inline send button flips to the resend countdown.
+  await expect(page.getByText(/后重发/)).toBeVisible();
   await page.getByLabel('验证码', { exact: true }).fill(VALID_CODE);
   await page.getByRole('button', { name: '登录' }).tap();
 
