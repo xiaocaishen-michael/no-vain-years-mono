@@ -98,6 +98,10 @@ export const boxShadow = {
   'hero-ring': '0 4px 16px -4px rgba(0,0,0,0.18)',
   // spec C T15 — freeze modal card elevation (per design/handoff.md § 4).
   modal: '0 12px 32px -8px rgba(15,18,28,0.28), 0 4px 12px -4px rgba(15,18,28,0.18)',
+  // 005 US5 — bottom-sheet upward elevation + destructive CTA glow (ported verbatim
+  // from legacy app tailwind.config; RemoveDeviceSheet 移除按钮 + sheet 容器).
+  sheet: '0 -4px 24px -6px rgba(17,24,39,0.18)',
+  'cta-err': '0 4px 12px -2px rgba(239,68,68,0.28)',
 };
 
 export const tokens = {

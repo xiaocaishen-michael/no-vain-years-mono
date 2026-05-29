@@ -140,7 +140,7 @@ export function useDeviceManagementControllerList<TData = Awaited<ReturnType<typ
  * @summary Revoke a single device (remote logout)
  */
 export const deviceManagementControllerRevoke = (
-    recordId: number, options?: AxiosRequestConfig
+    recordId: string, options?: AxiosRequestConfig
  ): Promise<AxiosResponse<void>> => {
 
 
@@ -152,8 +152,8 @@ export const deviceManagementControllerRevoke = (
 
 
 export const getDeviceManagementControllerRevokeMutationOptions = <TError = AxiosError<ProblemDetailResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deviceManagementControllerRevoke>>, TError,{recordId: number}, TContext>, axios?: AxiosRequestConfig}
-): UseMutationOptions<Awaited<ReturnType<typeof deviceManagementControllerRevoke>>, TError,{recordId: number}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deviceManagementControllerRevoke>>, TError,{recordId: string}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof deviceManagementControllerRevoke>>, TError,{recordId: string}, TContext> => {
 
 const mutationKey = ['deviceManagementControllerRevoke'];
 const {mutation: mutationOptions, axios: axiosOptions} = options ?
@@ -165,7 +165,7 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deviceManagementControllerRevoke>>, {recordId: number}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deviceManagementControllerRevoke>>, {recordId: string}> = (props) => {
           const {recordId} = props ?? {};
 
           return  deviceManagementControllerRevoke(recordId,axiosOptions)
@@ -186,11 +186,11 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
  * @summary Revoke a single device (remote logout)
  */
 export const useDeviceManagementControllerRevoke = <TError = AxiosError<ProblemDetailResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deviceManagementControllerRevoke>>, TError,{recordId: number}, TContext>, axios?: AxiosRequestConfig}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deviceManagementControllerRevoke>>, TError,{recordId: string}, TContext>, axios?: AxiosRequestConfig}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deviceManagementControllerRevoke>>,
         TError,
-        {recordId: number},
+        {recordId: string},
         TContext
       > => {
       return useMutation(getDeviceManagementControllerRevokeMutationOptions(options), queryClient);
