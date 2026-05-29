@@ -101,7 +101,9 @@ export class DeviceManagementController {
   @ApiBearerAuth()
   @ApiParam({
     name: 'recordId',
-    description: 'refresh_token 行 PK (设备列表项 id)',
+    type: 'string',
+    description:
+      'refresh_token 行 PK (设备列表项 id; string for bigint JSON-safety, matches DeviceListItem.id)',
     example: '1001',
   })
   @ApiOperation({
