@@ -1,10 +1,10 @@
 ---
 feature_id: 004-account-deletion
 spec_ref: ./spec.md
-status: done
+status: in-progress
 created_at: '2026-05-26'
-updated_at: '2026-05-26'
-adr_refs: ['0019', '0022', '0023', '0024', '0032', '0033', '0035', '0040', '0041', '0043']
+updated_at: '2026-05-29'
+adr_refs: ['0019', '0022', '0023', '0024', '0030', '0032', '0033', '0035', '0040', '0041', '0043']
 context7_verified: []
 ---
 
@@ -196,4 +196,51 @@ _perf 预算 SoT = spec.md frontmatter `perf_budgets`。_
 
 ---
 
-**Plan Version**: 1.0.0 | **Created**: 2026-05-26 | **ID-namespace**: US1-11 / FR-S01..S21 / FR-C01..C05 / SC-S01..S15 / SC-C01..C04
+## Client UI Plan（delete-account — 2026-05-29 amend / p4 B3，tasks → `tasks-client.md`）
+
+> **本段 = p4 子 plan B3 的 plan 回填**；server 段（上文，5 UC + cancel-deletion 屏）已 ship（#198）不动。branch `004-account-deletion-client`，**纯 mobile，无 server 改**（deletion 端点 #198 已就位、Orval 已生成且桶已导出）。
+> **UI 类别 = 类 1 标准 UI**。旧 app `delete-account.tsx` 已是 PHASE-2 mockup 成品 → 高保真 port 视觉，但 **state 重写为 RHF**（mirror `use-cancel-deletion-form` Golden Sample，per [sdd.md § 类 1](../../docs/conventions/sdd.md) + mobile-impl-playbook RHF 4 铁律）。
+
+### 路由结构
+
+```text
+apps/mobile/app/(app)/settings/account-security/
+  delete-account.tsx     # 注销发起屏（route 文件；presentational 子件 inline，单用不抽 src/）
+```
+
++ `account-security/index.tsx`「注销账号」行：006 disabled destructive 占位 → **enabled push**（FR-C01，同 PR 一行 flip = 集成点）。
+
+### 复用资产 + port remap（旧 app → mono）
+
+| 旧 app | mono 落点 | 备注 |
+|---|---|---|
+| `@nvy/auth` `requestDeleteAccountSmsCode()` / `deleteAccount(code)` 裸 fn | `~/auth/delete-account.ts` `useRequestDeletionCode()` / `useDeleteAccount()` | 包 Orval `useAccountDeletionControllerSendDeletionCodeForMe`(void) / `SubmitDeletionForMe`({data:{code}})；**`useDeleteAccount` onSuccess → `clearSession()`**（mirror `logout-all`，不导航）；send 不导航 |
+| `delete-account-errors.ts` `mapDeletionError`（旧栈类型） | `~/auth/deletion-errors.ts` `deleteAccountErrorToast(e)` | **重写** for `AxiosError`（duck-type `isAxiosError` + `response.status`），mirror `cancel-deletion-errors`（**一步 toast**，非 kind+copy —— 屏只需文案）：401 `INVALID_DELETION_CODE`→验证码错误 / 429→限流 / 400→格式（防御）/ 5xx+TypeError→网络 / 其余→未知。**vitest** |
+| 裸 `useState` 状态机 | `~/auth/use-delete-account-form.ts` | **RHF + zodResolver**（mirror `use-cancel-deletion-form`）：form `{ code }` zod `^\d{6}$`；2 确认勾选 + cooldown 为**副作用态**（local `useState`，铁律 2）；`requestSms` gated by `bothChecked && cooldown===0`；`submit = form.handleSubmit`（`isSubmitting` 单源，铁律 3）；state machine idle→requesting_sms→sms_sent→submitting→success/error。**vitest renderHook**（mirror `use-cancel-deletion-form.spec.ts`：happy-dom + mock 2 mutation hook） |
+| 裸 `CodeInput`（6 cell） | `~/ui` `SmsInput`（Controller 包） | 复用 login slice 既有；code 字段走 `<Controller>` |
+| 裸 `ErrorRow` | `~/ui` `ErrorRow`(text) | 复用 |
+| `WarningBlock` / `CheckboxRow`×2 / `SendCodeRow` / `SectionLabel` / `SubmitButton` | inline in `delete-account.tsx` | delete 专属，单用 → inline（非 route 子件 inline 不触 phantom-route，与 login.tsx 同范式）；token remap `@nvy/design-tokens`→className/`~/theme`，`shadow-cta`（已存） |
+
+### 成功路由（FR-C01）
+
+提交成功 → `useDeleteAccount` onSuccess `clearSession()`（账号转 FROZEN，本地登出）+ 屏 `useEffect(state==='success' → router.replace('/(auth)/login'))` 双保险（mirror settings-shell US3 登出，per memory `visual_smoke_unreachable_when_finally_clears_session`：delete 是 logout-like terminal，断言落 `/login` 非 success overlay，故 clearSession→AuthGate 路径 e2e 可达，settings-shell US3a 已证）。**无 displayName→onboarding 顾虑**（session 清后 AuthGate 直送 login）。
+
+### 测试分层（per memory `mono_mobile_test_layering`）
+
+- **vitest（logic）**：`deleteAccountErrorToast`（全错误分支）；`use-delete-account-form`（renderHook 状态机：未双勾选 send 禁用 / 双勾选可发 / 发码进 sms_sent / 提交 success / 码错 error，mirror cancel form spec）。
+- **Playwright Expo Web（UI/导航）**：US10 Independent Test 全程（进屏 → 勾选 gate → 发码 mock 204 → 输码 → 确认 mock 204 → session 清 + /login；mock 401 → 统一错误）。seed authed + `mockJson`，仿 settings-shell US3。
+- **presentational（inline 子件）**：无单测，typecheck/lint + e2e。
+
+### Open Decisions (client)
+
+| # | 决策 | 结论 |
+|---|---|---|
+| DD1 | 注销成功路由 | `clearSession()` + 显式 `router.replace('/(auth)/login')` 双保险（logout-like，非 cancel 的 setSession→home） |
+| DD2 | 2 确认勾选落 RHF 还是 local | **local useState**（gate，非提交数据；铁律 2 副作用态分层）；form 仅持 `code` |
+| DD3 | 错误映射形态 | 一步 `deleteAccountErrorToast(e):string`（mirror cancel-deletion-errors，屏只需文案，无 device 那种 kind 分支） |
+| DD4 | code 输入控件 | 复用 `~/ui SmsInput`（非 port 旧 bespoke CodeInput）；Controller 包 |
+| DD5 | presentational 子件落点 | inline in route 文件（单用，与 login.tsx 同；不触 B2 那种 phantom-route，因非独立 .tsx） |
+
+---
+
+**Plan Version**: 1.0.0（server）/ 1.1.0（+client amend 2026-05-29 B3） | **Created**: 2026-05-26 | **ID-namespace**: US1-11 / FR-S01..S21 / FR-C01..C05 / SC-S01..S15 / SC-C01..C04
