@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { generateSmsCode } from './sms-code.rules';
+import { issueSmsCode } from './sms-code.rules';
 import { SmsCodeStore } from './sms-code.store';
 import { SMS_GATEWAY, type SmsGateway } from './sms-gateway.port';
 
@@ -13,7 +13,7 @@ export class RequestSmsCodeUseCase {
   ) {}
 
   async execute(phone: string): Promise<{ ttlSec: number }> {
-    const code = generateSmsCode();
+    const code = issueSmsCode();
     await this.smsCodeStore.store(phone, code, TTL_SEC);
     await this.smsGateway.sendCode(phone, code);
     return { ttlSec: TTL_SEC };

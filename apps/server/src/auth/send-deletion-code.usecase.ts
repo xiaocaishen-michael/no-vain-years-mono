@@ -3,7 +3,7 @@ import { authConfig, type AuthConfig } from '../config/auth.config';
 import { InspectAccountStatusByIdUseCase } from '../account/inspect-account-status-by-id.usecase';
 import { DeletionCodeStore } from './deletion-code.store';
 import { DELETION_CODE_TTL_MIN, SmsPurpose, hashDeletionCode } from './deletion-code.rules';
-import { generateSmsCode } from './sms-code.rules';
+import { issueSmsCode } from './sms-code.rules';
 import { SMS_GATEWAY, type SmsGateway } from './sms-gateway.port';
 import { SmsSendFailedException } from './sms-send-failed.exception';
 
@@ -35,7 +35,7 @@ export class SendDeletionCodeUseCase {
       throw new UnauthorizedException('INVALID_CREDENTIALS');
     }
 
-    const code = generateSmsCode();
+    const code = issueSmsCode();
     const codeHash = hashDeletionCode(code, this.authCfg.smsCodeHmacSecret);
     const expiresAt = new Date(Date.now() + DELETION_CODE_TTL_MIN * MIN_MS);
     await this.deletionCodeStore.issue(accountId, SmsPurpose.DELETE_ACCOUNT, codeHash, expiresAt);
