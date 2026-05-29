@@ -39,6 +39,13 @@ export { cancelDeletionErrorToast } from './cancel-deletion-errors';
 export { useCancelDeletionForm } from './use-cancel-deletion-form';
 export type { CancelDeletionFormState, CancelErrorScope } from './use-cancel-deletion-form';
 
+// account-deletion 发起 slice (004 US10 / B3): request-code + delete wrappers,
+// error map, RHF form hook. Code regex reuses login-form.schema SMS_CODE_REGEX.
+export { useRequestDeletionCode, useDeleteAccount } from './delete-account';
+export { deleteAccountErrorToast } from './deletion-errors';
+export { useDeleteAccountForm } from './use-delete-account-form';
+export type { DeleteAccountFormState } from './use-delete-account-form';
+
 // onboarding slice (account-migration p3): displayName form schema + wrapper + hook.
 export { useUpdateDisplayName } from './update-display-name';
 export {
