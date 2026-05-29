@@ -40,7 +40,7 @@ created_at: '2026-05-29'
 **Independent Test**（spec US1）：seed authed → profile 点 ⚙️ → URL 进 `/(app)/settings`、卡片渲染、**底 tab bar 不可见** → 系统返回 → 回 profile、底 tab 恢复；002 ⚙️ 进真实页（不依赖 Expo Router 容错）。
 
 - [X] T003 [US1] [Mobile] `apps/mobile/app/(app)/settings/_layout.tsx`（port 旧 app：`<Stack screenOptions headerShown>`，`index` title「设置」，`account-security` `headerShown:false`（嵌套自带 header）；**删 `legal` Stack.Screen**）+ `apps/mobile/app/(app)/settings/index.tsx`（port：ScrollView + 3 Card —— ① 账号与安全 Row→`router.push('/(app)/settings/account-security')` ② 通用/通知/隐私/关于 disabled ③ 切换账号 disabled + 退出登录 destructive busy→`confirmLogout`；**删法务页脚**；`@nvy/auth`→`~/auth`(`logoutAll`)；`confirmLogout` Platform 分支（Web `window.confirm` / native `Alert.alert`）**原样保留**（RN-Web Alert 单按钮 fallback 陷阱，load-bearing）；登出后 `logoutAll()` + 显式 `router.replace('/(auth)/login')` 双保险，plan D3）。**含 US3 登出 handler（同文件）**
-- [ ] T004 [US1] [Mobile] `apps/mobile/app/(app)/(tabs)/profile.tsx` 去 ⚙️ 的 `router.push('/(app)/settings' as Parameters<...>)` 强转（route 已建，FR-C02）+ 全仓 grep 确认无残留 `as Parameters<typeof router.push>` 占位强转
+- [X] T004 [US1] [Mobile] `apps/mobile/app/(app)/(tabs)/profile.tsx` 去 ⚙️ 的 `router.push('/(app)/settings' as Parameters<...>)` 强转（route 已建，FR-C02）+ 全仓 grep 确认无残留 `as Parameters<typeof router.push>` 占位强转
 - [ ] T005 [US1] [Mobile-E2E] `apps/mobile/e2e/settings-shell.spec.ts` US1 段（seed authed via `addInitScript`）：profile 点 ⚙️（`getByRole`/accessibilityLabel）→ 断言进 `/(app)/settings`、设置卡片渲染（账号与安全 / 退出登录 可见）、**底 tab bar 不可见** → 系统返回 → 回 profile、底 tab 恢复。locator 优先 `getByRole`/`exact`，警惕中文子串撞
 
 ## Phase 3: User Story 2 — 账号与安全导航 + 手机号脱敏 + disabled 占位（P1）
