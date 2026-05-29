@@ -56,6 +56,16 @@ describe('useLoginForm (core)', () => {
     expect(result.current.smsCountdown).toBe(60);
   });
 
+  it('smsSent latches true only after a successful requestSms (login gated until code requested)', async () => {
+    const { result } = renderHook(() => useLoginForm());
+    expect(result.current.smsSent).toBe(false);
+    act(() => result.current.form.setValue('phone', validPhone));
+    await act(async () => {
+      await result.current.requestSms();
+    });
+    expect(result.current.smsSent).toBe(true);
+  });
+
   it('counts the SMS cooldown down each second', async () => {
     const { result } = renderHook(() => useLoginForm());
     act(() => result.current.form.setValue('phone', validPhone));
@@ -155,6 +165,8 @@ describe('useLoginForm (errors + anti-enum)', () => {
     expect(result.current.state).toBe('error');
     expect(result.current.errorToast).toBe('请求过于频繁，请稍后再试');
     expect(result.current.errorScope).toBe('sms');
+    // a failed request must NOT unlock login (smsSent stays false).
+    expect(result.current.smsSent).toBe(false);
   });
 
   it('clearError clears toast/scope and returns to idle', async () => {

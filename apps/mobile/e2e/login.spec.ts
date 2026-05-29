@@ -78,10 +78,11 @@ test('US1 happy — phone → code → 登录 redirects into the authed area (SC
   await bootLogin(page);
 
   // SC-C05 — every interactive control exposes an accessible name.
-  await expect(page.getByRole('button', { name: '关闭' })).toBeVisible();
   await expect(page.getByLabel('验证码', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '获取验证码' })).toBeVisible();
   await expect(page.getByRole('button', { name: '登录' })).toBeVisible();
+  // 登录 is gated until a code has actually been requested (disabled pre-send).
+  await expect(page.getByRole('button', { name: '登录' })).toBeDisabled();
 
   await requestSmsCode(page);
   await page.getByLabel('验证码', { exact: true }).fill(VALID_CODE);

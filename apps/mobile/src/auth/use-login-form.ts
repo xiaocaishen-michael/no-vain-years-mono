@@ -59,6 +59,10 @@ export function useLoginForm() {
   const auth = usePhoneSmsAuth();
 
   const [phase, setPhase] = useState<'idle' | 'sms_sent' | 'success' | 'error' | 'frozen'>('idle');
+  // 铁律 2 latch — login submit is gated on a code having actually been requested
+  // (a valid 6-digit code can only exist after /sms-codes). Stays true across
+  // submit errors so the user can retry; cleared only on dismissFreeze (form reset).
+  const [smsSent, setSmsSent] = useState(false);
   const [smsCountdown, setSmsCountdown] = useState(0);
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const [errorScope, setErrorScope] = useState<ErrorScope>(null);
@@ -97,6 +101,7 @@ export function useLoginForm() {
       const phone = form.getValues('phone');
       await smsRequest.mutateAsync({ data: { phone } });
       startCountdown();
+      setSmsSent(true);
       setPhase('sms_sent');
     } catch (e) {
       setErrorToast(loginErrorToast(e));
@@ -139,6 +144,7 @@ export function useLoginForm() {
   const dismissFreeze = useCallback(() => {
     form.reset({ phone: '', code: '' });
     setFreezeUntil(null);
+    setSmsSent(false);
     setPhase('idle');
   }, [form]);
 
@@ -152,6 +158,7 @@ export function useLoginForm() {
   return {
     form,
     state,
+    smsSent,
     smsCountdown,
     errorToast,
     errorScope,
