@@ -67,3 +67,24 @@ export function decideAuthRoute(input: AuthGateInput): AuthGateDecision {
   if (inAppGroup && !inOnboarding) return { kind: 'noop' };
   return { kind: 'replace', target: '/(app)/(tabs)/profile' };
 }
+
+/**
+ * Resolve the displayName the route decision should use THIS render.
+ *
+ * `store.displayName` lags one commit behind GET /me: useMe writes it back via a
+ * useEffect (apps/mobile/src/core/api/use-me.ts) that runs AFTER the render where
+ * the query data first lands. On that settle frame the store is still null while
+ * `profile.data.displayName` already holds the real name — feeding the store
+ * value alone into decideAuthRoute misroutes a returning user to
+ * /(app)/onboarding for one frame (which then bounces, racing expo-router's two
+ * back-to-back replace() calls and sometimes sticking on onboarding). Prefer the
+ * store (covers cold-start persisted + post-onboarding setDisplayName) but fall
+ * back to the freshly-fetched profile value, so the gate decides on the real name
+ * the same frame /me lands — no onboarding flash, deterministically.
+ */
+export function resolveDisplayName(
+  storeDisplayName: string | null,
+  profileDisplayName: string | null | undefined,
+): string | null {
+  return storeDisplayName ?? profileDisplayName ?? null;
+}
