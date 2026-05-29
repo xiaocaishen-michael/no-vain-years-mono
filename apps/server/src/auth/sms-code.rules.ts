@@ -16,3 +16,22 @@ export function assertValidSmsCode(raw: string): asserts raw is string {
 export function generateSmsCode(): string {
   return randomInt(0, 1_000_000).toString().padStart(6, '0');
 }
+
+// 本地手动测试便利码:交互式 dev server 下 mock 网关固定发此码,免去翻日志取码。
+const DEV_FIXED_CODE = '999999';
+
+/**
+ * 统一发码入口 —— 所有发码流程 (登录 / 注销 / 撤销 / 未来新增) MUST 走此函数,
+ * 不直接调 generateSmsCode(),以便固定码开关统一覆盖。
+ *
+ * 仅「交互式开发」返回固定码,其余一律 CSPRNG:
+ *   - 生产 / staging (NODE_ENV ≠ development): 永远 CSPRNG —— 固定码构造上不可能上线。
+ *   - 自动化测试套件 (vitest 设 process.env.VITEST): CSPRNG —— IT 仍按真随机码断言
+ *     (如 accounts.us1 拿 '999999' 当错码,固定码会让它误成对码)。
+ */
+export function issueSmsCode(): string {
+  if (process.env.NODE_ENV === 'development' && !process.env.VITEST) {
+    return DEV_FIXED_CODE;
+  }
+  return generateSmsCode();
+}

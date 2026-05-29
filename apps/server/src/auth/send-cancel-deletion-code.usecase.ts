@@ -4,7 +4,7 @@ import { InspectAccountStatusUseCase } from '../account/inspect-account-status.u
 import { isWithinGrace } from '../account/account.rules';
 import { DeletionCodeStore } from './deletion-code.store';
 import { DELETION_CODE_TTL_MIN, SmsPurpose, hashDeletionCode } from './deletion-code.rules';
-import { generateSmsCode } from './sms-code.rules';
+import { issueSmsCode } from './sms-code.rules';
 import { SMS_GATEWAY, type SmsGateway } from './sms-gateway.port';
 import { SmsSendFailedException } from './sms-send-failed.exception';
 import { TIMING_DEFENSE_EXECUTOR, type TimingDefenseExecutor } from './timing-defense.port';
@@ -50,7 +50,7 @@ export class SendCancelDeletionCodeUseCase {
       return;
     }
 
-    const code = generateSmsCode();
+    const code = issueSmsCode();
     const codeHash = hashDeletionCode(code, this.authCfg.smsCodeHmacSecret);
     const expiresAt = new Date(now.getTime() + DELETION_CODE_TTL_MIN * MIN_MS);
     await this.deletionCodeStore.issue(
