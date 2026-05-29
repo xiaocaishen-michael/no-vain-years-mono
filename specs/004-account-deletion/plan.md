@@ -1,7 +1,7 @@
 ---
 feature_id: 004-account-deletion
 spec_ref: ./spec.md
-status: in-progress
+status: implemented
 created_at: '2026-05-26'
 updated_at: '2026-05-29'
 adr_refs: ['0019', '0022', '0023', '0024', '0030', '0032', '0033', '0035', '0040', '0041', '0043']

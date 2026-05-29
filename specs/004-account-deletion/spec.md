@@ -2,7 +2,7 @@
 feature_id: 004-account-deletion
 modules: [account, auth, security]
 owners: ['@xiaocaishen-michael']
-status: implementing
+status: implemented
 created_at: '2026-05-26'
 updated_at: '2026-05-29'
 spec_kit_version: '>=0.8.5,<0.10.0'

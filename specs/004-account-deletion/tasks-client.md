@@ -2,7 +2,7 @@
 feature_id: 004-account-deletion
 spec_ref: ./spec.md
 plan_ref: ./plan.md
-status: ready
+status: done
 created_at: '2026-05-29'
 amends: '#198 (server US1-9 + cancel-deletion 屏); p4 子 plan B3'
 ---
@@ -48,7 +48,7 @@ amends: '#198 (server US1-9 + cancel-deletion 屏); p4 子 plan B3'
 
 ## Phase 3: Polish & Verify
 
-- [ ] TD07 [Verify] 全量验收：`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿（含 `runtime-smoke`）+ `delete-account.spec.ts` 全段绿 + grep 断言：无 `@nvy/auth`/`@nvy/design-tokens` 残留 import、无 `.js` 扩展相对 import、无裸 `axios`/`fetch` 业务直调。spec/plan/tasks frontmatter `status` → `implemented`/`done`。**catalog 无需改**（无 server / 无新 operation）
+- [x] TD07 [Verify] 全量验收：`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿（含 `runtime-smoke`）+ `delete-account.spec.ts` 全段绿 + grep 断言：无 `@nvy/auth`/`@nvy/design-tokens` 残留 import、无 `.js` 扩展相对 import、无裸 `axios`/`fetch` 业务直调。spec/plan/tasks frontmatter `status` → `implemented`/`done`。**catalog 无需改**（无 server / 无新 operation）
 
 ---
 
