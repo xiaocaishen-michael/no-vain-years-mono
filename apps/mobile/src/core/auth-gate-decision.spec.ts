@@ -11,7 +11,7 @@ const base: AuthGateInput = {
   profileLoaded: true,
   inAuthGroup: false,
   inOnboarding: false,
-  inTabs: false,
+  inAppGroup: false,
 };
 
 describe('decideAuthRoute — A-002 FR-014 / CL-009 三态决策', () => {
@@ -70,18 +70,18 @@ describe('decideAuthRoute — A-002 FR-014 / CL-009 三态决策', () => {
     ).toEqual({ kind: 'replace', target: '/(app)/(tabs)/profile' });
   });
 
-  it('auth + displayName set + already inTabs → noop', () => {
+  it('auth + displayName set + inside (app) e.g. (tabs) → noop', () => {
     expect(
       decideAuthRoute({
         ...base,
         isAuthenticated: true,
         displayName: '小明',
-        inTabs: true,
+        inAppGroup: true,
       }),
     ).toEqual({ kind: 'noop' });
   });
 
-  it('auth + displayName set + at root `/` (no group, !inTabs) → replace /(app)/(tabs)/profile', () => {
+  it('auth + displayName set + at root `/` (no group, !inAppGroup) → replace /(app)/(tabs)/profile', () => {
     // Pre-PR-5-tail bug: cold-boot from seeded persist landed on `/` (index.tsx
     // returns null), AuthGate returned noop → blank screen + e2e suite failed.
     expect(decideAuthRoute({ ...base, isAuthenticated: true, displayName: '小明' })).toEqual({
@@ -90,12 +90,32 @@ describe('decideAuthRoute — A-002 FR-014 / CL-009 三态决策', () => {
     });
   });
 
-  it('auth + displayName set + inOnboarding → replace /(app)/(tabs)/profile (no holding on gate)', () => {
+  it('auth + displayName set + inside (app) e.g. /settings → noop (006: any (app) route is a valid authed location)', () => {
+    // Regression: AuthGate used to whitelist only (tabs); pushing to /settings
+    // from profile's ⚙️ got bounced straight back to /(app)/(tabs)/profile,
+    // making the entire settings shell unreachable (caught by settings-shell e2e).
+    // The fix generalised the whitelist to "anywhere in (app)" so settings —
+    // and every future authed screen outside (tabs) — is reachable without a
+    // per-route gate change. inAppGroup is true for /(app)/settings.
     expect(
       decideAuthRoute({
         ...base,
         isAuthenticated: true,
         displayName: '小明',
+        inAppGroup: true,
+      }),
+    ).toEqual({ kind: 'noop' });
+  });
+
+  it('auth + displayName set + inOnboarding → replace /(app)/(tabs)/profile (named user must not sit on onboarding)', () => {
+    // onboarding lives under /(app)/onboarding, so inAppGroup is true here — the
+    // onboarding carve-out (not inAppGroup alone) is what bounces a named user out.
+    expect(
+      decideAuthRoute({
+        ...base,
+        isAuthenticated: true,
+        displayName: '小明',
+        inAppGroup: true,
         inOnboarding: true,
       }),
     ).toEqual({ kind: 'replace', target: '/(app)/(tabs)/profile' });
@@ -111,7 +131,7 @@ describe('decideAuthRoute — A-002 FR-014 / CL-009 三态决策', () => {
         ...base,
         isAuthenticated: true,
         displayName: '',
-        inTabs: true,
+        inAppGroup: true,
       }),
     ).toEqual({ kind: 'noop' });
   });

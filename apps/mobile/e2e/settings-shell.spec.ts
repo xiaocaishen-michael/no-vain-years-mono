@@ -72,8 +72,11 @@ async function bootToProfile(page: Page) {
     'GET',
   );
   await page.goto('/');
-  // profile tab visible → app booted + AuthGate resolved
-  await expect(page.getByRole('tab', { name: '我的', exact: true })).toBeVisible({
+  // profile tab visible → app booted + AuthGate resolved.
+  // No `exact: true`: react-navigation renders bottom-tab icons as a `⏷`
+  // text glyph, so the web ARIA accessible name is `⏷ ⏷ 我的`, not `我的`.
+  // Substring match (same as profile.spec.ts) is required.
+  await expect(page.getByRole('tab', { name: '我的' })).toBeVisible({
     timeout: 90_000,
   });
 }
@@ -84,7 +87,7 @@ test('US1 — ⚙️ pushes to /settings, bottom tab bar hides, back restores ta
   await bootToProfile(page);
 
   // Tab bar visible on profile
-  await expect(page.getByRole('tab', { name: '我的', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '我的' })).toBeVisible();
 
   // Tap ⚙️ gear button
   await page.getByRole('button', { name: '设置', exact: true }).tap();
@@ -97,7 +100,7 @@ test('US1 — ⚙️ pushes to /settings, bottom tab bar hides, back restores ta
   await expect(page.getByRole('button', { name: '退出登录', exact: true })).toBeVisible();
 
   // Bottom tab bar tabs are NOT visible (outside (tabs)/ group)
-  await expect(page.getByRole('tab', { name: '我的', exact: true })).not.toBeVisible();
+  await expect(page.getByRole('tab', { name: '我的' })).not.toBeVisible();
 
   await page.screenshot({ path: `${SCREENSHOT_DIR}/us1-settings-shell.png` });
 
@@ -106,7 +109,7 @@ test('US1 — ⚙️ pushes to /settings, bottom tab bar hides, back restores ta
   await expect(page).toHaveURL(/\/profile$|profile/, { timeout: 10_000 });
 
   // Bottom tab bar restored
-  await expect(page.getByRole('tab', { name: '我的', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '我的' })).toBeVisible();
 
   await page.screenshot({ path: `${SCREENSHOT_DIR}/us1-back-to-profile.png` });
 });
@@ -134,14 +137,15 @@ test('US2 — 账号与安全 nav, 手机号 masked, disabled rows stay put', as
   // Full phone number must NOT appear anywhere on screen
   await expect(page.getByText('13900139000')).not.toBeVisible();
 
-  // 登录管理 row is disabled — tap should NOT change URL
-  const urlBefore = page.url();
-  await page.getByRole('button', { name: '登录管理', exact: true }).tap();
-  expect(page.url()).toBe(urlBefore);
-
-  // 注销账号 row is disabled — tap should NOT change URL
-  await page.getByRole('button', { name: '注销账号', exact: true }).tap();
-  expect(page.url()).toBe(urlBefore);
+  // 登录管理 + 注销账号 are disabled placeholders (B2 device-management /
+  // B3 account-deletion not built yet). Assert they are disabled rather than
+  // tapping: react-native-web renders a disabled Pressable as
+  // `<button disabled aria-disabled="true">`, and Playwright's `.tap()`/`.click()`
+  // actionability waits for the element to become enabled — tapping a row that
+  // is disabled by design hangs until the test timeout. A disabled button also
+  // cannot fire onPress, so "stays put" is guaranteed by `toBeDisabled()`.
+  await expect(page.getByRole('button', { name: '登录管理', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '注销账号', exact: true })).toBeDisabled();
 
   await page.screenshot({ path: `${SCREENSHOT_DIR}/us2-disabled-rows.png` });
 });
@@ -209,12 +213,15 @@ test('US3c — 退出登录 cancel → stays on settings, still logged in', asyn
   // Should remain on settings page
   await expect(page).toHaveURL(/\/settings$/, { timeout: 5_000 });
 
-  // Session should still have tokens
+  // Session should still be authenticated. Assert refreshToken, not accessToken:
+  // store.ts partialize persists refreshToken to SecureStore but intentionally
+  // drops accessToken (in-memory only, re-derived on cold start), so accessToken
+  // is never present in the persisted `nvy-auth` payload.
   const sessionRaw = await page.evaluate(() => window.localStorage.getItem('nvy-auth'));
   const session = JSON.parse(sessionRaw ?? '{}') as {
-    state?: { accessToken?: string };
+    state?: { refreshToken?: string };
   };
-  expect(session.state?.accessToken).toBe(SEED_ACCESS_TOKEN);
+  expect(session.state?.refreshToken).toBe(SEED_REFRESH_TOKEN);
 
   await page.screenshot({ path: `${SCREENSHOT_DIR}/us3c-cancel-stays-settings.png` });
 });

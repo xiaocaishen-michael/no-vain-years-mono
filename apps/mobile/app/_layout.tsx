@@ -84,7 +84,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     profileLoaded,
     inAuthGroup: segments[0] === '(auth)',
     inOnboarding: segments.includes('onboarding'),
-    inTabs: segments.includes('(tabs)'),
+    inAppGroup: segments[0] === '(app)',
   });
   const redirectTarget = decision.kind === 'replace' ? decision.target : null;
 

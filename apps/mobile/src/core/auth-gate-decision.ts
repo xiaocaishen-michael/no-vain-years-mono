@@ -27,7 +27,11 @@ export interface AuthGateInput {
   profileLoaded: boolean;
   inAuthGroup: boolean;
   inOnboarding: boolean;
-  inTabs: boolean;
+  // True when anywhere inside the /(app)/* group (tabs, settings, onboarding,
+  // and any future authed screen). The authed+named branch treats every (app)
+  // route as a valid location (except onboarding), so new routes need no gate
+  // change — replaces the old per-route `inTabs`/`inSettings` whitelist.
+  inAppGroup: boolean;
 }
 
 export type AuthGateDecision =
@@ -36,7 +40,8 @@ export type AuthGateDecision =
   | { kind: 'replace'; target: string };
 
 export function decideAuthRoute(input: AuthGateInput): AuthGateDecision {
-  const { isAuthenticated, displayName, profileLoaded, inAuthGroup, inOnboarding, inTabs } = input;
+  const { isAuthenticated, displayName, profileLoaded, inAuthGroup, inOnboarding, inAppGroup } =
+    input;
 
   if (!isAuthenticated) {
     if (inAuthGroup) return { kind: 'noop' };
@@ -52,9 +57,13 @@ export function decideAuthRoute(input: AuthGateInput): AuthGateDecision {
     return { kind: 'replace', target: '/(app)/onboarding' };
   }
 
-  // isAuthenticated + displayName != null. The user must land inside (tabs);
-  // any other position — (auth) / onboarding / root `/` (which renders null) —
-  // is a transient state that AuthGate redirects out of.
-  if (inTabs) return { kind: 'noop' };
+  // isAuthenticated + displayName != null. Every /(app)/* screen is a valid
+  // location for a named user EXCEPT onboarding (they already have a name).
+  // Redirect to profile only from genuinely wrong/transient positions: the
+  // (auth) group, the bare root `/` (app/index.tsx renders null → the #79
+  // cold-boot blank screen), or a stale onboarding screen. Leaving every other
+  // (app) route alone (tabs, settings, future authed screens) means new routes
+  // need no change here — this is a blocklist, not a per-route whitelist.
+  if (inAppGroup && !inOnboarding) return { kind: 'noop' };
   return { kind: 'replace', target: '/(app)/(tabs)/profile' };
 }
