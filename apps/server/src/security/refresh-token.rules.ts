@@ -47,6 +47,24 @@ export function normalizeDeviceType(raw: string | null | undefined): DeviceType 
 }
 
 /**
+ * 解码客户端上报的 device name → 规范展示值。客户端 (apps/mobile device-store)
+ * 用 `encodeURIComponent` 把 unicode 设备名压成 ASCII 以塞进 HTTP header (header 必须
+ * ASCII);此处在 ingest 边界解回规范值落库,避免 "Web%20-%20Mozilla%2F5.0" 透传到列表展示。
+ * 防御:截断的转义序列 (header 长度上限可能切断 `%XX`) 会让 decodeURIComponent 抛 →
+ * 回退原始串而非崩。null/空/纯空白 → null。
+ */
+export function decodeDeviceName(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  try {
+    return decodeURIComponent(trimmed);
+  } catch {
+    return trimmed;
+  }
+}
+
+/**
  * 私网 / 回环 / 链路本地 IP → null (不落库: 隐私 + 无审计价值);公网 → 原样返回;
  * 无法解析为合法 IP → null (防脏数据)。
  * 覆盖 IPv4 10/8 · 172.16/12 · 192.168/16 · 127/8 · 169.254/16,
