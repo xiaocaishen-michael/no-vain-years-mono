@@ -41,8 +41,12 @@ export default function AccountSecurityIndex() {
       </Card>
 
       <Card>
-        {/* B3 (account-deletion settings 入口 amend 004) 激活：去 disabled + onPress → router.push('delete-account') */}
-        <Row label={COPY.deleteAccount} destructive disabled />
+        {/* B3 (account-deletion 发起屏 amend 004) 已激活：destructive Row 无 chevron 保留 */}
+        <Row
+          label={COPY.deleteAccount}
+          destructive
+          onPress={() => router.push('/(app)/settings/account-security/delete-account')}
+        />
         <Divider />
         <Row label={COPY.securityTips} disabled />
       </Card>
