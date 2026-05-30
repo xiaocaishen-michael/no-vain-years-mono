@@ -66,7 +66,7 @@ created_at: '2026-05-30'
 
 ## Phase 5: Polish & Verify
 
-- [ ] T015 [Verify] `pnpm exec nx affected -t lint typecheck test build runtime-smoke generate --base=origin/main` 全绿（含 `runtime-smoke` mobile web export + `generate` 契约链；本地跑前先杀 `:3000` 父进程 per memory `nx_serve_respawns_3000_poisons_seed_e2e`）+ server gender IT 绿（`nx test server` cwd=apps/server）+ web e2e 全绿（新 profile-name-gender-edit + 改后 account-security-refactor）；全仓 grep 确认未引入 `expo-image-picker` / 对象存储 / 图片上传依赖 + server diff 仅 `gender`（无对象存储 / 无 schema 其他改动 / 无跨 context import，SC-005）+ 昵称编辑 0 server 改动
+- [X] T015 [Verify] `pnpm exec nx affected -t lint typecheck test build runtime-smoke generate --base=origin/main` 全绿（含 `runtime-smoke` mobile web export + `generate` 契约链；本地跑前先杀 `:3000` 父进程 per memory `nx_serve_respawns_3000_poisons_seed_e2e`）+ server gender IT 绿（`nx test server` cwd=apps/server）+ web e2e 全绿（新 profile-name-gender-edit + 改后 account-security-refactor）；全仓 grep 确认未引入 `expo-image-picker` / 对象存储 / 图片上传依赖 + server diff 仅 `gender`（无对象存储 / 无 schema 其他改动 / 无跨 context import，SC-005）+ 昵称编辑 0 server 改动
 
 ---
 
