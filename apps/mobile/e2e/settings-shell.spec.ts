@@ -67,6 +67,7 @@ async function bootToProfile(page: Page) {
       accountId: SEED_ACCOUNT_ID,
       phone: SEED_PHONE,
       displayName: SEED_DISPLAY_NAME,
+      bio: null,
       status: 'ACTIVE',
     },
     'GET',
@@ -146,7 +147,15 @@ test('US2 — 账号与安全 nav, 手机号 masked, disabled rows stay put', as
   await expect(page.getByRole('button', { name: '登录管理', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: '注销账号', exact: true })).toBeEnabled();
 
-  await page.screenshot({ path: `${SCREENSHOT_DIR}/us2-disabled-rows.png` });
+  // 007 三段卡片重构：资料卡 + 身份/绑定卡新行出现；旧 generic 行删除。详细 row 集 /
+  // 脱敏 / 占位 / bio 编辑断言在 account-security-refactor.spec.ts；此处仅守 006
+  // 设置壳 → 账号与安全导航链不回归 + 重构后行集变更（避免 D5 漏网）。
+  await expect(page.getByRole('button', { name: '个人简介', exact: true })).toBeEnabled();
+  for (const removed of ['实名认证', '第三方账号绑定', '二维码名片']) {
+    await expect(page.getByText(removed)).toHaveCount(0);
+  }
+
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/us2-account-security-rows.png` });
 });
 
 // ─── US3: 退出登录 — confirm, server-fail fallback, cancel ───────────────────
