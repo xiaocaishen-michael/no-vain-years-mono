@@ -1,6 +1,19 @@
 name: Deploy Web (Cloudflare Pages)
 
-# Auto-deploy the Expo Web bundle to Cloudflare Pages on push to main.
+# Deploy the Expo Web bundle to Cloudflare Pages on a `mobile-vX.Y.Z` release
+# tag (cut by release-please for the apps/mobile component, per ADR-0042).
+#
+# Why release-gated (NOT every push to main):
+#   Web shares the API contract with the server, and the server only deploys
+#   on its own `server-vX.Y.Z` release tag (build-image.yml → deploy.yml). If
+#   web auto-deployed on every main push, a 三位一体 feature PR (server + web
+#   in one PR per ADR-0024) would ship the web half to prod IMMEDIATELY while
+#   the server half waits for a release → web calls endpoints the deployed
+#   server doesn't have yet → prod runtime errors. Gating web on the
+#   `mobile-v*` tag mirrors the server cadence so both release deliberately.
+#   Ordering: merge the server Release PR first (deploys server), then the
+#   mobile Release PR (deploys web), so web never runs ahead of its backend.
+#   Ad-hoc manual deploys still available via workflow_dispatch.
 #
 # Why CI-driven (not CF's native Git integration):
 #   The CF Pages project `no-vain-years-mono` is a Direct Upload project
@@ -25,13 +38,9 @@ name: Deploy Web (Cloudflare Pages)
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'apps/mobile/**'
-      - 'packages/api-client/**'
-      - 'packages/types/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-web.yml'
+    # release-please cuts mobile-vX.Y.Z when the apps/mobile component is
+    # released (include-component-in-tag, per release-please-config.json).
+    tags: ['mobile-v*.*.*']
   workflow_dispatch:
 
 permissions:
