@@ -1,7 +1,7 @@
 ---
 feature_id: 007-account-security-refactor
 spec_ref: ./spec.md
-status: drafted
+status: implemented
 created_at: '2026-05-30'
 updated_at: '2026-05-30'
 adr_refs: ['0024', '0030', '0032', '0035', '0043']

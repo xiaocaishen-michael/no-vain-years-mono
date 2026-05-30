@@ -2,7 +2,7 @@
 feature_id: 007-account-security-refactor
 modules: [account]
 owners: ['@xiaocaishen-michael']
-status: draft
+status: implemented
 created_at: '2026-05-30'
 updated_at: '2026-05-30'
 spec_kit_version: '>=0.8.5,<0.10.0'

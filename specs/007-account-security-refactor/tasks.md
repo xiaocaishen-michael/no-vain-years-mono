@@ -2,7 +2,7 @@
 feature_id: 007-account-security-refactor
 spec_ref: ./spec.md
 plan_ref: ./plan.md
-status: ready
+status: done
 created_at: '2026-05-30'
 ---
 
