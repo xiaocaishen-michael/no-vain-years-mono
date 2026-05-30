@@ -18,7 +18,7 @@ context7_verified: []
 
 ## Summary _(mandatory)_
 
-把 006 ship 的 `account-security/index.tsx`（扁平身份/安全行列表）重构成**图式三段组合页**：①**资料卡**（头像/昵称/个人简介/性别/主页背景图 —— 昵称右侧显示真实 `displayName` 但 disabled、个人简介行 active→编辑页、其余 disabled 占位、**不渲染二维码名片**）②**身份/绑定卡**（手机号脱敏/邮箱/微信/google，全 disabled 占位）③**安全卡**（登录管理/注销账号/安全小知识，保留 005/004 现状不回归）。删除旧页「实名认证」「第三方账号绑定」generic 行。
+把 006 ship 的 `account-security/index.tsx`（扁平身份/安全行列表）重构成**图式三段组合页**：①**资料卡**（头像/昵称/个人简介/性别/主页背景图 —— 昵称右侧显示真实 `displayName` 但 disabled、个人简介行 active→编辑页、其余 disabled 占位、**不渲染二维码名片**）②**身份/绑定卡**（手机号脱敏/邮箱/微信/google，全 disabled 占位）③**安全卡**（仅登录管理）+ **注销账号独立卡片**（居中红色 destructive、同「退出登录」风格，保留 005/004 现状不回归）。删除旧页「实名认证」「第三方账号绑定」generic 行 + 不渲染「安全小知识」。
 
 **唯一 server 改动 = 个人简介 bio 编辑**：Account 加可空 `bio`（≤120）+ 新 `PATCH /accounts/me/bio` 端点（`update-bio.usecase.ts`，account ctx，anemic row，校验镜像 002 displayName 口径但 ≤120 且允许清空）+ GET `/me` 响应扩 `bio` → api-client regen → mobile 简介编辑页（RHF+zodResolver，textarea + `N/120` + 保存）。
 
@@ -61,7 +61,7 @@ context7_verified: []
 - **页面重构** `apps/mobile/app/(app)/settings/account-security/index.tsx`：3 张 `Card`（复用 `~/settings/primitives` Card/Row/Divider，**不进 `~/ui`、不抽新组件**）：
   - 资料卡：头像 / 昵称（`value`=store `displayName`，disabled）/ 个人简介（active，`onPress`→ push 编辑页）/ 性别 / 主页背景图（占位 disabled）。**删** 二维码名片。
   - 身份/绑定卡：手机号（`value`=`maskPhone(phone)`，disabled）/ 邮箱 / 微信 / google（占位 disabled）。
-  - 安全卡：登录管理（active→`login-management`）/ 注销账号（destructive active→`delete-account`）/ 安全小知识（disabled）—— **行为不回归**（005/004）。
+  - 安全卡：仅 登录管理（active→`login-management`）。注销账号 拆为**独立卡片**（destructive、`showChevron={false}`、`align="center"`，同设置首页「退出登录」风格 → `delete-account`）。**不渲染** 安全小知识 —— **行为不回归**（005/004）。
   - **删** 旧「实名认证」「第三方账号绑定」行。头部保留/加 `// PHASE 1 PLACEHOLDER — business flow validated; visuals pending mockup.` banner（占位行部分）。
 - **简介编辑页**（新 route `apps/mobile/app/(app)/settings/account-security/bio-edit.tsx`）：标题「个人简介」+ 返回 + 右上「保存」；`TextInput` multiline（占位提示「介绍自己的投资经验、风格或领域」、预填当前 bio）；实时 `N/120`；示例提示「例如：美股研究员/新股专家/量化交易员」。
   - **RHF + zodResolver 4 铁律**（Golden Sample=login，per mobile-impl-playbook）：`<Controller>` 包 TextInput（**非 register**）；表单态（bio 文本）≠ 副作用态；`isSubmitting` 单源驱动「保存」忙态；client 先行拦截 >120（zod schema `z.string().max(120)` + 计数 UI）。

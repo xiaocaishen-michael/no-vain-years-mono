@@ -16,8 +16,8 @@ state_branches:
   - 'profile-card: 资料卡 5 行（头像/昵称/性别/个人简介/主页背景图）；「昵称」行右侧显示真实 displayName（既有 auth store / 002 GET me）但 disabled 不可编辑；「个人简介」行 active → push 简介编辑页；头像/性别/主页背景图为 disabled 占位（编辑能力非本 feature）；设计稿「二维码名片」行不渲染'
   - 'bio-edit: 进简介编辑页 → textarea 预填当前 bio、占位提示「介绍自己的投资经验、风格或领域」、实时字数 N/120、示例提示「例如：美股研究员/新股专家/量化交易员」；点「保存」→ authed 更新端点持久化 bio（≤120、可清空）→ 返回账号与安全页；GET me 回读 bio'
   - 'identity-card: 身份/绑定卡 4 行（手机号/邮箱/微信/google）全 disabled 占位；「手机号」行复用 maskPhone 脱敏（完整号不外露）；邮箱/微信/google 为预留占位（无绑定/解绑逻辑、不导航）—— 微信绑定能力留后续 spec'
-  - 'security-card: 安全卡 3 行保留现状行为不回归 —— 登录管理（active → 设备列表 005）/ 注销账号（active 红色 → 短信验证码注销 004）/ 安全小知识（disabled 占位）'
-  - 'removed-rows: 旧页「实名认证」「第三方账号绑定」generic 行删除；设计稿「二维码名片」行不引入'
+  - 'security-card: 安全区两段保留现状行为不回归 —— 安全卡仅「登录管理」行（active → 设备列表 005）；「注销账号」独立卡片（active 红色 destructive、居中、无 chevron，同「退出登录」风格 → 短信验证码注销 004）'
+  - 'removed-rows: 旧页「实名认证」「第三方账号绑定」generic 行删除 + 「安全小知识」占位行去除；设计稿「二维码名片」行不引入'
   - 'placeholder-tap: 任一 disabled 占位行（头像/性别/主页背景图/邮箱/微信/google）被点击 → 无导航 / 无 crash（不跳未建 route）'
   - 'unauthed: 未登录访问 /(app)/settings/account-security 或简介编辑页 → AuthGate 第一层拦截回登录（既有机制，本 feature 不重立）'
 ---
@@ -49,7 +49,7 @@ state_branches:
      - 头像 / 性别 / 主页背景图为 disabled 占位（编辑 / 上传能力非本 feature）。
      - **「二维码名片」行不渲染**。
   2. **身份/绑定卡**（**本期全占位、无绑定/解绑能力**）：手机号（复用 006 `maskPhone` 脱敏，完整号不外露）/ 邮箱（占位）/ 微信（**预留占位**）/ google（**预留占位**）。微信/google 为后续绑定 feature 的预留挂载点，本 feature disabled 不导航。
-  3. **安全卡**（保留现状功能、**不回归**）：登录管理（active → 设备列表，005 已 ship）/ 注销账号（active 红色 → 短信验证码注销发起，004 已 ship）/ 安全小知识（disabled 占位）。
+  3. **安全区**（保留现状功能、**不回归**）：**安全卡**仅「登录管理」（active → 设备列表，005 已 ship）；「注销账号」**独立卡片**（active 红色 destructive、居中、无 chevron，同设置首页「退出登录」风格 → 短信验证码注销发起，004 已 ship）。
 
 - **个人简介编辑（唯一 server 改动）**：参考设计稿「个人简介」页 —— 顶部「个人简介」标题 + 返回 + 右上「保存」；中部 textarea（占位提示「介绍自己的投资经验、风格或领域」、右下实时字数 `N/120`）；下方示例提示「例如：美股研究员/新股专家/量化交易员」。保存把 `bio`（≤120 字符、可清空）持久化到 Account 新增 `bio` 字段，经 authed 更新端点（与 002 `displayName` PATCH 同范式：anemic Prisma row、rate-limited、无对象存储）。GET me 回读 bio。**bio 属 account context 核心字段**（Q1：直改 account 表 row → account 模块），无跨 context。
 
@@ -82,7 +82,7 @@ state_branches:
 
 ### User Story 1 — [Mobile] 账号与安全页重构为三段组合页，删除冗余行（Priority: P1）
 
-已登录用户进入「账号与安全」页，看到自上而下三段卡片：资料卡（头像/昵称/个人简介/性别/主页背景图）、身份/绑定卡（手机号/邮箱/微信/google）、安全卡（登录管理/注销账号/安全小知识）。旧页「实名认证」「第三方账号绑定」与设计稿「二维码名片」不出现。
+已登录用户进入「账号与安全」页，看到自上而下：资料卡（头像/昵称/个人简介/性别/主页背景图）、身份/绑定卡（手机号/邮箱/微信/google）、安全卡（登录管理）、注销账号独立卡片（居中红色）。旧页「实名认证」「第三方账号绑定」「安全小知识」与设计稿「二维码名片」不出现。
 
 **Why this priority**: 本 feature 的结构基座 —— 把旧扁平列表页重构为组合页 IA 并清掉冗余行；个人简介编辑 / 后续微信绑定 / 头像上传都挂在此结构下。
 
@@ -150,19 +150,18 @@ state_branches:
 
 ---
 
-### User Story 5 — [Mobile] 安全卡现有功能不回归（Priority: P1）
+### User Story 5 — [Mobile] 安全区现有功能不回归（Priority: P1）
 
-账号与安全页底部安全卡保留登录管理 / 注销账号 / 安全小知识三行，登录管理与注销账号的导航行为与重构前一致。
+账号与安全页底部安全区：安全卡仅「登录管理」行；「注销账号」为独立卡片（居中红色 destructive、无 chevron，同设置首页「退出登录」风格）。登录管理与注销账号的导航行为与重构前一致。
 
 **Why this priority**: 重构把现有行迁入新卡片结构，登录管理（005）/ 注销账号（004）是已 ship 的活功能，**绝不能在重构中回归** —— refactor 安全网。
 
-**Independent Test**: Playwright Expo Web；seed 已登录态 → 进账号与安全页 → 点「登录管理」断言进设备列表 route、返回点「注销账号」断言进短信验证码注销发起页；「安全小知识」断言 disabled。
+**Independent Test**: Playwright Expo Web；seed 已登录态 → 进账号与安全页 → 点「登录管理」断言进设备列表 route、返回点「注销账号」断言进短信验证码注销发起页。
 
 **Acceptance Scenarios**:
 
 1. **Given** 安全卡渲染，**When** 点「登录管理」，**Then** push 进设备列表页（005 行为不变）
-2. **Given** 安全卡渲染，**When** 点「注销账号」（红色 destructive 行），**Then** push 进短信验证码注销发起页（004 行为不变）
-3. **Given** 安全卡渲染，**When** 「安全小知识」行渲染，**Then** disabled 占位、点击无导航无 crash
+2. **Given** 注销账号独立卡片渲染（居中红色 destructive），**When** 点「注销账号」，**Then** push 进短信验证码注销发起页（004 行为不变）
 
 ### Edge Cases
 
@@ -194,7 +193,7 @@ state_branches:
 - **FR-C05**: 简介编辑 MUST 客户端先行拦截 >120 字符（禁继续输入或禁用「保存」+ 提示）；「保存」MUST 调 authed 更新端点持久化 bio，成功返回账号与安全页；支持清空保存。
 - **FR-C06**: 身份/绑定卡 MUST 含 4 行（手机号 / 邮箱 / 微信 / google），全 disabled 占位、不导航；「手机号」行 MUST 复用 `maskPhone` 脱敏，完整号码 MUST NOT 出现在任何字段。
 - **FR-C07**: 微信 / google 行 MUST 为预留占位（无绑定/解绑逻辑、点击无导航无 crash）—— 绑定能力留后续 feature。
-- **FR-C08**: 安全卡 MUST 含 3 行（登录管理 / 注销账号 / 安全小知识），且保留重构前行为不回归：登录管理 active → 设备列表（005）、注销账号 active 红色 destructive → 短信验证码注销发起（004）、安全小知识 disabled。
+- **FR-C08**: 安全区 MUST 分两段，保留重构前行为不回归：**安全卡**仅「登录管理」行（active → 设备列表 005）；「注销账号」MUST 为**独立卡片**（active 红色 destructive、居中、无 chevron，同设置首页「退出登录」风格 → 短信验证码注销发起 004）。MUST NOT 渲染「安全小知识」行。
 - **FR-C09**: 旧页「实名认证」「第三方账号绑定」generic 行 MUST 删除（DOM 不出现）。
 - **FR-C10**: 页面入口路由 `/(app)/settings/account-security` 与 native Stack header 标题「账号与安全」MUST 不变（不回归 006 settings-shell 导航 e2e）。
 - **FR-C11**: 任一 disabled 占位行被点击 MUST 无导航、无 crash。
@@ -210,7 +209,7 @@ state_branches:
 
 ### Measurable Outcomes
 
-- **SC-001**: 账号与安全页渲染 3 张卡片，行集精确 = {资料卡: 头像/昵称/个人简介/性别/主页背景图（5 行）, 身份绑定卡: 手机号/邮箱/微信/google（4 行）, 安全卡: 登录管理/注销账号/安全小知识（3 行）}；「实名认证」「第三方账号绑定」「二维码名片」**0 出现**（Playwright Expo Web 逐行断言）。
+- **SC-001**: 账号与安全页行集精确 = {资料卡: 头像/昵称/个人简介/性别/主页背景图（5 行）, 身份绑定卡: 手机号/邮箱/微信/google（4 行）, 安全卡: 登录管理（1 行）, 注销账号独立卡片（居中红色 1 行）}；「实名认证」「第三方账号绑定」「二维码名片」「安全小知识」**0 出现**（Playwright Expo Web 逐行断言）。
 - **SC-002**: 个人简介编辑 —— authed 用户写 ≤120 字符简介并保存 → 200、Account.bio 持久化、GET me 回读 bio、再次进编辑页预填；超 120 / 控制字符 → 400；空串 → 清空成功（200）；缺 token → 401（server Testcontainers IT + mobile Playwright 保存全链）。
 - **SC-003**: 「昵称」行展示 store `displayName` 真实值且不可编辑；「手机号」行展示脱敏值且完整号码不出现在任何屏幕字段（seed `phone=+8613900139000` → 含 `139****9000`、不含 `13900139000`）。
 - **SC-004**: 安全卡「登录管理」→ 设备列表、「注销账号」→ 短信验证码注销发起 两条导航不回归（005 + 004 既有 e2e 入口断言仍绿）；入口路由 + 标题「账号与安全」未变（006 settings-shell 导航 e2e 仍绿）。

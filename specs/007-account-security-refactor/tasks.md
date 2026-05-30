@@ -41,9 +41,9 @@ created_at: '2026-05-30'
 
 ## Phase 2: User Story 1 — 三卡片重构 + 删冗余行（P1）🎯 MVP
 
-**Independent Test**（spec US1）：seed authed → 进 `/(app)/settings/account-security` → 渲染 3 卡片、行集 = {资料: 头像/昵称/个人简介/性别/主页背景图, 绑定: 手机号/邮箱/微信/google, 安全: 登录管理/注销账号/安全小知识}；实名认证/第三方账号绑定/二维码名片不在 DOM。
+**Independent Test**（spec US1）：seed authed → 进 `/(app)/settings/account-security` → 行集 = {资料: 头像/昵称/个人简介/性别/主页背景图, 绑定: 手机号/邮箱/微信/google, 安全卡: 登录管理, 注销账号独立卡片}；实名认证/第三方账号绑定/二维码名片/安全小知识不在 DOM。
 
-- [X] T005 [US1] [Mobile] 重构 `apps/mobile/app/(app)/settings/account-security/index.tsx` 为 3 张 `Card`（复用 `~/settings/primitives`，不抽新组件）：① 资料卡（头像 disabled / 昵称 `value`=store `displayName` disabled / 个人简介 active `onPress`→`router.push('.../account-security/bio-edit')` / 性别 disabled / 主页背景图 disabled；**删二维码**）② 身份/绑定卡（手机号 `value`=`maskPhone(phone)` disabled / 邮箱 / 微信 / google，全 disabled）③ 安全卡（登录管理 active→`login-management` / 注销账号 destructive active→`delete-account` / 安全小知识 disabled）；**删旧「实名认证」「第三方账号绑定」行**；头部加 `// PHASE 1 PLACEHOLDER — business flow validated; visuals pending mockup.`（占位行部分）。**本 task 含 US2/US4/US5 行结构（同文件）**
+- [X] T005 [US1] [Mobile] 重构 `apps/mobile/app/(app)/settings/account-security/index.tsx` 为 3 张 `Card`（复用 `~/settings/primitives`，不抽新组件）：① 资料卡（头像 disabled / 昵称 `value`=store `displayName` disabled / 个人简介 active `onPress`→`router.push('.../account-security/bio-edit')` / 性别 disabled / 主页背景图 disabled；**删二维码**）② 身份/绑定卡（手机号 `value`=`maskPhone(phone)` disabled / 邮箱 / 微信 / google，全 disabled）③ 安全卡（仅登录管理 active→`login-management`）+ 注销账号独立卡片（destructive `showChevron={false}` `align="center"`→`delete-account`，同「退出登录」风格）；**删旧「实名认证」「第三方账号绑定」行 + 不渲染「安全小知识」**；头部加 `// PHASE 1 PLACEHOLDER — business flow validated; visuals pending mockup.`（占位行部分）。**本 task 含 US2/US4/US5 行结构（同文件）**
 - [X] T006 [US1] [Mobile-E2E] `apps/mobile/e2e/account-security-refactor.spec.ts` US1 段（seed authed）：进账号与安全 → 断言渲染 3 卡片、资料卡含且仅含 头像/昵称/个人简介/性别/主页背景图 5 行、且「实名认证」「第三方账号绑定」「二维码名片」**不在 DOM**
 - [X] T007 [US1] [Mobile-E2E] **更新 006 回归**（plan D5）：`apps/mobile/e2e/settings-shell.spec.ts` US2 段旧断言（手机号/实名/第三方/登录管理/注销账号 扁平行）→ 改为新三卡片行集断言（重构改了它断言的 account-security 页，不改则 006 e2e 红）
 
@@ -68,9 +68,9 @@ created_at: '2026-05-30'
 
 ## Phase 6: User Story 5 — 安全卡现有功能不回归（P1）
 
-**Independent Test**（spec US5）：seed authed → 点登录管理→设备列表、注销账号→短信注销发起；安全小知识 disabled。
+**Independent Test**（spec US5）：seed authed → 点登录管理→设备列表、注销账号（独立居中卡片）→短信注销发起。
 
-- [X] T012 [US5] [Mobile-E2E] `account-security-refactor.spec.ts` US5 段：点登录管理 → push 设备列表 route（005 不回归）；返回点注销账号（destructive）→ push 短信验证码注销发起页（004 不回归）；安全小知识 disabled 不导航
+- [X] T012 [US5] [Mobile-E2E] `account-security-refactor.spec.ts` US5 段：点登录管理 → push 设备列表 route（005 不回归）；返回点注销账号（独立居中 destructive 卡片）→ push 短信验证码注销发起页（004 不回归）
 
 ## Phase 7: Polish & Verify
 
