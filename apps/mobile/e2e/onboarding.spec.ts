@@ -30,6 +30,10 @@ const seedAuthNoDisplayName = `
     JSON.stringify({
       state: {
         accountId: 'acc-e2e-onboarding-1',
+        // accessToken present: a just-logged-in user lands on onboarding with a
+        // live token in memory. AuthGate's rehydrateSession self-noops, useMe
+        // (gated on accessToken) fires GET /me with the Bearer → no cold-start 401.
+        accessToken: 'access-e2e-onboarding-1',
         refreshToken: 'refresh-e2e-1',
         displayName: null,
         phone: null,

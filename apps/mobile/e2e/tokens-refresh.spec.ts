@@ -2,9 +2,12 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 
 // T024 — Expo Web e2e for 003-tokens US7 透明续期 (SC-C04).
 //
-// Pre-seeds nvy-auth with a refreshToken but NO accessToken (accessToken is
-// in-memory only → null on cold boot). On boot AuthGate issues GET /me with no
-// Authorization header → server 401 → the response interceptor (003-tokens
+// Pre-seeds nvy-auth with a STALE accessToken (present but server-rejected) to
+// exercise *runtime* token expiry. (The cold-start no-token case is now handled
+// proactively by AuthGate's rehydrateSession() before /me ever fires — see
+// app/_layout.tsx — so it no longer produces a 401; the reactive interceptor is
+// the net for tokens that expire mid-session.) On boot AuthGate issues GET /me
+// carrying the stale Bearer → server 401 → the response interceptor (003-tokens
 // T022) single-flights one POST /refresh-token, then retries GET /me with the
 // fresh access token → 200 (displayName null) → onboarding. The nickname submit
 // then PATCHes /me with the already-refreshed token → 200 → AuthGate redirects
@@ -24,14 +27,15 @@ const NEW_NAME = '续期小明';
 const REFRESHED_ACCESS = 'access-refreshed';
 const SCREENSHOT_DIR = 'playwright-report/screenshots';
 
-// Seed an authed session whose accessToken is absent (cold boot) so the first
-// authenticated call 401s and exercises the renewal path.
-const seedAuthNoAccessToken = `
+// Seed an authed session whose accessToken is stale (present but server-rejected)
+// so the first authenticated call 401s and exercises the runtime renewal path.
+const seedAuthStaleAccessToken = `
   window.localStorage.setItem(
     'nvy-auth',
     JSON.stringify({
       state: {
         accountId: 'acc-e2e-refresh-1',
+        accessToken: 'access-e2e-stale',
         refreshToken: 'refresh-e2e-stale',
         displayName: null,
         phone: null,
@@ -50,7 +54,7 @@ const PREFLIGHT_HEADERS = {
 const CORS = { 'access-control-allow-origin': '*' };
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(seedAuthNoAccessToken);
+  await page.addInitScript(seedAuthStaleAccessToken);
   page.on('console', (msg) => {
     if (msg.type() === 'error') console.log('[browser-console]', msg.text());
   });
