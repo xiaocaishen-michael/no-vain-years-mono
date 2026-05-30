@@ -47,7 +47,7 @@ created_at: '2026-05-30'
 
 - [X] T007 [P] [US2] [Mobile] `apps/mobile/src/settings/use-name-edit-form.ts`（镜像 `use-bio-edit-form.ts`）：`useForm` resolver = `z.object({ displayName: displayNameSchema })`（**复用 `~/auth` 导出的 `displayNameSchema`**，1–32 / NotEmpty / 拒控制字符，plan D7）；mutation 用 `useAccountProfileControllerUpdateDisplayName`（002，**0 server 改动**）；success → invalidate `/me` + **同步 `useAuthStore` 的 `displayName`**（资料卡昵称读 store，必须刷新，plan D7/D11）+ `setPhase('success')`；`nameEditErrorToast`（400/429/network/unknown 映射，镜像 bio）。`use-name-edit-form.spec.ts` vitest 红→绿（submit 成功路径 / 错误映射 / store 同步调用）
 - [X] T008 [US2] [Mobile] `apps/mobile/app/(app)/settings/account-security/name-edit.tsx`（镜像 `bio-edit.tsx` 骨架）：`useMe()` 预填 → `<Controller>` 包单行 `TextInput`（预填 displayName、右侧「×」清空、`N/32` 实时、超 32 标 text-err）→ 右上「保存」`saveDisabled = !formState.isValid || submitting`（`isSubmitting` 单源，铁律 3）→ success `useEffect` `router.back()`；标题「设置昵称」。`_layout.tsx` 注册 `<Stack.Screen name="name-edit" options={{ title: '设置昵称' }} />`。**RHF 4 铁律**（Controller≠register / 表单态≠副作用态 / isSubmitting 单源 / 错误+a11y）
-- [ ] T009 [US2] [Mobile-E2E] `apps/mobile/e2e/profile-name-gender-edit.spec.ts` US2 段（seed authed + mock GET /me 含 displayName + mock `PATCH /me`）：点「昵称」→ 进设置昵称屏（`getByRole` 收窄避叠屏双命中，per memory `playwright_expo_stacked_screen_locator_collision`）、输入预填当前值、字数随输入更新 → 改输入点「保存」→ mock 200 → 返回账号与安全 + 资料卡昵称显新值；输入超 32 → 「保存」disabled
+- [X] T009 [US2] [Mobile-E2E] `apps/mobile/e2e/profile-name-gender-edit.spec.ts` US2 段（seed authed + mock GET /me 含 displayName + mock `PATCH /me`）：点「昵称」→ 进设置昵称屏（`getByRole` 收窄避叠屏双命中，per memory `playwright_expo_stacked_screen_locator_collision`）、输入预填当前值、字数随输入更新 → 改输入点「保存」→ mock 200 → 返回账号与安全 + 资料卡昵称显新值；输入超 32 → 「保存」disabled
 
 ## Phase 3: User Story 1 — 性别设置（P1）
 
@@ -55,14 +55,14 @@ created_at: '2026-05-30'
 
 - [X] T010 [P] [US1] [Mobile] `apps/mobile/src/settings/use-gender-edit.ts`（**非 RHF**，plan D6）：`useAccountProfileControllerUpdateGender` mutation + `useMe()` 读当前 gender 预选 + `select(g: Gender)` → `mutateAsync({ data:{ gender:g } })` → invalidate `/me` → `setPhase('success')`；in-flight 行 disabled 防重复点（幂等：同值再存 200，spec Edge Case）；`genderEditErrorToast`（镜像 bio 错误映射）。`use-gender-edit.spec.ts` vitest 红→绿（select 成功 / 错误映射 / in-flight 锁）
 - [X] T011 [US1] [Mobile] `apps/mobile/app/(app)/settings/account-security/gender-edit.tsx`：标题「设置性别」+ 返回，**无右上保存按钮**；`useMe()` 就绪后渲染 `Card`（复用 `~/settings/primitives` `Card`/`Divider`）内 4 选项行（`GENDER_OPTIONS` map，左对齐 `GENDER_LABELS[g]` 文字 + 当前 gender 行右侧 **brand-500 对勾** —— 对勾行**就地自建**不改 `primitives.tsx`/不抽 `~/ui`，plan D10）；点行 → `select(g)`；**仅 `phase==='success'` 时 `useEffect` `router.back()`；PATCH 失败（网络/429/400）→ 留在本屏 + 渲染 `genderEditErrorToast`、不返回**（tap-to-select 无保存按钮的错误态，analyze F2）；hook 不导航。`_layout.tsx` 注册 `<Stack.Screen name="gender-edit" options={{ title: '设置性别' }} />`
-- [ ] T012 [US1] [Mobile-E2E] `profile-name-gender-edit.spec.ts` US1 段（seed authed + mock GET /me 含 gender + mock `PATCH /me/gender`）：点「性别」→ 进设置性别屏、4 行（男/女/非二元/保密）可见、当前值行打勾（`getByRole` scope 避叠屏）；点「女」→ mock 200 → **自动返回**账号与安全（无 save 按钮交互）+ 资料卡「性别」行显「女」；mock GET /me 返 FEMALE 再进屏 → 「女」行预先打勾
+- [X] T012 [US1] [Mobile-E2E] `profile-name-gender-edit.spec.ts` US1 段（seed authed + mock GET /me 含 gender + mock `PATCH /me/gender`）：点「性别」→ 进设置性别屏、4 行（男/女/非二元/保密）可见、当前值行打勾（`getByRole` scope 避叠屏）；点「女」→ mock 200 → **自动返回**账号与安全（无 save 按钮交互）+ 资料卡「性别」行显「女」；mock GET /me 返 FEMALE 再进屏 → 「女」行预先打勾
 
 ## Phase 4: User Story 3 — 资料卡行重排 + 昵称/性别翻 active（P1）🎯 结构基座
 
 **Independent Test**（spec US3）：seed authed → 进账号与安全 → 资料卡行序 = 头像/昵称/性别/个人简介/主页背景图（个人简介↔性别已对换）；昵称/性别/个人简介 active，头像/主页背景图 disabled 占位点击无导航无 crash。
 
 - [X] T013 [US3] [Mobile] 重排 `apps/mobile/app/(app)/settings/account-security/index.tsx` 资料卡 5 行新序 = 头像（disabled）/ **昵称**（active，`value`=store `displayName`，`onPress`→`router.push('.../account-security/name-edit')`）/ **性别**（active，`value`=`genderLabel(profile.gender)` 读 `useMe()`，`onPress`→`router.push('.../account-security/gender-edit')`）/ **个人简介**（active，007 既有→`bio-edit`）/ 主页背景图（disabled）；**个人简介↔性别对换**（FR-C01）。身份/绑定卡 + 安全卡 + 注销卡片**不动**（007 现状）；头部 PHASE 1 banner 保留（占位行部分）
-- [ ] T014 [US3] [Mobile-E2E] **更新 007 回归（plan D5）** + 新增 US3 段：`apps/mobile/e2e/account-security-refactor.spec.ts` —— ① 行序断言（L89 附近）`['头像','昵称','个人简介','性别','主页背景图']` → 改 `['头像','昵称','性别','个人简介','主页背景图']`；② US4 段（L183/L193-198）「昵称/性别 disabled 占位」→ 性别已 active：从 `tap({force:true})` 验无导航改为 `tap()` → 进设置性别屏；昵称同理翻 active 入口；头像/主页背景图仍 disabled 占位断言保留。+ `profile-name-gender-edit.spec.ts` US3 段：逐行断言新序 + 昵称/性别/个人简介 active、头像/主页背景图 disabled 占位 `tap({force:true})` URL 不变无 crash
+- [X] T014 [US3] [Mobile-E2E] **更新 007 回归（plan D5）** + 新增 US3 段：`apps/mobile/e2e/account-security-refactor.spec.ts` —— ① 行序断言（L89 附近）`['头像','昵称','个人简介','性别','主页背景图']` → 改 `['头像','昵称','性别','个人简介','主页背景图']`；② US4 段（L183/L193-198）「昵称/性别 disabled 占位」→ 性别已 active：从 `tap({force:true})` 验无导航改为 `tap()` → 进设置性别屏；昵称同理翻 active 入口；头像/主页背景图仍 disabled 占位断言保留。+ `profile-name-gender-edit.spec.ts` US3 段：逐行断言新序 + 昵称/性别/个人简介 active、头像/主页背景图 disabled 占位 `tap({force:true})` URL 不变无 crash
 
 ## Phase 5: Polish & Verify
 
