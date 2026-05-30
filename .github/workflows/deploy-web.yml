@@ -1,0 +1,94 @@
+name: Deploy Web (Cloudflare Pages)
+
+# Auto-deploy the Expo Web bundle to Cloudflare Pages on push to main.
+#
+# Why CI-driven (not CF's native Git integration):
+#   The CF Pages project `no-vain-years-mono` is a Direct Upload project
+#   (Git Provider = No). CF cannot auto-build it, and a Direct Upload project
+#   CANNOT be converted to Git integration (CF one-way limitation) — switching
+#   would require a NEW project + re-binding the custom domain app.xiaocaishen.me.
+#   So we build HERE (controlled toolchain) and push the artifact via wrangler,
+#   which is exactly CF's documented recommendation for Direct Upload + CI/CD.
+#   This replaces the broken/never-wired dashboard Git integration that left the
+#   live site frozen on a stale bundle from #183 onward.
+#
+# Why the build MUST inject EXPO_PUBLIC_API_BASE_URL:
+#   babel-preset-expo statically INLINES `process.env.EXPO_PUBLIC_*` into the JS
+#   bundle at build time (there is no process.env in the browser). A build
+#   without that env bakes the code's `?? 'http://localhost:3000'` fallback →
+#   the deployed site can't reach the backend. The build + verify steps below
+#   make that failure mode impossible to ship silently.
+#
+# Manual prerequisite (one-time, owner-only): a repo secret
+# CLOUDFLARE_API_TOKEN scoped to Account → Cloudflare Pages → Edit.
+# Account ID below is non-secret (visible in dashboard URLs), so it is inlined.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/api-client/**'
+      - 'packages/types/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize deploys; a newer push supersedes an in-flight one.
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+
+jobs:
+  deploy-web:
+    name: Build + deploy Expo Web to CF Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Expo Web (prod API baked in)
+        env:
+          EXPO_PUBLIC_API_BASE_URL: https://api.xiaocaishen.me
+        # --skip-nx-cache: the build target's nx cache key does NOT include
+        # EXPO_PUBLIC_* env vars, so a cache hit could serve a bundle built with
+        # a different (e.g. localhost) baseURL. Skip cache → always re-run expo
+        # export with the env above. A fresh runner has no Metro transform cache,
+        # so `--clear` (the local-rebuild trap) is unnecessary here.
+        run: pnpm exec nx build mobile --skip-nx-cache
+
+      - name: Verify prod API URL is baked in (guard against localhost regression)
+        run: |
+          bundle=$(find apps/mobile/dist/_expo/static/js/web -name 'entry-*.js' | head -1)
+          if grep -q 'http://localhost:3000' "$bundle"; then
+            echo "::error::Bundle baked localhost:3000 — EXPO_PUBLIC_API_BASE_URL failed to inline. Refusing to deploy."
+            exit 1
+          fi
+          if ! grep -q 'https://api.xiaocaishen.me' "$bundle"; then
+            echo "::error::Bundle missing https://api.xiaocaishen.me — refusing to deploy a misconfigured build."
+            exit 1
+          fi
+          echo "✅ Bundle points at https://api.xiaocaishen.me"
+
+      - name: Deploy to Cloudflare Pages (production branch → app.xiaocaishen.me)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: e6dca6e44be670693ef2dde801e06222
+          command: pages deploy apps/mobile/dist --project-name=no-vain-years-mono --branch=main
