@@ -2,10 +2,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  useAccountProfileControllerUpdateBio,
-  getAccountProfileControllerGetProfileQueryKey,
-} from '@nvy/api-client';
+import { useAccountProfileControllerUpdateBio } from '@nvy/api-client';
+import { useAuthStore } from '~/auth';
+import { meQueryKey } from '~/core/api/me-query-key';
 import { bioEditFormSchema, type BioEditFormValues } from './bio-edit-form.schema';
 
 // bio 编辑 RHF 状态机（镜像 useOnboardingForm，Golden Sample = login）。submitting 由
@@ -58,7 +57,7 @@ export function useBioEditForm(initialBio: string) {
     try {
       await update.mutateAsync({ data: { bio: values.bio } });
       await queryClient.invalidateQueries({
-        queryKey: getAccountProfileControllerGetProfileQueryKey(),
+        queryKey: meQueryKey(useAuthStore.getState().accountId),
       });
       setPhase('success');
     } catch (e) {

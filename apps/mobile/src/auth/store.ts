@@ -58,7 +58,6 @@ export interface AuthState {
   isAuthenticated: boolean;
   setSession: (session: Session) => void;
   setAccessToken: (token: string) => void;
-  setDisplayName: (name: string | null) => void;
   clearSession: () => void;
 }
 
@@ -76,8 +75,6 @@ export const useAuthStore = create<AuthState>()(
         set({ accountId, accessToken, refreshToken, isAuthenticated: true }),
 
       setAccessToken: (token) => set({ accessToken: token }),
-
-      setDisplayName: (name) => set({ displayName: name }),
 
       clearSession: () =>
         set({

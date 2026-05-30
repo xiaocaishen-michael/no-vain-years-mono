@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { decideAuthRoute, resolveDisplayName, type AuthGateInput } from './auth-gate-decision';
+import { decideAuthRoute, type AuthGateInput } from './auth-gate-decision';
 
 // profileLoaded defaults to true so the legacy three-state cases below read as
 // "profile already settled" — the wait gate (profileLoaded:false) is exercised
@@ -176,26 +176,5 @@ describe('decideAuthRoute — profileLoaded gate (fresh-login displayName backfi
       kind: 'replace',
       target: '/(app)/onboarding',
     });
-  });
-});
-
-describe('resolveDisplayName — close the store-lags-/me race (logout→relogin onboarding bug)', () => {
-  it('store null + /me not loaded yet (undefined) → null (gate holds wait, not onboarding)', () => {
-    expect(resolveDisplayName(null, undefined)).toBeNull();
-  });
-
-  it('store null + /me returned a name → uses the /me name SAME frame (no onboarding flash)', () => {
-    // The core fix: on the settle frame the store is still null but profile.data
-    // already has the name; routing must see the name, not null.
-    expect(resolveDisplayName(null, '老用户')).toBe('老用户');
-  });
-
-  it('store null + /me returned null (genuine new user) → null → onboarding (correct)', () => {
-    expect(resolveDisplayName(null, null)).toBeNull();
-  });
-
-  it('store has a name (cold-start persisted / post-onboarding) → store wins regardless of /me', () => {
-    expect(resolveDisplayName('小明', undefined)).toBe('小明');
-    expect(resolveDisplayName('小明', '老用户')).toBe('小明');
   });
 });

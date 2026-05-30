@@ -23,7 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import Svg, { Circle, Defs, G, LinearGradient, Line, Path, Rect, Stop } from 'react-native-svg';
-import { useAuthStore } from '~/auth';
+import { useMe } from '~/core/api/use-me';
 import { tokens } from '~/theme';
 
 const COPY = {
@@ -287,7 +287,10 @@ function Hero({
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const displayName = useAuthStore((s) => s.displayName);
+  // Read displayName from the /me query — the single source of truth. The auth
+  // store no longer exposes it for display (it's a write-only cold-start seed).
+  const { data: profile } = useMe();
+  const displayName = profile?.displayName ?? null;
   const [activeTab, setActiveTab] = useState<TabKey>('notes');
   const [scrollY, setScrollY] = useState(0);
   const isSticky = scrollY >= STICKY_THRESHOLD;

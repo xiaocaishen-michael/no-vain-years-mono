@@ -46,13 +46,14 @@ describe('useNameEditForm (core)', () => {
     expect(result.current.form.getValues('displayName')).toBe('夜航西飞');
   });
 
-  it('submit persists the trimmed name (via store-syncing wrapper) and moves to success', async () => {
+  it('submit persists the trimmed name (via write-through wrapper) and moves to success', async () => {
     const { result } = renderHook(() => useNameEditForm('夜航西飞'), { wrapper });
     act(() => result.current.form.setValue('displayName', '  拾光者  ', { shouldValidate: true }));
     await act(async () => {
       await result.current.submit();
     });
-    // wrapper.mutateAsync is the store-sync path (useUpdateDisplayName.onSuccess → setDisplayName)
+    // wrapper.mutateAsync is the write-through path (useUpdateDisplayName.onSuccess
+    // → setQueryData into the /me cache); this hook no longer invalidates itself.
     expect(h.mutateAsync).toHaveBeenCalledWith({ data: { displayName: '拾光者' } });
     expect(result.current.state).toBe('success');
   });

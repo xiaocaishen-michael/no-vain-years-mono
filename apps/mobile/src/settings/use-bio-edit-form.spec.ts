@@ -4,8 +4,10 @@ import { act, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock the api-client bio mutation + query-key fn so the real axios / store /
-// expo-secure-store RN chain never loads. RHF + zodResolver + zod are platform-agnostic.
+// Mock the api-client bio mutation + query-key fn and the auth store so the real
+// axios / expo-secure-store RN chain never loads. The hook scopes the /me
+// invalidation by accountId (meQueryKey), reading it from useAuthStore.getState().
+// RHF + zodResolver + zod are platform-agnostic.
 const h = vi.hoisted(() => ({ mutateAsync: vi.fn() }));
 
 vi.mock('@nvy/api-client', () => ({
@@ -14,6 +16,9 @@ vi.mock('@nvy/api-client', () => ({
     isPending: false,
   })),
   getAccountProfileControllerGetProfileQueryKey: vi.fn(() => ['/api/v1/accounts/me']),
+}));
+vi.mock('~/auth', () => ({
+  useAuthStore: Object.assign(vi.fn(), { getState: () => ({ accountId: '1' }) }),
 }));
 
 import { bioEditErrorToast, useBioEditForm } from './use-bio-edit-form';

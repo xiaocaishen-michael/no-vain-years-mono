@@ -15,7 +15,7 @@ import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthStore, rehydrateSession } from '~/auth';
-import { decideAuthRoute, resolveDisplayName } from '~/core/auth-gate-decision';
+import { decideAuthRoute } from '~/core/auth-gate-decision';
 import { queryClient } from '~/core/api/query-client';
 import { setupAxios } from '~/core/api/setup';
 import { useMe } from '~/core/api/use-me';
@@ -42,7 +42,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const navRef = useNavigationContainerRef();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const displayName = useAuthStore((s) => s.displayName);
   const [navReady, setNavReady] = useState(false);
   const [hasHydrated, setHasHydrated] = useState(() => useAuthStore.persist.hasHydrated());
 
@@ -55,13 +54,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const profile = useMe();
   const profileLoaded = profile.isFetched;
 
-  // Route on the freshly-fetched /me displayName, NOT the store value alone:
-  // useMe syncs displayName into the store via a useEffect that commits one frame
-  // AFTER /me settles, so on the settle frame the store is still null while
-  // profile.data already has the name. Reading the store alone misroutes a
-  // returning user to onboarding for a frame (then races expo-router's bounce).
-  // resolveDisplayName closes that gap (see auth-gate-decision.ts).
-  const effectiveDisplayName = resolveDisplayName(displayName, profile.data?.displayName);
+  // Route on the /me query value — the single runtime source of truth. On cold
+  // boot useMe seeds initialData from the persisted store snapshot (see
+  // use-me.ts), so profile.data is populated synchronously and a returning user
+  // routes straight to profile without a splash. Never read store.displayName
+  // here: it's a write-only boot seed, and reading it let a stale cached null
+  // clobber a freshly-set name and bounce the user to onboarding.
+  const effectiveDisplayName = profile.data?.displayName ?? null;
 
   // Wait for the navigation container to actually mount before any
   // router.replace — Expo Router asserts navigationRef.isReady() and throws

@@ -15,6 +15,15 @@ import { isAxiosError, type AxiosInstance, type AxiosResponse } from 'axios';
 import { accountTokenControllerRefresh } from '@nvy/api-client';
 
 import { useAuthStore } from './store';
+import { queryClient } from '~/core/api/query-client';
+
+// Forced logout (expired/absent refresh token): drop the store session AND wipe
+// the React Query cache, so a re-login on the same client can't read the prior
+// account's server-state caches (cross-account bleed). Cache lifecycle ⇒ auth.
+function clearSessionAndCache(): void {
+  useAuthStore.getState().clearSession();
+  queryClient.clear();
+}
 
 // Exempt path (FR-C03): a 401 from the refresh endpoint itself must never
 // trigger another refresh. Matched as a substring of the (baseURL-relative)
@@ -30,7 +39,7 @@ let inflightRefresh: Promise<void> | null = null;
 export async function refreshTokenFlow(): Promise<void> {
   const { refreshToken } = useAuthStore.getState();
   if (!refreshToken) {
-    useAuthStore.getState().clearSession();
+    clearSessionAndCache();
     throw new Error('SESSION_EXPIRED');
   }
   try {
@@ -43,7 +52,7 @@ export async function refreshTokenFlow(): Promise<void> {
       refreshToken: data.refreshToken,
     });
   } catch (err) {
-    useAuthStore.getState().clearSession();
+    clearSessionAndCache();
     throw err instanceof Error ? err : new Error('SESSION_EXPIRED');
   }
 }
