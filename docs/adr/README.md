@@ -66,6 +66,7 @@
 | 0042 | Monorepo Release Strategy — release-please 双线 + 内部包零版本  | mono-wide                                        | Accepted   |
 | 0043 | Server 模块内构范式 — 扁平 + 贫血数据 + 纯函数 Helper + 跨界    | apps/server                                      | Accepted   |
 | 0044 | Mobile Binary 部署 — EAS 云构建 + Android APK + iOS 两阶段      | apps/mobile                                      | Accepted   |
+| 0045 | 对象存储 + 图片上传 — Aliyun OSS + client 直传 + public-read    | apps/server, apps/mobile                         | Accepted   |
 
 (0021 历史空缺,跳过编号 — 详 commit 历史)
 
