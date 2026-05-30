@@ -1,12 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../security/prisma.service';
-import { AccountStatus, isActive, normalizeBio } from './account.rules';
+import { AccountStatus, Gender, isActive, normalizeBio } from './account.rules';
 
 export interface UpdateBioResult {
   accountId: bigint;
   phone: string;
   displayName: string | null;
   bio: string | null;
+  gender: Gender | null;
   status: AccountStatus;
   createdAt: Date;
 }
@@ -52,6 +53,7 @@ export class UpdateBioUseCase {
       phone: account.phone,
       displayName: account.displayName,
       bio: bioToStore,
+      gender: account.gender as Gender | null,
       status: account.status as AccountStatus,
       createdAt: account.createdAt,
     };

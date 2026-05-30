@@ -1,0 +1,199 @@
+/* ============================================================
+   no-vain-years (不虚此生) — Colors & Typography
+   ============================================================
+   Source of truth for color + type tokens used across the
+   native app, web app, and design materials.
+   Brand config: brand-config.md (deep blue + vibrant orange)
+   Codebase tokens: packages/design-tokens (Tailwind-aligned)
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap");
+
+:root {
+  /* ---------- Brand colors (from brand-config.md) ---------- */
+  --nvy-primary: #2456E5;          /* 深邃蓝 — core actions, key emphasis */
+  --nvy-primary-hover: #1D47C2;
+  --nvy-primary-pressed: #173BA0;
+  --nvy-primary-soft: #E8EEFD;     /* tinted bg for selected/hover */
+  --nvy-primary-soft-2: #C9D6FA;
+
+  --nvy-secondary: #FF8C00;        /* 活力橙 — secondary emphasis, accents */
+  --nvy-secondary-hover: #E67E00;
+  --nvy-secondary-soft: #FFF1DE;
+
+  /* ---------- Brand color scale (extended for visual cards) ---------- */
+  --nvy-brand-50:  #EEF3FE;
+  --nvy-brand-100: #D5E0FC;
+  --nvy-brand-200: #ABC1F9;
+  --nvy-brand-300: #7DA0F5;
+  --nvy-brand-400: #4F7EEF;
+  --nvy-brand-500: #2456E5;        /* = primary */
+  --nvy-brand-600: #1D47C2;
+  --nvy-brand-700: #173BA0;
+  --nvy-brand-800: #122E7C;
+  --nvy-brand-900: #0E2461;
+
+  /* ---------- Surfaces ---------- */
+  --nvy-surface:        #FFFFFF;
+  --nvy-surface-alt:    #F9F9F9;   /* light gray bg per brand-config */
+  --nvy-surface-sunken: #F2F4F7;
+  --nvy-surface-overlay: rgba(17, 24, 39, 0.45);
+
+  /* ---------- Text ---------- */
+  --nvy-text:        #1A1A1A;      /* primary text */
+  --nvy-text-muted:  #666666;      /* secondary text */
+  --nvy-text-subtle: #999999;      /* placeholder / disabled */
+  --nvy-text-inverse: #FFFFFF;
+  --nvy-text-link:   var(--nvy-primary);
+
+  /* ---------- Borders & dividers ---------- */
+  --nvy-border:        #E5E7EB;
+  --nvy-border-strong: #D1D5DB;
+  --nvy-divider:       #EEF0F3;
+
+  /* ---------- Feedback ---------- */
+  --nvy-success: #10B981;
+  --nvy-success-soft: #E7F8F1;
+  --nvy-warning: #F59E0B;
+  --nvy-warning-soft: #FEF3DC;
+  --nvy-danger:  #EF4444;
+  --nvy-danger-soft:  #FDECEC;
+  --nvy-info:    var(--nvy-primary);
+  --nvy-info-soft: var(--nvy-primary-soft);
+
+  /* ---------- Life-domain accents (one per business module) ---------- */
+  /* Modules: account / pkm / billing / work / wealth / health / inspire */
+  --nvy-domain-pkm:     #2456E5;   /* knowledge — brand blue */
+  --nvy-domain-billing: #14B8A6;   /* finance flow — teal */
+  --nvy-domain-work:    #6366F1;   /* work — indigo */
+  --nvy-domain-wealth:  #F59E0B;   /* wealth — amber */
+  --nvy-domain-health:  #10B981;   /* health — green */
+  --nvy-domain-inspire: #FF8C00;   /* inspiration — secondary orange */
+  --nvy-domain-account: #6B7280;   /* account — neutral */
+
+  /* ---------- Radii ---------- */
+  --nvy-radius-xs:   4px;          /* tags, tiny icons */
+  --nvy-radius-sm:   8px;          /* buttons, inputs, default cards */
+  --nvy-radius-md:   12px;
+  --nvy-radius-lg:   16px;         /* large cards, modals */
+  --nvy-radius-full: 9999px;       /* avatars, capsule buttons */
+
+  /* ---------- Spacing (4/8 base) ---------- */
+  --nvy-space-xs:  4px;
+  --nvy-space-sm:  8px;
+  --nvy-space-md:  16px;
+  --nvy-space-lg:  24px;
+  --nvy-space-xl:  32px;
+  --nvy-space-2xl: 48px;
+  --nvy-space-3xl: 64px;
+
+  /* ---------- Shadows / elevation ---------- */
+  --nvy-shadow-xs: 0 1px 2px 0 rgba(17, 24, 39, 0.04);
+  --nvy-shadow-sm: 0 1px 2px 0 rgba(17, 24, 39, 0.05), 0 1px 3px 0 rgba(17, 24, 39, 0.04);
+  --nvy-shadow-md: 0 4px 6px -1px rgba(17, 24, 39, 0.08), 0 2px 4px -2px rgba(17, 24, 39, 0.05);
+  --nvy-shadow-lg: 0 10px 15px -3px rgba(17, 24, 39, 0.08), 0 4px 6px -4px rgba(17, 24, 39, 0.05);
+  --nvy-shadow-xl: 0 20px 25px -5px rgba(17, 24, 39, 0.10), 0 8px 10px -6px rgba(17, 24, 39, 0.05);
+  --nvy-focus-ring: 0 0 0 4px rgba(36, 86, 229, 0.18);
+
+  /* ---------- Motion ---------- */
+  --nvy-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --nvy-ease-emphasize: cubic-bezier(0.2, 0, 0, 1.2);
+  --nvy-duration-fast: 120ms;
+  --nvy-duration-base: 200ms;
+  --nvy-duration-slow: 320ms;
+
+  /* ---------- Layout ---------- */
+  --nvy-container-max: 1200px;
+  --nvy-grid-columns: 12;
+  --nvy-grid-gutter: 24px;
+
+  /* ---------- Type families ---------- */
+  --nvy-font-sans: "Inter", "Noto Sans SC", -apple-system, BlinkMacSystemFont,
+                   "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  --nvy-font-serif: "Noto Serif SC", "Songti SC", "STSong", "Source Han Serif SC", serif;
+  --nvy-font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  /* ---------- Type scale (16px base) ---------- */
+  --nvy-fs-display:  40px;  --nvy-lh-display:  1.15;
+  --nvy-fs-h1:       32px;  --nvy-lh-h1:       1.2;
+  --nvy-fs-h2:       24px;  --nvy-lh-h2:       1.3;
+  --nvy-fs-h3:       18px;  --nvy-lh-h3:       1.4;
+  --nvy-fs-body:     16px;  --nvy-lh-body:     1.5;
+  --nvy-fs-body-sm:  14px;  --nvy-lh-body-sm:  1.5;
+  --nvy-fs-caption:  12px;  --nvy-lh-caption:  1.4;
+
+  --nvy-fw-regular:  400;
+  --nvy-fw-medium:   500;
+  --nvy-fw-semibold: 600;
+  --nvy-fw-bold:     700;
+}
+
+/* ============================================================
+   Semantic typography helpers
+   ============================================================ */
+.nvy-display {
+  font-family: var(--nvy-font-sans);
+  font-size: var(--nvy-fs-display);
+  line-height: var(--nvy-lh-display);
+  font-weight: var(--nvy-fw-bold);
+  letter-spacing: -0.02em;
+  color: var(--nvy-text);
+}
+.nvy-h1 {
+  font-family: var(--nvy-font-sans);
+  font-size: var(--nvy-fs-h1);
+  line-height: var(--nvy-lh-h1);
+  font-weight: var(--nvy-fw-bold);
+  letter-spacing: -0.01em;
+  color: var(--nvy-text);
+}
+.nvy-h2 {
+  font-family: var(--nvy-font-sans);
+  font-size: var(--nvy-fs-h2);
+  line-height: var(--nvy-lh-h2);
+  font-weight: var(--nvy-fw-semibold);
+  color: var(--nvy-text);
+}
+.nvy-h3 {
+  font-family: var(--nvy-font-sans);
+  font-size: var(--nvy-fs-h3);
+  line-height: var(--nvy-lh-h3);
+  font-weight: var(--nvy-fw-medium);
+  color: var(--nvy-text);
+}
+.nvy-body {
+  font-family: var(--nvy-font-sans);
+  font-size: var(--nvy-fs-body);
+  line-height: var(--nvy-lh-body);
+  font-weight: var(--nvy-fw-regular);
+  color: var(--nvy-text);
+}
+.nvy-body-sm {
+  font-family: var(--nvy-font-sans);
+  font-size: var(--nvy-fs-body-sm);
+  line-height: var(--nvy-lh-body-sm);
+  color: var(--nvy-text);
+}
+.nvy-caption {
+  font-family: var(--nvy-font-sans);
+  font-size: var(--nvy-fs-caption);
+  line-height: var(--nvy-lh-caption);
+  color: var(--nvy-text-muted);
+}
+.nvy-mono {
+  font-family: var(--nvy-font-mono);
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.nvy-serif-display {
+  font-family: var(--nvy-font-serif);
+  font-size: var(--nvy-fs-display);
+  line-height: var(--nvy-lh-display);
+  font-weight: var(--nvy-fw-medium);
+  color: var(--nvy-text);
+}
+
+.nvy-text-muted  { color: var(--nvy-text-muted); }
+.nvy-text-subtle { color: var(--nvy-text-subtle); }
+.nvy-text-link   { color: var(--nvy-text-link); text-decoration: none; }
+.nvy-text-link:hover { text-decoration: underline; }

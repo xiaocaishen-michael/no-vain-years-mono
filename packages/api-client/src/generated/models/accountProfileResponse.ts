@@ -5,6 +5,7 @@
  * no-vain-years backend HTTP API. Generated from NestJS controllers; consumed by packages/api-client for cross-app TS types.
  * OpenAPI spec version: 1.0
  */
+import type { AccountProfileResponseGender } from './accountProfileResponseGender';
 import type { AccountProfileResponseStatus } from './accountProfileResponseStatus';
 
 export interface AccountProfileResponse {
@@ -16,6 +17,8 @@ export interface AccountProfileResponse {
   displayName: string | null;
   /** Personal bio (个人简介); null when unset; ≤120 code points (007 FR-S06) */
   bio: string | null;
+  /** Gender (性别); one of MALE / FEMALE / NON_BINARY / PRIVATE; null when unset (008 FR-S06) */
+  gender: AccountProfileResponseGender;
   /** Account status */
   status: AccountProfileResponseStatus;
   /** Account creation timestamp (ISO 8601) */

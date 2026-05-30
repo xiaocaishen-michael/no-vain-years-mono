@@ -6,6 +6,7 @@ import {
   canCancelFromFrozen,
   canFreeze,
   FREEZE_DURATION_DAYS,
+  Gender,
   isActive,
   isAnonymized,
   isFrozen,
@@ -13,6 +14,7 @@ import {
   isWithinGrace,
   normalizeBio,
   normalizeDisplayName,
+  normalizeGender,
   normalizePhone,
 } from './account.rules';
 import type { Account } from '../generated/prisma/client';
@@ -225,5 +227,27 @@ describe('normalizeBio — 007 FR-S03', () => {
     expect(() => normalizeBio('abc' + String.fromCodePoint(0x200b) + 'def')).toThrow(/INVALID_BIO/);
     expect(() => normalizeBio(String.fromCodePoint(0xfeff) + 'bio')).toThrow(/INVALID_BIO/);
     expect(() => normalizeBio('abc' + String.fromCodePoint(0x2028) + 'def')).toThrow(/INVALID_BIO/);
+  });
+});
+
+// normalizeGender (008 FR-S03) — 严格 4 枚举或 null（清空），其余抛 INVALID_GENDER。
+describe('normalizeGender — 008 FR-S03', () => {
+  it('accepts each of the 4 valid enum values', () => {
+    expect(normalizeGender('MALE')).toBe(Gender.MALE);
+    expect(normalizeGender('FEMALE')).toBe(Gender.FEMALE);
+    expect(normalizeGender('NON_BINARY')).toBe(Gender.NON_BINARY);
+    expect(normalizeGender('PRIVATE')).toBe(Gender.PRIVATE);
+  });
+
+  it('normalizes null / empty / whitespace to null (clear gender)', () => {
+    expect(normalizeGender(null)).toBeNull();
+    expect(normalizeGender('')).toBeNull();
+    expect(normalizeGender('   ')).toBeNull();
+  });
+
+  it('rejects unknown values (not one of the 4 enums)', () => {
+    expect(() => normalizeGender('male')).toThrow(/INVALID_GENDER/);
+    expect(() => normalizeGender('OTHER')).toThrow(/INVALID_GENDER/);
+    expect(() => normalizeGender('男')).toThrow(/INVALID_GENDER/);
   });
 });

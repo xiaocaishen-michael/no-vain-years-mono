@@ -20,6 +20,7 @@ model Account {
   lastLoginAt       DateTime?    @map("last_login_at") @db.Timestamptz(6)
   displayName       String?      @map("display_name") @db.VarChar(64)
   bio               String?      @map("bio") @db.VarChar(120)
+  gender            String?      @map("gender") @db.VarChar(16)
   freezeUntil       DateTime?    @map("freeze_until") @db.Timestamptz(6)
   previousPhoneHash String?      @map("previous_phone_hash") @db.VarChar(64)
   credentials       Credential[]

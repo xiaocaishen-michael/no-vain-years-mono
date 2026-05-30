@@ -5,12 +5,14 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { GetAccountProfileUseCase } from './get-account-profile.usecase';
 import { UpdateDisplayNameUseCase } from './update-display-name.usecase';
 import { UpdateBioUseCase } from './update-bio.usecase';
+import { UpdateGenderUseCase } from './update-gender.usecase';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard';
 import { AccountProfileResponse } from './account-profile.response';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
 import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip-buckets';
 import { UpdateDisplayNameRequest } from './update-display-name.request';
 import { UpdateBioRequest } from './update-bio.request';
+import { UpdateGenderRequest } from './update-gender.request';
 
 /**
  * GET /api/v1/accounts/me
@@ -28,6 +30,7 @@ export class AccountProfileController {
     private readonly useCase: GetAccountProfileUseCase,
     private readonly updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private readonly updateBioUseCase: UpdateBioUseCase,
+    private readonly updateGenderUseCase: UpdateGenderUseCase,
   ) {}
 
   @Get('me')
@@ -73,6 +76,7 @@ export class AccountProfileController {
       phone: result.phone,
       displayName: result.displayName,
       bio: result.bio,
+      gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
     };
@@ -132,6 +136,7 @@ export class AccountProfileController {
       phone: result.phone,
       displayName: result.displayName,
       bio: result.bio,
+      gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
     };
@@ -188,6 +193,64 @@ export class AccountProfileController {
       phone: result.phone,
       displayName: result.displayName,
       bio: result.bio,
+      gender: result.gender,
+      status: result.status,
+      createdAt: result.createdAt,
+    };
+  }
+
+  @Patch('me/gender')
+  @HttpCode(200)
+  @SkipThrottle({
+    default: true,
+    'sms-phone-24h': true,
+    'sms-ip-24h': true,
+    'me-get': true,
+    'refresh-ip': true,
+    'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
+    ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
+  })
+  @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Update authenticated account gender (性别)',
+    description:
+      'Sets the gender for the bearer-authenticated user. Validates 008 FR-S03 rules (one of MALE / FEMALE / NON_BINARY / PRIVATE, or null to clear). Returns updated profile.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Gender updated successfully (including clear via null)',
+    type: AccountProfileResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid gender (not one of the 4 enums; 008 FR-S03)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'Missing / invalid / expired token, or account not ACTIVE (FR-S04) — reason not disclosed (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (FR-S05: 10 requests per 60s per account)',
+    type: ProblemDetailResponse,
+  })
+  async updateGender(
+    @Req() req: { user: AuthenticatedUser },
+    @Body() body: UpdateGenderRequest,
+  ): Promise<AccountProfileResponse> {
+    const result = await this.updateGenderUseCase.execute(req.user.accountId, body.gender);
+    return {
+      accountId: result.accountId.toString(),
+      phone: result.phone,
+      displayName: result.displayName,
+      bio: result.bio,
+      gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
     };

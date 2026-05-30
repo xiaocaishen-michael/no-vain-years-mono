@@ -27,6 +27,7 @@ describe('GetAccountProfileUseCase US1 — new user, displayName null', () => {
     lastLoginAt: null,
     displayName: null,
     bio: null,
+    gender: null,
     freezeUntil: null,
     previousPhoneHash: null,
   };
@@ -65,7 +66,7 @@ describe('GetAccountProfileUseCase US1 — new user, displayName null', () => {
   it('response has exactly the expected keys (AccountProfileResult shape)', async () => {
     const result = await useCase.execute(accountId);
     expect(Object.keys(result).sort()).toEqual(
-      ['accountId', 'bio', 'createdAt', 'displayName', 'phone', 'status'].sort(),
+      ['accountId', 'bio', 'createdAt', 'displayName', 'gender', 'phone', 'status'].sort(),
     );
   });
 
@@ -90,6 +91,7 @@ describe('GetAccountProfileUseCase US3 — returning user, displayName set', () 
     lastLoginAt: new Date('2026-05-20T12:00:00Z'),
     displayName: '张三',
     bio: '价值投资者',
+    gender: 'MALE',
     freezeUntil: null,
     previousPhoneHash: null,
   };

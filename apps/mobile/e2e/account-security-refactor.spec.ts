@@ -85,8 +85,8 @@ async function bootToAccountSecurity(page: Page, bio: string | null = null) {
 test('US1 — 三段卡片 row 集精确，实名认证/第三方账号绑定/二维码名片 不在 DOM', async ({ page }) => {
   await bootToAccountSecurity(page);
 
-  // 资料卡 5 行（且仅这 5 行）
-  for (const label of ['头像', '昵称', '个人简介', '性别', '主页背景图']) {
+  // 资料卡 5 行（且仅这 5 行）—— 008 行序：头像 / 昵称 / 性别 / 个人简介 / 主页背景图
+  for (const label of ['头像', '昵称', '性别', '个人简介', '主页背景图']) {
     await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible();
   }
   // 身份/绑定卡 4 行
@@ -178,24 +178,29 @@ test('US2 — 超 120 字符 → 保存禁用（客户端先行拦截）', async
   await expect(page.getByRole('button', { name: '保存', exact: true })).toBeDisabled();
 });
 
-// ─── US4: 昵称真实值 + 资料占位行 (SC-003) ────────────────────────────────────
+// ─── US4: 昵称展示真实值（008 起昵称/性别已翻 active，详尽流程见 profile-name-gender-edit.spec.ts）
 
-test('US4 — 昵称展示真实 displayName + 头像/性别/主页背景图 disabled 占位', async ({ page }) => {
+test('US4 — 昵称展示真实 displayName + 头像/主页背景图 disabled 占位（昵称/性别已 active）', async ({
+  page,
+}) => {
   await bootToAccountSecurity(page);
 
-  // 昵称行右侧真实值「小明」，行 disabled。scope 到昵称 button —— 底层 profile 屏
-  // 仍挂 stack 下也展示 displayName，page 级 getByText('小明') 会撞双命中。
+  // 昵称行右侧真实值「小明」，008 起 active（可点进 name-edit）。scope 到昵称 button ——
+  // 底层 profile 屏仍挂 stack 下也展示 displayName，page 级 getByText('小明') 会撞双命中。
   const nicknameRow = page.getByRole('button', { name: '昵称', exact: true });
-  await expect(nicknameRow).toBeDisabled();
+  await expect(nicknameRow).toBeEnabled();
   await expect(nicknameRow).toContainText(SEED_DISPLAY_NAME);
 
-  // 头像/性别/主页背景图 disabled 占位
-  for (const label of ['头像', '性别', '主页背景图']) {
+  // 性别行 008 起 active（个人简介↔性别对换 + 翻 active）
+  await expect(page.getByRole('button', { name: '性别', exact: true })).toBeEnabled();
+
+  // 头像 / 主页背景图 仍 disabled 占位
+  for (const label of ['头像', '主页背景图']) {
     await expect(page.getByRole('button', { name: label, exact: true })).toBeDisabled();
   }
 
   // 点占位行 → URL 不变无 crash（force 绕 actionability，disabled 不激活）
-  await page.getByRole('button', { name: '性别', exact: true }).tap({ force: true });
+  await page.getByRole('button', { name: '主页背景图', exact: true }).tap({ force: true });
   await expect(page).toHaveURL(/\/settings\/account-security$/);
 });
 

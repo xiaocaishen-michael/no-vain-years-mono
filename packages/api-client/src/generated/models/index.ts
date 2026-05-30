@@ -7,6 +7,7 @@
  */
 
 export * from './accountProfileResponse';
+export * from './accountProfileResponseGender';
 export * from './accountProfileResponseStatus';
 export * from './cancelDeletionRequest';
 export * from './deleteAccountRequest';
@@ -38,3 +39,5 @@ export * from './requestSmsCodeResponse';
 export * from './sendCancelCodeRequest';
 export * from './updateBioRequest';
 export * from './updateDisplayNameRequest';
+export * from './updateGenderRequest';
+export * from './updateGenderRequestGender';
