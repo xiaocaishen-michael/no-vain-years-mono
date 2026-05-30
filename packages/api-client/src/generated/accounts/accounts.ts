@@ -40,7 +40,8 @@ import type {
   RequestSmsCodeRequest,
   RequestSmsCodeResponse,
   UpdateBioRequest,
-  UpdateDisplayNameRequest
+  UpdateDisplayNameRequest,
+  UpdateGenderRequest
 } from '../models';
 
 
@@ -507,4 +508,65 @@ export const useAccountProfileControllerUpdateBio = <TError = AxiosError<Problem
         TContext
       > => {
       return useMutation(getAccountProfileControllerUpdateBioMutationOptions(options), queryClient);
+    }
+    /**
+ * Sets the gender for the bearer-authenticated user. Validates 008 FR-S03 rules (one of MALE / FEMALE / NON_BINARY / PRIVATE, or null to clear). Returns updated profile.
+ * @summary Update authenticated account gender (性别)
+ */
+export const accountProfileControllerUpdateGender = (
+    updateGenderRequest: UpdateGenderRequest, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<AccountProfileResponse>> => {
+
+
+    return axios.patch(
+      `/api/v1/accounts/me/gender`,
+      updateGenderRequest,options
+    );
+  }
+
+
+
+export const getAccountProfileControllerUpdateGenderMutationOptions = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerUpdateGender>>, TError,{data: UpdateGenderRequest}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerUpdateGender>>, TError,{data: UpdateGenderRequest}, TContext> => {
+
+const mutationKey = ['accountProfileControllerUpdateGender'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof accountProfileControllerUpdateGender>>, {data: UpdateGenderRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  accountProfileControllerUpdateGender(data,axiosOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AccountProfileControllerUpdateGenderMutationResult = NonNullable<Awaited<ReturnType<typeof accountProfileControllerUpdateGender>>>
+    export type AccountProfileControllerUpdateGenderMutationBody = UpdateGenderRequest
+    export type AccountProfileControllerUpdateGenderMutationError = AxiosError<ProblemDetailResponse>
+
+    /**
+ * @summary Update authenticated account gender (性别)
+ */
+export const useAccountProfileControllerUpdateGender = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerUpdateGender>>, TError,{data: UpdateGenderRequest}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof accountProfileControllerUpdateGender>>,
+        TError,
+        {data: UpdateGenderRequest},
+        TContext
+      > => {
+      return useMutation(getAccountProfileControllerUpdateGenderMutationOptions(options), queryClient);
     }
