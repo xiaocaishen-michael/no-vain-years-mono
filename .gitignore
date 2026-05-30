@@ -43,6 +43,7 @@ graphify-out/
 
 # orchestrator per-task run archive (P1 debug sink; volatile per run)
 .spec-kit/runs/
+.spec-kit/runs-manual/
 
 # Expo metro cache
 .expo/
