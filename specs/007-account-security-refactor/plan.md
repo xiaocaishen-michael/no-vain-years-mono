@@ -123,4 +123,4 @@ context7_verified: []
 
 ---
 
-**Plan Version**: 1.0.0 | **Created**: 2026-05-30 | **ID-namespace**: US1-5 / FR-S01..S06 / FR-C01..C13 / SC-001..005
+**Plan Version**: 1.0.0 | **Created**: 2026-05-30 | **ID-namespace**: US1-5 / FR-S01..S06 / FR-C01..C13 / SC-001..006
