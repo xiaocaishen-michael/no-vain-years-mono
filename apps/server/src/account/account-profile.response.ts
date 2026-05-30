@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AccountStatus } from './account.rules';
+import { AccountStatus, Gender } from './account.rules';
 
 /**
  * GET /api/v1/accounts/me response body (FR-001).
@@ -37,6 +37,15 @@ export class AccountProfileResponse {
     type: 'string',
   })
   bio!: string | null;
+
+  @ApiProperty({
+    description:
+      'Gender (性别); one of MALE / FEMALE / NON_BINARY / PRIVATE; null when unset (008 FR-S06)',
+    enum: Gender,
+    nullable: true,
+    example: Gender.MALE,
+  })
+  gender!: Gender | null;
 
   @ApiProperty({
     description: 'Account status',

@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../security/prisma.service';
-import { AccountStatus } from './account.rules';
+import { AccountStatus, Gender } from './account.rules';
 
 export interface AccountProfileResult {
   accountId: bigint;
   phone: string;
   displayName: string | null;
   bio: string | null;
+  gender: Gender | null;
   status: AccountStatus;
   createdAt: Date;
 }
@@ -28,6 +29,7 @@ export class GetAccountProfileUseCase {
       phone: account.phone,
       displayName: account.displayName,
       bio: account.bio,
+      gender: account.gender as Gender | null,
       status: account.status as AccountStatus,
       createdAt: account.createdAt,
     };

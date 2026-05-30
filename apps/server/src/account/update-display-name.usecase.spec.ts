@@ -22,6 +22,7 @@ const activeRow = {
   lastLoginAt: null,
   displayName: null,
   bio: null,
+  gender: null,
   freezeUntil: null,
   previousPhoneHash: null,
 };
@@ -43,7 +44,7 @@ describe('UpdateDisplayNameUseCase — happy path (ACTIVE, valid displayName)', 
   it('result has exactly the expected keys (FR-003 response shape)', async () => {
     const result = await useCase.execute(42n, '张三');
     expect(Object.keys(result).sort()).toEqual(
-      ['accountId', 'bio', 'createdAt', 'displayName', 'phone', 'status'].sort(),
+      ['accountId', 'bio', 'createdAt', 'displayName', 'gender', 'phone', 'status'].sort(),
     );
   });
 
