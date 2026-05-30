@@ -26,6 +26,7 @@ describe('GetAccountProfileUseCase US1 — new user, displayName null', () => {
     updatedAt: new Date('2026-01-01T00:00:00Z'),
     lastLoginAt: null,
     displayName: null,
+    bio: null,
     freezeUntil: null,
     previousPhoneHash: null,
   };
@@ -40,6 +41,11 @@ describe('GetAccountProfileUseCase US1 — new user, displayName null', () => {
   it('displayName is null when not yet set (FR-007 auto-create default)', async () => {
     const result = await useCase.execute(accountId);
     expect(result.displayName).toBeNull();
+  });
+
+  it('bio is null when not yet set (007 FR-S06 default)', async () => {
+    const result = await useCase.execute(accountId);
+    expect(result.bio).toBeNull();
   });
 
   it('returns correct accountId, phone, status, createdAt', async () => {
@@ -59,7 +65,7 @@ describe('GetAccountProfileUseCase US1 — new user, displayName null', () => {
   it('response has exactly the expected keys (AccountProfileResult shape)', async () => {
     const result = await useCase.execute(accountId);
     expect(Object.keys(result).sort()).toEqual(
-      ['accountId', 'createdAt', 'displayName', 'phone', 'status'].sort(),
+      ['accountId', 'bio', 'createdAt', 'displayName', 'phone', 'status'].sort(),
     );
   });
 
@@ -83,6 +89,7 @@ describe('GetAccountProfileUseCase US3 — returning user, displayName set', () 
     updatedAt: new Date('2026-05-20T12:00:00Z'),
     lastLoginAt: new Date('2026-05-20T12:00:00Z'),
     displayName: '张三',
+    bio: '价值投资者',
     freezeUntil: null,
     previousPhoneHash: null,
   };
@@ -96,6 +103,11 @@ describe('GetAccountProfileUseCase US3 — returning user, displayName set', () 
   it('returns displayName string when set', async () => {
     const result = await useCase.execute(accountId);
     expect(result.displayName).toBe('张三');
+  });
+
+  it('returns bio string when set (007 FR-S06 readback)', async () => {
+    const result = await useCase.execute(accountId);
+    expect(result.bio).toBe('价值投资者');
   });
 
   it('displayName is the trimmed string value (not a VO object)', async () => {

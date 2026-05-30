@@ -14,6 +14,8 @@ export interface AccountProfileResponse {
   phone: string;
   /** Display name; null for new users before first update (FR-007) */
   displayName: string | null;
+  /** Personal bio (个人简介); null when unset; ≤120 code points (007 FR-S06) */
+  bio: string | null;
   /** Account status */
   status: AccountProfileResponseStatus;
   /** Account creation timestamp (ISO 8601) */

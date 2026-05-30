@@ -39,6 +39,7 @@ import type {
   RefreshTokenRequest,
   RequestSmsCodeRequest,
   RequestSmsCodeResponse,
+  UpdateBioRequest,
   UpdateDisplayNameRequest
 } from '../models';
 
@@ -445,4 +446,65 @@ export const useAccountProfileControllerUpdateDisplayName = <TError = AxiosError
         TContext
       > => {
       return useMutation(getAccountProfileControllerUpdateDisplayNameMutationOptions(options), queryClient);
+    }
+    /**
+ * Sets the personal bio for the bearer-authenticated user. Validates 007 FR-S03 rules (≤120 Unicode code points after trim, no forbidden chars, empty clears). Returns updated profile.
+ * @summary Update authenticated account bio (个人简介)
+ */
+export const accountProfileControllerUpdateBio = (
+    updateBioRequest: UpdateBioRequest, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<AccountProfileResponse>> => {
+
+
+    return axios.patch(
+      `/api/v1/accounts/me/bio`,
+      updateBioRequest,options
+    );
+  }
+
+
+
+export const getAccountProfileControllerUpdateBioMutationOptions = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerUpdateBio>>, TError,{data: UpdateBioRequest}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerUpdateBio>>, TError,{data: UpdateBioRequest}, TContext> => {
+
+const mutationKey = ['accountProfileControllerUpdateBio'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof accountProfileControllerUpdateBio>>, {data: UpdateBioRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  accountProfileControllerUpdateBio(data,axiosOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AccountProfileControllerUpdateBioMutationResult = NonNullable<Awaited<ReturnType<typeof accountProfileControllerUpdateBio>>>
+    export type AccountProfileControllerUpdateBioMutationBody = UpdateBioRequest
+    export type AccountProfileControllerUpdateBioMutationError = AxiosError<ProblemDetailResponse>
+
+    /**
+ * @summary Update authenticated account bio (个人简介)
+ */
+export const useAccountProfileControllerUpdateBio = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerUpdateBio>>, TError,{data: UpdateBioRequest}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof accountProfileControllerUpdateBio>>,
+        TError,
+        {data: UpdateBioRequest},
+        TContext
+      > => {
+      return useMutation(getAccountProfileControllerUpdateBioMutationOptions(options), queryClient);
     }

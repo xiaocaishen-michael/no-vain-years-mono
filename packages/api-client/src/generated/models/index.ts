@@ -36,4 +36,5 @@ export * from './refreshTokenRequest';
 export * from './requestSmsCodeRequest';
 export * from './requestSmsCodeResponse';
 export * from './sendCancelCodeRequest';
+export * from './updateBioRequest';
 export * from './updateDisplayNameRequest';

@@ -66,13 +66,13 @@ export default function SettingsIndex() {
           label={COPY.cards.accountSecurity}
           onPress={() => router.push('/(app)/settings/account-security')}
         />
-      </Card>
-
-      <Card>
+        <Divider />
         <Row label={COPY.cards.general} disabled />
         <Divider />
         <Row label={COPY.cards.notifications} disabled />
-        <Divider />
+      </Card>
+
+      <Card>
         <Row label={COPY.cards.privacy} disabled />
         <Divider />
         <Row label={COPY.cards.about} disabled />

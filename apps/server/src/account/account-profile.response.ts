@@ -31,6 +31,14 @@ export class AccountProfileResponse {
   displayName!: string | null;
 
   @ApiProperty({
+    description: 'Personal bio (个人简介); null when unset; ≤120 code points (007 FR-S06)',
+    example: '美股研究员 / 量化交易',
+    nullable: true,
+    type: 'string',
+  })
+  bio!: string | null;
+
+  @ApiProperty({
     description: 'Account status',
     enum: AccountStatus,
     example: AccountStatus.ACTIVE,

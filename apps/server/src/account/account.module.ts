@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { SecurityModule } from '../security/security.module.js';
 import { GetAccountProfileUseCase } from './get-account-profile.usecase.js';
 import { UpdateDisplayNameUseCase } from './update-display-name.usecase.js';
+import { UpdateBioUseCase } from './update-bio.usecase.js';
 import { InspectAccountStatusUseCase } from './inspect-account-status.usecase.js';
 import { InspectAccountStatusByIdUseCase } from './inspect-account-status-by-id.usecase.js';
 import { CommitPhoneLoginUseCase } from './commit-phone-login.usecase.js';
@@ -37,6 +38,7 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
   providers: [
     GetAccountProfileUseCase,
     UpdateDisplayNameUseCase,
+    UpdateBioUseCase,
     InspectAccountStatusUseCase,
     InspectAccountStatusByIdUseCase,
     CommitPhoneLoginUseCase,

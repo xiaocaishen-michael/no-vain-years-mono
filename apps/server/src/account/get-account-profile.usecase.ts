@@ -6,6 +6,7 @@ export interface AccountProfileResult {
   accountId: bigint;
   phone: string;
   displayName: string | null;
+  bio: string | null;
   status: AccountStatus;
   createdAt: Date;
 }
@@ -26,6 +27,7 @@ export class GetAccountProfileUseCase {
       accountId: account.id,
       phone: account.phone,
       displayName: account.displayName,
+      bio: account.bio,
       status: account.status as AccountStatus,
       createdAt: account.createdAt,
     };
