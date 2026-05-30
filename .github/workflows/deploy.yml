@@ -30,10 +30,13 @@ on:
         required: true
         type: string
       skip_git_fetch:
-        description: 'Bypass git fetch + reset on SWAS (use when orchestration files unchanged + SWAS → GitHub flaky)'
+        # 默认 true：镜像走 ACR(国内,快),git fetch 仅为刷 compose/runbook 编排文件,
+        # 而编排极少变;SWAS(未备案 ECS)直连 github.com 有真实间歇抖动(GnuTLS recv
+        # error -110 / 连接超时,分钟级窗口)。仅当本次发布确实改了 SWAS 编排文件时传 false。
+        description: 'Skip git fetch + reset on SWAS (default true; set false ONLY when this release changes orchestration files like docker-compose.tight.yml)'
         required: false
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
@@ -76,7 +79,10 @@ jobs:
           ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
           APP_HOST: ${{ secrets.APP_HOST }}
           APP_SSH_USER: ${{ secrets.APP_SSH_USER }}
-          SKIP_GIT_FETCH: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_git_fetch || 'false' }}
+          # 默认跳过 SWAS 直连 github 的 git fetch(脆弱链路)。workflow_run(自动 deploy)
+          # 无 inputs → 左支直接给 'true' 跳过;workflow_dispatch → 透传 input(默认 true,
+          # 显式传 false 才 fetch)。这样写避免 `... || 'true'` 把显式 false clobber 掉的坑。
+          SKIP_GIT_FETCH: ${{ github.event_name == 'workflow_run' && 'true' || inputs.skip_git_fetch }}
         run: |
           # Pass secrets as positional args to remote bash so the heredoc can be
           # quoted (no client-side $-expansion → no SC2087, no accidental local
