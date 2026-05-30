@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { useAuthStore } from '~/auth';
+import { useAuthStore, rehydrateSession } from '~/auth';
 import { decideAuthRoute, resolveDisplayName } from '~/core/auth-gate-decision';
 import { queryClient } from '~/core/api/query-client';
 import { setupAxios } from '~/core/api/setup';
@@ -85,6 +85,18 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     setHasHydrated(useAuthStore.persist.hasHydrated());
     return useAuthStore.persist.onFinishHydration(() => setHasHydrated(true));
   }, []);
+
+  // Cold-start proactive token refresh. accessToken is in-memory only (store.ts
+  // partialize), so on a browser reload / app cold boot the persisted refreshToken
+  // rehydrates but accessToken is null. Exchange it here — BEFORE useMe's /me fires
+  // (gated on accessToken, see use-me.ts) — so the first authed call carries a
+  // Bearer and never 401s. rehydrateSession self-noops when accessToken already
+  // present (fresh login) or no refreshToken (logged out); the 401 response
+  // interceptor remains the runtime-expiry fallback. Runs once after hydration.
+  useEffect(() => {
+    if (!hasHydrated) return;
+    void rehydrateSession();
+  }, [hasHydrated]);
 
   const decision = decideAuthRoute({
     isAuthenticated,

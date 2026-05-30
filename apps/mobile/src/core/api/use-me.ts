@@ -28,10 +28,18 @@ import { useAuthStore } from '~/auth';
 
 export function useMe() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   const query = useAccountProfileControllerGetProfile<AccountProfileResponse>({
     query: {
-      enabled: isAuthenticated,
+      // Gate on accessToken, not just isAuthenticated: on a cold start / browser
+      // reload the persisted refreshToken flips isAuthenticated true (store.ts
+      // onRehydrateStorage) while accessToken is still null (in-memory only).
+      // Firing /me here would 401 until the response interceptor补刷 — instead we
+      // wait for AuthGate's rehydrateSession() to exchange the refresh token, then
+      // /me fires with a Bearer and never 401s. Fresh login sets both atomically,
+      // so it's unaffected. The 401 interceptor stays as the runtime-expiry net.
+      enabled: isAuthenticated && !!accessToken,
       // axios mutator (PR-5c setupAxios) attaches Authorization Bearer
       // from useAuthStore.accessToken — no per-call header inject needed.
       select: (response) => response.data,
