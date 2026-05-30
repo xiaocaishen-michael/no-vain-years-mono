@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>资料编辑 · 设置昵称 + 设置性别 · Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="colors_and_type.css" />
+  <style>
+    html, body { margin: 0; height: 100%; background: #f0eee9; font-family: var(--nvy-font-sans); color: var(--nvy-text); }
+    #root { height: 100vh; }
+    .spec-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(17,24,39,.06); }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="ProfileEditScreens.jsx"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+
+  <script type="text/babel">
+    const FRAME_W = 360, FRAME_H = 784;
+
+    function Phone({ children }) {
+      return <IOSDevice width={FRAME_W} height={FRAME_H}>{children}</IOSDevice>;
+    }
+
+    // 设计说明 / 约束卡 — 与「市场设置」页同款 rationale 卡
+    function SpecNote() {
+      const Pt = ({ children }) => (
+        <li style={{ marginBottom: 11, lineHeight: 1.65, color: "#1A1A1A" }}>{children}</li>
+      );
+      const code = { fontFamily: "var(--nvy-font-mono)" };
+      return (
+        <div className="spec-card" style={{ width: 320, height: FRAME_H, boxSizing: "border-box", padding: "28px 26px", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+            <span style={{ width: 14, height: 14, borderRadius: 4, background: "#2456E5" }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#2456E5", letterSpacing: "0.04em" }}>accent 已映射 · 品牌蓝</span>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#1A1A1A", lineHeight: 1.35, letterSpacing: "-0.01em", marginBottom: 4 }}>
+            参考图橙 → brand-500<br/><span style={{ ...code, fontSize: 15, color: "#666" }}>#FF8C00 → #2456E5</span>
+          </div>
+          <ul style={{ margin: "12px 0 0", padding: 0, listStyle: "none", fontSize: 13.5 }}>
+            <Pt>参考图的橙色 accent（保存、对勾、返回箭头）<b style={{ fontWeight: 600 }}>一律</b>用 <span style={code}>brand-500 #2456E5</span>，不引入新颜色。</Pt>
+            <Pt>橙 <span style={code}>#FF8C00</span> 在本系统保留给灵感域，account 模块沿用品牌蓝即可。</Pt>
+            <Pt>list-card 视觉直接复用 <span style={code}>~/settings/primitives</span>：surface 卡 + rounded-md 12 + line-soft 边框，行高 52，分隔线左缩进对齐文字。</Pt>
+            <Pt><b style={{ fontWeight: 600 }}>0 新 token</b>。文字三级 ink / ink-muted / ink-subtle，超限走 text-err。</Pt>
+          </ul>
+          <div style={{ flex: 1 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, borderTop: "1px solid #EEF0F3", paddingTop: 14, fontSize: 12.5, color: "#10B981" }}>
+            <span style={{ width: 16, height: 16, borderRadius: 9999, background: "#10B981", color: "#fff", display: "grid", placeItems: "center", fontSize: 10, flexShrink: 0 }}>✓</span>
+            2 屏 baseline · 非 .tsx，供 RN 重建参照。
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection id="nickname" title="设置昵称" subtitle="单行 TextInput + 字数 N/12 + 清空。右上「保存」：可存=brand-500，不可存=ink-subtle。预填当前昵称。">
+            <DCArtboard id="spec" label="约束说明" width={320} height={FRAME_H}><SpecNote /></DCArtboard>
+            <DCArtboard id="nk-default" label="① 默认 · 预填未改 · 保存禁用" width={FRAME_W} height={FRAME_H}>
+              <Phone><NicknameScreen initial="夜航西飞" /></Phone>
+            </DCArtboard>
+            <DCArtboard id="nk-dirty" label="② 已修改 · 保存可点 brand-500" width={FRAME_W} height={FRAME_H}>
+              <Phone><NicknameScreen initial="夜航西飞" value="拾光者" /></Phone>
+            </DCArtboard>
+            <DCArtboard id="nk-empty" label="③ 清空态 · 占位符 · 保存禁用" width={FRAME_W} height={FRAME_H}>
+              <Phone><NicknameScreen initial="夜航西飞" value="" /></Phone>
+            </DCArtboard>
+            <DCArtboard id="nk-over" label="④ 超限 · 字数 text-err · 保存禁用" width={FRAME_W} height={FRAME_H}>
+              <Phone><NicknameScreen initial="夜航西飞" value="夜航西飞向着南方那座灯塔的方向" /></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="gender" title="设置性别" subtitle="白卡 4 行（男 / 女 / 非二元 / 保密），左对齐文字 + 选中行右侧 brand-500 对勾。点选即选中、即时生效，无保存按钮。">
+            <DCArtboard id="gd-default" label="① 默认 · 选中「保密」" width={FRAME_W} height={FRAME_H}>
+              <Phone><GenderScreen initial="保密" /></Phone>
+            </DCArtboard>
+            <DCArtboard id="gd-female" label="② 选中「女」" width={FRAME_W} height={FRAME_H}>
+              <Phone><GenderScreen initial="女" /></Phone>
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
