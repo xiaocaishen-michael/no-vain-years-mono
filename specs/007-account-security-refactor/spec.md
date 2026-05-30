@@ -5,6 +5,7 @@ owners: ['@xiaocaishen-michael']
 status: implemented
 created_at: '2026-05-30'
 updated_at: '2026-05-30'
+migration_refs: ['20260530_1505_add_bio_to_account']
 spec_kit_version: '>=0.8.5,<0.10.0'
 orchestrator_compat: '>=0.2.0'
 web_compat: full
