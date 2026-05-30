@@ -14,3 +14,4 @@ export { DisplayNameInput, type DisplayNameInputProps } from './DisplayNameInput
 export { LogoMark, type LogoMarkProps } from './LogoMark';
 export { SuccessCheck } from './SuccessCheck';
 export { TabBarIcon, type TabIconName } from './TabBarIcon';
+export { makeHeaderBackOrParent } from './HeaderBackOrParent';
