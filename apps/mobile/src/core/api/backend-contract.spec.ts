@@ -27,6 +27,7 @@ const ME_PROFILE_STUB = {
   phone: '+8613800138000',
   displayName: '小明',
   bio: null,
+  gender: null,
   status: 'ACTIVE',
   createdAt: '2026-05-25T00:00:00.000Z',
 } satisfies AccountProfileResponse;
