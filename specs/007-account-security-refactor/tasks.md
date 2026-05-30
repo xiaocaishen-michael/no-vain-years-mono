@@ -43,7 +43,7 @@ created_at: '2026-05-30'
 
 **Independent Test**（spec US1）：seed authed → 进 `/(app)/settings/account-security` → 渲染 3 卡片、行集 = {资料: 头像/昵称/个人简介/性别/主页背景图, 绑定: 手机号/邮箱/微信/google, 安全: 登录管理/注销账号/安全小知识}；实名认证/第三方账号绑定/二维码名片不在 DOM。
 
-- [ ] T005 [US1] [Mobile] 重构 `apps/mobile/app/(app)/settings/account-security/index.tsx` 为 3 张 `Card`（复用 `~/settings/primitives`，不抽新组件）：① 资料卡（头像 disabled / 昵称 `value`=store `displayName` disabled / 个人简介 active `onPress`→`router.push('.../account-security/bio-edit')` / 性别 disabled / 主页背景图 disabled；**删二维码**）② 身份/绑定卡（手机号 `value`=`maskPhone(phone)` disabled / 邮箱 / 微信 / google，全 disabled）③ 安全卡（登录管理 active→`login-management` / 注销账号 destructive active→`delete-account` / 安全小知识 disabled）；**删旧「实名认证」「第三方账号绑定」行**；头部加 `// PHASE 1 PLACEHOLDER — business flow validated; visuals pending mockup.`（占位行部分）。**本 task 含 US2/US4/US5 行结构（同文件）**
+- [X] T005 [US1] [Mobile] 重构 `apps/mobile/app/(app)/settings/account-security/index.tsx` 为 3 张 `Card`（复用 `~/settings/primitives`，不抽新组件）：① 资料卡（头像 disabled / 昵称 `value`=store `displayName` disabled / 个人简介 active `onPress`→`router.push('.../account-security/bio-edit')` / 性别 disabled / 主页背景图 disabled；**删二维码**）② 身份/绑定卡（手机号 `value`=`maskPhone(phone)` disabled / 邮箱 / 微信 / google，全 disabled）③ 安全卡（登录管理 active→`login-management` / 注销账号 destructive active→`delete-account` / 安全小知识 disabled）；**删旧「实名认证」「第三方账号绑定」行**；头部加 `// PHASE 1 PLACEHOLDER — business flow validated; visuals pending mockup.`（占位行部分）。**本 task 含 US2/US4/US5 行结构（同文件）**
 - [ ] T006 [US1] [Mobile-E2E] `apps/mobile/e2e/account-security-refactor.spec.ts` US1 段（seed authed）：进账号与安全 → 断言渲染 3 卡片、资料卡含且仅含 头像/昵称/个人简介/性别/主页背景图 5 行、且「实名认证」「第三方账号绑定」「二维码名片」**不在 DOM**
 - [ ] T007 [US1] [Mobile-E2E] **更新 006 回归**（plan D5）：`apps/mobile/e2e/settings-shell.spec.ts` US2 段旧断言（手机号/实名/第三方/登录管理/注销账号 扁平行）→ 改为新三卡片行集断言（重构改了它断言的 account-security 页，不改则 006 e2e 红）
 
@@ -57,7 +57,7 @@ created_at: '2026-05-30'
 
 **Independent Test**（spec US2 个人简介编辑；server IT 见 T002/T003）：点个人简介 → 编辑页预填当前 bio、`N/120` 实时、保存→mock PATCH 200→返回；超 120 拦截；server IT 见 T002/T003。
 
-- [ ] T009 [US2] [Mobile] `apps/mobile/app/(app)/settings/account-security/bio-edit.tsx`（标题「个人简介」+ 返回 + 右上「保存」；`TextInput` multiline 占位「介绍自己的投资经验、风格或领域」预填当前 bio；实时 `N/120`；示例「例如：美股研究员/新股专家/量化交易员」）+ `account-security/_layout.tsx` 注册 `Stack.Screen`（title「个人简介」）。**RHF + zodResolver 4 铁律**（`<Controller>` 包 TextInput 非 register / 表单态≠副作用态 / `isSubmitting` 单源 / 错误+a11y）；zod `z.string().max(120)` + 计数 UI 先行拦截；进页 GET /me 取 bio 预填、保存调 EP2 typed hook → 成功 invalidate `/me` → `router.back()`（plan D7）。Orval 函数式 hook（非 class）
+- [X] T009 [US2] [Mobile] `apps/mobile/app/(app)/settings/account-security/bio-edit.tsx`（标题「个人简介」+ 返回 + 右上「保存」；`TextInput` multiline 占位「介绍自己的投资经验、风格或领域」预填当前 bio；实时 `N/120`；示例「例如：美股研究员/新股专家/量化交易员」）+ `account-security/_layout.tsx` 注册 `Stack.Screen`（title「个人简介」）。**RHF + zodResolver 4 铁律**（`<Controller>` 包 TextInput 非 register / 表单态≠副作用态 / `isSubmitting` 单源 / 错误+a11y）；zod `z.string().max(120)` + 计数 UI 先行拦截；进页 GET /me 取 bio 预填、保存调 EP2 typed hook → 成功 invalidate `/me` → `router.back()`（plan D7）。Orval 函数式 hook（非 class）
 - [ ] T010 [US2] [Mobile-E2E] `account-security-refactor.spec.ts` US2 段：点个人简介 → 进 bio-edit、textarea 预填（mock GET /me 含 bio）、输入字数计数更新 → 点保存（mock `PATCH /me/bio` 200）→ 返回账号与安全页；输入超 120 → 保存禁用/拦截
 
 ## Phase 5: User Story 4 — 资料占位 + 昵称真实值（P2）
