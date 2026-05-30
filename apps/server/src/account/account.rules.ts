@@ -115,3 +115,31 @@ export function normalizeBio(raw: string): string {
   }
   return trimmed;
 }
+
+/**
+ * Gender (性别) — 008 FR-S01/S03。存为英文 enum 字符串 (镜像 status String，无 native
+ * Prisma enum)；前端中文标签映射 (男/女/非二元/保密) 仅展示层，存储恒英文。
+ */
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+  NON_BINARY = 'NON_BINARY',
+  PRIVATE = 'PRIVATE',
+}
+
+const GENDER_VALUES = new Set<string>(Object.values(Gender));
+
+/**
+ * Gender 校验 (008 FR-S03)。null / 空串 / 纯空白 → null (清空 gender，canonical 未设态)；
+ * 合法 4 枚举之一 → 返回该值；其余 → 抛 INVALID_GENDER (use case 映 400)。严格枚举，
+ * 不接受自由文本 / 中文标签。
+ */
+export function normalizeGender(raw: string | null): Gender | null {
+  if (raw === null || raw.trim() === '') {
+    return null;
+  }
+  if (!GENDER_VALUES.has(raw)) {
+    throw new Error(`INVALID_GENDER: must be one of ${[...GENDER_VALUES].join(' / ')}, got ${raw}`);
+  }
+  return raw as Gender;
+}
