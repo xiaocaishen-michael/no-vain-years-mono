@@ -1,9 +1,22 @@
 import { Stack } from 'expo-router';
 
+import { makeHeaderBackOrParent } from '~/ui';
+
 export default function AccountSecurityLayout() {
   return (
-    <Stack screenOptions={{ headerShown: true }}>
-      <Stack.Screen name="index" options={{ title: '账号与安全' }} />
+    <Stack
+      screenOptions={{
+        headerShown: true,
+        // Edit screens (bio / name / gender / delete) fall back one level up to
+        // the account-security index on web refresh.
+        headerLeft: makeHeaderBackOrParent('/(app)/settings/account-security'),
+      }}
+    >
+      <Stack.Screen
+        name="index"
+        // The index's parent is the settings root, not itself.
+        options={{ title: '账号与安全', headerLeft: makeHeaderBackOrParent('/(app)/settings') }}
+      />
       <Stack.Screen name="bio-edit" options={{ title: '个人简介' }} />
       <Stack.Screen name="name-edit" options={{ title: '设置昵称' }} />
       <Stack.Screen name="gender-edit" options={{ title: '设置性别' }} />
