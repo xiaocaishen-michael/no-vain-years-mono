@@ -11,6 +11,7 @@ import {
   isFrozen,
   isFrozenInGrace,
   isWithinGrace,
+  normalizeBio,
   normalizeDisplayName,
   normalizePhone,
 } from './account.rules';
@@ -191,5 +192,38 @@ describe('account.rules — normalizeDisplayName (原 DisplayName VO,R-VO 拍平
     expect(() => normalizeDisplayName('abc' + String.fromCodePoint(0x2028) + 'def')).toThrow(
       /INVALID_DISPLAY_NAME/,
     );
+  });
+});
+
+// normalizeBio (007 FR-S03) — 镜像 displayName 口径但上限 120 且【允许空】。
+describe('normalizeBio — 007 FR-S03', () => {
+  it('trims and returns valid bio', () => {
+    expect(normalizeBio('  美股研究员  ')).toBe('美股研究员');
+  });
+
+  it('allows empty string (clear bio) — returns empty, does NOT throw', () => {
+    expect(normalizeBio('')).toBe('');
+    expect(normalizeBio('   ')).toBe('');
+  });
+
+  it('accepts exactly 120 code points (upper boundary)', () => {
+    const max = '字'.repeat(120);
+    expect(normalizeBio(max)).toBe(max);
+  });
+
+  it('counts emoji by Unicode code points, not UTF-16 units', () => {
+    const emoji = String.fromCodePoint(0x1f60a).repeat(60);
+    expect(normalizeBio(emoji)).toBe(emoji);
+  });
+
+  it('rejects 121 code points (exceeds max)', () => {
+    expect(() => normalizeBio('a'.repeat(121))).toThrow(/INVALID_BIO/);
+  });
+
+  it('rejects forbidden chars (control / zero-width / BOM / line separator)', () => {
+    expect(() => normalizeBio('abc\x01def')).toThrow(/INVALID_BIO/);
+    expect(() => normalizeBio('abc' + String.fromCodePoint(0x200b) + 'def')).toThrow(/INVALID_BIO/);
+    expect(() => normalizeBio(String.fromCodePoint(0xfeff) + 'bio')).toThrow(/INVALID_BIO/);
+    expect(() => normalizeBio('abc' + String.fromCodePoint(0x2028) + 'def')).toThrow(/INVALID_BIO/);
   });
 });

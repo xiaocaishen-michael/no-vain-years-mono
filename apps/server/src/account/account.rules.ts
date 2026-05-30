@@ -94,3 +94,24 @@ export function normalizeDisplayName(raw: string): string {
   }
   return trimmed;
 }
+
+// Bio (个人简介) — 007 FR-S03。校验口径镜像 displayName（trim + code-point 计长 +
+// 同一禁字符 deny-list），仅上限 32→120 且【允许空】(trim 后空串 = 清空 bio)。
+const BIO_MAX_CP = 120;
+
+export function normalizeBio(raw: string): string {
+  // 禁字符查 raw（trim 会吞 BOM），复用 displayName 的控制/零宽/行段分隔符 deny-list。
+  if (DISPLAY_NAME_FORBIDDEN.test(raw)) {
+    throw new Error(
+      'INVALID_BIO: contains forbidden characters (control chars, zero-width chars, or line separators)',
+    );
+  }
+  const trimmed = raw.trim();
+  const cpCount = [...trimmed].length;
+  if (cpCount > BIO_MAX_CP) {
+    throw new Error(
+      `INVALID_BIO: length must be at most ${BIO_MAX_CP} Unicode code points after trim, got ${cpCount}`,
+    );
+  }
+  return trimmed;
+}

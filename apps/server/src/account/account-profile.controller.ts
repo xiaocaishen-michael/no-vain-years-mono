@@ -4,11 +4,13 @@ import { AccountIdThrottlerGuard } from './account-id-throttler.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAccountProfileUseCase } from './get-account-profile.usecase';
 import { UpdateDisplayNameUseCase } from './update-display-name.usecase';
+import { UpdateBioUseCase } from './update-bio.usecase';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard';
 import { AccountProfileResponse } from './account-profile.response';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
 import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip-buckets';
 import { UpdateDisplayNameRequest } from './update-display-name.request';
+import { UpdateBioRequest } from './update-bio.request';
 
 /**
  * GET /api/v1/accounts/me
@@ -25,6 +27,7 @@ export class AccountProfileController {
   constructor(
     private readonly useCase: GetAccountProfileUseCase,
     private readonly updateDisplayNameUseCase: UpdateDisplayNameUseCase,
+    private readonly updateBioUseCase: UpdateBioUseCase,
   ) {}
 
   @Get('me')
@@ -69,6 +72,7 @@ export class AccountProfileController {
       accountId: result.accountId.toString(),
       phone: result.phone,
       displayName: result.displayName,
+      bio: result.bio,
       status: result.status,
       createdAt: result.createdAt,
     };
@@ -127,6 +131,63 @@ export class AccountProfileController {
       accountId: result.accountId.toString(),
       phone: result.phone,
       displayName: result.displayName,
+      bio: result.bio,
+      status: result.status,
+      createdAt: result.createdAt,
+    };
+  }
+
+  @Patch('me/bio')
+  @HttpCode(200)
+  @SkipThrottle({
+    default: true,
+    'sms-phone-24h': true,
+    'sms-ip-24h': true,
+    'me-get': true,
+    'refresh-ip': true,
+    'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
+    ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
+  })
+  @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Update authenticated account bio (个人简介)',
+    description:
+      'Sets the personal bio for the bearer-authenticated user. Validates 007 FR-S03 rules (≤120 Unicode code points after trim, no forbidden chars, empty clears). Returns updated profile.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Bio updated successfully (including clear via empty string)',
+    type: AccountProfileResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid bio (violates 007 FR-S03 rules)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'Missing / invalid / expired token, or account not ACTIVE (FR-S04) — reason not disclosed (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (FR-S05: 10 requests per 60s per account)',
+    type: ProblemDetailResponse,
+  })
+  async updateBio(
+    @Req() req: { user: AuthenticatedUser },
+    @Body() body: UpdateBioRequest,
+  ): Promise<AccountProfileResponse> {
+    const result = await this.updateBioUseCase.execute(req.user.accountId, body.bio);
+    return {
+      accountId: result.accountId.toString(),
+      phone: result.phone,
+      displayName: result.displayName,
+      bio: result.bio,
       status: result.status,
       createdAt: result.createdAt,
     };
