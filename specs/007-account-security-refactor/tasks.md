@@ -74,7 +74,7 @@ created_at: '2026-05-30'
 
 ## Phase 7: Polish & Verify
 
-- [ ] T013 [Verify] `pnpm exec nx affected -t lint typecheck test build runtime-smoke generate --base=origin/main` 全绿（含 `runtime-smoke` mobile web export + `generate` 契约链）+ server bio IT 绿（`nx test server`）+ web e2e 全绿（新 account-security-refactor + 改后 settings-shell）；全仓 grep 确认无「实名认证/第三方账号绑定/二维码名片」残留引用 + 未引入 `expo-image-picker` / 对象存储 / 图片上传依赖（FR-C13/SC-006，由 build/typecheck 兜底）
+- [X] T013 [Verify] `pnpm exec nx affected -t lint typecheck test build runtime-smoke generate --base=origin/main` 全绿（含 `runtime-smoke` mobile web export + `generate` 契约链）+ server bio IT 绿（`nx test server`）+ web e2e 全绿（新 account-security-refactor + 改后 settings-shell）；全仓 grep 确认无「实名认证/第三方账号绑定/二维码名片」残留引用 + 未引入 `expo-image-picker` / 对象存储 / 图片上传依赖（FR-C13/SC-006，由 build/typecheck 兜底）
 
 ---
 
