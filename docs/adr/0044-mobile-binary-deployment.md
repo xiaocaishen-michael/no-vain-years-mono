@@ -85,7 +85,7 @@ sunset_trigger: |
 ## Open Questions
 
 - **EAS Update(OTA 热更)引入后的 `runtimeVersion` 策略 + 与 release-please `version` 的协作** —— 本 ADR 仅覆盖 **build-time** 版本;OTA defer(承接 ADR-0042 原 open question 的 `runtimeVersion` 半边)。
-- **CI 自动化 `eas build --non-interactive`(GitHub Actions)** —— 稳态后再接,本 ADR 不预留代码(与 master plan Out of Scope 一致)。
+- ~~**CI 自动化 `eas build --non-interactive`(GitHub Actions)** —— 稳态后再接,本 ADR 不预留代码(与 master plan Out of Scope 一致)。~~ **Resolved(2026-05-30)**:Web 自动部署接 `mobile-vX.Y.Z` tag 后(`.github/workflows/deploy-web.yml`,对齐 server `server-vX.Y.Z` 发版闸),Android APK 同 tag 触发落地于 `.github/workflows/release-android-apk.yml` —— GHA runner `eas build -p android --profile production --non-interactive --wait` 云构建签名 APK → `eas build:download` → `gh release upload` 挂到该 tag 的 GitHub Release。**§4 版本边界不变**:`expo.version` 仍 release-please 唯一 writer、EAS 只读;`versionCode` 仍 remote 自增。前置 owner 配 repo secret `EXPO_TOKEN`(robot access token)。GHA runner 在境外天然绕 §1 的国内上传 flaky(代理/`--local` 灾备仅本机仍需)。OTA 半边仍 open(上)。
 
 ## References
 
