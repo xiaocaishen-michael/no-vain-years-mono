@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  useAccountProfileControllerUpdateGender,
-  getAccountProfileControllerGetProfileQueryKey,
-} from '@nvy/api-client';
+import { useAccountProfileControllerUpdateGender } from '@nvy/api-client';
+import { useAuthStore } from '~/auth';
+import { meQueryKey } from '~/core/api/me-query-key';
 import type { Gender } from './gender';
 
 // 性别编辑状态机（**非 RHF** —— tap-to-select，无文本输入 / 无表单校验，plan D6）。
@@ -48,7 +47,7 @@ export function useGenderEdit() {
       try {
         await update.mutateAsync({ data: { gender } });
         await queryClient.invalidateQueries({
-          queryKey: getAccountProfileControllerGetProfileQueryKey(),
+          queryKey: meQueryKey(useAuthStore.getState().accountId),
         });
         setPhase('success');
       } catch (e) {

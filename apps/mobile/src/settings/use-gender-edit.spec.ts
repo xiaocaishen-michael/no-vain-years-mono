@@ -4,7 +4,9 @@ import { act, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock the api-client gender mutation + query-key fn so the real axios chain never loads.
+// Mock the api-client gender mutation + query-key fn and the auth store so the
+// real axios / expo-secure-store chain never loads. The hook scopes the /me
+// invalidation by accountId (meQueryKey), read from useAuthStore.getState().
 const h = vi.hoisted(() => ({ mutateAsync: vi.fn(), isPending: false }));
 
 vi.mock('@nvy/api-client', () => ({
@@ -13,6 +15,9 @@ vi.mock('@nvy/api-client', () => ({
     isPending: h.isPending,
   })),
   getAccountProfileControllerGetProfileQueryKey: vi.fn(() => ['/api/v1/accounts/me']),
+}));
+vi.mock('~/auth', () => ({
+  useAuthStore: Object.assign(vi.fn(), { getState: () => ({ accountId: '1' }) }),
 }));
 
 import { genderEditErrorToast, useGenderEdit } from './use-gender-edit';

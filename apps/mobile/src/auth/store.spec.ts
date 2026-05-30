@@ -68,19 +68,6 @@ describe('setAccessToken', () => {
   });
 });
 
-describe('setDisplayName', () => {
-  it('sets displayName to a string value', () => {
-    useAuthStore.getState().setDisplayName('Bob');
-    expect(useAuthStore.getState().displayName).toBe('Bob');
-  });
-
-  it('accepts null to clear displayName', () => {
-    useAuthStore.setState({ displayName: 'Bob' });
-    useAuthStore.getState().setDisplayName(null);
-    expect(useAuthStore.getState().displayName).toBeNull();
-  });
-});
-
 describe('clearSession', () => {
   it('resets all fields to null/false after a full session', () => {
     useAuthStore.setState({

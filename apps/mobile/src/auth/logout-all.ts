@@ -12,6 +12,7 @@
 import { accountTokenControllerLogoutAll } from '@nvy/api-client';
 
 import { useAuthStore } from './store';
+import { queryClient } from '~/core/api/query-client';
 
 export async function logoutAll(): Promise<void> {
   try {
@@ -22,5 +23,10 @@ export async function logoutAll(): Promise<void> {
     // expire on their own.
   } finally {
     useAuthStore.getState().clearSession();
+    // Wipe ALL React Query caches — /me, device list, etc. are server-owned and
+    // statically keyed; leaving them lets the NEXT account on this client read
+    // the previous account's cached data (cross-account bleed). Cache lifecycle
+    // is tied to auth: logout ⇒ clear.
+    queryClient.clear();
   }
 }

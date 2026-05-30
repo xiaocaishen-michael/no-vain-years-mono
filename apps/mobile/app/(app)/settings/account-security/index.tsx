@@ -7,7 +7,6 @@
 import { useRouter } from 'expo-router';
 import { ScrollView } from 'react-native';
 
-import { useAuthStore } from '~/auth/store';
 import { useMe } from '~/core/api/use-me';
 import { maskPhone } from '~/format/phone';
 import { Card, Divider, Row } from '~/settings/primitives';
@@ -31,10 +30,11 @@ const COPY = {
 };
 
 export default function AccountSecurityIndex() {
-  const displayName = useAuthStore((s) => s.displayName);
-  const phone = useAuthStore((s) => s.phone);
-  // gender 不入 store（plan D11）：资料卡「性别」行随 GET /me 读回（昵称仍读 store）。
+  // 资料卡全部字段读 /me 查询缓存（单一真相源）：昵称 / 手机号 / 性别 / 个人简介同源，
+  // 不再分别读 store（store 仅作冷启动 seed，不对外暴露用于展示）。
   const { data: profile } = useMe();
+  const displayName = profile?.displayName ?? null;
+  const phone = profile?.phone ?? null;
   const router = useRouter();
 
   return (

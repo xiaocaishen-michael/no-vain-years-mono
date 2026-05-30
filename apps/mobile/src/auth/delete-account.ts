@@ -4,6 +4,7 @@ import {
 } from '@nvy/api-client';
 
 import { useAuthStore } from './store';
+import { queryClient } from '~/core/api/query-client';
 
 // Account-deletion mutation wrappers (004 US10, FR-C01/C02). Both are authed
 // (JwtAuthGuard) — axios attaches the bearer token from the store. Neither hook
@@ -27,6 +28,9 @@ export function useDeleteAccount() {
     mutation: {
       onSuccess: () => {
         useAuthStore.getState().clearSession();
+        // Tie cache to auth: drop the (now-orphaned) account's server-state
+        // caches so they can't bleed into the next account on this client.
+        queryClient.clear();
       },
     },
   });

@@ -8,15 +8,17 @@
 //   3. auth + displayName == null + profileLoaded  → /(app)/onboarding
 //   4. auth + displayName != null                  → /(app)/(tabs)/profile
 //
-// State 2 (`wait`) closes the fresh-login backfill gap: a returning user with a
-// set displayName logs in carrying only tokens in the session — LoginResponse
-// omits displayName for byte-level anti-enumeration (see
-// apps/server/src/auth/phone-sms-auth.response.ts), so store.displayName is
-// momentarily null until useMe (GET /me) rehydrates it. Without the gate
-// AuthGate would flash /(app)/onboarding before the profile lands. We hold a
-// splash until the profile query settles, then route on the real displayName.
-// Cold-start returning users skip the wait — displayName is restored from
-// persisted SecureStore (store.ts partialize), so state 4 hits directly.
+// `displayName` here is the /me query value (apps/mobile/src/core/api/use-me.ts
+// is the single runtime source of truth — NOT the auth store). State 2 (`wait`)
+// closes the fresh-login backfill gap: a returning user with a set displayName
+// logs in carrying only tokens — LoginResponse omits displayName for byte-level
+// anti-enumeration (see apps/server/src/auth/phone-sms-auth.response.ts), so
+// profile.data is undefined until GET /me lands. Without the gate AuthGate would
+// flash /(app)/onboarding before the profile arrives. We hold a splash until the
+// query settles, then route on the real displayName. Cold-start returning users
+// skip the wait — useMe seeds initialData from the persisted store snapshot
+// (store.ts partialize), so profile.data is populated synchronously and state 4
+// hits directly.
 
 export interface AuthGateInput {
   isAuthenticated: boolean;
@@ -66,25 +68,4 @@ export function decideAuthRoute(input: AuthGateInput): AuthGateDecision {
   // need no change here — this is a blocklist, not a per-route whitelist.
   if (inAppGroup && !inOnboarding) return { kind: 'noop' };
   return { kind: 'replace', target: '/(app)/(tabs)/profile' };
-}
-
-/**
- * Resolve the displayName the route decision should use THIS render.
- *
- * `store.displayName` lags one commit behind GET /me: useMe writes it back via a
- * useEffect (apps/mobile/src/core/api/use-me.ts) that runs AFTER the render where
- * the query data first lands. On that settle frame the store is still null while
- * `profile.data.displayName` already holds the real name — feeding the store
- * value alone into decideAuthRoute misroutes a returning user to
- * /(app)/onboarding for one frame (which then bounces, racing expo-router's two
- * back-to-back replace() calls and sometimes sticking on onboarding). Prefer the
- * store (covers cold-start persisted + post-onboarding setDisplayName) but fall
- * back to the freshly-fetched profile value, so the gate decides on the real name
- * the same frame /me lands — no onboarding flash, deterministically.
- */
-export function resolveDisplayName(
-  storeDisplayName: string | null,
-  profileDisplayName: string | null | undefined,
-): string | null {
-  return storeDisplayName ?? profileDisplayName ?? null;
 }
