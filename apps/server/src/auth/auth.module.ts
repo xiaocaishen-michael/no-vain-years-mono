@@ -90,6 +90,69 @@ const DEVICE_THROTTLERS: ThrottlerOptions[] = [
 ];
 
 /**
+ * 010 微信绑定/解绑 EP 限流桶 (FR-S06) —— 提取为模块常量 (同 DEVICE_THROTTLERS,
+ * 避免 useFactory 超 max-lines)。bind 5/account·10/IP;unbind-code 1/account·5/IP;
+ * unbind 5/account·10/IP (均 /60s)。account 桶 getTracker 读 req.user.accountId
+ * (JwtAuthGuard 先填);IP 桶读 req.ip。
+ */
+const WECHAT_THROTTLERS: ThrottlerOptions[] = [
+  {
+    name: 'wx-bind',
+    limit: 5,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const user = req['user'] as { accountId?: unknown } | undefined;
+      return Promise.resolve(`wx-bind:${user?.accountId ?? 'unauthenticated'}`);
+    },
+  },
+  {
+    name: 'wx-bind-ip',
+    limit: 10,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const ip = req['ip'];
+      return Promise.resolve(`wx-bind-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+    },
+  },
+  {
+    name: 'wx-unbind-code',
+    limit: 1,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const user = req['user'] as { accountId?: unknown } | undefined;
+      return Promise.resolve(`wx-unbind-code:${user?.accountId ?? 'unauthenticated'}`);
+    },
+  },
+  {
+    name: 'wx-unbind-code-ip',
+    limit: 5,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const ip = req['ip'];
+      return Promise.resolve(`wx-unbind-code-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+    },
+  },
+  {
+    name: 'wx-unbind',
+    limit: 5,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const user = req['user'] as { accountId?: unknown } | undefined;
+      return Promise.resolve(`wx-unbind:${user?.accountId ?? 'unauthenticated'}`);
+    },
+  },
+  {
+    name: 'wx-unbind-ip',
+    limit: 10,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const ip = req['ip'];
+      return Promise.resolve(`wx-unbind-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+    },
+  },
+];
+
+/**
  * Auth bounded context (per ADR-0032 + post-A-002 retro).
  *
  * The编排 layer — composes SecurityModule (token + DB + Redis) + AccountModule
@@ -268,6 +331,8 @@ const DEVICE_THROTTLERS: ThrottlerOptions[] = [
             },
             // FR-S13 (005) 设备列表 + 单设备撤销 4 桶 (auth EP, 提取到模块常量见下)
             ...DEVICE_THROTTLERS,
+            // FR-S06 (010) 微信绑定/解绑发码/解绑提交 6 桶 (auth EP, 提取到模块常量见下)
+            ...WECHAT_THROTTLERS,
           ],
           storage: new ThrottlerStorageRedisService(cfg.url),
         };

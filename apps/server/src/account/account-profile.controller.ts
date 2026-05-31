@@ -9,7 +9,11 @@ import { UpdateGenderUseCase } from './update-gender.usecase';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard';
 import { AccountProfileResponse } from './account-profile.response';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
-import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip-buckets';
+import {
+  ALL_DELETION_BUCKETS,
+  DEVICE_BUCKETS,
+  WECHAT_BUCKETS,
+} from '../security/throttler-skip-buckets';
 import { UpdateDisplayNameRequest } from './update-display-name.request';
 import { UpdateBioRequest } from './update-bio.request';
 import { UpdateGenderRequest } from './update-gender.request';
@@ -36,6 +40,7 @@ export class AccountProfileController {
   @Get('me')
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,
@@ -85,6 +90,7 @@ export class AccountProfileController {
   @Patch('me')
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,
@@ -145,6 +151,7 @@ export class AccountProfileController {
   @Patch('me/bio')
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,
@@ -202,6 +209,7 @@ export class AccountProfileController {
   @Patch('me/gender')
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,

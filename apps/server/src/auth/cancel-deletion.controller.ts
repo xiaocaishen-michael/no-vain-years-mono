@@ -12,6 +12,7 @@ import {
   ME_BUCKETS,
   SMS_CODE_BUCKETS,
   TOKEN_BUCKETS,
+  WECHAT_BUCKETS,
 } from '../security/throttler-skip-buckets';
 import { CancelCodePhoneThrottlerGuard } from './cancel-code-phone-throttler.guard';
 import { SendCancelDeletionCodeUseCase } from './send-cancel-deletion-code.usecase';
@@ -54,6 +55,7 @@ export class CancelDeletionController {
   @Post('sms-codes')
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     ...DEFAULT_BUCKET,
     ...DEVICE_BUCKETS,
     ...SMS_CODE_BUCKETS,
@@ -101,6 +103,7 @@ export class CancelDeletionController {
   @Post()
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     ...DEFAULT_BUCKET,
     ...DEVICE_BUCKETS,
     ...SMS_CODE_BUCKETS,

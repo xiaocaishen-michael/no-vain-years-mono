@@ -77,3 +77,28 @@ export const DEVICE_BUCKETS: Record<string, boolean> = {
   ...DEVICE_LIST_BUCKETS,
   ...DEVICE_REVOKE_BUCKETS,
 };
+
+// 010 微信绑定 (EP1, authed) — bind EP per-account 5/60s · per-IP 10/60s
+export const WECHAT_BIND_BUCKETS: Record<string, boolean> = {
+  'wx-bind': true,
+  'wx-bind-ip': true,
+};
+
+// 010 微信解绑发码 (EP2, authed) — per-account 1/60s · per-IP 5/60s
+export const WECHAT_UNBIND_CODE_BUCKETS: Record<string, boolean> = {
+  'wx-unbind-code': true,
+  'wx-unbind-code-ip': true,
+};
+
+// 010 微信解绑提交 (EP3, authed) — per-account 5/60s · per-IP 10/60s
+export const WECHAT_UNBIND_BUCKETS: Record<string, boolean> = {
+  'wx-unbind': true,
+  'wx-unbind-ip': true,
+};
+
+/** 010 全部微信桶 —— 既有 (001-005) 路由 spread 此跳过新桶 (wechat EP 互相也 spread 对方组)。 */
+export const WECHAT_BUCKETS: Record<string, boolean> = {
+  ...WECHAT_BIND_BUCKETS,
+  ...WECHAT_UNBIND_CODE_BUCKETS,
+  ...WECHAT_UNBIND_BUCKETS,
+};
