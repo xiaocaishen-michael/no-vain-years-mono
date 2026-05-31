@@ -51,6 +51,8 @@ import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
 import { WECHAT_AUTH } from './wechat-auth.port.js';
 import { MockWechatAuthGateway } from './mock-wechat-auth.gateway.js';
 import { BindWechatUseCase } from './bind-wechat.usecase.js';
+import { SendUnbindWechatCodeUseCase } from './send-unbind-wechat-code.usecase.js';
+import { UnbindWechatUseCase } from './unbind-wechat.usecase.js';
 import { WechatBindingController } from './wechat-binding.controller.js';
 
 /**
@@ -428,6 +430,8 @@ const WECHAT_THROTTLERS: ThrottlerOptions[] = [
     SendCancelDeletionCodeUseCase,
     CancelDeletionUseCase,
     BindWechatUseCase,
+    SendUnbindWechatCodeUseCase,
+    UnbindWechatUseCase,
     JwtAccessGuard,
     SmsPhoneThrottlerGuard,
     CancelCodePhoneThrottlerGuard,
