@@ -2,6 +2,10 @@
 
 > 部署侧一次性配置（tasks T017）。**代码侧已就位的契约**：`apps/server/.env.example` 的 `OSS_*` + `oss.config.ts`（impl 落）。本 runbook = 在 Aliyun 侧把 bucket / CORS / referer / RAM uploader 建好，并把 `OSS_*` 注入 SWAS 部署 env。
 
+> ✅ **已 provision + 验证（2026-05-31）**：Step1-4 全做 + 实测绿 —— bucket `mbw-profile-images`(cn-shanghai/public-read) 存在；CORS 对 `app.xiaocaishen.me` 放行 / evil-origin 403；`mbw-server-xt` PutObject 在 `avatar/`+`background/` 成功、越权前缀 `other/` → 403（最小权限生效）；public GET → 200。本机验证 profile = `mbw-xt-oss`（账号 B AK `LTAI…CCV`）。
+> ⏳ **仅剩 Step5（.62 注入 `OSS_*` + recreate）推迟到 009 implement/部署时**（现在 .62 跑 main 无 oss.config.ts，注入无意义且徒增 prod recreate）。
+> 🧹 遗留：测试对象 `avatar/_smoke/test.txt` + `background/_smoke/test.txt` 待 console 删（mbw-server-xt PutObject-only 删不掉）。
+
 ## 前置事实（2026-05-31 实测 + 同步）
 
 **两个独立 Aliyun 主账号**（关键）：
