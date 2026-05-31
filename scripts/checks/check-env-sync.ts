@@ -36,6 +36,13 @@ const ALLOWLIST = new Set([
   'GITHUB_ACTIONS',
   'RUN_PERF_IT',
   'PERF_IT_REPS',
+  // vitest 运行时自动注入 (sms-code.rules.ts 用 !process.env.VITEST 区分测试 vs dev)。
+  'VITEST',
+  // 真发 SMS env-gated IT (apps/server/test/integration/aliyun-sms.real-send.it.spec.ts)
+  // opt-in flag + 测试手机号 — vitest gate / 测试输入,非 application config。
+  // (ALIYUN_ACCESS_KEY_ID/SECRET/SIGN_NAME/TEMPLATE_CODE 已在 .env.example。)
+  'RUN_SMS_IT',
+  'SMS_IT_PHONE',
   // Expo build-time public var (apps/mobile/src/core/api/setup.ts). EXPO_PUBLIC_*
   // is an Expo framework prefix baked into the web bundle at export; mobile has
   // no server-style .env/.env.example pair, so it is declared here.
