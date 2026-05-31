@@ -19,4 +19,5 @@ export * from './generated/account-deletion/account-deletion';
 export * from './generated/accounts/accounts';
 export * from './generated/app/app';
 export * from './generated/devices/devices';
+export * from './generated/wechat-binding/wechat-binding';
 export * from './generated/models/index';
