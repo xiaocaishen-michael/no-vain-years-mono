@@ -31,7 +31,7 @@ context7_verified: []
 | # | Method | Path | Auth | 说明 | trace FR |
 |---|---|---|---|---|---|
 | **EP1**（新增）| POST | `/api/v1/accounts/me/profile-image/upload-credential` | bearer | body `{ target: 'avatar'\|'background', contentType: string }` → 200 `{ host, objectKey, expiresAt, fields:{ key, policy, signature, OSSAccessKeyId, 'x-oss-...' } }`；后端算 PostObject policy（scope 到 `<target>/<accountId>/<uuid>/` 前缀 + content-type 白名单 + content-length-range + 15min expiration）；ACTIVE 守卫 + 非法 contentType → 400；缺 token → 401；超限 → 429。`issue-upload-credential.usecase.ts`（account ctx）| FR-S02, FR-S05, FR-S06 |
-| **EP2**（新增）| PATCH | `/api/v1/accounts/me/profile-image` | bearer | body `{ target: 'avatar'\|'background', objectKey: string }` → 200 返更新后 profile（含 `avatarUrl`/`backgroundImageUrl`）；后端校验 `objectKey` **starts-with `<target>/<accountId>/`**（防越权写他人）+（可选 HEAD OSS 确认对象存在/类型）→ 落对应字段（覆盖旧值）；key 越权 / 非法 → 4xx 不落库；缺 token → 401。`confirm-profile-image.usecase.ts`（account ctx）| FR-S03, FR-S05, FR-S08 |
+| **EP2**（新增）| PATCH | `/api/v1/accounts/me/profile-image` | bearer | body `{ target: 'avatar'\|'background', objectKey: string }` → 200 返更新后 profile（含 `avatarUrl`/`backgroundImageUrl`）；后端校验 `objectKey` **starts-with `<target>/<accountId>/`**（防越权写他人）+ **HEAD OSS 确认对象存在/类型（必做，D3）** → 落对应字段（覆盖旧值）；key 越权 / 非法 → 4xx 不落库；缺 token → 401。`confirm-profile-image.usecase.ts`（account ctx）| FR-S03, FR-S05, FR-S08 |
 | **EP3**（既有，扩展响应）| GET | `/api/v1/accounts/me` | bearer | 复用 002/007/008；`AccountProfileResponse` **新增 `avatarUrl: string \| null` + `backgroundImageUrl: string \| null`**（`get-account-profile.usecase` select 两列）| FR-S04, FR-C04, FR-C06 |
 
 - **契约同步链（Constitution V，active）**：EP1/EP2 新端点 + EP3 扩响应 → `nx run server:export-openapi` → `packages/api-client` regen（`pnpm nx affected -t generate`）→ mobile 消费 typed hook。**server impl + api-client regen + mobile 消费同 PR**（per [api-contract](../../docs/conventions/api-contract.md)）。
@@ -86,12 +86,12 @@ context7_verified: []
 - **OSS 配置（新 `oss.config.ts`，镜像 `sms.config.ts`）**：env 注入 `OSS_REGION`（如 `oss-cn-hangzhou`）/ `OSS_BUCKET` / `OSS_ACCESS_KEY_ID` / `OSS_ACCESS_KEY_SECRET` —— **凭证治理 per [ADR-0037](../../docs/adr/0037-security-credentials-governance.md)**（最小权限 RAM 子账号、仅 `oss:PutObject` on bucket 前缀；secret 不入码、不入日志、走部署 env）。public base URL 模板 = `https://<bucket>.<region>.aliyuncs.com`。
 - **`oss-policy.ts`（新，纯函数，零-class，Node `crypto`）**：`buildPostObjectCredential({ accountId, target, contentType, maxBytes, ttlMs })` → 构造 policy JSON `{ expiration, conditions: [ {bucket}, ['starts-with','$key',`${target}/${accountId}/`], ['in','$content-type', IMAGE_WHITELIST], ['content-length-range', 0, maxBytes] ] }` → base64 → HMAC-SHA256(V4) 签名 → 返回 `{ host, objectKey, fields }`。`objectKey = `${target}/${accountId}/${crypto.randomUUID()}/img`` —— `<accountId>` 段让 policy 锁本账号、`<uuid>` 断 public-read 跨账号枚举（ADR-0045 OQ3）。`IMAGE_WHITELIST = ['image/jpeg','image/png','image/webp']`。**不引 `ali-oss`**（PostObject 仅需 crypto）。
 - **`issue-upload-credential.usecase.ts`（新，account ctx 扁平）**：直注 `PrismaService` + `OssConfig`；`findUnique`(accountId) → phone-null 视 not-found → `isActive` 纵深防御 → 校验 `target ∈ {avatar,background}` + `contentType ∈ IMAGE_WHITELIST`（非法 400）→ `buildPostObjectCredential(...)` 返回。**不写 DB、不碰字节**。`maxBytes` 头像 / 背景图可不同（如 5MB），常量留 impl。
-- **`confirm-profile-image.usecase.ts`（新，account ctx 扁平）**：直注 `PrismaService` + `OssConfig`；body `{target, objectKey}`；**校验 `objectKey.startsWith(`${target}/${accountId}/`)`**（不符 → `BadRequestException`，防越权写他人，FR-S03）；（可选硬化：HEAD `https://<bucket>.../objectKey` 确认对象存在 + content-type，避免 confirm 未上传的 key → 见 D-表）；`publicUrl = `${ossBaseUrl}/${objectKey}`` → `prisma.account.update({ where:{id}, data:{ [target==='avatar'?'avatarUrl':'backgroundImageUrl']: publicUrl } })` → anemic row 返回。覆盖语义（旧 URL 直接覆盖）；**旧 object v1 不删**（FR-S08，留 OSS Lifecycle 后续）。
+- **`confirm-profile-image.usecase.ts`（新，account ctx 扁平）**：直注 `PrismaService` + `OssConfig`；body `{target, objectKey}`；**校验 `objectKey.startsWith(`${target}/${accountId}/`)`**（不符 → `BadRequestException`，防越权写他人，FR-S03）；**HEAD `https://<bucket>.../objectKey`（public-read 免签）确认对象存在 + content-type 合白名单（必做，D3 —— 防 confirm 未真上传的 key 落坏 URL；不存在 / 类型不符 → 拒不落库）**；`publicUrl = `${ossBaseUrl}/${objectKey}`` → `prisma.account.update({ where:{id}, data:{ [target==='avatar'?'avatarUrl':'backgroundImageUrl']: publicUrl } })` → anemic row 返回。覆盖语义（旧 URL 直接覆盖）；**旧 object v1 不删**（FR-S08，留 OSS Lifecycle 后续）。
 - **DTO**：`IssueUploadCredentialRequest`（`@IsIn(['avatar','background']) target` + `@IsString() contentType`）；`ConfirmProfileImageRequest`（`target` + `@IsString() objectKey`）。response DTO：凭证响应 `UploadCredentialResponse`（host/objectKey/expiresAt/fields）。
 - **Controller**：`account-profile.controller.ts` 注入两 use case + `@Post('me/profile-image/upload-credential')` + `@Patch('me/profile-image')`（镜像 008 `@Patch('me/gender')` 的 throttle + `@ApiResponse` 200/400/401/429 套装 + `@SkipThrottle`/`@Throttle`）。
 - **GET /me 扩字段**：`get-account-profile.usecase.ts` select `avatarUrl,backgroundImageUrl`（扩 `*Result`）；`AccountProfileResponse` 加两 `@ApiProperty({ nullable:true, type:'string' })`；controller 各 `return {...}` 补两字段。
 - **Bounded context（per [server-bounded-context-catalog](../../docs/conventions/server-bounded-context-catalog.md)）**：Q1 直改 account 表核心字段 → **account ctx**；凭证签发虽是「签名」但为**自身 profile 资产专用**（非通用 platform 凭证）→ 留 account（ADR-0045 OQ6 倾向）。**ship 时必加 Operation Catalog 2 行**（issue-upload-credential / confirm-profile-image，context=account，propagation=none，source PR）。无跨 context import，无 Moat。
-- **测试**：`oss-policy.spec.ts`（policy conditions 逐字段 / key 命名含 accountId+uuid / 签名确定性）+ `issue-upload-credential.usecase.spec.ts`（mock prisma：ACTIVE 签发 / not-active / 非法 target/contentType 400 / not-found）+ `confirm-profile-image.usecase.spec.ts`（前缀符 → 落库 / 越权前缀 → 拒 / 覆盖旧值）+ `*.it.spec.ts` Testcontainers（凭证 policy 断言 / confirm 落库 + GET 回读 / 越权 4xx / 401 / 429）。可选 HEAD 校验在 IT 走测试边界 mock（不真打 OSS）。**禁 lifecycle mock**（复用既有 authed 守卫，无新 Guard/Filter）。
+- **测试**：`oss-policy.spec.ts`（policy conditions 逐字段 / key 命名含 accountId+uuid / 签名确定性）+ `issue-upload-credential.usecase.spec.ts`（mock prisma：ACTIVE 签发 / not-active / 非法 target/contentType 400 / not-found）+ `confirm-profile-image.usecase.spec.ts`（前缀符 + HEAD 命中 → 落库 / 越权前缀 → 拒 / HEAD 未命中 → 拒 / 覆盖旧值）+ `*.it.spec.ts` Testcontainers（凭证 policy 断言 / confirm 落库 + GET 回读 / 越权 4xx / 401 / 429）。**HEAD 校验（必做）在 IT 走测试边界 mock（注入可 stub 的 object-exists 探针，不真打 OSS）**。**禁 lifecycle mock**（复用既有 authed 守卫，无新 Guard/Filter）。
 
 ### Mobile（hero 接线 + 资料卡翻 active + 换图 / 显示 / 查看大图）
 
@@ -137,7 +137,7 @@ context7_verified: []
 |---|---|---|---|
 | **D1** 凭证原语 | STS / signed-PUT / PostObject | **PostObject**（用户已确认；见 OQ1）| ⚠️ resolved |
 | **D2** 端点形态 | 4 端点(头像/背景各一) vs target-param 2 端点 | **target-param 2 端点**（EP1 凭证 + EP2 confirm，`target:'avatar'\|'background'`）—— 流程仅前缀 / aspect 不同，DRY；2 use case 镜像 update-gender 结构 | ⚠️ resolved |
-| **D3** confirm 是否 HEAD 校验对象存在 | 信任 client confirm vs HEAD 确认 | **倾向加轻量 HEAD**（防 confirm 未上传的 key → 落坏 URL）；public-read 故 HEAD 无需签名；impl 可先无 HEAD（policy 已保证上传约束）再按需加 —— **请 review 是否 v1 必做** | ⚠️ review |
+| **D3** confirm 是否 HEAD 校验对象存在 | 信任 client confirm vs HEAD 确认 | **必做 HEAD**（用户 2026-05-31 拍板）：confirm 前 HEAD `publicUrl`（public-read 免签）确认对象真存在 + content-type 合白名单，未命中 / 类型不符 → 拒不落库；防 confirm 未真上传的 key → 落坏 URL。探针接口化（IT 可 stub） | ✅ resolved |
 | **D4** maxBytes / TTL 常量 | — | TTL **15min**；maxBytes 头像 / 背景可不同（建议各 5MB）；content-type 白名单 `jpeg/png/webp` —— 常量入 `oss-policy.ts`/config | resolved |
 | **D5** 007 e2e 回归 | — | **必核对** `account-security-refactor.spec.ts` 头像/背景图占位断言（翻 active 后改断言）| ⚠️ resolved |
 | **D6** 上传 transport | `expo-file-system` vs RN `fetch`+FormData | **优先 RN `fetch`+`FormData{uri,name,type}`（零额外依赖）**；需上传进度 UI 才引 `expo-file-system` —— impl 按 FR-C03 忙态需求定 | resolved |
@@ -159,7 +159,7 @@ context7_verified: []
 ## Performance Budget
 
 - EP1 凭证签发：纯 crypto 签名，无 DB 写（仅 findUnique active check）→ p95 < 50ms。
-- EP2 confirm：单行 update（+ 可选 HEAD OSS，受 OSS 时延影响）→ 镜像 002/008 profile PATCH（p95 100ms，不含可选 HEAD）。
+- EP2 confirm：单行 update + **1 次 HEAD OSS（必做，D3）** → 受 OSS HEAD 时延影响（同区 cn-shanghai 低延迟，~10-30ms）；镜像 002/008 profile PATCH p95 100ms + HEAD 往返。
 - EP3 GET /me：扩 2 字段不改既有预算。
 - 图片字节：**完全不过后端**（client↔OSS 直传）→ 后端带宽 0 增量。缩略派生在 OSS 边即时算（按需，CDN 后续）。
 
@@ -173,7 +173,7 @@ context7_verified: []
 - `[Server]` `oss.config.ts`（env：region/bucket/AK/SK）+ public base URL 模板（per ADR-0037 凭证治理）
 - `[Server]` `oss-policy.ts`（buildPostObjectCredential 纯函数 + IMAGE_WHITELIST + key 命名）→ `oss-policy.spec.ts` 红绿
 - `[Server]` `issue-upload-credential.usecase.ts` + DTO + controller `@Post('me/profile-image/upload-credential')` → `*.spec.ts` + IT（policy 断言 / active / 400 / 401 / 429）
-- `[Server]` `confirm-profile-image.usecase.ts` + DTO + controller `@Patch('me/profile-image')`（前缀校验 + 落库 +（可选 HEAD））→ `*.spec.ts` + IT（落库 / 越权拒 / 覆盖 / 回读）
+- `[Server]` `confirm-profile-image.usecase.ts` + DTO + controller `@Patch('me/profile-image')`（前缀校验 + **HEAD 确认对象存在/类型（必做 D3）** + 落库）→ `*.spec.ts` + IT（落库 / 越权拒 / HEAD 未命中拒 / 覆盖 / 回读）
 - `[Server]` GET /me 扩 `avatarUrl`/`backgroundImageUrl`：usecase select + `AccountProfileResponse` 加字段 + controller returns 补 → IT 回读断言
 - `[Contract]` `nx run server:export-openapi` + `nx affected -t generate`（api-client regen）→ mobile typed hook
 - `[Mobile]` `expo install expo-image-picker expo-image-manipulator expo-image`（+ web `react-easy-crop`）+ context7 grounding API 形态 → 填 frontmatter `context7_verified`
