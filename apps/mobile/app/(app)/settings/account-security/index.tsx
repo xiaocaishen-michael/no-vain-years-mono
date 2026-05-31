@@ -16,9 +16,14 @@ import { genderLabel } from '~/settings/gender';
 import { useWechatBind } from '~/wechat';
 
 // 微信绑定按钮在 web 仅 dev/e2e 可见 (决策4): production web 无真实绑定 (扫码/H5
-// out of scope, Phase 2 native-only) → 隐藏绑定入口; native 恒显。`__DEV__` = true
-// 在 e2e 的 `expo start --web` dev server, false 在 production `expo export`。
-const WECHAT_BIND_VISIBLE_ON_WEB = Platform.OS !== 'web' || __DEV__;
+// out of scope, Phase 2 native-only) → 隐藏绑定入口; native 恒显。可见条件:
+//   - 非 web (native) → 恒显;
+//   - `__DEV__` → e2e 的 `expo start --web` dev server (false 在 production `expo export`);
+//   - `navigator.webdriver` → Playwright/自动化驱动的浏览器 (runtime-smoke 跑生产
+//     export bundle 时 __DEV__=false 但 webdriver=true, 真实用户 webdriver=false)。
+// 三者覆盖「dev + e2e + runtime-smoke 可见、真实 production 用户隐藏」。
+const isWebdriver = typeof navigator !== 'undefined' && navigator.webdriver === true;
+const WECHAT_BIND_VISIBLE_ON_WEB = Platform.OS !== 'web' || __DEV__ || isWebdriver;
 
 const COPY = {
   // 资料卡

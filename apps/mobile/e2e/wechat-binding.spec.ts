@@ -123,7 +123,14 @@ test('US4 unbind — seed 已绑「解绑」→ 确认 → 发码 → 输码 →
   await mockJson(page, ME_URL, 200, meBody(false), 'GET');
 
   await page.getByRole('button', { name: '获取验证码' }).tap();
+  // 确定性等待: 发码成功 → 倒计时起 → send 按钮 label 变「N秒后可重新发送」(获取验证码
+  // 消失)。确认 hasSentCode 状态已传播再填码/提交, 消除生产 bundle 并行负载下的时序 flaky。
+  await expect(page.getByRole('button', { name: '获取验证码' })).toHaveCount(0, {
+    timeout: 10_000,
+  });
   await page.getByLabel('验证码', { exact: true }).fill('123456');
+  // 等「确认解绑」enabled (hasSentCode && isValid) 再点。
+  await expect(page.getByRole('button', { name: '确认解绑' })).toBeEnabled({ timeout: 10_000 });
   await page.getByRole('button', { name: '确认解绑' }).tap();
 
   // router.back() → 账号与安全页, 行翻「绑定」。

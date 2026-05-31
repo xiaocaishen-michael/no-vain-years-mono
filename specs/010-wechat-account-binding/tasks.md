@@ -107,7 +107,7 @@ created_at: '2026-05-31'
 ## Phase 8: Polish & Verify
 
 - [X] T027 [Server] catalog Operation 清单新增 6 行：`docs/conventions/server-bounded-context-catalog.md` § Operation Catalog 加 `commit-wechat-bind` / `commit-wechat-unbind` / `inspect-wechat-binding`（account）+ `bind-wechat` / `send-unbind-wechat-code` / `unbind-wechat`（auth 编排），propagation 标 R2 CROSS-CTX-SYNC + source PR；spec.md `modules:` frontmatter `[account, auth, security]` 与 catalog 该 6 operation context 一致；spec frontmatter `status: draft→implemented`；plan frontmatter `status: planned→done`
-- [ ] T028 [Verify] **全门绿**（`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main --skip-nx-cache`）：lint+typecheck（4 projects 0）/ test（server 全 Testcontainers IT 含 US1/US2；mobile use-wechat-bind + use-wechat-unbind-form + wechat-errors + schema 单测；api-client）/ build / runtime-smoke（`server-boot-smoke` 真 boot 探 EP1-4 契约 + RFC 9457 ProblemDetail + mobile `expo export -p web` + playwright e2e 含 T023/T026）+ `check-server-moat.ts` **0 违规**（跨 ctx 注释齐）+ 真后端冒烟（bind→发码→解绑 主路径 IT 等价）
+- [X] T028 [Verify] **全门绿**（`pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main --skip-nx-cache`）：lint+typecheck（4 projects 0）/ test（server 全 Testcontainers IT 含 US1/US2；mobile use-wechat-bind + use-wechat-unbind-form + wechat-errors + schema 单测；api-client）/ build / runtime-smoke（`server-boot-smoke` 真 boot 探 EP1-4 契约 + RFC 9457 ProblemDetail + mobile `expo export -p web` + playwright e2e 含 T023/T026）+ `check-server-moat.ts` **0 违规**（跨 ctx 注释齐）+ 真后端冒烟（bind→发码→解绑 主路径 IT 等价）
 
 ---
 
