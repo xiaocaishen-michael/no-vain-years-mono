@@ -17,6 +17,7 @@ import {
 import { UpdateDisplayNameRequest } from './update-display-name.request';
 import { UpdateBioRequest } from './update-bio.request';
 import { UpdateGenderRequest } from './update-gender.request';
+import { InspectWechatBindingUseCase } from './inspect-wechat-binding.usecase';
 
 /**
  * GET /api/v1/accounts/me
@@ -35,6 +36,8 @@ export class AccountProfileController {
     private readonly updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private readonly updateBioUseCase: UpdateBioUseCase,
     private readonly updateGenderUseCase: UpdateGenderUseCase,
+    // 010 FR-S07: /me + PATCH 响应统一带 wechatBound (account 内 ctx 读, 无 cross-ctx 注释)。
+    private readonly inspectWechatBinding: InspectWechatBindingUseCase,
   ) {}
 
   @Get('me')
@@ -84,6 +87,7 @@ export class AccountProfileController {
       gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
+      wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
     };
   }
 
@@ -145,6 +149,7 @@ export class AccountProfileController {
       gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
+      wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
     };
   }
 
@@ -203,6 +208,7 @@ export class AccountProfileController {
       gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
+      wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
     };
   }
 
@@ -261,6 +267,7 @@ export class AccountProfileController {
       gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
+      wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
     };
   }
 }
