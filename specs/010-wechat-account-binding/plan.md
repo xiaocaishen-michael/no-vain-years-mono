@@ -203,8 +203,8 @@ docs/conventions/server-bounded-context-catalog.md  # 编辑 加 3 行 Operation
 
 - **O2**：port 切分 seam — client 发不透明 authCode、server 仅 `code→openid`（AppSecret 留服务端）。确认此 seam（vs client 解析 openid，已倾向拒）。
 - **O6**：bind/unbind 是否发 outbox 审计事件 — 默认 Phase 1 不发（unbind=单表删，无跨 ctx 副作用）。需要可后加 `auth.wechat.bound/unbound`。
-- **O7**：bind 幂等 HTTP 码 — 创建 201；自号重绑幂等返 200 vs 201。
-- **R2**：对称冲突 — 已绑账号再绑**不同** openid → `@@unique([accountId,provider])` 拒；若产品要静默替换则 commit-wechat-bind 语义变。
+- ~~**O7**~~ **【已定 2026-05-31】**：bind 幂等 HTTP 码 — 创建与自号重绑幂等**同返 201**（单 HTTP 码，controller 不分支，不泄露"绑定是否预先存在"时序；逻辑上资源已存在）。
+- ~~**R2**~~ **【已定 2026-05-31】**：对称冲突 — 已绑账号再绑**不同** openid → **拒**（独立 409 `WECHAT_ACCOUNT_ALREADY_BOUND`，不静默替换身份）。`@@unique([accountId,provider])` 已在 DB 层拒 → 不显式处理就是裸 P2002→500，故"拒"为必需正确性非可选。`commit-wechat-bind` 捕获**任意** P2002 后**查本账号现有 WECHAT 绑定**（与约束触发顺序无关）：existing 同 openid→IDEMPOTENT / existing 不同 openid→SELF_DIFFERENT(R2) / 无 existing→openid 被他号占 CONFLICT。happy-path mobile UI 不可达（bound→行显示解绑，不发 bind），纯服务端纵深防御。
 - **R3**：状态端点 — 折叠进 `/me`（本 plan 选，FR-S07 允许）vs 独立 `GET /me/wechat-binding`。
 
 ## Acceptance (Definition of Done) _(optional)_

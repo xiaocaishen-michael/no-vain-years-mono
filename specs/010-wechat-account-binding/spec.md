@@ -2,9 +2,9 @@
 feature_id: 010-wechat-account-binding
 modules: [account, auth, security]
 owners: ['@xiaocaishen-michael']
-status: draft
+status: implementing
 created_at: '2026-05-30'
-updated_at: '2026-05-30'
+updated_at: '2026-05-31'
 spec_kit_version: '>=0.8.5,<0.10.0'
 orchestrator_compat: '>=0.2.0'
 web_compat: stub
@@ -167,7 +167,7 @@ state_branches:
 ### Server Functional Requirements
 
 - **FR-S01**: 绑定关系存储 — MUST 新增 账号↔微信身份 绑定（accountId + provider=WECHAT + openid + 可选 unionid + boundAt）；**openid 全局唯一**（一 openid ↔ 至多一账号）；存储形态（新表 vs `Credential.type` 扩展）留 plan；anemic Prisma row + `@map`（ADR-0043）。
-- **FR-S02**: 绑定创建（authed）— 经微信授权 port 解析 openid（Phase 1 stub / Phase 2 real）→ 创建绑定。openid 已绑**他**账号 MUST 拒（明确错误、不泄露他账号）；已绑**本**账号 MUST 幂等。MUST NOT 改账号 displayName/头像。
+- **FR-S02**: 绑定创建（authed）— 经微信授权 port 解析 openid（Phase 1 stub / Phase 2 real）→ 创建绑定。openid 已绑**他**账号 MUST 拒（明确错误 `WECHAT_ALREADY_BOUND_OTHER`、不泄露他账号）；已绑**本**账号（同 openid）MUST 幂等（创建/幂等同返 **201**，O7）；**本账号已绑微信但请求绑不同 openid** MUST 拒（独立错误 `WECHAT_ACCOUNT_ALREADY_BOUND`「请先解绑」，R2 — 不静默替换身份；happy-path UI 不可达，纯服务端纵深防御）。MUST NOT 改账号 displayName/头像。
 - **FR-S03**: 解绑发码（authed）— 已绑微信 ACTIVE 账号请求 MUST 生成一次性 6 位码，单向哈希写 1 条 `AccountSmsCode`（`purpose=UNBIND_WECHAT`、`expiresAt`=now+10min、`usedAt` 空），明文仅进短信、下发到账号手机号；MUST NOT 改绑定、MUST NOT 发事件（复用 004 send-deletion-code 范式）。未绑/账号异常 MUST 反枚举折叠（不暴露状态）。
 - **FR-S04**: 验码解绑（authed）— 持 active UNBIND_WECHAT 码 + 正确码值 + 已绑微信 MUST 单原子事务：标记码已用 → 删绑定关系。码失败 4 分支 MUST 折叠字节级一致 401；请求体 code 缺/非 `\d{6}` → 400（与凭据路径区分）；并发同码 MUST 恰 1 次成功。
 - **FR-S05**: 鉴权门槛 — bind/发码/验码解绑/状态查询 缺/失效 token MUST 折叠 401（沿用既有 authed 守卫，不暴露额外状态）。
