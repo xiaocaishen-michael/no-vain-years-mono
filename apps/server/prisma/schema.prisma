@@ -21,6 +21,8 @@ model Account {
   displayName       String?      @map("display_name") @db.VarChar(64)
   bio               String?      @map("bio") @db.VarChar(120)
   gender            String?      @map("gender") @db.VarChar(16)
+  avatarUrl         String?      @map("avatar_url") @db.VarChar(512)
+  backgroundImageUrl String?     @map("background_image_url") @db.VarChar(512)
   freezeUntil       DateTime?    @map("freeze_until") @db.Timestamptz(6)
   previousPhoneHash String?      @map("previous_phone_hash") @db.VarChar(64)
   credentials       Credential[]
