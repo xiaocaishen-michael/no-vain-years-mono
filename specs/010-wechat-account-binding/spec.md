@@ -73,11 +73,11 @@ state_branches:
 
 **Why this priority**: 绑定能力的服务端落点与唯一性闸；冲突规则是数据完整性核心。
 
-**Independent Test**: Testcontainers；authed + stub openid `wx_test_1` → 调 bind → 断言 200、绑定关系落库（accountId↔openid、boundAt）、账号 profile（displayName/头像）**不变**；同 openid 再绑**他**账号 → 拒（明确错误码，不泄露他账号）；同 openid 再绑**本**账号 → 幂等无副作用；缺 token → 401。
+**Independent Test**: Testcontainers；authed + stub openid `wx_test_1` → 调 bind → 断言 201、绑定关系落库（accountId↔openid、boundAt）、账号 profile（displayName/头像）**不变**；同 openid 再绑**他**账号 → 拒（明确错误码，不泄露他账号）；同 openid 再绑**本**账号 → 幂等无副作用；缺 token → 401。
 
 **Acceptance Scenarios**:
 
-1. **Given** ACTIVE 账号 + 有效 token + 未绑微信，**When** 经授权 port 拿到 openid 调 bind，**Then** 200、创建绑定（account↔openid，记 boundAt、可选 unionid）；账号 displayName/头像不变
+1. **Given** ACTIVE 账号 + 有效 token + 未绑微信，**When** 经授权 port 拿到 openid 调 bind，**Then** 201、创建绑定（account↔openid，记 boundAt、可选 unionid）；账号 displayName/头像不变
 2. **Given** openid 已绑**他**账号，**When** 本账号绑同 openid，**Then** 拒（明确错误「该微信已绑定其他账号」，不泄露他账号身份）
 3. **Given** openid 已绑**本**账号，**When** 重复绑，**Then** 幂等（无重复绑定、无副作用）
 4. **Given** 缺/失效 token，**When** 调 bind，**Then** 401
@@ -108,7 +108,7 @@ state_branches:
 
 **Why this priority**: 把 007 微信占位翻 active 的用户入口；bind 主路径。
 
-**Independent Test**: Playwright Expo Web（Phase 1 stub）；seed 未绑微信 → 进 007 账号与安全页 → 断言微信行显示「绑定」→ 点击 → stub 授权 → mock bind 200 → 断言行翻「解绑」。
+**Independent Test**: Playwright Expo Web（Phase 1 stub）；seed 未绑微信 → 进 007 账号与安全页 → 断言微信行显示「绑定」→ 点击 → stub 授权 → mock bind 201 → 断言行翻「解绑」。
 
 **Acceptance Scenarios**:
 
@@ -188,7 +188,7 @@ state_branches:
 
 ### Key Entities
 
-- **WeChatBinding（新增）**：账号↔微信身份绑定 —— accountId + provider=WECHAT + openid（全局唯一）+ 可选 unionid + boundAt。一 openid ↔ 至多一账号。存储形态（新表 vs `Credential.type` 扩展）留 plan。
+- **WechatBinding（新增）**：账号↔微信身份绑定 —— accountId + provider=WECHAT + openid（全局唯一）+ 可选 unionid + boundAt。一 openid ↔ 至多一账号。存储形态（新表 vs `Credential.type` 扩展）留 plan。
 - **AccountSmsCode（既有，扩展 purpose）**：新增 `purpose=UNBIND_WECHAT`（物理隔离，单向哈希，10min TTL，恰一次）。
 - **Account（既有）**：绑定/解绑 MUST NOT 改其 displayName/头像（不回填）。
 
@@ -196,10 +196,10 @@ state_branches:
 
 ### Measurable Outcomes
 
-- **SC-001**: 绑定创建 — authed + stub openid → 200、绑定落库（account↔openid、boundAt）、profile 不变；openid 已绑他号 → 拒（不泄露）；已绑本号 → 幂等；缺 token → 401（Testcontainers IT 逐字段）。
+- **SC-001**: 绑定创建 — authed + stub openid → 201、绑定落库（account↔openid、boundAt）、profile 不变；openid 已绑他号 → 拒（不泄露）；已绑本号 → 幂等；缺 token → 401（Testcontainers IT 逐字段）。
 - **SC-002**: 解绑发码 — 已绑微信 authed → 204、落 1 条 active UNBIND_WECHAT 码（哈希入库、10min、usedAt 空）、短信发出、绑定不变、无事件；未绑/异常 → 反枚举折叠；超限 429。
 - **SC-003**: 验码解绑 — 持有效码提交 → 删绑定（单事务）；码 4 类失败字节级一致 401；并发同码恰 1 次成功（乐观锁/affected-count）。
-- **SC-004**: 绑定入口（Phase 1 web）— Playwright：未绑→显示「绑定」→ stub 授权 → mock bind 200 → 行翻「解绑」；已绑→显示「解绑」→ 确认对话 → 解绑验证页 → 发码+输码 → mock 解绑 → 行翻「绑定」。
+- **SC-004**: 绑定入口（Phase 1 web）— Playwright：未绑→显示「绑定」→ stub 授权 → mock bind 201 → 行翻「解绑」；已绑→显示「解绑」→ 确认对话 → 解绑验证页 → 发码+输码 → mock 解绑 → 行翻「绑定」。
 - **SC-005**: 解绑验证页 — 展示手机验证码输入（非密码）、复用 `SmsInput` + RHF；标题/副文符图四改造文案。
 - **SC-006**: 不回填 — 绑定/解绑前后账号 displayName/头像不变（IT + e2e 断言）。
 - **SC-007**: 覆盖边界标注 — Phase 2 真实 native 微信唤起为设备/手动验证（无 web e2e），spec/plan 明记；web production 微信绑定（扫码/H5）out of scope，不假装覆盖。
