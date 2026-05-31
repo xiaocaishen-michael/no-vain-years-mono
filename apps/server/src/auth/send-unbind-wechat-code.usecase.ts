@@ -38,8 +38,12 @@ export class SendUnbindWechatCodeUseCase {
     const inspection = await this.inspectAccountStatusById.execute(accountId);
     const { bound } = await this.inspectWechatBinding.execute(accountId);
     if (inspection.kind !== 'ACTIVE' || !bound) {
-      // 反枚举折叠: 非 ACTIVE / NOT_FOUND / 未绑 一律同一 401, 字节级一致。
-      throw new UnauthorizedException('INVALID_CREDENTIALS');
+      // 反枚举折叠: 非 ACTIVE / NOT_FOUND / 未绑 一律同一 401。抛**裸**
+      // UnauthorizedException() (detail='Unauthorized') 而非自定义 code —— 因为
+      // FROZEN 被 JwtAuthGuard 在 usecase 前拦成 guard 的 'Unauthorized', 未绑 ACTIVE
+      // 走到此处。若此处用自定义 code 则两路径 401 body 可区分 (未绑 vs 冻结/无 token),
+      // 破反枚举。裸折叠让 未绑 / 冻结 / 无 token 三者 401 字节级一致 (FR-S03)。
+      throw new UnauthorizedException();
     }
 
     const code = issueSmsCode();
