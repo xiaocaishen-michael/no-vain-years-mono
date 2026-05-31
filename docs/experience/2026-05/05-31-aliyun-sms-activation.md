@@ -2,6 +2,8 @@
 
 > 2026-05-31。SMS 签名 + 模板审批通过后激活真·阿里云 DySMS。
 > **网关代码早已实现并接好线**（`aliyun-sms.gateway.ts` + `auth.module.ts` provider 工厂 + `sms.config.ts`，W3 "Skeleton-only 没 cred" 时 ship）；本次只补当初延期的**真发 env-gated IT** + 激活。
+>
+> ✅ **2026-05-31 实测通过**：Step 1 本地真发 IT 绿（Aliyun 返回 OK，bizId `502711780201936494`）；Step 2 prod 激活（`SMS_GATEWAY=aliyun` + 模板 `SMS_507390061` / 签名 `上海新瞳光年科技`，AccessKey 验后已轮换）→ app 容器 recreate 后 `(healthy)`、`phone-sms-auth` 路由就绪、真机收到真实随机验证码。
 
 ## 前置（已具备）
 
