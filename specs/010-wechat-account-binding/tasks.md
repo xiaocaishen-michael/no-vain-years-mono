@@ -36,7 +36,7 @@ created_at: '2026-05-31'
 
 ## Phase 1: Setup & 决策
 
-- [ ] T001 [Server] `config/wechat.config.ts` in `apps/server/src/config/`：discriminated union（`kind:'mock'|'real'`，默认 `mock`；`real` 时 Zod 校验 `WECHAT_APP_ID`/`WECHAT_APP_SECRET` 非空 fail-fast，镜像 `sms.config.ts`）+ wire `config/index.ts` + 单测（默认 mock / real 缺 secret → boot 抛）。**锚定用户决策（2026-05-31）**：①新表 WechatBinding ②Phase 1 单 PR 先交付 ③unionid 现在就存（nullable，不用于唯一性）④web 生产端隐藏绑定按钮（e2e 仍走 stub）。verify typecheck/build 绿
+- [X] T001 [Server] `config/wechat.config.ts` in `apps/server/src/config/`：discriminated union（`kind:'mock'|'real'`，默认 `mock`；`real` 时 Zod 校验 `WECHAT_APP_ID`/`WECHAT_APP_SECRET` 非空 fail-fast，镜像 `sms.config.ts`）+ wire `config/index.ts` + 单测（默认 mock / real 缺 secret → boot 抛）。**锚定用户决策（2026-05-31）**：①新表 WechatBinding ②Phase 1 单 PR 先交付 ③unionid 现在就存（nullable，不用于唯一性）④web 生产端隐藏绑定按钮（e2e 仍走 stub）。verify typecheck/build 绿
 
 ---
 
