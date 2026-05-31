@@ -2,7 +2,7 @@
 feature_id: 010-wechat-account-binding
 modules: [account, auth, security]
 owners: ['@xiaocaishen-michael']
-status: implementing
+status: implemented
 created_at: '2026-05-30'
 updated_at: '2026-05-31'
 spec_kit_version: '>=0.8.5,<0.10.0'

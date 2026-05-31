@@ -1,7 +1,7 @@
 ---
 feature_id: 010-wechat-account-binding
 spec_ref: ./spec.md
-status: planned
+status: done
 created_at: '2026-05-31'
 updated_at: '2026-05-31'
 adr_refs: ['0023', '0024', '0032', '0035', '0037', '0043']
