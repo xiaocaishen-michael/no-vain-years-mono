@@ -21,6 +21,15 @@ describe('check-e2e-seed-auth-mock', () => {
     expect(scanSpecFiles(files(content))).toHaveLength(0);
   });
 
+  it('seed-authed + helper-call body GET /me stub (parens inside body) → ok', () => {
+    // wechat-binding.spec.ts shape: body is meBody(wechatBound), whose inner
+    // parens must not truncate the match before 'GET'.
+    const content = `${SEED}
+      const ME_URL = '**/api/v1/accounts/me';
+      await mockJson(page, ME_URL, 200, meBody(wechatBound), 'GET');`;
+    expect(scanSpecFiles(files(content))).toHaveLength(0);
+  });
+
   it('seed-authed + inline /me glob mockJson GET → ok', () => {
     const content = `${SEED}
       await mockJson(page, '**/api/v1/accounts/me', 200, { displayName: null }, 'GET');`;
