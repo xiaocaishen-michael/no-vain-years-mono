@@ -1,5 +1,5 @@
 ---
-feature_id: 009-wechat-account-binding
+feature_id: 010-wechat-account-binding
 modules: [account, auth, security]
 owners: ['@xiaocaishen-michael']
 status: draft
@@ -29,7 +29,7 @@ state_branches:
 > **Phase 2** = 把**真实 native 微信 SDK**（开放平台注册 + config plugin + custom dev client + 服务端 code↔openid 交换）接入同一 port，替换 stub —— **设备专属**、无 web e2e。
 > 本 spec 是**账号绑定**（已登录账号关联微信），**不是「微信登录」**（微信作登录方式另议）。范围**仅微信**（google 保持 007 占位）。**实现排在 007 之后**（翻 007 微信占位行）。
 
-**Feature Branch**: `009-wechat-account-binding`
+**Feature Branch**: `010-wechat-account-binding`
 **Created**: 2026-05-30
 **Status**: Draft
 **Module**: `account` + `auth` + `security`（绑定关系 = account 数据；bind/unbind 编排 = auth；UNBIND_WECHAT 短信码 crypto/store = security。最终各 use case bounded context 落点留 plan 按 [server-bounded-context-catalog](../../docs/conventions/server-bounded-context-catalog.md) + 两段式委托 [ADR-0043](../../docs/adr/0043-server-flat-module-paradigm.md) §3a 决）
