@@ -98,7 +98,7 @@ state_branches:
 
 > p4 子 plan B3 起手。settings shell（006）已 ship（#221）→ 2026-05-26 clarify 定的「delete-account 延后」前提解除。spec-merge 约束多已在 Session 2026-05-26 锁（错误码口径 / 端点形态 / RHF Golden Sample）；本轮决落点 + 真分歧（user 确认 2026-05-29）。
 
-- Q: 本 client feature 落点？ → A: **amend 004 原地**（不吃新编号，realname 仍 `007`，per p4 决策 #3，与 B2 amend 005 同模式）；branch `004-account-deletion-client`；解 US10 / FR-C01 / FR-C02 / SC-C01 的 `[DEFERRED]`；新建 `tasks-client.md`（已 ship 的 server tasks 不动）。
+- Q: 本 client feature 落点？ → A: **amend 004 原地**（不吃新编号，per p4 决策 #3，与 B2 amend 005 同模式）；branch `004-account-deletion-client`；解 US10 / FR-C01 / FR-C02 / SC-C01 的 `[DEFERRED]`；新建 `tasks-client.md`（已 ship 的 server tasks 不动）。
 - Q: 是否含 server 改？ → A: **纯 mobile，无 server 改** —— 注销发码 / 提交 5 端点（US1-3）随 #198 已 ship，Orval `useAccountDeletionControllerSendDeletionCodeForMe`(void) / `SubmitDeletionForMe`({data: DeleteAccountRequest}) 已生成且经 `@nvy/api-client` 桶导出（无 B2 那种契约 quirk / 桶遗漏）。
 - Q: 注销发起屏路由落点 + RHF？ → A: 落 `(app)/settings/account-security/delete-account`（settings shell 之内，account-security index「注销账号」行 flip 激活）；表单 **RHF + zodResolver，mirror `use-cancel-deletion-form`**（复用皮、重写肉：双勾选解锁发码 → 6 位码 → 确认 → 清 session → login）。`deleteAccountErrorToast` 统一错误（authed `INVALID_DELETION_CODE` / 429 / 网络 / 未知），mirror `cancel-deletion-errors`。
 - Q: 注销成功后路由？ → A: **清本地会话 → login**（账号转 FROZEN 不可登录；delete 清 session ≠ cancel-deletion 的回主页）。无 displayName→onboarding 顾虑（清 session 后 AuthGate 直送 login，#216 回填仅影响有 session 的冷启动）。
@@ -419,7 +419,7 @@ FROZEN 账号尝试手机短信登录时被拦截 modal 拦下，提示「账号
 - **outbox 真消费侧**（事件 sink / 推送通知 / 删除审计物化 / 数据导出）→ 后续批次（本 feature 仅发布事件到 outbox）
 - **硬删除账号 / 物理删行**（M3+ GDPR 完整擦除）→ 本 feature 终态是 ANONYMIZED（保留行 + 抹 PII），非物理删除
 - **单设备登出 / 设备管理** → 归 `005-device-management`
-- **实名认证数据在匿名化时的擦除**（`RealnameProfile` 加密字段清理）→ 归 `006-realname-verification`（实名落地后再补匿名化擦除策略）
+- **实名认证数据在匿名化时的擦除** → **不再需要**（实名认证功能已废弃，2026-05-31，无 `realname_profile` 数据）
 - **冻结期内的部分功能降级 UI**（只读模式 / 倒计时常驻）→ 本 feature 冻结即不可登录，无降级态
 - **多登录方式撤销重发**（OAuth 等）→ 当前 `loginMethod` 仅手机短信
 - **settings shell（设置外壳）本体** → 仍非本 feature scope（归 `006-account-settings-shell`，已 ship #221）。~~注销发起屏（delete-account）延后~~ → **已解延后**：settings shell 就位后，2026-05-29 amend（p4 B3，branch `004-account-deletion-client`）落地 delete-account 屏（FR-C01/C02 + US10 + SC-C01 激活），见 § Clarifications Session 2026-05-29。

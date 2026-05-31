@@ -47,7 +47,7 @@
 涉及外部 API（第三方验证等）：**TX1** 存 PENDING → **tx 外**调外部（HTTP 不可在 tx 内持锁）→ **TX2** 标结果（成功/失败）。
 
 - **何时用**：external provider 调用、长耗时 I/O。
-- **实证锚**：006-realname-verification split-tx（批 E 待迁）；shape 见 master open Q#6。
+- **实证锚**：暂无（mono 尚无外部 I/O split-tx 落地）。
 
 ### P7 — 悲观锁兜底（罕用）
 
@@ -76,10 +76,10 @@
 
 ### S3 — PII：AES-GCM 加密 + 唯一 hash 防占位 + 终态解密 + 掩码
 
-敏感 PII（实名 / 身份证）**AES-GCM 加密存**；对需唯一性的字段额外存**确定性 hash（如 `idCardHash`）+ 唯一约束**防多账号占用同一身份；**仅终态（VERIFIED）才解密** + 对外**掩码**返回。
+敏感 PII（身份证号 / 银行卡号等）**AES-GCM 加密存**；对需唯一性的字段额外存**确定性 hash + 唯一约束**防多账号占用同一身份；**仅终态才解密** + 对外**掩码**返回。
 
-- **何时用**：实名认证、敏感个人信息持久化。
-- **实证锚**：006-realname-verification（批 E 待迁，AES-GCM + idCardHash 唯一）。
+- **何时用**：敏感个人信息持久化。
+- **实证锚**：暂无（mono 尚无 PII 加密字段落地）。
 
 ## 3. impl 期 stop-signals
 

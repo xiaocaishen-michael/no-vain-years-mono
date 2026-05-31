@@ -2,7 +2,7 @@
 
 > 隶属 [account-migration master](05-25-account-migration-master.md) §「子 plan 4」。**p4 = 本 master（顶层 Plan 2 业务迁移）的第 4 个子 plan，≠ 顶层「Plan 4」**（后者指 mobile IPA/APK build + PKM/wealth 等非 account 模块，见 master § Out of Scope）。
 >
-> 本文 2026-05-29 经独立 `/plan` 会话从占位骨架升级为真 plan（决策 + 三 feature 拆分 + 执行步骤）。与后端 16 use case 迁移正交，可与批 E（`006` 让号给 settings shell，realname 顺延 `007`）server 迁移并行。
+> 本文 2026-05-29 经独立 `/plan` 会话从占位骨架升级为真 plan（决策 + 三 feature 拆分 + 执行步骤）。与后端 use case 迁移正交。
 >
 > **状态（2026-05-29 收口）**：✅ **三 feature 全 ship** —— B1 `006-account-settings-shell` #221 / B2 设备管理 amend 005 #222 / B3 注销发起 amend 004 #223。**A→B→C 链闭合，p4 graduation 达成**（002 ⚙️ → settings → 账号与安全 → 登录管理 + 注销账号 全通）。下方决策表 / 执行步骤留作迁移留痕。
 
@@ -35,7 +35,7 @@
 |---|---|---|
 | 1 | scope 切分 | **分 3 feature**（B1 壳骨架 / B2 设备 amend 005 / B3 注销 amend 004）；非 mega-spec |
 | 2 | B2/B3 优先级 | **设备管理(B2)先**（风险低、port 高保真），注销发起(B3)后 |
-| 3 | spec 编号 | **壳取 006**（`006-account-settings-shell`），realname 顺延 `007+` |
+| 3 | spec 编号 | **壳取 006**（`006-account-settings-shell`） |
 | 4 | 范围外项 | **全做 disabled 占位**（手机号行展示 maskPhone 但 disabled / 实名·第三方·通用·通知灰置 / 省略法务页脚，避免 dangling route） |
 
 ## 三 feature 拆分 + 依赖

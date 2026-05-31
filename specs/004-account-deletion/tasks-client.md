@@ -79,6 +79,6 @@ Phase 3  TD07 (verify)
 1. **Foundational**：TD01（错误映射 vitest）∥ TD02（wrapper）→ TD03（RHF 表单 hook + renderHook vitest）。
 2. **US10 屏**：TD04 屏（port 视觉 + RHF）→ TD05 flip → TD06 e2e。
 3. Phase 3 全量 gate 后单 PR ship（纯 mobile）。
-4. **p4 graduation**：B3 ship 后 A→B→C 链全闭（002 ⚙️ → settings → 账号与安全 → 登录管理[B2] + 注销账号[B3]）；realname 仍占 007。
+4. **p4 graduation**：B3 ship 后 A→B→C 链全闭（002 ⚙️ → settings → 账号与安全 → 登录管理[B2] + 注销账号[B3]）。
 
 预估 7 task（3 foundational + 2 US10 屏 + 1 e2e + 1 verify）；纯 mobile、无 server/contract/新依赖。复杂度低于 B2（无 server 改、无独立组件文件、无 cache-read 详情）。
