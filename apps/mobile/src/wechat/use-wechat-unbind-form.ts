@@ -12,10 +12,13 @@ import { meQueryKey } from '~/core/api/me-query-key';
 import { wechatUnbindFormSchema, type WechatUnbindFormValues } from './wechat-unbind-form.schema';
 import { wechatUnbindErrorToast } from './wechat-errors';
 
-// 微信解绑表单 (010 FR-C, RHF 镜像 useDeleteAccountForm 但**去双勾选**(解绑无注销
-// 那种不可逆确认) + **去 success-clearSession**(解绑保留 session, 仅刷新 /me))。
-// requesting_sms / submitting = pending 派生 (铁律 3 单源); idle/sms_sent/success/
-// error 持久 latch。仅 6 位码进 RHF (铁律 2)。
+// 微信解绑表单 (010 FR-C, RHF 镜像 useDeleteAccountForm 但**去双勾选**(解绑可逆) +
+// **去 success-clearSession**(解绑保留 session, 仅刷新 /me))。仅 6 位码进 RHF (铁律 2)。
+//
+// 状态迁移走 React Query **声明式 onSuccess/onError**(非 post-await imperative
+// setState) —— 后者在 expo-web/Playwright 下与 setInterval 倒计时同批时偶发不刷新
+// (实测: 加日志即过、去日志即挂)。onSuccess 在 RQ flush 周期内可靠触发。loading 单源
+// = mutation.isPending(铁律 3, 不另设 bool)。
 export type WechatUnbindFormState =
   | 'idle'
   | 'requesting_sms'
@@ -32,9 +35,6 @@ export function useWechatUnbindForm() {
     mode: 'onChange',
     defaultValues: { code: '' },
   });
-
-  const smsRequest = useWechatBindingControllerSendUnbindCodeForMe();
-  const unbind = useWechatBindingControllerUnbindWechatForMe();
   const queryClient = useQueryClient();
 
   const [phase, setPhase] = useState<'idle' | 'sms_sent' | 'success' | 'error'>('idle');
@@ -67,36 +67,49 @@ export function useWechatUnbindForm() {
     }, 1000);
   }, []);
 
-  // 发码 (EP2, 无 body, server 由 bearer 取账号)。仅 cooldown 门槛 (无双勾选)。
-  const requestSms = useCallback(async () => {
+  // 发码 (EP2, 无 body, server 由 bearer 取账号)。
+  const smsRequest = useWechatBindingControllerSendUnbindCodeForMe({
+    mutation: {
+      onSuccess: () => {
+        setHasSentCode(true);
+        startCountdown();
+        setPhase('sms_sent');
+      },
+      onError: (e) => {
+        setErrorToast(wechatUnbindErrorToast(e));
+        setPhase('error');
+      },
+    },
+  });
+
+  // 验码解绑 (EP3)。成功**不** clearSession (解绑保留登录态) —— 仅 invalidate /me
+  // (wechatBound 刷新); 屏驱动 router.back()。
+  const unbind = useWechatBindingControllerUnbindWechatForMe({
+    mutation: {
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: meQueryKey(useAuthStore.getState().accountId),
+        });
+        setPhase('success');
+      },
+      onError: (e) => {
+        setErrorToast(wechatUnbindErrorToast(e));
+        setPhase('error');
+      },
+    },
+  });
+
+  // 仅 cooldown 门槛 (无双勾选)。fire-and-forget: onSuccess/onError 驱动状态迁移。
+  const requestSms = useCallback(() => {
     if (smsCountdown > 0 || smsRequest.isPending) return;
     setErrorToast(null);
-    try {
-      await smsRequest.mutateAsync();
-      setHasSentCode(true);
-      startCountdown();
-      setPhase('sms_sent');
-    } catch (e) {
-      setErrorToast(wechatUnbindErrorToast(e));
-      setPhase('error');
-    }
-  }, [smsCountdown, smsRequest, startCountdown]);
+    smsRequest.mutate();
+  }, [smsCountdown, smsRequest]);
 
-  // 铁律 1 — caller 用 <Controller> 包 code input; submit 走 handleSubmit 使
-  // formState.isSubmitting 为唯一 loading 源 (铁律 3)。成功**不** clearSession ——
-  // 解绑保留登录态, 仅 invalidate /me (wechatBound 刷新); 屏驱动 router.back()。
-  const submit = form.handleSubmit(async ({ code }) => {
+  // 铁律 1 — caller 用 <Controller> 包 code input; handleSubmit 校验后 fire mutate。
+  const submit = form.handleSubmit(({ code }) => {
     setErrorToast(null);
-    try {
-      await unbind.mutateAsync({ data: { code } });
-      await queryClient.invalidateQueries({
-        queryKey: meQueryKey(useAuthStore.getState().accountId),
-      });
-      setPhase('success');
-    } catch (e) {
-      setErrorToast(wechatUnbindErrorToast(e));
-      setPhase('error');
-    }
+    unbind.mutate({ data: { code } });
   });
 
   // error → 回 sms_sent (码已发, input 留活) 或 idle; 清 toast。
@@ -105,14 +118,14 @@ export function useWechatUnbindForm() {
     setPhase((prev) => (prev === 'error' ? (hasSentCode ? 'sms_sent' : 'idle') : prev));
   }, [hasSentCode]);
 
-  const { isSubmitting } = form.formState;
-  const state: WechatUnbindFormState = isSubmitting
+  const state: WechatUnbindFormState = unbind.isPending
     ? 'submitting'
     : smsRequest.isPending
       ? 'requesting_sms'
       : phase;
 
   const canSendCode = smsCountdown === 0 && state !== 'requesting_sms' && state !== 'submitting';
+  const isSubmitting = state === 'submitting';
 
   return {
     form,

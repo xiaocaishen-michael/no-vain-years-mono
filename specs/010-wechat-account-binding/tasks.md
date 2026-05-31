@@ -90,7 +90,7 @@ created_at: '2026-05-31'
 
 - [X] T021 [US3] [Mobile] `src/wechat/use-wechat-bind.ts`（镜像 `src/auth/delete-account.ts`）：stub `authorizeWechatStub()` 返确定性 authCode → Orval `useWechatBindingControllerBind({data:{authCode}})`；onSuccess invalidate `useMe` query→行翻解绑；409→toast「该微信已绑定其他账号」行不变；失败→toast 不脏写（仅服务端确认后翻行，FR-C06）+ `src/wechat/wechat-errors.ts`（镜像 `deletion-errors.ts`：409/401/network 映射）+ `src/wechat/index.ts` barrel + vitest logic 单测（错误映射 / onSuccess invalidate / 409 不脏写）。Metro 相对 import **extensionless**（per memory `metro_web_cannot_resolve_js_extension_imports`）
 - [X] T022 [US3] [Mobile] `app/(app)/settings/account-security/index.tsx`：从 `useMe()` 读 `wechatBound`；既有 disabled 微信 `<Row>`（D1）改活行：unbound→bind 流（接 use-wechat-bind），bound→确认对话→`router.push('.../wechat-unbind')`；确认对话**内联** 006 范式（`Platform.OS==='web'?window.confirm('确定要解除微信绑定?'):Alert.alert(...)`，copy 自 `settings/index.tsx`）；**web 生产端隐藏绑定按钮**（决策4；e2e 仍走 stub）；google 保持 disabled。+ 更新 `e2e/account-security-refactor.spec.ts` 微信断言（D7：旧断言微信行 disabled/不导航 → state-driven 活行）
-- [ ] T023 [US3] [Mobile-E2E] `apps/mobile/e2e/wechat-binding.spec.ts` **bind 段**（Playwright Web，复用 `_support/api-mock.ts` mockJson + addInitScript seed，**mock REFRESH_URL 200**）：seed `/me {wechatBound:false}`→进账号与安全页→微信行「绑定」→点击→stub authorize→mock bind 201→re-mock `/me {true}`→断言行翻「解绑」；409 段：mock 409→toast + 行保持「绑定」。`getByRole` 收窄（stacked screen）；web-stripped URL；本地跑前杀 :3000 nx serve 父进程
+- [X] T023 [US3] [Mobile-E2E] `apps/mobile/e2e/wechat-binding.spec.ts` **bind 段**（Playwright Web，复用 `_support/api-mock.ts` mockJson + addInitScript seed，**mock REFRESH_URL 200**）：seed `/me {wechatBound:false}`→进账号与安全页→微信行「绑定」→点击→stub authorize→mock bind 201→re-mock `/me {true}`→断言行翻「解绑」；409 段：mock 409→toast + 行保持「绑定」。`getByRole` 收窄（stacked screen）；web-stripped URL；本地跑前杀 :3000 nx serve 父进程
 
 ---
 
@@ -100,7 +100,7 @@ created_at: '2026-05-31'
 
 - [X] T024 [US4] [Mobile] `src/wechat/wechat-unbind-form.schema.ts`（`{code: z.string().regex(SMS_CODE_REGEX)}` 复用 login schema regex）+ `src/wechat/use-wechat-unbind-form.ts`（镜像 `use-delete-account-form.ts`，**去双勾选 + 去 success-clearSession**——解绑保留 session）：idle/sms_sent/submitting/success/error 状态机 + isSubmitting 单源 + 60s countdown + 发码（Orval unbind-codes）+ 提交（Orval unbind）+ onSuccess invalidate `useMe` + `router.back()` + error latch + vitest logic 单测（状态机迁移 / isSubmitting 单源 / 60s countdown / error 映射 / 成功不 clearSession）
 - [X] T025 [US4] [Mobile] `app/(app)/settings/account-security/wechat-unbind.tsx`（`delete-account.tsx` 近拷去双勾选块）：标题「账号解绑」+ 副文「您正在申请解除微信绑定，需验证以下身份」+ `~/ui/SmsInput`（RHF `<Controller>`）+ 发码按钮 + 提交「确认解绑」，接 `use-wechat-unbind-form` + `app/(app)/settings/account-security/_layout.tsx` 注册 `wechat-unbind` Stack.Screen（标题「账号解绑」）+ typecheck/lint 绿。RHF Golden Sample 4 铁律（Controller 非 register / 表单态副作用态分层 / isSubmitting 单源 / 错误+a11y 一体）
-- [ ] T026 [US4] [Mobile-E2E] `apps/mobile/e2e/wechat-binding.spec.ts` **unbind 段**：seed `/me {true}`→微信行「解绑」→点击→`window.confirm` 确定→`/wechat-unbind`→发码（mock 204）→输码→提交（mock 204）→re-mock `/me {false}`→断言 `router.back` + 行翻「绑定」；确认对话点「取消」→留原页、仍绑定；码错→401「验证码错误」/ 400 格式 → 提示、仍绑定。**mock REFRESH_URL 200**（避 refresh 拦截器误登出）；`getByRole` 收窄
+- [X] T026 [US4] [Mobile-E2E] `apps/mobile/e2e/wechat-binding.spec.ts` **unbind 段**：seed `/me {true}`→微信行「解绑」→点击→`window.confirm` 确定→`/wechat-unbind`→发码（mock 204）→输码→提交（mock 204）→re-mock `/me {false}`→断言 `router.back` + 行翻「绑定」；确认对话点「取消」→留原页、仍绑定；码错→401「验证码错误」/ 400 格式 → 提示、仍绑定。**mock REFRESH_URL 200**（避 refresh 拦截器误登出）；`getByRole` 收窄
 
 ---
 
