@@ -9,10 +9,15 @@ import { UpdateGenderUseCase } from './update-gender.usecase';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard';
 import { AccountProfileResponse } from './account-profile.response';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
-import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip-buckets';
+import {
+  ALL_DELETION_BUCKETS,
+  DEVICE_BUCKETS,
+  WECHAT_BUCKETS,
+} from '../security/throttler-skip-buckets';
 import { UpdateDisplayNameRequest } from './update-display-name.request';
 import { UpdateBioRequest } from './update-bio.request';
 import { UpdateGenderRequest } from './update-gender.request';
+import { InspectWechatBindingUseCase } from './inspect-wechat-binding.usecase';
 
 /**
  * GET /api/v1/accounts/me
@@ -31,11 +36,14 @@ export class AccountProfileController {
     private readonly updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private readonly updateBioUseCase: UpdateBioUseCase,
     private readonly updateGenderUseCase: UpdateGenderUseCase,
+    // 010 FR-S07: /me + PATCH 响应统一带 wechatBound (account 内 ctx 读, 无 cross-ctx 注释)。
+    private readonly inspectWechatBinding: InspectWechatBindingUseCase,
   ) {}
 
   @Get('me')
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,
@@ -79,12 +87,14 @@ export class AccountProfileController {
       gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
+      wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
     };
   }
 
   @Patch('me')
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,
@@ -139,12 +149,14 @@ export class AccountProfileController {
       gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
+      wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
     };
   }
 
   @Patch('me/bio')
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,
@@ -196,12 +208,14 @@ export class AccountProfileController {
       gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
+      wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
     };
   }
 
   @Patch('me/gender')
   @HttpCode(200)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,
@@ -253,6 +267,7 @@ export class AccountProfileController {
       gender: result.gender,
       status: result.status,
       createdAt: result.createdAt,
+      wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
     };
   }
 }

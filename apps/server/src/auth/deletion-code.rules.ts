@@ -21,6 +21,9 @@ export const DELETION_CODE_TTL_MIN = 10;
 export enum SmsPurpose {
   DELETE_ACCOUNT = 'DELETE_ACCOUNT',
   CANCEL_DELETION = 'CANCEL_DELETION',
+  // 010 微信解绑码 (FR-S03/S08)。复用本文件全部 hash/compare/TTL 范式,
+  // 仅多一个 purpose 字面值 —— account_sms_code.purpose VarChar(32) 容纳, 无 migration。
+  UNBIND_WECHAT = 'UNBIND_WECHAT',
 }
 
 /** HMAC-SHA256(code) → base64url (43 字符, 入 account_sms_code.code_hash VarChar(64))。 */

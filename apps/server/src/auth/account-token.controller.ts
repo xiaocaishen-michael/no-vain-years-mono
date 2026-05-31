@@ -8,7 +8,11 @@ import { RefreshTokenRequest } from './refresh-token.request';
 import { PhoneSmsAuthResponse } from './phone-sms-auth.response';
 import { JwtAccessGuard, type AuthenticatedUser } from './jwt-access.guard';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
-import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip-buckets';
+import {
+  ALL_DELETION_BUCKETS,
+  DEVICE_BUCKETS,
+  WECHAT_BUCKETS,
+} from '../security/throttler-skip-buckets';
 
 /**
  * 凭证端点 (auth 编排层):
@@ -31,6 +35,7 @@ export class AccountTokenController {
   @HttpCode(200)
   @UseGuards(RetryAfterThrottlerGuard)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,
@@ -83,6 +88,7 @@ export class AccountTokenController {
   // JwtAccessGuard 先行 (填 req.user.accountId) → RetryAfterThrottlerGuard 读 logout-all-account tracker。
   @UseGuards(JwtAccessGuard, RetryAfterThrottlerGuard)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     default: true,
     'sms-phone-24h': true,
     'sms-ip-24h': true,

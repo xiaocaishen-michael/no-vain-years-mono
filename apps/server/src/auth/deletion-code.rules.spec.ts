@@ -17,6 +17,16 @@ describe('deletion-code.rules — 常量 + 枚举', () => {
     expect(SmsPurpose.DELETE_ACCOUNT).toBe('DELETE_ACCOUNT');
     expect(SmsPurpose.CANCEL_DELETION).toBe('CANCEL_DELETION');
   });
+
+  it('SmsPurpose.UNBIND_WECHAT 存在 (010 微信解绑码) 且不破既有两值', () => {
+    expect(SmsPurpose.UNBIND_WECHAT).toBe('UNBIND_WECHAT');
+    // 010 唯一改动: 新增枚举值, 既有 DELETE_ACCOUNT/CANCEL_DELETION 字面不变
+    expect(Object.values(SmsPurpose)).toEqual([
+      'DELETE_ACCOUNT',
+      'CANCEL_DELETION',
+      'UNBIND_WECHAT',
+    ]);
+  });
 });
 
 describe('deletion-code.rules — HMAC-SHA256 hash (与 sms-code.store 同 hasher: base64url)', () => {

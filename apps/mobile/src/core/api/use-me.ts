@@ -57,6 +57,8 @@ export function useMe() {
           gender: null,
           status: 'ACTIVE',
           createdAt: '',
+          // 冷启动种子未持久化绑定态; 由即时后台 refetch 回填真值 (同 bio/gender)。
+          wechatBound: false,
         }
       : null;
 

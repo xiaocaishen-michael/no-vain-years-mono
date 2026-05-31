@@ -14,6 +14,7 @@ import {
   ME_BUCKETS,
   SMS_CODE_BUCKETS,
   TOKEN_BUCKETS,
+  WECHAT_BUCKETS,
 } from '../security/throttler-skip-buckets';
 import { SendDeletionCodeUseCase } from './send-deletion-code.usecase';
 import { DeleteAccountUseCase } from './delete-account.usecase';
@@ -38,6 +39,7 @@ export class AccountDeletionController {
   @Post('me/deletion-codes')
   @HttpCode(204)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     ...DEFAULT_BUCKET,
     ...DEVICE_BUCKETS,
     ...SMS_CODE_BUCKETS,
@@ -80,6 +82,7 @@ export class AccountDeletionController {
   @Post('me/deletion')
   @HttpCode(204)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     ...DEFAULT_BUCKET,
     ...DEVICE_BUCKETS,
     ...SMS_CODE_BUCKETS,

@@ -6,7 +6,11 @@ import { RequestSmsCodeUseCase } from './request-sms-code.usecase';
 import { RequestSmsCodeRequest } from './request-sms-code.request';
 import { RequestSmsCodeResponse } from './request-sms-code.response';
 import { ProblemDetailResponse } from '../security/problem-detail.response';
-import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip-buckets';
+import {
+  ALL_DELETION_BUCKETS,
+  DEVICE_BUCKETS,
+  WECHAT_BUCKETS,
+} from '../security/throttler-skip-buckets';
 import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard';
 
 /**
@@ -31,6 +35,7 @@ export class AccountSmsCodeController {
   @HttpCode(200)
   // 跳过 refresh-* / logout-all-* / 注销撤销 共享 throttler (本路由不属之, 否则共享桶被污染)。
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     'refresh-ip': true,
     'refresh-token': true,
     'logout-all-ip': true,
