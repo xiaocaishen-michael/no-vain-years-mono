@@ -2,12 +2,19 @@
 
 > 部署侧一次性配置（tasks T017）。**代码侧已就位的契约**：`apps/server/.env.example` 的 `OSS_*` + `oss.config.ts`（impl 落）。本 runbook = 在 Aliyun 侧把 bucket / CORS / referer / RAM uploader 建好，并把 `OSS_*` 注入 SWAS 部署 env。
 
-## 前置事实（2026-05-31 实测）
+## 前置事实（2026-05-31 实测 + 同步）
 
-- Aliyun account：`1585077417676312`；server region = **cn-shanghai**（SWAS）。
-- 本机 `~/.aliyun` 配置的 profile = RAM user **`mbw-server`**，**无 OSS 权限**（`oss:ListBuckets` → 403 AccessDenied，SMS-scoped）。
-- ⇒ **本 runbook 的所有 Aliyun 写操作必须用具 OSS + RAM 管理权的身份执行**（主账号 / 管理员 RAM / Aliyun 控制台），`mbw-server` profile 跑不动。
-- Agent 侧已驱动完成：`.env.example` 的 `OSS_*` 契约 + plan/tasks T017 + 本 runbook + 下方所有配置 JSON。剩下的是 **持权身份执行 + secret 注入**（人工 / 你协助）。
+**两个独立 Aliyun 主账号**（关键）：
+
+| 账号 | 用途 | RAM 子账号 | 凭证去向 |
+|---|---|---|---|
+| **A** | .62 SWAS server（部署 + SMS）| `mbw-server` | server `ALIYUN_*`（SMS）|
+| **B** = `1585077417676312` | **OSS**（本 feature）| `mbw-server-xt`（原名 mbw-server，2026-05-31 改）| server `OSS_*`（签名）|
+
+- 本机 `~/.aliyun` profile（名 `mbw-server`）→ **账号 B / `mbw-server-xt`**（实测 `GetCallerIdentity`，改名已生效）；当前 `oss:ListBuckets` 403（**待授权**）。
+- **OSS bucket 建在账号 B**；server 签 PostObject 的身份**必须是账号 B 的 `mbw-server-xt`**（签名 key 须与 bucket 同账号才有 `oss:PutObject` 效力）→ **server `OSS_ACCESS_KEY_*` = mbw-server-xt 的 AK**（与 SMS 的账号 A key 并存）。**不跨账号授权、不新建 uploader 用户**——复用 mbw-server-xt 加权即可。
+- ⚠️ Agent 无法远程验 .62 运行时身份（无 SSH/部署面）；账号 A/B 拆分凭用户同步。
+- Agent 已驱动：plan/tasks（含 T003 .env.example OSS_* + T017）+ 本 runbook + 下方配置 JSON。剩 **账号 B 给 mbw-server-xt 授权 + secret 注入 .62 env**（你 + 我协作）。
 
 ## 决策
 
@@ -17,7 +24,7 @@
 | bucket | `mbw-profile-images`（**待确认全局唯一**）| OSS bucket 名全局唯一；冲突则换 `mbw-profile-images-<suffix>` 并同步改 `.env.example` |
 | ACL | **public-read**（公开展示，per ADR-0045 §3）| 写仍仅经签名 PostObject |
 | key 布局 | `avatar/<accountId>/<uuid>/img`、`background/<accountId>/<uuid>/img` | 防枚举（ADR-0045 OQ3）|
-| 签名身份 | **方案 B 推荐**：专用 RAM uploader 仅 `oss:PutObject` on 前缀（ADR-0037 最小权限）| 方案 A：给 `mbw-server` 加 `oss:PutObject` 复用现有 key（省一把 key，但耦合 SMS 身份）|
+| 签名身份 | **账号 B 的 `mbw-server-xt`**，加最小权限 `oss:PutObject` on 前缀（ADR-0037）；其 AK 即 server `OSS_ACCESS_KEY_*`。不新建 uploader、不跨账号 | 用户拍板复用 mbw-server-xt（已存在 + AK 在手）|
 | public base URL | `https://mbw-profile-images.oss-cn-shanghai.aliyuncs.com` | 落 `avatarUrl`/`backgroundImageUrl` |
 
 > CLI flag 细节随 `aliyun` CLI 版本（本机 3.3.12）/ ossutil 而异 —— 下方命令为**骨架**，执行前用 `aliyun oss --help` / `aliyun ram --help` 核对；**控制台路径同样可靠**，二选一。配置 **JSON 值是权威**。
@@ -63,9 +70,9 @@ aliyun oss mb oss://mbw-profile-images --region cn-shanghai --acl public-read
 - **允许空 Referer：是**（native app / 直接 `<img>` 加载常无 referer，关掉会误伤）
 - 定位 = 防外站嵌图的弱兜底，可伪造，非强隔离（私密资产需求按 ADR-0045 sunset_trigger 重审）。
 
-## Step 4 — 签名身份（方案 B：专用 RAM uploader，推荐）
+## Step 4 — 给 `mbw-server-xt`（账号 B）加 OSS 权限（你在账号 B RAM 控制台）
 
-最小权限 policy（**权威 JSON**，account id 已填）：
+**永久最小权限 policy**（runtime 签名只需这个，**权威 JSON**，account B id 已填）：
 
 ```json
 {
@@ -83,18 +90,22 @@ aliyun oss mb oss://mbw-profile-images --region cn-shanghai --acl public-read
 }
 ```
 
-> 仅 `oss:PutObject`。confirm 端点的 HEAD 校验（D3）走 **public-read 匿名 HEAD**（bucket 公共读），**不**需要本 key 的 GetObject —— 故 uploader 权限只给 PutObject。
+> 仅 `oss:PutObject`。confirm 的 HEAD 校验（D3）走 **public-read 匿名 HEAD**（bucket 公共读），**不**需 GetObject。`mbw-server-xt` 的 AK（已存在，在你手上 / 本机 CLI 那把）= server `OSS_ACCESS_KEY_*`，**无需新建 AccessKey**。
 
-CLI 骨架（持权身份执行）：
+**若让 agent 用本机 CLI（= mbw-server-xt）跑 Step1-3 provisioning**，需**临时**额外加 bucket-admin（建完后撤回，留上面的 PutObject-only）：
 
-```bash
-aliyun ram CreateUser --UserName mbw-oss-uploader
-aliyun ram CreatePolicy --PolicyName mbw-oss-uploader-putobject --PolicyDocument "$(cat policy.json)"
-aliyun ram AttachPolicyToUser --PolicyType Custom --PolicyName mbw-oss-uploader-putobject --UserName mbw-oss-uploader
-aliyun ram CreateAccessKey --UserName mbw-oss-uploader   # 输出 AccessKeyId + AccessKeySecret —— secret 仅此一次可见
+```json
+{
+  "Version": "1",
+  "Statement": [
+    { "Effect": "Allow",
+      "Action": ["oss:PutBucket","oss:PutBucketCors","oss:PutBucketReferer","oss:GetBucketInfo","oss:ListBuckets","oss:PutObject"],
+      "Resource": ["acs:oss:*:1585077417676312:mbw-profile-images","acs:oss:*:1585077417676312:mbw-profile-images/*","acs:oss:*:1585077417676312:*"] }
+  ]
+}
 ```
 
-> **方案 A（省一把 key）**：跳过新建 user，给 `mbw-server` attach 上面同样的 policy，server 复用既有 `ALIYUN_ACCESS_KEY_*` 签名 → 此时 `OSS_ACCESS_KEY_*` 可指向同一对 key。代价 = SMS 与 OSS 写共享一个身份（key 泄露 blast radius 更大）。**默认走 B**。
+> 控制台：账号 B → RAM → 用户 `mbw-server-xt` → 添加权限 → 自定义 policy（粘上方 JSON）。建完 bucket 后把临时 policy 解绑，仅留 PutObject-only。
 
 ## Step 5 — 注入 SWAS 部署 env（**人工 / 你来**，agent 不可达生产）
 
@@ -103,8 +114,8 @@ aliyun ram CreateAccessKey --UserName mbw-oss-uploader   # 输出 AccessKeyId + 
 ```bash
 OSS_REGION=oss-cn-shanghai
 OSS_BUCKET=mbw-profile-images
-OSS_ACCESS_KEY_ID=<Step4 输出>
-OSS_ACCESS_KEY_SECRET=<Step4 输出>
+OSS_ACCESS_KEY_ID=<账号 B mbw-server-xt 的 AccessKeyId>      # 与 SMS 的 ALIYUN_*(账号A) 不同账号，并存
+OSS_ACCESS_KEY_SECRET=<账号 B mbw-server-xt 的 AccessKeySecret>
 ```
 
 ## 验证
