@@ -2,15 +2,23 @@
 // 账号与安全页（008 资料编辑）：图式三段组合页 = 资料卡 / 身份·绑定卡 / 安全卡。
 // 资料卡行序 = 头像 / 昵称 / 性别 / 个人简介 / 主页背景图（008 FR-C01：个人简介↔性别对换）。
 // active 行：昵称（→ name-edit）/ 性别（→ gender-edit）/ 个人简介（→ bio-edit）/
-// 登录管理（005 不回归）/ 注销账号（004 不回归）。占位行（头像/主页背景图/邮箱/微信/google）
+// 微信（010：未绑→bind 流 / 已绑→确认→wechat-unbind；web 绑定入口仅 dev/e2e 见）/
+// 登录管理（005 不回归）/ 注销账号（004 不回归）。占位行（头像/主页背景图/邮箱/google）
 // = disabled 原生 RN Row（占位 UI 4 边界）。复用 006 ~/settings/primitives。
 import { useRouter } from 'expo-router';
-import { ScrollView } from 'react-native';
+import { Alert, Platform, ScrollView } from 'react-native';
 
 import { useMe } from '~/core/api/use-me';
 import { maskPhone } from '~/format/phone';
 import { Card, Divider, Row } from '~/settings/primitives';
+import { ErrorRow } from '~/ui';
 import { genderLabel } from '~/settings/gender';
+import { useWechatBind } from '~/wechat';
+
+// 微信绑定按钮在 web 仅 dev/e2e 可见 (决策4): production web 无真实绑定 (扫码/H5
+// out of scope, Phase 2 native-only) → 隐藏绑定入口; native 恒显。`__DEV__` = true
+// 在 e2e 的 `expo start --web` dev server, false 在 production `expo export`。
+const WECHAT_BIND_VISIBLE_ON_WEB = Platform.OS !== 'web' || __DEV__;
 
 const COPY = {
   // 资料卡
@@ -35,7 +43,36 @@ export default function AccountSecurityIndex() {
   const { data: profile } = useMe();
   const displayName = profile?.displayName ?? null;
   const phone = profile?.phone ?? null;
+  const wechatBound = profile?.wechatBound ?? false;
   const router = useRouter();
+  const wechatBind = useWechatBind();
+
+  // bound → 确认对话 (内联 006 范式) → 解绑验证页; unbound → 内联 bind 流 (stub)。
+  function onWechatPress() {
+    if (wechatBound) {
+      const confirmText = '确定要解除微信绑定?';
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.confirm(confirmText)) {
+          router.push('/(app)/settings/account-security/wechat-unbind');
+        }
+        return;
+      }
+      Alert.alert(confirmText, undefined, [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '解绑',
+          style: 'destructive',
+          onPress: () => router.push('/(app)/settings/account-security/wechat-unbind'),
+        },
+      ]);
+      return;
+    }
+    void wechatBind.start();
+  }
+
+  // 微信行: 已绑 → 「解绑」(恒显, SMS 解绑 web 可用); 未绑 → 「绑定」(web 仅 dev/e2e
+  // 可见, 决策4); web production 未绑 → disabled 占位。
+  const wechatActionable = wechatBound || WECHAT_BIND_VISIBLE_ON_WEB;
 
   return (
     <ScrollView
@@ -73,10 +110,20 @@ export default function AccountSecurityIndex() {
         <Divider />
         <Row label={COPY.email} disabled />
         <Divider />
-        <Row label={COPY.wechat} disabled />
+        {wechatActionable ? (
+          <Row
+            label={COPY.wechat}
+            value={wechatBound ? '解绑' : '绑定'}
+            busy={wechatBind.state === 'submitting'}
+            onPress={onWechatPress}
+          />
+        ) : (
+          <Row label={COPY.wechat} disabled />
+        )}
         <Divider />
         <Row label={COPY.google} disabled />
       </Card>
+      {wechatBind.errorToast ? <ErrorRow text={wechatBind.errorToast} /> : null}
 
       {/* 安全卡 — 登录管理（005 设备列表，不回归）*/}
       <Card>
