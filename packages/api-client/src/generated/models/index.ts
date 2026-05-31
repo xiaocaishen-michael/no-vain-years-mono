@@ -9,6 +9,7 @@
 export * from './accountProfileResponse';
 export * from './accountProfileResponseGender';
 export * from './accountProfileResponseStatus';
+export * from './bindWechatRequest';
 export * from './cancelDeletionRequest';
 export * from './deleteAccountRequest';
 export * from './deviceListItem';
@@ -37,6 +38,7 @@ export * from './refreshTokenRequest';
 export * from './requestSmsCodeRequest';
 export * from './requestSmsCodeResponse';
 export * from './sendCancelCodeRequest';
+export * from './unbindWechatRequest';
 export * from './updateBioRequest';
 export * from './updateDisplayNameRequest';
 export * from './updateGenderRequest';

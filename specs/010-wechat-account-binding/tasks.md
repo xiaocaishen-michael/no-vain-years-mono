@@ -80,7 +80,7 @@ created_at: '2026-05-31'
 ## Phase 5: User Story 1+2 状态契约 — [Server] /me 扩展 + Contract 同步链（Constitution V）
 
 - [X] T019 [Server] EP4 `/me` 扩展：`account-profile.response.ts` 加 `@ApiProperty wechatBound: boolean`（**MUST NOT 返 openid**，FR-S07）+ `get-account-profile.usecase.ts` 加 R1 **同 account ctx** 读 `wechat_binding` 存在性（复用 `InspectWechatBindingUseCase` 或直读，account 内 ctx → **无** cross-ctx 注释）+ 单测（bound→true / 无→false / 响应不含 openid 任何字段）
-- [ ] T020 [Contract] `nx run server:export-openapi` 产 `apps/server/openapi.json`（canonical `node dist/main.js`，含 EP1 `me/wechat-binding` · EP2 `me/wechat-binding/unbind-codes` · EP3 `me/wechat-binding/unbind` + EP4 `AccountProfileResponse.wechatBound`）→ `nx run api-client:generate`（Orval regen）→ typed hooks（`useWechatBindingControllerBind` 等 + `wechatBound` 字段，**函数式非 class** ✓）+ api-client/mobile typecheck 绿
+- [X] T020 [Contract] `nx run server:export-openapi` 产 `apps/server/openapi.json`（canonical `node dist/main.js`，含 EP1 `me/wechat-binding` · EP2 `me/wechat-binding/unbind-codes` · EP3 `me/wechat-binding/unbind` + EP4 `AccountProfileResponse.wechatBound`）→ `nx run api-client:generate`（Orval regen）→ typed hooks（`useWechatBindingControllerBind` 等 + `wechatBound` 字段，**函数式非 class** ✓）+ api-client/mobile typecheck 绿
 
 ---
 
