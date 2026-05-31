@@ -90,7 +90,7 @@ sunset_trigger: |
 2. **自定义域名 + ICP 备案 + CDN**:OSS 默认 endpoint(`oss-cn-*.aliyuncs.com`)`<img>` 内嵌可用;自定义域名 / CDN 加速需 ICP 备案。v1 是否上自定义域名 / CDN,还是先用默认 endpoint。
 3. **bucket 布局 / key 命名**:单 bucket 多前缀(`avatar/` `background/`) vs 多 bucket;key 是否含 accountId / 防猜测随机段。
 4. **防滥用**:上传频率限流(复用 throttler)、size / content-type 白名单、签名时效;public-read 盗链 referer 白名单清单。
-5. **DB 字段**:Account 加 `avatarUrl` / `backgroundUrl`(或独立资产表)—— 属 feature spec/plan(account context,anemic Prisma row per [ADR-0043](0043-server-flat-module-paradigm.md))。
+5. **DB 字段**:Account 加 `avatarUrl` / `backgroundImageUrl`(或独立资产表)—— 属 feature spec/plan(account context,anemic Prisma row per [ADR-0043](0043-server-flat-module-paradigm.md))。字段名由 [009 profile-image-upload spec](../../specs/009-profile-image-upload/spec.md) 定为 `avatarUrl` / `backgroundImageUrl`。
 6. **bounded context 落点**:上传凭证签发 use case 归 `account`(profile 资产) vs `security`(凭证签发) —— 按 [server-bounded-context-catalog](../conventions/server-bounded-context-catalog.md) 决策(倾向 account:为自身 profile 资产签发,非通用 platform 凭证)。
 
 ## Relationships
