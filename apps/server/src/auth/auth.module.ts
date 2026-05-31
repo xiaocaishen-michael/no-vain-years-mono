@@ -3,12 +3,16 @@ import { ThrottlerModule, type ThrottlerOptions } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { Redis } from 'ioredis';
 import {
+  appConfig,
   authConfig,
   redisConfig,
   smsConfig,
+  wechatConfig,
+  type AppConfig,
   type AuthConfig,
   type RedisConfig,
   type SmsConfig,
+  type WechatConfig,
 } from '../config/index.js';
 import { SecurityModule } from '../security/security.module.js';
 import { AccountModule } from '../account/account.module.js';
@@ -44,6 +48,10 @@ import { ListDevicesUseCase } from './list-devices.usecase.js';
 import { RevokeDeviceUseCase } from './revoke-device.usecase.js';
 import { JwtAccessGuard } from './jwt-access.guard.js';
 import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
+import { WECHAT_AUTH } from './wechat-auth.port.js';
+import { MockWechatAuthGateway } from './mock-wechat-auth.gateway.js';
+import { BindWechatUseCase } from './bind-wechat.usecase.js';
+import { WechatBindingController } from './wechat-binding.controller.js';
 
 /**
  * 005 设备 EP 限流桶 (FR-S13) —— 提取为模块常量,避免 ThrottlerModule useFactory
@@ -346,6 +354,7 @@ const WECHAT_THROTTLERS: ThrottlerOptions[] = [
     AccountDeletionController,
     CancelDeletionController,
     DeviceManagementController,
+    WechatBindingController,
   ],
   providers: [
     {
@@ -388,6 +397,22 @@ const WECHAT_THROTTLERS: ThrottlerOptions[] = [
       },
       inject: [smsConfig.KEY, RETRY_EXECUTOR],
     },
+    {
+      // wechatConfig discriminated union: kind='mock' (Phase 1 stub, default) or
+      // kind='real' (Phase 2 native adapter, T029)。生产 boot 拒 mock —— 防误用 stub 上线。
+      provide: WECHAT_AUTH,
+      useFactory: (cfg: WechatConfig, appCfg: AppConfig) => {
+        if (cfg.kind === 'real') {
+          // Phase 2 real adapter (T029) 未实现 —— Phase 1 仅交付 mock stub。
+          throw new Error('WechatAuthGateway (real) lands in Phase 2 (T029)');
+        }
+        if (appCfg.nodeEnv === 'production') {
+          throw new Error('WECHAT_GATEWAY=mock forbidden in production — set kind=real (Phase 2)');
+        }
+        return new MockWechatAuthGateway();
+      },
+      inject: [wechatConfig.KEY, appConfig.KEY],
+    },
     { provide: TIMING_DEFENSE_EXECUTOR, useClass: BcryptTimingDefenseExecutor },
     { provide: RETRY_EXECUTOR, useClass: CockatielRetryExecutor },
     AuthFailureLockService,
@@ -402,6 +427,7 @@ const WECHAT_THROTTLERS: ThrottlerOptions[] = [
     DeleteAccountUseCase,
     SendCancelDeletionCodeUseCase,
     CancelDeletionUseCase,
+    BindWechatUseCase,
     JwtAccessGuard,
     SmsPhoneThrottlerGuard,
     CancelCodePhoneThrottlerGuard,
