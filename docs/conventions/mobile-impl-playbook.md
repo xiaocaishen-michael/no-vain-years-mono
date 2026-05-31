@@ -56,7 +56,7 @@ mockup-prompt 两段结构（copy 给 Claude Design）：
 ```
 
 - **代码是真相源**：mockup drift 不算 bug（`design/` 是历史决策留痕，不要求与最终 RN 逐 pixel 同步，per sdd.md）。
-- **实证锚**：sdd.md § Mockup 留迹路径（`specs/NNN-*/design/`）；批 E realname mockup（待迁）。
+- **实证锚**：sdd.md § Mockup 留迹路径（`specs/NNN-*/design/`）。
 
 ## 4. impl 期 stop-signals
 

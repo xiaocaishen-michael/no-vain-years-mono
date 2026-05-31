@@ -4,7 +4,7 @@
 
 ## 步骤
 
-1. **造 sacrificial feature**（故意**非迁移** + 命中最丰富后端 guardrail）：throwaway 分支起 `999-guardrail-smoke`（**刻意脱离 sequential 编号，避免撞规划中 `006-realname-verification`**）。设计「登录活动计数」小 server use case：
+1. **造 sacrificial feature**（故意**非迁移** + 命中最丰富后端 guardrail）：throwaway 分支起 `999-guardrail-smoke`（**刻意脱离 sequential 编号占高位,避免撞业务 feature 序号**）。设计「登录活动计数」小 server use case：
    - 原子自增计数（→ 触发 conditional UPDATE affected-count）
    - 同 tx 发 outbox 事件（→ 触发 `publish(tx,…)` 同 tx 原子）
    - 查询端点（→ 触发反枚举折叠）
@@ -26,10 +26,6 @@
 ## 清理
 
 - sacrificial 分支**不 merge**；验完 `git branch -D` + 删 `specs/999-guardrail-smoke/`。
-
-## 备选
-
-挂真实 `006-realname-verification`（批 E，天然重用后端 playbook：split-tx + PII AES-GCM + 反枚举）作首个实战 —— 代价：006 属迁移，断言 (g) 去-Java 验证打折。
 
 ## 后续：根因深挖 + 独立 plan（2026-05-26）
 

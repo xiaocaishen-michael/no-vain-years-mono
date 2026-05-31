@@ -46,7 +46,7 @@ const SCHEMA_PATH = `${SERVER_ROOT}/prisma/schema.prisma`;
 /**
  * 业务 context 的 Prisma model 归属 (accessor = camelCase model 名)。
  * 只声明**已落地**的 model; dormant model (db pull 带入但尚未接线的
- * credential / realnameProfile) 故意不列 —
+ * credential) 故意不列 —
  * 它们 0 访问, 一旦未来被跨 ctx 访问, Check 1 会以「未声明归属」报错, 逼迫
  * 接线者显式声明 owner (defense-in-depth, 不让新表悄悄绕过护城河)。
  */

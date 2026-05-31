@@ -6,11 +6,15 @@
 >
 > 本文 = 迁移**引擎 + 变体卡**,不是 14 个 UC 的详细步骤堆。每个 step 的"具体要求"蒸馏成下方「执行约束」(不留 verbose prompt)。
 
+> ✅ **本子 plan 已完结(2026-05-31)**:引擎驱动 login/onboarding UI + 批 B-D 全部执行完成,见 [master](05-25-account-migration-master.md)。下文留作迁移留痕。
+>
+> 🗑️ **原批 E(realname 实名认证)已于 2026-05-31 废弃,不再迁** —— 本文相关引擎/子流程已移除批 E;Plan 2 迁移收口于批 A-D。
+
 ## Context
 
 为何写 p3:p2 已定迁移顺序(批 B → C ∥ D ∥ E)+ 业务规则概览;但"每个 UC 怎么落到 mono 新范式、按什么 step、前端 port 还是新设计"无统一 SOP,逐 feature 临时摸索会 drift。p3 把这套 SOP(引擎)+ 每模式/每批增量(变体卡)固化。
 
-现状:login(001)server 已 ship、UI 占位待补;批 A(002)已 ship;批 B-E 共 14 UC 未起。本轮目标 = 用此引擎手动推完 login/onboarding UI + 批 B-E。
+现状:login(001)server 已 ship、UI 占位待补;批 A(002)已 ship;批 B-D 未起(原批 E realname 已废弃,见顶部 banner)。本轮目标 = 用此引擎手动推完 login/onboarding UI + 批 B-D。
 
 ## 0. 执行总则
 
@@ -24,32 +28,18 @@
 
 **Step 1 两模式:**
 
-- **1a 抽取重写**(fresh,mono 无 spec):抽取 meta 三源 → 重写 spec → clarify。→ 批 B / C / D / E
+- **1a 抽取重写**(fresh,mono 无 spec):抽取 meta 三源 → 重写 spec → clarify。→ 批 B / C / D
 - **1b de-stale**(mono spec 已存在、仅旧栈 anchor):**只 de-stale 已有 spec 的 client 段**,不重抽 → **直接走引擎 Step 2/3/4**。→ **login / onboarding**(001/002 spec 已含 client FR + server 已 ship)。因 server 已 ship、api-client 已存在,这两个是 **mobile-only 切片**([Server]/[Contract] 层留空,只 [Mobile])。
 
-**Step 4 前端两形态:**
-
-- **port**(有旧 app 成品):login / onboarding · 批 C(`delete-account.tsx` / `cancel-deletion.tsx`)· 批 D(`login-management/` 全套 + `DeviceIcon` + `useDevicesQuery`)→ Strangler-Fig prompt + RHF。
-- **mockup**(无旧 UI):批 E realname → server 先行 + HTML mockup(详见下「批 E mockup 子流程」)。
+**Step 4 前端形态:port**(有旧 app 成品):login / onboarding · 批 C(`delete-account.tsx` / `cancel-deletion.tsx`)· 批 D(`login-management/` 全套 + `DeviceIcon` + `useDevicesQuery`)→ Strangler-Fig prompt + RHF。
 
 > **login / onboarding = Golden Sample**(首个 RHF + Strangler-Fig 落地标杆),但它**不是独立轨**,而是「Step 1 走 1b de-stale + Step 4 走 port」的引擎实例。本轮范围**不含** freeze 弹窗 / OAuth 占位 / help 链接(随后续 cancel-account 阶段补)。
-
-### 批 E mockup 子流程（无旧 UI,`006-realname-verification`)
-
-server 先行,mockup 驱动前端:
-`完整 SDD(spec→clarify→plan→tasks→analyze)` → **server impl** → **API gen(api-client regen)** → **Claude Design mockup** → **读 mock 写 RN 前端 + 流程**。
-
-**Claude Design prompt 来源 = port meta 仓成熟模板**,不从零造:
-
-- 内容源:`~/Documents/projects/no-vain-years/no-vain-years-app/apps/native/specs/account/realname-verification/design/mockup-prompt.md`(已写好 4 view 态 InputForm/Pending/Readonly/Frozen + GB11643 校验 + mask 格式 + DO-NOT 清单)。
-- 适配 mono:输出 = **HTML preview baseline**(mono sdd.md;**非** meta 的 RN .tsx)→ 从 HTML 视觉翻为 mono RN;token 复用 **`~/theme`** 值(brand-500 `#2456E5` 等),翻译时组件用 `~/ui`、动画 reanimated v4;**文案 / FR / inspiration 截图 re-anchor 到 mono `006` spec**(批 E 起手、006 ready 后定稿,不提前)。
-
-> meta `mockup-prompt.md` 的两段式结构(① 设计上下文表-仅 user 看 ② Prompt 拷贝块;Prompt 内:业务+状态机 / NEGATIVE+POSITIVE 约束 / 页面结构 / 状态变体 illustrate / DO-NOT per spec FR-SC / 视觉语言-0 新 token / DELIVERABLES)= mono 任何 类 1/类 2 fresh mockup 的**可复用模板**。
 
 ## 2. 顺序（p2 §4.4 + “未完成先”）
 
 ```text
-login UI → onboarding UI → 批 B(003-tokens) → ( 批 C(004) ∥ 批 D(005) ∥ 批 E(006) )
+login UI → onboarding UI → 批 B(003-tokens) → ( 批 C(004) ∥ 批 D(005) )
+# 原批 E(realname)已于 2026-05-31 废弃,移出执行顺序
 ```
 
 ## 3. Step 执行约束
@@ -72,13 +62,13 @@ login UI → onboarding UI → 批 B(003-tokens) → ( 批 C(004) ∥ 批 D(005)
 - **范式(ADR-0043 五条,已验证是仓内现实)**:零 class / 贫血(裸 Prisma row POJO,无 Entity/聚合/Mapper)· 无 DB repository(`PrismaService` 直注 UseCase)· 扁平目录(UseCase/Controller/rules 平铺 `apps/server/src/<module>/`)· 业务不变量 → 无状态纯函数 `<module>.rules.ts` · **Moat**(跨 context 写调目标 module 的 UseCase,禁 `tx.<他 module 表>`),per [ADR-0043](../../adr/0043-server-flat-module-paradigm.md)。
   - 验证(2026-05-25):`apps/server/src/{auth,account}` 已扁平(`sms-code.rules.ts` / `account.rules.ts` 在;`*repository*` 零命中)→ 批 B-E 同范式,无 mixed-paradigm 风险。
 - **context 放置**:每 feature 用 [server-bounded-context-catalog.md](../../conventions/server-bounded-context-catalog.md)(3 传播规则 + 7 决策问题)定 UC 落 auth/account/security 哪个 context + 跨 context 传播;`.claude/rules/server-bounded-context-decision.md` 路径触发。
-- **schema 复用**:6 表已 db-pull(p2 §4.1)→ 数据模型复用现有 model + `@map`,仅缺字段才加 migration。
+- **schema 复用**:5 表已 db-pull(p2 §4.1)→ 数据模型复用现有 model + `@map`,仅缺字段才加 migration。
 - **横切复用**:throttler / outbox / jose / timing-defense(HMAC)已 ship → 引用 + 加 per-UC throttler config,不重立。
 - **plan.md**:按 `.specify/templates/plan-template.md`;**手动模式 → 去掉 orchestrator_config 块**。
 - **tasks.md(三位一体,同 1 pass / 同 1 PR)**:001 式简洁(`- [ ] T0NN [层] 描述`,无 task-meta JSON);**TDD 强制**(每 impl task 绑 RED 测试 → 红→绿→typecheck/lint→`[X]`→commit,constitution II)。三层:
   - `[Server]`:UseCase + `*.rules.ts` + controller + DTO(ADR-0043 扁平)
   - `[Contract]`:openapi 导出 + `pnpm nx affected --target=generate`(api-client regen)
-  - `[Mobile]`:port 屏 + RHF;约束 = **定稿的 Strangler-Fig 前端 prompt**(login/onboarding/C/D 有旧 UI;批 E 无 → 走 §批 E mockup 子流程)
+  - `[Mobile]`:port 屏 + RHF;约束 = **定稿的 Strangler-Fig 前端 prompt**(login/onboarding/C/D 有旧 UI,port)
 
 ### Step 3 — analyze
 
@@ -92,11 +82,9 @@ login UI → onboarding UI → 批 B(003-tokens) → ( 批 C(004) ∥ 批 D(005)
   3. **outbox 同 tx**:`publish(client, eventType, payload)` caller 传 tx client,与状态写同 `$transaction`(memory `transactional_outbox_port_shape`)
   4. **乐观锁 = affected-count**:revoke 用 `updateMany.count`,count=0 = 幂等 200 / 竞争失败,不报错不重发事件
   5. **REQUIRES_NEW**:Anonymize scheduler 每行独立 `$transaction`,不包大 tx
-  6. **split-tx(批 E)**:TX1 存 PENDING → **tx 外**调 cloudauth → TX2 mark FAILED;外部 HTTP 不在 tx 内持锁(接口形状 = master open Q#6)
-  7. **反枚举 + timing**:复刻 SendCancelDeletionCode 4 分支 + dummy hash;复用 HMAC constant-time([ADR-0023](../../adr/0023-sms-code-storage-hmac.md)),**禁再引 bcrypt**
-  8. **PII 加密(批 E)**:AES-GCM;`idCardHash` 唯一防占用;解密仅 VERIFIED + 掩码
-  9. **Moat 两段式**:Inspect(读)+ Commit(写),禁单 upsert(memory `cross_ctx_login_two_step_saga`)
-  - 每批热点:B=token 轮换原子性 + raw token 只存 hash;C=悲观锁 + 串行链 + freeze-window race;D=ip2region 选 Node 替代 + 防自撤;E=split-tx + cloudauth + 加密
+  6. **反枚举 + timing**:复刻 SendCancelDeletionCode 4 分支 + dummy hash;复用 HMAC constant-time([ADR-0023](../../adr/0023-sms-code-storage-hmac.md)),**禁再引 bcrypt**
+  7. **Moat 两段式**:Inspect(读)+ Commit(写),禁单 upsert(memory `cross_ctx_login_two_step_saga`)
+  - 每批热点:B=token 轮换原子性 + raw token 只存 hash;C=悲观锁 + 串行链 + freeze-window race;D=ip2region 选 Node 替代 + 防自撤
 - **前端**:**= 定稿的 Strangler-Fig mono 校准 prompt**(2 硬约束:Orval 函数式 hook 非 class / axios 不删;skin 复用 `~/theme`+`~/ui` / muscle+nervous+engine 重写 API·数据适配·路由)+ **RHF Golden Sample 4 铁律**(Controller 非 register / 表单态副作用态分层 / isSubmitting 单源 / 错误+a11y)。依赖 gate:补装 `@hookform/resolvers`(核 zod4 兼容)。
   - **Metro `.js` 陷阱**(port 旧 NodeNext app 必踩):相对 import/re-export 一律 **extensionless**——旧 app 的 `.js` 扩展让 tsc remap 假绿但 Metro web bundle 500+白屏(memory `reference_metro_web_cannot_resolve_js_extension_imports`)。已由 ESLint `no-restricted-syntax` 在 `apps/mobile` + `@nvy/api-client` 机械拦(server/orchestrator 是 Node-ESM,`.js` 必需,不在此列)。撞 bundler "Unable to resolve" 时**先全仓 grep 同类一次性修**,别逐个修-重跑。
   - **e2e mock**:调后端的 UC e2e 复用 `apps/mobile/e2e/_support/api-mock.ts` 的 `mockJson`(已处理跨 origin axios baseURL 的 CORS preflight),勿重造;locator 优先 `getByRole`/`exact`,警惕中文 label 子串撞(如「验证码」⊂「获取验证码」)。
@@ -105,12 +93,11 @@ login UI → onboarding UI → 批 B(003-tokens) → ( 批 C(004) ∥ 批 D(005)
 
 - `~/Documents/projects/no-vain-years/specs/account/<uc>/` + `…/my-beloved-server/mbw-account/`(Step 1 模式 1a 三源提取)
 - [`specs/002-account-profile/`](../../../specs/002-account-profile/)(批 A spec/plan/tasks 范式样板)
-- `apps/server/prisma/schema.prisma`(6 表已 db-pull,迁移不卡建表)
+- `apps/server/prisma/schema.prisma`(5 表已 db-pull,迁移不卡建表)
 - `apps/server/src/auth/`(ADR-0043 扁平范式样板:usecase + `*.rules.ts` + controller + DTO)
-- meta `…/realname-verification/design/mockup-prompt.md`(批 E Claude Design 模板源)
 - memory `project_rhf_form_standard_login_golden_sample`(RHF 4 铁律)
 
 ## Verification
 
 - 每 feature ship:tasks.md `[X]` 全 flip + `pnpm exec nx affected -t lint typecheck test build runtime-smoke --base=origin/main` 全绿(= PR 模板 deploy-gate box 1 / [ADR-0040](../../adr/0040-multi-layer-test-gate.md);**含 `runtime-smoke`**——别只跑前 4 个,mobile web export 路径只有它+e2e 抓)+ 真后端冒烟(server)/ **web e2e**(mobile)。
-- Plan 2 graduation:16 UC 全 ship。
+- Plan 2 graduation:13/16 UC 全 ship(原批 E realname 3 个已于 2026-05-31 废弃)。

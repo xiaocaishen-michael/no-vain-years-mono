@@ -64,28 +64,6 @@ model Credential {
   @@schema("account")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model RealnameProfile {
-  id            BigInt    @id @default(autoincrement())
-  accountId     BigInt    @unique @map("account_id")
-  status        String    @db.VarChar(16)
-  realNameEnc   Bytes?    @map("real_name_enc")
-  idCardNoEnc   Bytes?    @map("id_card_no_enc")
-  idCardHash    String?   @unique(map: "uk_realname_profile_id_card_hash", where: raw("(id_card_hash IS NOT NULL)")) @map("id_card_hash") @db.VarChar(64)
-  providerBizId String?   @map("provider_biz_id") @db.VarChar(64)
-  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz(6)
-  failedReason  String?   @map("failed_reason") @db.VarChar(32)
-  failedAt      DateTime? @map("failed_at") @db.Timestamptz(6)
-  retryCount24h Int       @default(0) @map("retry_count_24h")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  @@index([providerBizId], map: "idx_realname_profile_provider_biz_id")
-  @@map("realname_profile")
-  @@schema("account")
-}
-
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model RefreshToken {
   id          BigInt    @id @default(autoincrement())

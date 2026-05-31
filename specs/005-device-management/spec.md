@@ -84,7 +84,7 @@ state_branches:
 
 > p4 子 plan B2「设备管理 client」起手。spec-merge 约束多数已在 Session 2026-05-26 预锁（字段以 server 为真相源 / 错误码 / 路径参数）；本轮决 client 落点 + 真分歧（user 确认 2026-05-29）。
 
-- Q: 本 client feature 的 spec 落点？ → A: **amend 005 原地**（不吃新编号，realname 让号顺延 `007`，per p4 决策 #3）；branch `005-device-management-client`；本 spec 补 US5（client）+ Client FR/SC + 翻 Out of Scope 延后段；新建 `tasks-client.md`（已 ship 的 server tasks 不动）。
+- Q: 本 client feature 的 spec 落点？ → A: **amend 005 原地**（不吃新编号，per p4 决策 #3）；branch `005-device-management-client`；本 spec 补 US5（client）+ Client FR/SC + 翻 Out of Scope 延后段；新建 `tasks-client.md`（已 ship 的 server tasks 不动）。
 - Q: 列表项 `id` 是 `string`（bigint JSON 安全），但 Orval 生成的 revoke `recordId` 是 `number`，类型不一致怎么处理？ → A: **修 server `@ApiParam` 加 `type:'string'` + regen api-client**（FR-S15），使 `recordId: string` 与列表 `id: string` 一致，消除 client 侧 `Number()` 精度风险。纯 contract 注解修正（`ParseBigIntPipe` 已从路径 string 解析 bigint，运行时行为不变）；故本 amend **含一处 server 改 + api-client regen**，server↔app 同 1 PR（不再纯 mobile）。
 - Q: 撤销交互形态？ → A: **高保真 port 旧 app** —— list 行 → `[recordId]` 详情页（4 字段：名/地点/方式/最近活跃）→ 「移除该设备」按钮（仅非当前设备）→ `RemoveDeviceSheet` 底部确认 sheet；详情页数据读自 list query cache（server 无单设备 GET 端点）。含 `DeviceIcon`（deviceType → glyph，UNKNOWN fallback）。
 - Q: 分页？（Orval `list()` fn 不带 page/size 参数，DeviceListResponse 有 page/totalPages） → A: **单页拉取**（`size=100` 经 axios `params` 注入，无「更多设备」CTA）—— PoC 用户设备数 <10，不为 <10 项造分页累加（senior-eng test）。

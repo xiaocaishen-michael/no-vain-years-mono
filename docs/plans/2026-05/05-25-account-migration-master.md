@@ -2,7 +2,7 @@
 
 > **统领 4 个子 plan**:p1-p3 后端迁移三层(p1 工具链 POC Ralph loop / p2 新范式 + 业务调研 + 依赖顺序 / p3 逐 use case 迁移步骤)+ p4 client UI 链(settings shell A→B→C,**占位待建**)。本文**不下钻子 plan 内部**,只锁主目标 / 跨契约 / 执行顺序。
 >
-> **主目标**:旧 Java `mbw-account` **16 use case 全部迁移**到 mono(NestJS + Prisma),mobile per-feature 同步,`pnpm nx affected` 全绿。
+> **主目标**:旧 Java `mbw-account` use case 迁移到 mono(NestJS + Prisma),mobile per-feature 同步,`pnpm nx affected` 全绿。**原 16 use case 中批 E realname 3 个(实名认证)已于 2026-05-31 废弃**(不再迁),实际迁移收口 **13/16**。
 > **子目标(先行)**:搭 Ralph loop 工具链 POC,支撑迁移自动化(已大体落地,见 p1)。
 
 ## Context
@@ -13,7 +13,7 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 |---|---|
 | Plan 1(后端栈 PoC) | ✅ ship(`UnifiedPhoneSmsAuth` + 4 stack 替换) |
 | **Plan 3(部署上线)** | ✅ **已先行完成**:server 上阿里云(`05-23-prod-cutover-meta-to-mono-swas` #144/#147)、Web 上 CF Pages(`05-24-client-deploy-p1` #177,live `app.xiaocaishen.me`)、mobile EAS/APK(`p2`/`p3` #180,🟡 真机冒烟 pending) |
-| **Plan 2(本 master,业务迁移)** | 🟡 **进行中**:批 A-D 已 ship(13/16 use case:002 #65 / 003 #196 / 004 #198 / 005 #201);**剩批 E realname 3 use case 待迁**(spec 取 `007`)。p4 client UI 链(settings shell A→B→C)全 ship(B1 #221 / B2 #222 / B3 #223) |
+| **Plan 2(本 master,业务迁移)** | ✅ **完成 / graduated(2026-05-31)**:批 A-D 全 ship(13/16 use case:002 #65 / 003 #196 / 004 #198 / 005 #201);**原批 E realname 3 use case 已废弃**(不再迁 —— 已无任何待迁 use case);p4 client UI 链(settings shell A→B→C)全 ship(B1 #221 / B2 #222 / B3 #223);login/onboarding UI 完成、`specs/001-008` 全 `implemented` |
 
 **迁移目标新范式**(大重构后):ADR-0043 扁平贫血 + ADR-0032 bounded context + ADR-0019 Prisma 贫血层 + ADR-0030 包 5→2。**业务调研源**:旧 meta 仓 `~/Documents/projects/no-vain-years/`(meta specs + Java `my-beloved-server/` + 旧 app)仍在。
 
@@ -23,10 +23,10 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 
 | # | 子 plan | 轨 | 依赖 | 核心交付 | 状态 |
 |---|---|---|---|---|---|
-| 1 | [`p1-toolchain-ralph-loop`](05-25-account-migration-p1-toolchain-ralph-loop.md) | 工具链(先行) | 无 | 模型路由 + orchestrator + Ralph loop + workflow override | ✅ 大体落地;缺 workflow.yml 2 步 + run-implement.ts(待触发) |
-| 2 | [`p2-usecase-dependency`](05-25-account-migration-p2-usecase-dependency.md) | 分析/规划 | 无(可与 p1 并行) | 新范式锚定 + 业务级调研 + 16 uc 依赖关系 + 迁移顺序 | 🟡 依赖/顺序已成;业务卡逐 uc 待展开 |
-| 3 | [`p3-usecase-steps`](05-25-account-migration-p3-usecase-steps.md) | 执行 | **p2(顺序)+ p1(工具链)** | 逐 use case 详细迁移过程 + 步骤 | 🟢 **已填充**(2026-05-25 plan 会话:一条引擎 + Step 1 两模式 + Step 4 两形态;本轮全程手动不用 orchestrator) |
-| 4 | [`p4-client-ui-shell-chain`](05-25-account-migration-p4-client-ui-shell-chain.md) | client UI(前端,正交后端迁移) | 002 spec A 已 ship;可与批 E 并行 | settings shell(spec B)+ A→B→C 链规划:聚合 003/004/005 延后 client 入口 | ✅ **完成**(2026-05-29):B1 壳 #221 / B2 设备 #222 / B3 注销 #223 全 ship,A→B→C 链闭合 |
+| 1 | [`p1-toolchain-ralph-loop`](05-25-account-migration-p1-toolchain-ralph-loop.md) | 工具链(先行) | 无 | 模型路由 + orchestrator + Ralph loop + workflow override | ✅ **核心完成**:orchestrator + Ralph loop + workflow.yml 6 命令补齐(#212);2b `run-implement.ts` 数据驱动延后(halt 门槛未达,本轮迁移全程手动未用) |
+| 2 | [`p2-usecase-dependency`](05-25-account-migration-p2-usecase-dependency.md) | 分析/规划 | 无(可与 p1 并行) | 新范式锚定 + 业务级调研 + 16 uc 依赖关系 + 迁移顺序 | ✅ **完结(2026-05-31)**:依赖/顺序/业务调研全部产出且被 p3 消费;迁移已收口(批 A-D ship,批 E realname 废弃) |
+| 3 | [`p3-usecase-steps`](05-25-account-migration-p3-usecase-steps.md) | 执行 | **p2(顺序)+ p1(工具链)** | 逐 use case 详细迁移过程 + 步骤 | ✅ **完结(2026-05-31)**:引擎驱动 login/onboarding UI + 批 B-D 全部执行完成;批 E realname 废弃移出 |
+| 4 | [`p4-client-ui-shell-chain`](05-25-account-migration-p4-client-ui-shell-chain.md) | client UI(前端,正交后端迁移) | 002 spec A 已 ship | settings shell(spec B)+ A→B→C 链规划:聚合 003/004/005 延后 client 入口 | ✅ **完成**(2026-05-29):B1 壳 #221 / B2 设备 #222 / B3 注销 #223 全 ship,A→B→C 链闭合 |
 
 ## 跨契约(master 锁定,子 plan 不得违反)
 
@@ -50,13 +50,13 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
         └──────────────┬───────────────┘
                        ▼
 执行轨：子 plan 3（逐 use case 迁移步骤）
-  循环执行迁移顺序(p2 § 4.4):批 B → 批 C ∥ 批 D ∥ 批 E
+  循环执行迁移顺序(p2 § 4.4):批 B → 批 C ∥ 批 D
                        │
                        ▼
-              16 use case 全 ship → Plan 2 graduation
+              13/16 use case ship(原批 E realname 已废弃)→ Plan 2 graduation
 ```
 
-**关键**:p1 ∥ p2 可并行(互不依赖);p3 依赖 p2(迁移顺序)+ p1(工具链就绪);实际迁移执行(批 B-E)= p3 步骤 × p1 工具链。批 D/E 在批 B 后可与批 C 并行(p2 § 4.4)。
+**关键**:p1 ∥ p2 可并行(互不依赖);p3 依赖 p2(迁移顺序)+ p1(工具链就绪);实际迁移执行(批 B-D)= p3 步骤 × p1 工具链。批 D 在批 B 后可与批 C 并行(p2 § 4.4)。原批 E realname 已废弃(2026-05-31),不在执行链内。
 
 ## 子 plan outline（detail 在各自文件）
 
@@ -66,17 +66,17 @@ Plan 1(NestJS PoC + 4 stack 替换 + ADR-0018/0019/0020/0023/0024)2026-05-18 shi
 
 ### 子 plan 2 — 新范式 + 业务调研 + 依赖/顺序
 
-🟡 **分析层**。新范式锚定(ADR-0043/0032/0019/0030)+ 老库逐 use case 业务调研(7 维)+ 16 uc 依赖关系/迁移顺序(批 B 下一个、批 C 串行链、批 D/E 可并行)。详见 [`p2`](05-25-account-migration-p2-usecase-dependency.md)。
+✅ **完结(2026-05-31)**。分析层:新范式锚定(ADR-0043/0032/0019/0030)+ 老库逐 use case 业务调研(7 维)+ 依赖关系/迁移顺序(批 C 串行链、批 D 可与 C 并行;**原批 E realname 已废弃**)全部产出并被 p3 消费。详见 [`p2`](05-25-account-migration-p2-usecase-dependency.md)。
 
 ### 子 plan 3 — 逐 use case 迁移步骤
 
-🟢 **已填充**(2026-05-25)。定义为**一条手动迁移引擎 + 两处分叉**:Step 1 两模式(1a 抽取重写 fresh / 1b de-stale 已有 spec 的 client 段)→ Step 2 plan+tasks(ADR-0043 扁平 + 三位一体同 tasks.md)→ Step 3 analyze → Step 4 impl(server 9 条并发/事务手译注意 + 前端 Strangler-Fig + RHF Golden Sample);Step 4 前端两形态(port 旧 app 成品 / 批 E mockup)。**本轮全程手动,不用 p1 orchestrator**。详见 [`p3`](05-25-account-migration-p3-usecase-steps.md)。
+✅ **完结(2026-05-31)**。已填充(2026-05-25)并执行完毕(login/onboarding UI + 批 B-D)。定义为**一条手动迁移引擎 + 两处分叉**:Step 1 两模式(1a 抽取重写 fresh / 1b de-stale 已有 spec 的 client 段)→ Step 2 plan+tasks(ADR-0043 扁平 + 三位一体同 tasks.md)→ Step 3 analyze → Step 4 impl(server 7 条并发/事务手译注意 + 前端 Strangler-Fig + RHF Golden Sample);Step 4 前端形态 port 旧 app 成品(原批 E mockup 形态随 realname 废弃移除)。**本轮全程手动,不用 p1 orchestrator**。详见 [`p3`](05-25-account-migration-p3-usecase-steps.md)。
 
 ### 子 plan 4 — client UI 链（settings shell）
 
 ✅ **完成**（2026-05-29 全 ship；**本段 p4 = 本 master 第 4 子 plan，≠ 下 § Out of Scope 的顶层「Plan 4」mobile build/PKM**）。三 feature 全合入(B1 `006` #221 / B2 设备 amend 005 #222 / B3 注销 amend 004 #223),A→B→C 链闭合 — 002 ⚙️ → settings → 账号与安全 → 登录管理 + 注销账号 全通。前端有一条**正交后端迁移**的 client UI 拆分链 A→B→C(源 `002-account-profile` spec 内部),从未被统领规划 —— **spec B(`account-settings-shell`,从 profile ⚙️ 进入的「设置 / 账号与安全」导航栈,落 `(app)/settings/*`、`(tabs)` 之外)** ,而 003(登出)/ 004(注销发起屏)/ 005(登录设备管理屏)三个 feature 的 client 入口**都已 server-ready(#196 / #198 / #201)、都延后挂这个壳**,曾使 settings shell 成隐式累积的前端债。
 
-p4 **分 3 feature 全 ship** —— B1 `006-account-settings-shell`(壳骨架 + primitives + maskPhone + 登出按钮,解锁 002 ⚙️,#221) / B2 设备管理(amend 005,#222) / B3 注销发起(amend 004,#223);设备先于注销;realname 让号顺延 `007`;范围外项全 disabled 占位(B2/B3 PR 内各 flip 自己那行 disabled→真 push)。p4 与批 E(`007` realname server)正交,无共享可变状态。详见 [`p4`](05-25-account-migration-p4-client-ui-shell-chain.md)。
+p4 **分 3 feature 全 ship** —— B1 `006-account-settings-shell`(壳骨架 + primitives + maskPhone + 登出按钮,解锁 002 ⚙️,#221) / B2 设备管理(amend 005,#222) / B3 注销发起(amend 004,#223);设备先于注销;范围外项全 disabled 占位(B2/B3 PR 内各 flip 自己那行 disabled→真 push)。详见 [`p4`](05-25-account-migration-p4-client-ui-shell-chain.md)。
 
 ## Out of Scope（整体不做）
 
@@ -87,16 +87,15 @@ p4 **分 3 feature 全 ship** —— B1 `006-account-settings-shell`(壳骨架 +
 
 ## Verification（master plan 自身)
 
-- ☐ 4 子 plan 文件齐全(p4 为占位骨架) + 顶部均回指 master + master 表 4 链接可达
-- ☐ p3 在 p2 完成后经独立 `/plan` 会话 + ExitPlanMode 填充
-- ☐ Plan 2 graduation:16 use case 全 ship + `pnpm nx affected --target=test,lint,build,typecheck` 全绿 + mobile 登录→5 phase 主流程跑通
+- ☑ 4 子 plan 文件齐全 + 顶部均回指 master + master 表 4 链接可达
+- ☑ p3 在 p2 完成后经独立 `/plan` 会话 + ExitPlanMode 填充
+- ✅ **Plan 2 graduation 达成(2026-05-31)**:13/16 use case 全 ship(原批 E realname 3 个已废弃)+ `specs/001-008` 全 `implemented` + mobile 登录→5 phase 主流程跑通(#232/#238/#247/#254);`pnpm nx affected` 绿由各 PR auto-merge 闸保证(本次未重跑全量)
 
 ## Risk + Rollback
 
 | 风险 | 缓解 |
 |---|---|
-| 16 use case 工作量超期 | Phase B 完成时若已 4 周 → 与 user review 拆 Plan 2.5(批 D/E 推后) |
-| realname split-tx 接口形状卡住 | 批 E `007` spec/plan > 1 周未定 → 暂跳,先 ship 批 B-D（`006` 已让号给 p4 settings shell，per §子 plan 4） |
+| ~~16 use case 工作量超期~~ | **未兑现(已收口)**:批 A-D 如期 ship、批 E realname 废弃 |
 | spec 合并 gate 阻塞 | 硬 gate 不可绕;user 不给约束则该 feature 暂停,转其他可并行批次 |
 | orchestrator 2b 写完体感 worse 于 2a | 收益 < 30% → 回滚 2a manual(详 p1) |
 
