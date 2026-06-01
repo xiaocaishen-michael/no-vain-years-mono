@@ -19,6 +19,10 @@ export interface AccountProfileResponse {
   bio: string | null;
   /** Gender (性别); one of MALE / FEMALE / NON_BINARY / PRIVATE; null when unset (008 FR-S06) */
   gender: AccountProfileResponseGender;
+  /** Avatar image URL (OSS public-read); null when unset (009 FR-S04) */
+  avatarUrl: string | null;
+  /** Home background image URL (OSS public-read); null when unset (009 FR-S04) */
+  backgroundImageUrl: string | null;
   /** Account status */
   status: AccountProfileResponseStatus;
   /** Account creation timestamp (ISO 8601) */
