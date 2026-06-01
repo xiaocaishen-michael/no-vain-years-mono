@@ -33,6 +33,8 @@ import type {
 
 import type {
   AccountProfileResponse,
+  ConfirmProfileImageRequest,
+  IssueUploadCredentialRequest,
   PhoneSmsAuthRequest,
   PhoneSmsAuthResponse,
   ProblemDetailResponse,
@@ -41,7 +43,8 @@ import type {
   RequestSmsCodeResponse,
   UpdateBioRequest,
   UpdateDisplayNameRequest,
-  UpdateGenderRequest
+  UpdateGenderRequest,
+  UploadCredentialResponse
 } from '../models';
 
 
@@ -569,4 +572,126 @@ export const useAccountProfileControllerUpdateGender = <TError = AxiosError<Prob
         TContext
       > => {
       return useMutation(getAccountProfileControllerUpdateGenderMutationOptions(options), queryClient);
+    }
+    /**
+ * Returns a scope-restricted, short-lived OSS PostObject V4 credential. The client POSTs the image bytes straight to OSS (backend never proxies bytes). Credential is locked to the <target>/<accountId>/ key prefix + image content-type whitelist + size + 15min expiry.
+ * @summary Issue an OSS upload credential for a profile image (009 EP1)
+ */
+export const accountProfileControllerIssueUploadCredential = (
+    issueUploadCredentialRequest: IssueUploadCredentialRequest, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<UploadCredentialResponse>> => {
+
+
+    return axios.post(
+      `/api/v1/accounts/me/profile-image/upload-credential`,
+      issueUploadCredentialRequest,options
+    );
+  }
+
+
+
+export const getAccountProfileControllerIssueUploadCredentialMutationOptions = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerIssueUploadCredential>>, TError,{data: IssueUploadCredentialRequest}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerIssueUploadCredential>>, TError,{data: IssueUploadCredentialRequest}, TContext> => {
+
+const mutationKey = ['accountProfileControllerIssueUploadCredential'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof accountProfileControllerIssueUploadCredential>>, {data: IssueUploadCredentialRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  accountProfileControllerIssueUploadCredential(data,axiosOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AccountProfileControllerIssueUploadCredentialMutationResult = NonNullable<Awaited<ReturnType<typeof accountProfileControllerIssueUploadCredential>>>
+    export type AccountProfileControllerIssueUploadCredentialMutationBody = IssueUploadCredentialRequest
+    export type AccountProfileControllerIssueUploadCredentialMutationError = AxiosError<ProblemDetailResponse>
+
+    /**
+ * @summary Issue an OSS upload credential for a profile image (009 EP1)
+ */
+export const useAccountProfileControllerIssueUploadCredential = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerIssueUploadCredential>>, TError,{data: IssueUploadCredentialRequest}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof accountProfileControllerIssueUploadCredential>>,
+        TError,
+        {data: IssueUploadCredentialRequest},
+        TContext
+      > => {
+      return useMutation(getAccountProfileControllerIssueUploadCredentialMutationOptions(options), queryClient);
+    }
+    /**
+ * Persists the OSS public-read URL for an uploaded object onto the account. Validates the objectKey belongs to the account prefix (anti cross-account write) + HEAD-probes the object exists and is an allowed image type before persisting. Returns the updated profile.
+ * @summary Confirm a direct-uploaded profile image (009 EP2)
+ */
+export const accountProfileControllerConfirmProfileImage = (
+    confirmProfileImageRequest: ConfirmProfileImageRequest, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<AccountProfileResponse>> => {
+
+
+    return axios.patch(
+      `/api/v1/accounts/me/profile-image`,
+      confirmProfileImageRequest,options
+    );
+  }
+
+
+
+export const getAccountProfileControllerConfirmProfileImageMutationOptions = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerConfirmProfileImage>>, TError,{data: ConfirmProfileImageRequest}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerConfirmProfileImage>>, TError,{data: ConfirmProfileImageRequest}, TContext> => {
+
+const mutationKey = ['accountProfileControllerConfirmProfileImage'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof accountProfileControllerConfirmProfileImage>>, {data: ConfirmProfileImageRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  accountProfileControllerConfirmProfileImage(data,axiosOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AccountProfileControllerConfirmProfileImageMutationResult = NonNullable<Awaited<ReturnType<typeof accountProfileControllerConfirmProfileImage>>>
+    export type AccountProfileControllerConfirmProfileImageMutationBody = ConfirmProfileImageRequest
+    export type AccountProfileControllerConfirmProfileImageMutationError = AxiosError<ProblemDetailResponse>
+
+    /**
+ * @summary Confirm a direct-uploaded profile image (009 EP2)
+ */
+export const useAccountProfileControllerConfirmProfileImage = <TError = AxiosError<ProblemDetailResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof accountProfileControllerConfirmProfileImage>>, TError,{data: ConfirmProfileImageRequest}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof accountProfileControllerConfirmProfileImage>>,
+        TError,
+        {data: ConfirmProfileImageRequest},
+        TContext
+      > => {
+      return useMutation(getAccountProfileControllerConfirmProfileImageMutationOptions(options), queryClient);
     }

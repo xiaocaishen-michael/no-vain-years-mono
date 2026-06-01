@@ -11,6 +11,7 @@ import {
   dbConfig,
   redisConfig,
   smsConfig,
+  ossConfig,
   wechatConfig,
   type AuthConfig,
   type DbConfig,
@@ -67,13 +68,13 @@ class RedisLifecycle implements OnModuleDestroy {
  */
 @Module({
   imports: [
-    // ConfigModule loads all 5 namespaced configs at boot. Each registerAs()
+    // ConfigModule loads all namespaced configs at boot. Each registerAs()
     // factory runs Zod parse → fail-fast on missing/invalid env *before* any
     // module initializes (no listen, no DB connect). cache: true memoizes
     // parsed values so the schema runs only once per process.
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, authConfig, dbConfig, redisConfig, smsConfig, wechatConfig],
+      load: [appConfig, authConfig, dbConfig, redisConfig, smsConfig, ossConfig, wechatConfig],
       cache: true,
     }),
     JwtModule.registerAsync({

@@ -5,7 +5,7 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 //
 // US2: 昵称 → name-edit（预填 / 计数 / 保存 200 → 返回 + 资料卡显新值 / 超 32 拦截）。
 // US1: 性别 → gender-edit（4 选项 + 当前值打勾 / 点选即存自动返回 + 资料卡显新值 / 再进预选）。
-// US3: 资料卡行序 = 头像/昵称/性别/个人简介/主页背景图（个人简介↔性别对换）+ active/disabled。
+// US3: 资料卡行序 = 头像/昵称/性别/个人简介/主页背景图（个人简介↔性别对换）；009 起全行 active。
 //
 // /me 走「有状态」mock：GET 返回当前 profile，PATCH /me（displayName）/ PATCH /me/gender
 // 各自 mutate 闭包 profile —— 故保存后资料卡刷新 + 再进编辑屏预选都反映最新值。URL 断言用
@@ -103,7 +103,7 @@ async function bootToAccountSecurity(
   await expect(page).toHaveURL(/\/settings\/account-security$/, { timeout: 10_000 });
 }
 
-// ─── US3: 资料卡行序对换 + 昵称/性别 active、头像/主页背景图 disabled (SC-003/SC-004) ──
+// ─── US3: 资料卡行序对换 + 全行 active（009 起头像/主页背景图换图入口）(SC-003/SC-004) ──
 
 test('US3 — 资料卡行序 头像/昵称/性别/个人简介/主页背景图 + active/disabled', async ({ page }) => {
   await bootToAccountSecurity(page);
@@ -118,16 +118,15 @@ test('US3 — 资料卡行序 头像/昵称/性别/个人简介/主页背景图 
   const bioBox = await page.getByRole('button', { name: '个人简介', exact: true }).boundingBox();
   expect(genderBox!.y).toBeLessThan(bioBox!.y);
 
-  // 昵称/性别/个人简介 active；头像/主页背景图 disabled 占位
-  for (const label of ['昵称', '性别', '个人简介']) {
+  // 昵称/性别/个人简介（008）+ 头像/主页背景图（009 换图入口）全部 active
+  for (const label of ['昵称', '性别', '个人简介', '头像', '主页背景图']) {
     await expect(page.getByRole('button', { name: label, exact: true })).toBeEnabled();
   }
-  for (const label of ['头像', '主页背景图']) {
-    await expect(page.getByRole('button', { name: label, exact: true })).toBeDisabled();
-  }
 
-  // 点占位行 → URL 不变无 crash
-  await page.getByRole('button', { name: '头像', exact: true }).tap({ force: true });
+  // 点头像 → 开 action sheet「更换头像」（009 起 active，不再 disabled 占位）→ 取消
+  await page.getByRole('button', { name: '头像', exact: true }).tap();
+  await expect(page.getByText('更换头像')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '取消', exact: true }).tap();
   await expect(page).toHaveURL(/\/settings\/account-security$/);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/us3-card-order.png`, fullPage: true });
 });

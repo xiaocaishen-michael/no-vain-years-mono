@@ -28,6 +28,8 @@ const ME_PROFILE_STUB = {
   displayName: '小明',
   bio: null,
   gender: null,
+  avatarUrl: null,
+  backgroundImageUrl: null,
   status: 'ACTIVE',
   createdAt: '2026-05-25T00:00:00.000Z',
   wechatBound: false,

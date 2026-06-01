@@ -66,7 +66,17 @@ describe('GetAccountProfileUseCase US1 — new user, displayName null', () => {
   it('response has exactly the expected keys (AccountProfileResult shape)', async () => {
     const result = await useCase.execute(accountId);
     expect(Object.keys(result).sort()).toEqual(
-      ['accountId', 'bio', 'createdAt', 'displayName', 'gender', 'phone', 'status'].sort(),
+      [
+        'accountId',
+        'avatarUrl',
+        'backgroundImageUrl',
+        'bio',
+        'createdAt',
+        'displayName',
+        'gender',
+        'phone',
+        'status',
+      ].sort(),
     );
   });
 

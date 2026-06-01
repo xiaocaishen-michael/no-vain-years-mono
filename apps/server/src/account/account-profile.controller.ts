@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AccountIdThrottlerGuard } from './account-id-throttler.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -17,6 +17,11 @@ import {
 import { UpdateDisplayNameRequest } from './update-display-name.request';
 import { UpdateBioRequest } from './update-bio.request';
 import { UpdateGenderRequest } from './update-gender.request';
+import { IssueUploadCredentialUseCase } from './issue-upload-credential.usecase';
+import { IssueUploadCredentialRequest } from './issue-upload-credential.request';
+import { UploadCredentialResponse } from './upload-credential.response';
+import { ConfirmProfileImageUseCase } from './confirm-profile-image.usecase';
+import { ConfirmProfileImageRequest } from './confirm-profile-image.request';
 import { InspectWechatBindingUseCase } from './inspect-wechat-binding.usecase';
 
 /**
@@ -36,6 +41,8 @@ export class AccountProfileController {
     private readonly updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private readonly updateBioUseCase: UpdateBioUseCase,
     private readonly updateGenderUseCase: UpdateGenderUseCase,
+    private readonly issueUploadCredentialUseCase: IssueUploadCredentialUseCase,
+    private readonly confirmProfileImageUseCase: ConfirmProfileImageUseCase,
     // 010 FR-S07: /me + PATCH 响应统一带 wechatBound (account 内 ctx 读, 无 cross-ctx 注释)。
     private readonly inspectWechatBinding: InspectWechatBindingUseCase,
   ) {}
@@ -85,6 +92,8 @@ export class AccountProfileController {
       displayName: result.displayName,
       bio: result.bio,
       gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
       status: result.status,
       createdAt: result.createdAt,
       wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
@@ -147,6 +156,8 @@ export class AccountProfileController {
       displayName: result.displayName,
       bio: result.bio,
       gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
       status: result.status,
       createdAt: result.createdAt,
       wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
@@ -206,6 +217,8 @@ export class AccountProfileController {
       displayName: result.displayName,
       bio: result.bio,
       gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
       status: result.status,
       createdAt: result.createdAt,
       wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
@@ -265,6 +278,124 @@ export class AccountProfileController {
       displayName: result.displayName,
       bio: result.bio,
       gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
+      status: result.status,
+      createdAt: result.createdAt,
+      wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,
+    };
+  }
+
+  @Post('me/profile-image/upload-credential')
+  @HttpCode(200)
+  @SkipThrottle({
+    default: true,
+    'sms-phone-24h': true,
+    'sms-ip-24h': true,
+    'me-get': true,
+    'refresh-ip': true,
+    'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
+    ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
+  })
+  @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Issue an OSS upload credential for a profile image (009 EP1)',
+    description:
+      'Returns a scope-restricted, short-lived OSS PostObject V4 credential. The client POSTs the image bytes straight to OSS (backend never proxies bytes). Credential is locked to the <target>/<accountId>/ key prefix + image content-type whitelist + size + 15min expiry.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Upload credential issued',
+    type: UploadCredentialResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid target / content-type (009 FR-S02)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'Missing / invalid / expired token, or account not ACTIVE (FR-S05) — reason not disclosed (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (FR-S06: 10 requests per 60s per account)',
+    type: ProblemDetailResponse,
+  })
+  async issueUploadCredential(
+    @Req() req: { user: AuthenticatedUser },
+    @Body() body: IssueUploadCredentialRequest,
+  ): Promise<UploadCredentialResponse> {
+    return this.issueUploadCredentialUseCase.execute(
+      req.user.accountId,
+      body.target,
+      body.contentType,
+    );
+  }
+
+  @Patch('me/profile-image')
+  @HttpCode(200)
+  @SkipThrottle({
+    default: true,
+    'sms-phone-24h': true,
+    'sms-ip-24h': true,
+    'me-get': true,
+    'refresh-ip': true,
+    'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
+    ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
+  })
+  @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Confirm a direct-uploaded profile image (009 EP2)',
+    description:
+      'Persists the OSS public-read URL for an uploaded object onto the account. Validates the objectKey belongs to the account prefix (anti cross-account write) + HEAD-probes the object exists and is an allowed image type before persisting. Returns the updated profile.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile image confirmed and persisted',
+    type: AccountProfileResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid target / objectKey prefix / object missing or wrong type (009 FR-S03)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'Missing / invalid / expired token, or account not ACTIVE (FR-S05) — reason not disclosed (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (FR-S06: 10 requests per 60s per account)',
+    type: ProblemDetailResponse,
+  })
+  async confirmProfileImage(
+    @Req() req: { user: AuthenticatedUser },
+    @Body() body: ConfirmProfileImageRequest,
+  ): Promise<AccountProfileResponse> {
+    const result = await this.confirmProfileImageUseCase.execute(
+      req.user.accountId,
+      body.target,
+      body.objectKey,
+    );
+    return {
+      accountId: result.accountId.toString(),
+      phone: result.phone,
+      displayName: result.displayName,
+      bio: result.bio,
+      gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
       status: result.status,
       createdAt: result.createdAt,
       wechatBound: (await this.inspectWechatBinding.execute(req.user.accountId)).bound,

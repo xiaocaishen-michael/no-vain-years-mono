@@ -1,12 +1,16 @@
 ---
 feature_id: 009-profile-image-upload
 spec_ref: ./spec.md
-status: planned
+status: implemented
 created_at: '2026-05-31'
-updated_at: '2026-05-31'
+updated_at: '2026-06-01'
 adr_refs: ['0024', '0026', '0032', '0035', '0037', '0043', '0045']
 orchestrator_compat: '>=0.1.0'
-context7_verified: []
+context7_verified:
+  # T001 impl-gate (Gate 0.2 Q4) — 2026-06-01, /expo/expo sdk-54 via context7
+  - 'expo-image-manipulator@~14.0.8: 用 imperative ImageManipulator.manipulate(uri).resize({width}).renderAsync()→ref.saveAsync({format:SaveFormat.WEBP,compress})（非 hook useImageManipulator，async 流不可用 hook）；SaveFormat.WEBP=webp；manipulateAsync 已 deprecated'
+  - 'expo-image@~3.0.11: <Image source={{uri,cacheKey}} contentFit="cover" />；cacheKey 在 ImageSource 上（缩略分尺寸缓存键）'
+  - 'expo-image-picker@~17.0.11: launchImageLibraryAsync/launchCameraAsync(options{mediaTypes,allowsEditing,aspect,quality})；requestMediaLibraryPermissionsAsync（web 为 no-op）'
 ---
 
 # Implementation Plan: 009-profile-image-upload（头像 + 主页背景图 上传 / 显示 / 查看大图 — Aliyun OSS client 直传 PostObject）
@@ -37,6 +41,7 @@ context7_verified: []
 - **契约同步链（Constitution V，active）**：EP1/EP2 新端点 + EP3 扩响应 → `nx run server:export-openapi` → `packages/api-client` regen（`pnpm nx affected -t generate`）→ mobile 消费 typed hook。**server impl + api-client regen + mobile 消费同 PR**（per [api-contract](../../docs/conventions/api-contract.md)）。
 - **限流**（FR-S06）：EP1 + EP2 复用既有 `@nestjs/throttler` per-account bucket（沿用 002/007/008 `me-patch` 范式；上传重试可能略频，可单设 `image-upload` bucket，阈值留 impl 微调）；超限 429 + `Retry-After`；限流在加载账号前消费。
 - **后端 0 图片字节代理**（SC-007）：EP1 仅返回签名串、EP2 仅收 `objectKey` 字符串 —— CI / review 断言无后端图片上传 / 代理路径（无 multipart body parser 接图片）。
+- **⚠️ 签名原语 = OSS V4（OSS4-HMAC-SHA256），非上表 EP1 草拟的 V1 `fields`**（impl 实证修正，2026-06-01）：上表 `fields:{ key, policy, signature, OSSAccessKeyId, ... }` 是 V1 形态，已 provision 的 bucket（`mbw-profile-images`/`cn-shanghai`）只接受 V4，V1 串会 403 SignatureDoesNotMatch。真实 `fields` = `{ key, policy, x-oss-signature-version:'OSS4-HMAC-SHA256', x-oss-credential, x-oss-date, x-oss-signature(hex), success_action_status:'200' }`（V4 三件套同入 policy.conditions + 表单）；签名 = 4 层 HMAC-SHA256 派生 → hex；region 双形态（host 带 `oss-` 前缀 / credential scope 用裸 region）。详 `oss-policy.ts` doc + memory `reference_aliyun_oss_postobject_v4_signature`。
 
 ## Dependencies & Defensive Additions _(Cargo-cult 防火墙)_
 

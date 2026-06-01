@@ -31,6 +31,8 @@ export interface RowProps {
   showChevron?: boolean;
   align?: 'left' | 'center';
   busy?: boolean;
+  // 右侧（chevron 之前）自定义槽 —— 如 009 头像 / 主页背景图行的缩略图。
+  accessory?: ReactNode;
   onPress?: () => void;
 }
 
@@ -42,6 +44,7 @@ export function Row({
   showChevron = true,
   align = 'left',
   busy,
+  accessory,
   onPress,
 }: RowProps) {
   const isDisabled = !!disabled;
@@ -63,6 +66,7 @@ export function Row({
         <Text className={`text-base ${labelTone} ${labelWeight}`}>{label}</Text>
       </View>
       {value != null ? <Text className="text-sm text-ink-muted mr-xs">{value}</Text> : null}
+      {accessory != null ? <View className="mr-xs">{accessory}</View> : null}
       {showChevron && !destructive ? <Text className="text-base text-ink-subtle">›</Text> : null}
     </Pressable>
   );

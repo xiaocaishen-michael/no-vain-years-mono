@@ -8,6 +8,8 @@ export interface AccountProfileResult {
   displayName: string | null;
   bio: string | null;
   gender: Gender | null;
+  avatarUrl: string | null;
+  backgroundImageUrl: string | null;
   status: AccountStatus;
   createdAt: Date;
 }
@@ -30,6 +32,8 @@ export class GetAccountProfileUseCase {
       displayName: account.displayName,
       bio: account.bio,
       gender: account.gender as Gender | null,
+      avatarUrl: account.avatarUrl,
+      backgroundImageUrl: account.backgroundImageUrl,
       status: account.status as AccountStatus,
       createdAt: account.createdAt,
     };

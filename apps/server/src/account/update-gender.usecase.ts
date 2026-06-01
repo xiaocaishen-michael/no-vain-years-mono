@@ -8,6 +8,8 @@ export interface UpdateGenderResult {
   displayName: string | null;
   bio: string | null;
   gender: Gender | null;
+  avatarUrl: string | null;
+  backgroundImageUrl: string | null;
   status: AccountStatus;
   createdAt: Date;
 }
@@ -50,6 +52,8 @@ export class UpdateGenderUseCase {
       displayName: account.displayName,
       bio: account.bio,
       gender,
+      avatarUrl: account.avatarUrl,
+      backgroundImageUrl: account.backgroundImageUrl,
       status: account.status as AccountStatus,
       createdAt: account.createdAt,
     };

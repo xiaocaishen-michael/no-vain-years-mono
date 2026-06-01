@@ -5,6 +5,8 @@ import type { GetAccountProfileUseCase } from './get-account-profile.usecase';
 import type { UpdateDisplayNameUseCase } from './update-display-name.usecase';
 import type { UpdateBioUseCase } from './update-bio.usecase';
 import type { UpdateGenderUseCase } from './update-gender.usecase';
+import type { IssueUploadCredentialUseCase } from './issue-upload-credential.usecase';
+import type { ConfirmProfileImageUseCase } from './confirm-profile-image.usecase';
 import type { InspectWechatBindingUseCase } from './inspect-wechat-binding.usecase';
 
 const PROFILE = {
@@ -25,6 +27,8 @@ function build(bound: boolean) {
     {} as unknown as UpdateDisplayNameUseCase,
     {} as unknown as UpdateBioUseCase,
     {} as unknown as UpdateGenderUseCase,
+    {} as unknown as IssueUploadCredentialUseCase,
+    {} as unknown as ConfirmProfileImageUseCase,
     { execute: inspectExecute } as unknown as InspectWechatBindingUseCase,
   );
   return { controller, inspectExecute };
