@@ -62,14 +62,14 @@ created_at: '2026-05-31'
 
 - [X] T009 [P] [US3] [Mobile] `apps/mobile/src/profile-image/use-profile-image-upload.ts`：封统一上传流 —— 选图（**`Platform.OS` 分叉**：native `expo-image-picker` `launchImageLibraryAsync`/`launchCameraAsync`（`allowsEditing`+`aspect:[1,1]` 头像 / 宽幅背景，`aspect` 仅 Android、iOS 恒方形）；web `<input type=file accept=image/*>` + `react-easy-crop`，web 不显示拍照/不依赖权限·cancel 回调）→ resize/compress（native `expo-image-manipulator` WEBP+compress / web canvas `toBlob`）→ 调 EP1 拿 `{host,fields,objectKey}` → 组 `FormData`（先 append `fields.*`、**`file` 字段最后**）→ `fetch(host,{method:'POST',body})` 直传（native `{uri,name,type}` / web Blob）→ 调 EP2 confirm → invalidate `/me`；**忙态单源 `isUploading`**（重复触发忽略，FR-C03）；失败友好提示 + profile **不脏写**（FR-C07）；client 先拦非图片/超 size（FR-C08）。逻辑 vitest 红→绿（错误映射 / 忙态锁 / FormData 字段序 / confirm 仅在直传成功后调）
 - [X] T010 [US3] [Mobile] 入口接线：`apps/mobile/app/(app)/(tabs)/profile.tsx` `onAvatarPress`/`onBackgroundPress` 从 `noop`（L298/L314）→ 开 action sheet「更换/查看/取消」（轻量自建，跨端用既有 Modal/底部卡范式，不引组件库；**仅翻钩子+渲染源不重设计 hero 布局**）；`apps/mobile/app/(app)/settings/account-security/index.tsx` 头像（L48）/ 主页背景图（L67）行 `disabled`→active（`onPress` 开 sheet）+ 右侧缩略槽；**更新 header 注释归属 008→009**
-- [ ] T011 [US3] [Mobile-E2E] `apps/mobile/e2e/profile-image-upload.spec.ts` US3 段（seed authed + **mock refresh-token** + mock EP1 凭证 + mock OSS host POST + mock EP2 confirm 200）：点头像 → action sheet「更换」→ `<input type=file>` 注入测试图 → 裁剪 → 上传 → hero 显示真实图（非 👤 emoji）；web 不显示「拍照」。`getByRole` 收窄避叠屏双命中（per memory `playwright_expo_stacked_screen_locator_collision`）
+- [X] T011 [US3] [Mobile-E2E] `apps/mobile/e2e/profile-image-upload.spec.ts` US3 段（seed authed + **mock refresh-token** + mock EP1 凭证 + mock OSS host POST + mock EP2 confirm 200）：点头像 → action sheet「更换」→ `<input type=file>` 注入测试图 → 裁剪 → 上传 → hero 显示真实图（非 👤 emoji）；web 不显示「拍照」。`getByRole` 收窄避叠屏双命中（per memory `playwright_expo_stacked_screen_locator_collision`）
 
 ## Phase 6: User Story 4 — profile 显示真实头像 / 背景图（P1）[Mobile]
 
 **Independent Test**（spec US4，web Playwright）：seed `/me` 含 `avatarUrl`/`backgroundImageUrl` → hero 渲染真实图（非 emoji/占位）；007 资料卡头像/背景图行显缩略；null → 回落 002 emoji/占位（不回归）。
 
 - [X] T012 [US4] [Mobile] 显示接入：`profile.tsx` hero 头像/背景图 + `account-security/index.tsx` 资料卡两行用 `expo-image` `<Image>` 渲染 `useMe()` 的 `avatarUrl`/`backgroundImageUrl`；缩略 append `?x-oss-process=image/resize,m_lfit,w_200,h_200/format,webp/quality,q_80` + `cacheKey` 分尺寸缓存（FR-C04）；**null 回落 002 既有 emoji/占位**（不回归，FR-C06）
-- [ ] T013 [US4] [Mobile-E2E] `profile-image-upload.spec.ts` 显示段（seed `/me` 含/不含 url）：含 url → hero + 007 资料卡渲染真实图/缩略；null → 回落 002 emoji/占位（断言不 crash、不回归）
+- [X] T013 [US4] [Mobile-E2E] `profile-image-upload.spec.ts` 显示段（seed `/me` 含/不含 url）：含 url → hero + 007 资料卡渲染真实图/缩略；null → 回落 002 emoji/占位（断言不 crash、不回归）
 
 ## Phase 7: User Story 5 — 查看大图（P2）[Mobile]
 
