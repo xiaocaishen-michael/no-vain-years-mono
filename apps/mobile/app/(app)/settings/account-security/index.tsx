@@ -9,6 +9,7 @@ import { ScrollView } from 'react-native';
 
 import { useMe } from '~/core/api/use-me';
 import { maskPhone } from '~/format/phone';
+import { ProfileImageThumb } from '~/profile-image/image-thumb';
 import { useProfileImageEditor } from '~/profile-image/use-profile-image-editor';
 import { Card, Divider, Row } from '~/settings/primitives';
 import { genderLabel } from '~/settings/gender';
@@ -50,7 +51,11 @@ export default function AccountSecurityIndex() {
       {/* 资料卡 — 行序 头像 / 昵称 / 性别 / 个人简介 / 主页背景图（008 FR-C01）；
           头像 / 主页背景图（009）+ 昵称 / 性别 / 个人简介 active → 各编辑屏 / 换图 sheet */}
       <Card>
-        <Row label={COPY.avatar} onPress={avatarEditor.open} />
+        <Row
+          label={COPY.avatar}
+          onPress={avatarEditor.open}
+          accessory={<ProfileImageThumb url={profile?.avatarUrl ?? null} shape="circle" />}
+        />
         <Divider />
         <Row
           label={COPY.displayName}
@@ -69,7 +74,13 @@ export default function AccountSecurityIndex() {
           onPress={() => router.push('/(app)/settings/account-security/bio-edit')}
         />
         <Divider />
-        <Row label={COPY.homeBackground} onPress={backgroundEditor.open} />
+        <Row
+          label={COPY.homeBackground}
+          onPress={backgroundEditor.open}
+          accessory={
+            <ProfileImageThumb url={profile?.backgroundImageUrl ?? null} shape="rounded" />
+          }
+        />
       </Card>
       {avatarEditor.overlay}
       {backgroundEditor.overlay}

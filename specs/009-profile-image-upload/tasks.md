@@ -68,7 +68,7 @@ created_at: '2026-05-31'
 
 **Independent Test**（spec US4，web Playwright）：seed `/me` 含 `avatarUrl`/`backgroundImageUrl` → hero 渲染真实图（非 emoji/占位）；007 资料卡头像/背景图行显缩略；null → 回落 002 emoji/占位（不回归）。
 
-- [ ] T012 [US4] [Mobile] 显示接入：`profile.tsx` hero 头像/背景图 + `account-security/index.tsx` 资料卡两行用 `expo-image` `<Image>` 渲染 `useMe()` 的 `avatarUrl`/`backgroundImageUrl`；缩略 append `?x-oss-process=image/resize,m_lfit,w_200,h_200/format,webp/quality,q_80` + `cacheKey` 分尺寸缓存（FR-C04）；**null 回落 002 既有 emoji/占位**（不回归，FR-C06）
+- [X] T012 [US4] [Mobile] 显示接入：`profile.tsx` hero 头像/背景图 + `account-security/index.tsx` 资料卡两行用 `expo-image` `<Image>` 渲染 `useMe()` 的 `avatarUrl`/`backgroundImageUrl`；缩略 append `?x-oss-process=image/resize,m_lfit,w_200,h_200/format,webp/quality,q_80` + `cacheKey` 分尺寸缓存（FR-C04）；**null 回落 002 既有 emoji/占位**（不回归，FR-C06）
 - [ ] T013 [US4] [Mobile-E2E] `profile-image-upload.spec.ts` 显示段（seed `/me` 含/不含 url）：含 url → hero + 007 资料卡渲染真实图/缩略；null → 回落 002 emoji/占位（断言不 crash、不回归）
 
 ## Phase 7: User Story 5 — 查看大图（P2）[Mobile]

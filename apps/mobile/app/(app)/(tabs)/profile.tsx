@@ -20,12 +20,17 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import Svg, { Circle, Defs, G, LinearGradient, Line, Path, Rect, Stop } from 'react-native-svg';
 import { useMe } from '~/core/api/use-me';
+import { ossThumbCacheKey, ossThumbUrl } from '~/profile-image/oss-image';
 import { useProfileImageEditor } from '~/profile-image/use-profile-image-editor';
 import { tokens } from '~/theme';
+
+const AVATAR_THUMB = { width: 200, height: 200 };
+const HERO_BG_THUMB = { width: 1080, height: 720 };
 
 const COPY = {
   unnamed: '未命名',
@@ -124,9 +129,11 @@ function HeroBlurBackdrop() {
 
 function AvatarPlaceholder({
   displayName,
+  avatarUrl,
   onPress,
 }: {
   displayName: string | null | undefined;
+  avatarUrl: string | null;
   onPress: () => void;
 }) {
   const initial = displayName ? [...displayName][0] : null;
@@ -138,8 +145,19 @@ function AvatarPlaceholder({
       accessibilityHint="点击更换"
       className="w-[72px] h-[72px] rounded-full bg-surface p-[3px] shadow-hero-ring"
     >
-      <View className="flex-1 rounded-full bg-brand-500 items-center justify-center">
-        {initial ? (
+      <View className="flex-1 rounded-full bg-brand-500 items-center justify-center overflow-hidden">
+        {/* 真实头像（OSS 缩略派生）→ 名首字母 → 👤；null 回落 002 占位（FR-C06，不回归） */}
+        {avatarUrl ? (
+          <Image
+            source={{
+              uri: ossThumbUrl(avatarUrl, AVATAR_THUMB),
+              cacheKey: ossThumbCacheKey(avatarUrl, AVATAR_THUMB),
+            }}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+            accessibilityLabel="头像图片"
+          />
+        ) : initial ? (
           <Text className="text-surface text-2xl font-semibold tracking-tight">{initial}</Text>
         ) : (
           <Text className="text-2xl">👤</Text>
@@ -241,17 +259,34 @@ function TabPlaceholder({ tab }: { tab: TabKey }) {
 
 function Hero({
   displayName,
+  avatarUrl,
+  backgroundImageUrl,
   onAvatarPress,
   onBackgroundPress,
 }: {
   displayName: string | null | undefined;
+  avatarUrl: string | null;
+  backgroundImageUrl: string | null;
   onAvatarPress: () => void;
   onBackgroundPress: () => void;
 }) {
   return (
     <View style={{ height: HERO_HEIGHT }} className="relative overflow-hidden">
+      {/* 真实背景图（OSS 派生）→ null 回落 002 SVG 渐变占位（FR-C06，不回归） */}
       <View className="absolute inset-0">
-        <HeroBlurBackdrop />
+        {backgroundImageUrl ? (
+          <Image
+            source={{
+              uri: ossThumbUrl(backgroundImageUrl, HERO_BG_THUMB),
+              cacheKey: ossThumbCacheKey(backgroundImageUrl, HERO_BG_THUMB),
+            }}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+            accessibilityLabel="背景图片"
+          />
+        ) : (
+          <HeroBlurBackdrop />
+        )}
       </View>
       <View className="absolute inset-0 bg-hero-overlay" />
       <Pressable
@@ -262,7 +297,11 @@ function Hero({
         className="absolute inset-0"
       />
       <View className="flex-1 items-center justify-end pb-8 px-md">
-        <AvatarPlaceholder displayName={displayName} onPress={onAvatarPress} />
+        <AvatarPlaceholder
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          onPress={onAvatarPress}
+        />
         <Text
           className="text-[22px] font-bold text-white-strong mt-3 tracking-tight"
           numberOfLines={1}
@@ -292,13 +331,15 @@ export default function ProfileScreen() {
   // store no longer exposes it for display (it's a write-only cold-start seed).
   const { data: profile } = useMe();
   const displayName = profile?.displayName ?? null;
+  const avatarUrl = profile?.avatarUrl ?? null;
+  const backgroundImageUrl = profile?.backgroundImageUrl ?? null;
   const [activeTab, setActiveTab] = useState<TabKey>('notes');
   const [scrollY, setScrollY] = useState(0);
   const isSticky = scrollY >= STICKY_THRESHOLD;
 
   // 009：头像 / 主页背景图换图 + 查看大图（tap hero → action sheet）。
-  const avatarEditor = useProfileImageEditor('avatar', profile?.avatarUrl ?? null);
-  const backgroundEditor = useProfileImageEditor('background', profile?.backgroundImageUrl ?? null);
+  const avatarEditor = useProfileImageEditor('avatar', avatarUrl);
+  const backgroundEditor = useProfileImageEditor('background', backgroundImageUrl);
 
   // FR-017: settings stack at /(app)/settings — route now built (006-account-settings-shell).
   const pushSettings = () => router.push('/(app)/settings');
@@ -317,6 +358,8 @@ export default function ProfileScreen() {
       >
         <Hero
           displayName={displayName}
+          avatarUrl={avatarUrl}
+          backgroundImageUrl={backgroundImageUrl}
           onAvatarPress={avatarEditor.open}
           onBackgroundPress={backgroundEditor.open}
         />
