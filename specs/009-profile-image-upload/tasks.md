@@ -81,8 +81,8 @@ created_at: '2026-05-31'
 ## Phase 8: 回归 + Polish & Verify
 
 - [X] T016 [Mobile-E2E] **007 回归（plan D5）**：`rg 'force:true|头像|主页背景图' apps/mobile/e2e/account-security-refactor.spec.ts` 核对——若硬断言头像/主页背景图行 disabled 占位 + `tap({force:true})` 无导航，本 feature 翻 active 后**必须更新**（改为 `tap()` → 开 action sheet）；不改则 007 e2e 红
-- [ ] T017 [Deploy] OSS 部署侧配置（非代码，ship 前置）：bucket **CORS** 允许 web `POST`/`PUT`（`AllowedHeader` 含 `Content-Type`、expose `ETag`）+ **Referer 白名单**（`*.<域>` + 允许空 referer for native）+ **RAM 子账号**仅 `oss:PutObject` on bucket 前缀（最小权限 per ADR-0037）+ 部署 env 注入 `OSS_*`（T003）
-- [ ] T018 [Verify] `pnpm exec nx affected -t lint typecheck test build runtime-smoke generate --base=origin/main` 全绿（含 `generate` 契约链 + `runtime-smoke`；本地跑前先杀 `:3000` 父进程 per memory `nx_serve_respawns_3000_poisons_seed_e2e`；nx affected 前 `pnpm install --frozen-lockfile` + `prisma generate`）+ server IT 绿（`nx test server` cwd=apps/server）+ web e2e 全绿；**SC-007 断言后端 0 图片字节代理**（grep 无 multipart body parser 接图片路径）+ server diff 仅 2 列 + 2 端点 + oss helper（无跨 context import）+ **server-bounded-context-catalog Operation Catalog 加 2 行**（issue-upload-credential / confirm-profile-image，context=account，propagation=none，source PR）
+- [X] T017 [Deploy] OSS 部署侧配置（非代码，ship 前置）：bucket **CORS** 允许 web `POST`/`PUT`（`AllowedHeader` 含 `Content-Type`、expose `ETag`）+ **Referer 白名单**（`*.<域>` + 允许空 referer for native）+ **RAM 子账号**仅 `oss:PutObject` on bucket 前缀（最小权限 per ADR-0037）+ 部署 env 注入 `OSS_*`（T003）
+- [X] T018 [Verify] `pnpm exec nx affected -t lint typecheck test build runtime-smoke generate --base=origin/main` 全绿（含 `generate` 契约链 + `runtime-smoke`；本地跑前先杀 `:3000` 父进程 per memory `nx_serve_respawns_3000_poisons_seed_e2e`；nx affected 前 `pnpm install --frozen-lockfile` + `prisma generate`）+ server IT 绿（`nx test server` cwd=apps/server）+ web e2e 全绿；**SC-007 断言后端 0 图片字节代理**（grep 无 multipart body parser 接图片路径）+ server diff 仅 2 列 + 2 端点 + oss helper（无跨 context import）+ **server-bounded-context-catalog Operation Catalog 加 2 行**（issue-upload-credential / confirm-profile-image，context=account，propagation=none，source PR）
 
 ---
 

@@ -136,6 +136,8 @@ await this.prisma.$transaction(async (tx) => {
 | `find-refresh-token-by-id`     | security | platform infra（被 auth `revoke-device` 调）— `findUnique({id})` → 行 \| null（供 auth 做 404/409 guard 快照判定，不过滤活跃性）                                                                                                                                     | 005 (T003)                     |
 | `revoke-one-refresh-token`     | security | platform infra（被 auth `revoke-device` 调）— conditional `updateMany {id, accountId, revokedAt:null}` set revokedAt → `{won: count===1}`（affected-count 乐观锁；`WHERE accountId` 防越权撤；tx 重载，READ COMMITTED）                                              | 005 (T003)                     |
 | `resolve-ip-location`          | security | platform infra（ADR-0041，被 auth `list-devices` 调；无 R2/R3）— `IpGeoService` onModuleInit 载 ip2region v4 xdb buffer 单例 → `resolve(ip)` 省+市；私网/null/IPv6/不可解析 → null                                                                                   | 005 (T002)                     |
+| `issue-upload-credential`      | account  | (intra; **none**) 纯签名 PostObject 凭证（Node crypto V4，**后端 0 OSS SDK / 0 图片字节**）— findUnique active 守卫 → policy 锁本账号 key 前缀 + content-type 白名单 + size + 15min TTL；不写 DB                                                                     | 009                            |
+| `confirm-profile-image`        | account  | (intra; **none**; write Account.avatar_url/background_image_url) — 校验 objectKey 属本账号前缀（防越权写他人，FR-S03）+ HEAD OSS 探针确认对象存在/类型（D3）→ 落 public-read URL 覆盖旧值；GET /me 扩两字段回读                                                      | 009                            |
 
 ### Plan 2 anticipated（示例，非实装承诺）
 
