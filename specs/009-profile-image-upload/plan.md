@@ -37,6 +37,7 @@ context7_verified: []
 - **契约同步链（Constitution V，active）**：EP1/EP2 新端点 + EP3 扩响应 → `nx run server:export-openapi` → `packages/api-client` regen（`pnpm nx affected -t generate`）→ mobile 消费 typed hook。**server impl + api-client regen + mobile 消费同 PR**（per [api-contract](../../docs/conventions/api-contract.md)）。
 - **限流**（FR-S06）：EP1 + EP2 复用既有 `@nestjs/throttler` per-account bucket（沿用 002/007/008 `me-patch` 范式；上传重试可能略频，可单设 `image-upload` bucket，阈值留 impl 微调）；超限 429 + `Retry-After`；限流在加载账号前消费。
 - **后端 0 图片字节代理**（SC-007）：EP1 仅返回签名串、EP2 仅收 `objectKey` 字符串 —— CI / review 断言无后端图片上传 / 代理路径（无 multipart body parser 接图片）。
+- **⚠️ 签名原语 = OSS V4（OSS4-HMAC-SHA256），非上表 EP1 草拟的 V1 `fields`**（impl 实证修正，2026-06-01）：上表 `fields:{ key, policy, signature, OSSAccessKeyId, ... }` 是 V1 形态，已 provision 的 bucket（`mbw-profile-images`/`cn-shanghai`）只接受 V4，V1 串会 403 SignatureDoesNotMatch。真实 `fields` = `{ key, policy, x-oss-signature-version:'OSS4-HMAC-SHA256', x-oss-credential, x-oss-date, x-oss-signature(hex), success_action_status:'200' }`（V4 三件套同入 policy.conditions + 表单）；签名 = 4 层 HMAC-SHA256 派生 → hex；region 双形态（host 带 `oss-` 前缀 / credential scope 用裸 region）。详 `oss-policy.ts` doc + memory `reference_aliyun_oss_postobject_v4_signature`。
 
 ## Dependencies & Defensive Additions _(Cargo-cult 防火墙)_
 
