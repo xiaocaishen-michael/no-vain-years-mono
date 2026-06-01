@@ -75,8 +75,8 @@ created_at: '2026-05-31'
 
 **Independent Test**（spec US5，web Playwright）：seed 已设图 → action sheet「查看」→ 全屏展示原图、可返回；未设图「查看」处理合理。
 
-- [ ] T014 [US5] [Mobile] action sheet「查看」→ 全屏 Modal + `expo-image` + 已在的 `react-native-reanimated` pinch-zoom（**零新依赖**，plan D7）展示当前原图；未设图时「查看」置灰/不提供（impl 定）。`apps/mobile/src/profile-image/image-viewer.tsx`
-- [ ] T015 [US5] [Mobile-E2E] `profile-image-upload.spec.ts` 查看段：seed 已设图 → 点「查看」→ 全屏展示原图 → 返回回原页
+- [X] T014 [US5] [Mobile] action sheet「查看」→ 全屏 Modal + `expo-image` + 已在的 `react-native-reanimated` pinch-zoom（**零新依赖**，plan D7）展示当前原图；未设图时「查看」置灰/不提供（impl 定）。`apps/mobile/src/profile-image/image-viewer.tsx`
+- [X] T015 [US5] [Mobile-E2E] `profile-image-upload.spec.ts` 查看段：seed 已设图 → 点「查看」→ 全屏展示原图 → 返回回原页
 
 ## Phase 8: 回归 + Polish & Verify
 
