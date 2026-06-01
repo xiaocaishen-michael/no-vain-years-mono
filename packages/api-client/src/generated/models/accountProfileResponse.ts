@@ -27,4 +27,6 @@ export interface AccountProfileResponse {
   status: AccountProfileResponseStatus;
   /** Account creation timestamp (ISO 8601) */
   createdAt: string;
+  /** Whether a WeChat account is bound (010 FR-S07). MUST NOT expose openid — boolean only. */
+  wechatBound: boolean;
 }

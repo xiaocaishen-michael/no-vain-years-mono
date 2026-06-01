@@ -69,11 +69,14 @@ function stripLineComments(content: string): string {
 }
 
 // A GET /me stub via the shared helper: mockJson(page, ME_URL|'.../accounts/me',
-// status, body, 'GET'). Bodies are plain object literals (no parens), so the
-// first ')' after the URL arg is the call's closer — `[^)]` keeps the match
-// inside one call.
+// status, body, 'GET'). The body arg may be an object literal OR a helper call
+// that returns one (e.g. meBody(wechatBound) in wechat-binding.spec.ts), so the
+// match window is bounded by the statement terminator `;` rather than the first
+// ')' — a function-call body's inner parens would otherwise truncate the match
+// before 'GET'. Negated class stays inside one statement since every mockJson
+// call ends with ';'.
 const ME_MOCKJSON_GET =
-  /mockJson\(\s*page\s*,\s*(?:ME_URL|['"`][^'"`]*accounts\/me[^'"`]*['"`])[^)]*?['"`]GET['"`]\s*,?\s*\)/;
+  /mockJson\(\s*page\s*,\s*(?:ME_URL|['"`][^'"`]*accounts\/me[^'"`]*['"`])[^;]*?['"`]GET['"`]\s*,?\s*\)/;
 
 // A raw page.route registration on the /me URL (stateful / header-conditional
 // handlers, e.g. tokens-refresh). The handler answers GET /me itself.

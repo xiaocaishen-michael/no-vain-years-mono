@@ -77,4 +77,11 @@ export class AccountProfileResponse {
     format: 'date-time',
   })
   createdAt!: Date;
+
+  @ApiProperty({
+    description:
+      'Whether a WeChat account is bound (010 FR-S07). MUST NOT expose openid — boolean only.',
+    example: false,
+  })
+  wechatBound!: boolean;
 }

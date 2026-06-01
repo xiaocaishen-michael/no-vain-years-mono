@@ -12,6 +12,7 @@ import {
   redisConfig,
   smsConfig,
   ossConfig,
+  wechatConfig,
   type AuthConfig,
   type DbConfig,
   type RedisConfig,
@@ -73,7 +74,7 @@ class RedisLifecycle implements OnModuleDestroy {
     // parsed values so the schema runs only once per process.
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, authConfig, dbConfig, redisConfig, smsConfig, ossConfig],
+      load: [appConfig, authConfig, dbConfig, redisConfig, smsConfig, ossConfig, wechatConfig],
       cache: true,
     }),
     JwtModule.registerAsync({

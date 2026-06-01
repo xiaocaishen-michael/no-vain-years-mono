@@ -3,12 +3,16 @@ import { ThrottlerModule, type ThrottlerOptions } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { Redis } from 'ioredis';
 import {
+  appConfig,
   authConfig,
   redisConfig,
   smsConfig,
+  wechatConfig,
+  type AppConfig,
   type AuthConfig,
   type RedisConfig,
   type SmsConfig,
+  type WechatConfig,
 } from '../config/index.js';
 import { SecurityModule } from '../security/security.module.js';
 import { AccountModule } from '../account/account.module.js';
@@ -44,6 +48,12 @@ import { ListDevicesUseCase } from './list-devices.usecase.js';
 import { RevokeDeviceUseCase } from './revoke-device.usecase.js';
 import { JwtAccessGuard } from './jwt-access.guard.js';
 import { SmsPhoneThrottlerGuard } from './sms-phone-throttler.guard.js';
+import { WECHAT_AUTH } from './wechat-auth.port.js';
+import { MockWechatAuthGateway } from './mock-wechat-auth.gateway.js';
+import { BindWechatUseCase } from './bind-wechat.usecase.js';
+import { SendUnbindWechatCodeUseCase } from './send-unbind-wechat-code.usecase.js';
+import { UnbindWechatUseCase } from './unbind-wechat.usecase.js';
+import { WechatBindingController } from './wechat-binding.controller.js';
 
 /**
  * 005 设备 EP 限流桶 (FR-S13) —— 提取为模块常量,避免 ThrottlerModule useFactory
@@ -85,6 +95,69 @@ const DEVICE_THROTTLERS: ThrottlerOptions[] = [
     getTracker: (req: Record<string, unknown>) => {
       const ip = req['ip'];
       return Promise.resolve(`dev-revoke-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+    },
+  },
+];
+
+/**
+ * 010 微信绑定/解绑 EP 限流桶 (FR-S06) —— 提取为模块常量 (同 DEVICE_THROTTLERS,
+ * 避免 useFactory 超 max-lines)。bind 5/account·10/IP;unbind-code 1/account·5/IP;
+ * unbind 5/account·10/IP (均 /60s)。account 桶 getTracker 读 req.user.accountId
+ * (JwtAuthGuard 先填);IP 桶读 req.ip。
+ */
+const WECHAT_THROTTLERS: ThrottlerOptions[] = [
+  {
+    name: 'wx-bind',
+    limit: 5,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const user = req['user'] as { accountId?: unknown } | undefined;
+      return Promise.resolve(`wx-bind:${user?.accountId ?? 'unauthenticated'}`);
+    },
+  },
+  {
+    name: 'wx-bind-ip',
+    limit: 10,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const ip = req['ip'];
+      return Promise.resolve(`wx-bind-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+    },
+  },
+  {
+    name: 'wx-unbind-code',
+    limit: 1,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const user = req['user'] as { accountId?: unknown } | undefined;
+      return Promise.resolve(`wx-unbind-code:${user?.accountId ?? 'unauthenticated'}`);
+    },
+  },
+  {
+    name: 'wx-unbind-code-ip',
+    limit: 5,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const ip = req['ip'];
+      return Promise.resolve(`wx-unbind-code-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
+    },
+  },
+  {
+    name: 'wx-unbind',
+    limit: 5,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const user = req['user'] as { accountId?: unknown } | undefined;
+      return Promise.resolve(`wx-unbind:${user?.accountId ?? 'unauthenticated'}`);
+    },
+  },
+  {
+    name: 'wx-unbind-ip',
+    limit: 10,
+    ttl: 60_000,
+    getTracker: (req: Record<string, unknown>) => {
+      const ip = req['ip'];
+      return Promise.resolve(`wx-unbind-ip:${typeof ip === 'string' ? ip : 'unknown'}`);
     },
   },
 ];
@@ -268,6 +341,8 @@ const DEVICE_THROTTLERS: ThrottlerOptions[] = [
             },
             // FR-S13 (005) 设备列表 + 单设备撤销 4 桶 (auth EP, 提取到模块常量见下)
             ...DEVICE_THROTTLERS,
+            // FR-S06 (010) 微信绑定/解绑发码/解绑提交 6 桶 (auth EP, 提取到模块常量见下)
+            ...WECHAT_THROTTLERS,
           ],
           storage: new ThrottlerStorageRedisService(cfg.url),
         };
@@ -281,6 +356,7 @@ const DEVICE_THROTTLERS: ThrottlerOptions[] = [
     AccountDeletionController,
     CancelDeletionController,
     DeviceManagementController,
+    WechatBindingController,
   ],
   providers: [
     {
@@ -323,6 +399,22 @@ const DEVICE_THROTTLERS: ThrottlerOptions[] = [
       },
       inject: [smsConfig.KEY, RETRY_EXECUTOR],
     },
+    {
+      // wechatConfig discriminated union: kind='mock' (Phase 1 stub, default) or
+      // kind='real' (Phase 2 native adapter, T029)。生产 boot 拒 mock —— 防误用 stub 上线。
+      provide: WECHAT_AUTH,
+      useFactory: (cfg: WechatConfig, appCfg: AppConfig) => {
+        if (cfg.kind === 'real') {
+          // Phase 2 real adapter (T029) 未实现 —— Phase 1 仅交付 mock stub。
+          throw new Error('WechatAuthGateway (real) lands in Phase 2 (T029)');
+        }
+        if (appCfg.nodeEnv === 'production') {
+          throw new Error('WECHAT_GATEWAY=mock forbidden in production — set kind=real (Phase 2)');
+        }
+        return new MockWechatAuthGateway();
+      },
+      inject: [wechatConfig.KEY, appConfig.KEY],
+    },
     { provide: TIMING_DEFENSE_EXECUTOR, useClass: BcryptTimingDefenseExecutor },
     { provide: RETRY_EXECUTOR, useClass: CockatielRetryExecutor },
     AuthFailureLockService,
@@ -337,6 +429,9 @@ const DEVICE_THROTTLERS: ThrottlerOptions[] = [
     DeleteAccountUseCase,
     SendCancelDeletionCodeUseCase,
     CancelDeletionUseCase,
+    BindWechatUseCase,
+    SendUnbindWechatCodeUseCase,
+    UnbindWechatUseCase,
     JwtAccessGuard,
     SmsPhoneThrottlerGuard,
     CancelCodePhoneThrottlerGuard,

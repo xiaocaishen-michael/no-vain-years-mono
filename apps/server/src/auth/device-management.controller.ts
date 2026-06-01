@@ -27,6 +27,7 @@ import {
   ME_BUCKETS,
   SMS_CODE_BUCKETS,
   TOKEN_BUCKETS,
+  WECHAT_BUCKETS,
 } from '../security/throttler-skip-buckets';
 
 /**
@@ -53,6 +54,7 @@ export class DeviceManagementController {
   // JwtAccessGuard 先行填 req.user.accountId → RetryAfterThrottlerGuard 读 dev-list-account tracker。
   @UseGuards(JwtAccessGuard, RetryAfterThrottlerGuard)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     ...DEFAULT_BUCKET,
     ...SMS_CODE_BUCKETS,
     ...ME_BUCKETS,
@@ -91,6 +93,7 @@ export class DeviceManagementController {
   @HttpCode(200)
   @UseGuards(JwtAccessGuard, RetryAfterThrottlerGuard)
   @SkipThrottle({
+    ...WECHAT_BUCKETS,
     ...DEFAULT_BUCKET,
     ...SMS_CODE_BUCKETS,
     ...ME_BUCKETS,

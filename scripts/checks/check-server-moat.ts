@@ -58,6 +58,10 @@ const MODEL_OWNERSHIP: Record<string, string> = {
   // accountSmsCode 归 auth: 注销/撤销码生命周期由 auth 编排 (DeletionCodeStore, 004),
   // 镜像 login 的 Redis sms-code.store; account ctx 不碰码行 (匿名化不删码, plan D6)。
   accountSmsCode: 'auth',
+  // wechatBinding 归 account: 微信绑定数据 (account↔openid)。account 三原语
+  // (commit-bind/unbind/inspect) 独占写读; auth 编排 (bind/unbind/send-code) 经
+  // 两段式委托跨 moat (CROSS-CONTEXT-SYNC), 不直碰 prisma.wechatBinding (010)。
+  wechatBinding: 'account',
 };
 
 const WRITE_OPS = new Set([

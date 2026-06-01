@@ -13,6 +13,9 @@ import { CommitPhoneLoginUseCase } from './commit-phone-login.usecase.js';
 import { CommitAccountFreezeUseCase } from './commit-account-freeze.usecase.js';
 import { CommitAccountCancellationUseCase } from './commit-account-cancellation.usecase.js';
 import { CommitAccountAnonymizationUseCase } from './commit-account-anonymization.usecase.js';
+import { CommitWechatBindUseCase } from './commit-wechat-bind.usecase.js';
+import { CommitWechatUnbindUseCase } from './commit-wechat-unbind.usecase.js';
+import { InspectWechatBindingUseCase } from './inspect-wechat-binding.usecase.js';
 import { AnonymizeFrozenAccountsScheduler } from './anonymize-frozen-accounts.scheduler.js';
 import { AccountProfileController } from './account-profile.controller.js';
 import { AccountIdThrottlerGuard } from './account-id-throttler.guard.js';
@@ -53,6 +56,9 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     CommitAccountFreezeUseCase,
     CommitAccountCancellationUseCase,
     CommitAccountAnonymizationUseCase,
+    CommitWechatBindUseCase,
+    CommitWechatUnbindUseCase,
+    InspectWechatBindingUseCase,
     AnonymizeFrozenAccountsScheduler,
     JwtAuthGuard,
     AccountIdThrottlerGuard,
@@ -65,6 +71,10 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     CommitPhoneLoginUseCase,
     CommitAccountFreezeUseCase,
     CommitAccountCancellationUseCase,
+    // 010 微信绑定 — auth ctx 跨界 DI (两段式委托: Inspect 读 + Commit 写)
+    CommitWechatBindUseCase,
+    CommitWechatUnbindUseCase,
+    InspectWechatBindingUseCase,
   ],
 })
 export class AccountModule {}

@@ -25,6 +25,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/pretooluse-gnu-flag-guard.sh\""
+          }
+        ]
+      }
     ]
   },
   "plansDirectory": "./docs/plans",

@@ -49,6 +49,23 @@ model AccountSmsCode {
   @@schema("account")
 }
 
+// 010 微信账号绑定。贫血 row + @map (ADR-0043); 无声明 FK relation (同 AccountSmsCode)。
+// openid 全局唯一 = FR-S01 冲突闸; (accountId, provider) 唯一 = O7 幂等 + R2 对称冲突闸。
+// 注: 不另设 @@index([accountId]) —— (accountId, provider) 复合唯一索引按最左前缀
+// 已覆盖所有 WHERE accountId / WHERE accountId AND provider 查询 (inspect/unbind), 独立索引冗余。
+model WechatBinding {
+  id        BigInt   @id @default(autoincrement())
+  accountId BigInt   @map("account_id")
+  provider  String   @default("WECHAT") @db.VarChar(16)
+  openid    String   @unique(map: "uk_wechat_binding_openid") @db.VarChar(64)
+  unionid   String?  @db.VarChar(64)
+  boundAt   DateTime @default(now()) @map("bound_at") @db.Timestamptz(6)
+
+  @@unique([accountId, provider], map: "uk_wechat_binding_account_provider")
+  @@map("wechat_binding")
+  @@schema("account")
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model Credential {
