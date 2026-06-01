@@ -55,6 +55,8 @@ export function useMe() {
           displayName: seedDisplayName,
           bio: null,
           gender: null,
+          avatarUrl: null,
+          backgroundImageUrl: null,
           status: 'ACTIVE',
           createdAt: '',
         }
