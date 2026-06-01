@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AccountIdThrottlerGuard } from './account-id-throttler.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -13,6 +13,9 @@ import { ALL_DELETION_BUCKETS, DEVICE_BUCKETS } from '../security/throttler-skip
 import { UpdateDisplayNameRequest } from './update-display-name.request';
 import { UpdateBioRequest } from './update-bio.request';
 import { UpdateGenderRequest } from './update-gender.request';
+import { IssueUploadCredentialUseCase } from './issue-upload-credential.usecase';
+import { IssueUploadCredentialRequest } from './issue-upload-credential.request';
+import { UploadCredentialResponse } from './upload-credential.response';
 
 /**
  * GET /api/v1/accounts/me
@@ -31,6 +34,7 @@ export class AccountProfileController {
     private readonly updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private readonly updateBioUseCase: UpdateBioUseCase,
     private readonly updateGenderUseCase: UpdateGenderUseCase,
+    private readonly issueUploadCredentialUseCase: IssueUploadCredentialUseCase,
   ) {}
 
   @Get('me')
@@ -254,5 +258,57 @@ export class AccountProfileController {
       status: result.status,
       createdAt: result.createdAt,
     };
+  }
+
+  @Post('me/profile-image/upload-credential')
+  @HttpCode(200)
+  @SkipThrottle({
+    default: true,
+    'sms-phone-24h': true,
+    'sms-ip-24h': true,
+    'me-get': true,
+    'refresh-ip': true,
+    'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
+    ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
+  })
+  @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Issue an OSS upload credential for a profile image (009 EP1)',
+    description:
+      'Returns a scope-restricted, short-lived OSS PostObject V4 credential. The client POSTs the image bytes straight to OSS (backend never proxies bytes). Credential is locked to the <target>/<accountId>/ key prefix + image content-type whitelist + size + 15min expiry.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Upload credential issued',
+    type: UploadCredentialResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid target / content-type (009 FR-S02)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'Missing / invalid / expired token, or account not ACTIVE (FR-S05) — reason not disclosed (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (FR-S06: 10 requests per 60s per account)',
+    type: ProblemDetailResponse,
+  })
+  async issueUploadCredential(
+    @Req() req: { user: AuthenticatedUser },
+    @Body() body: IssueUploadCredentialRequest,
+  ): Promise<UploadCredentialResponse> {
+    return this.issueUploadCredentialUseCase.execute(
+      req.user.accountId,
+      body.target,
+      body.contentType,
+    );
   }
 }
