@@ -20,6 +20,19 @@
 
 > ⚠️ 这戳中了 ADR-0045 的一个假设（"public-read + 默认域名 URL 可浏览器内联显示"被证伪）。是设计缺口，只有**真浏览器加载真 OSS 图**才暴露（HEAD 探测 + 单测/IT 都像 curl 一样无视 attachment），被手动 Layer 2 冒烟逮到。建议给 ADR-0045 补一条 known-issue / sunset 注记。
 
+## 1.1 排查链（诊断过程留痕）
+
+1. 现象：web 上传头像"报错"。DevTools Network → `upload-credential` 200 / OSS PUT 200 / `profile-image`(confirm) 200 / `GET /me` 200 **全成功**，**只 `img?x-oss-process=...` 两条 red (failed)** → 锁定「不是上传/落库，是显示」。
+2. 取落库 URL（dev DB `account.avatar_url`）+ mobile 处理参数（`oss-image.ts` 的 `x-oss-process=image/resize,m_lfit,w_200,h_200/format,webp/quality,q_80`）。
+3. curl 复现：裸图 GET + 带 `x-oss-process` GET **都 200 拿到 webp 字节**（curl 能、浏览器不能）→ 差异在响应头。
+4. 响应头发现异常：`Content-Disposition: attachment` + `x-oss-force-download: true`（裸图 + 缩略图都有，CORS 头正常）。
+5. 试 `?response-content-disposition=inline` 覆盖 → 400 `Can not override response header for an anonymous user`（匿名禁改响应头）。
+6. fact-check 阿里云官方文档 → 确认默认域名强制下载安全策略（上海 2019-09-29 起新建 bucket），唯一彻底解法 = 自定义域名。
+7. 查备案：`xiaocaishen.me` 未备案（3 个第三方 MIIT 源一致）→ 改用企业域名 `shintongtech.com`（备案审批中）。
+8. 查跨账号绑定（OSS 账号 B、备案/SWAS 账号 A）→ 官方确认 OSS 绑定不要求备案同账号、走 TXT 验证 → 拓扑可行（见 §3）。
+
+> **教训**：HEAD 探测 + 单测 + Testcontainers IT 都像 curl 一样无视 `Content-Disposition`，**唯有真浏览器加载真 OSS 图**能暴露此类「服务端全绿、客户端显示坏」缺口 → 真后端冒烟（Layer 2）不可省。
+
 ## 2. 决策
 
 | 项 | 值 | 说明 |

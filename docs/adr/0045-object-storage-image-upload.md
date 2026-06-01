@@ -93,6 +93,15 @@ sunset_trigger: |
 5. **DB 字段**:Account 加 `avatarUrl` / `backgroundImageUrl`(或独立资产表)—— 属 feature spec/plan(account context,anemic Prisma row per [ADR-0043](0043-server-flat-module-paradigm.md))。字段名由 [009 profile-image-upload spec](../../specs/009-profile-image-upload/spec.md) 定为 `avatarUrl` / `backgroundImageUrl`。
 6. **bounded context 落点**:上传凭证签发 use case 归 `account`(profile 资产) vs `security`(凭证签发) —— 按 [server-bounded-context-catalog](../conventions/server-bounded-context-catalog.md) 决策(倾向 account:为自身 profile 资产签发,非通用 platform 凭证)。
 
+## Known Issues / 实施修正（2026-06-01，009 实施期发现）
+
+§3「public-read + 默认 endpoint 直接 `<img>` 加载」与 Open Question #2「OSS 默认 endpoint `<img>` 内嵌可用」的**前提被证伪**：
+
+- 阿里云对**中国内地 bucket**（含华东2 上海，2019-09-29 起新建）经**默认域名** `*.oss-cn-*.aliyuncs.com` 访问图片时，强制加 `Content-Disposition: attachment` + `x-oss-force-download: true`（反滥用安全策略，防当免备案图床）。浏览器 `<img>` 拿到「附件」响应无法内联渲染；curl / 服务端 HEAD 探测无视该头（故 confirm / 单测 / Testcontainers IT 全绿，仅真浏览器暴露）。**原生 App（RN Image 走原生网络栈）不受影响 —— 仅 web 受卡。**
+- 影响：OQ #2 由「v1 是否上自定义域名」实质收敛为**「内地 bucket 必须绑定自定义域名才能 web 内联显示」**；「先用默认 endpoint」对 web 不成立。
+- 解法（不改 §1-4 决策，属实施细节）：bucket 绑定 **ICP 备案** 自定义域名（`img.shintongtech.com`，备案审批中），显示 URL 改用该域名（默认域名仍用于上传 + V4 签名 scope）。代码侧加可选 `OSS_PUBLIC_BASE_URL`（PR #265，未设回退默认域名）。
+- 跨账号绑定（域名 / SWAS 账号 A、OSS 账号 B）+ 备案 + 下号后配置步骤：[06-01-oss-custom-domain-binding-runbook](../plans/2026-06/06-01-oss-custom-domain-binding-runbook.md)。
+
 ## Relationships
 
 - 驱动 / 被引用:[007 account-security-refactor](../../specs/007-account-security-refactor/spec.md)(Out of Scope 留痕指向本 ADR);未来「profile 图片上传」feature spec 将以本 ADR 为 baseline。
