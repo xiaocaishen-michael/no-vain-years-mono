@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/xiaocaishen-michael/no-vain-years-mono/compare/server-v0.1.0...server-v0.2.0) (2026-06-01)
+
+
+### Features
+
+* **account:** 007 账号与安全三卡片重构 + 个人简介 bio 编辑 ([#247](https://github.com/xiaocaishen-michael/no-vain-years-mono/issues/247)) ([4963133](https://github.com/xiaocaishen-michael/no-vain-years-mono/commit/4963133ae902baa6938ab4fd584bc24aee56f7a1))
+* **account:** 009 头像/主页背景图 上传·显示·查看大图（OSS client 直传 PostObject） ([#263](https://github.com/xiaocaishen-michael/no-vain-years-mono/issues/263)) ([afac728](https://github.com/xiaocaishen-michael/no-vain-years-mono/commit/afac7283cea7ae936826c91d9d432da59a6fed5d))
+* **account:** 010 微信账号绑定/解绑 Phase 1 — 端口桩接 + 短信验证码解绑 ([#259](https://github.com/xiaocaishen-michael/no-vain-years-mono/issues/259)) ([c361bc1](https://github.com/xiaocaishen-michael/no-vain-years-mono/commit/c361bc1cf75a5e91027906b5a16ee5996b069bfa))
+
+
+### Bug Fixes
+
+* **repo:** outbox_event.id 删冗余 DB 默认值 — 收敛 schema↔migration drift ([#260](https://github.com/xiaocaishen-michael/no-vain-years-mono/issues/260)) ([7c4b56d](https://github.com/xiaocaishen-michael/no-vain-years-mono/commit/7c4b56d4cb934a58c2b6e5c80a3ac9ebac83b08c))
+
 ## [0.1.0](https://github.com/xiaocaishen-michael/no-vain-years-mono/compare/server-v0.0.1...server-v0.1.0) (2026-05-29)
 
 
