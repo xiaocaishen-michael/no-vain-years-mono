@@ -1,14 +1,15 @@
 // PHASE 1 PLACEHOLDER — business flow validated; visuals pending mockup.
-// 账号与安全页（008 资料编辑）：图式三段组合页 = 资料卡 / 身份·绑定卡 / 安全卡。
+// 账号与安全页（008 资料编辑 + 009 头像/背景图换图）：图式三段组合页 = 资料卡 / 身份·绑定卡 / 安全卡。
 // 资料卡行序 = 头像 / 昵称 / 性别 / 个人简介 / 主页背景图（008 FR-C01：个人简介↔性别对换）。
-// active 行：昵称（→ name-edit）/ 性别（→ gender-edit）/ 个人简介（→ bio-edit）/
-// 登录管理（005 不回归）/ 注销账号（004 不回归）。占位行（头像/主页背景图/邮箱/微信/google）
-// = disabled 原生 RN Row（占位 UI 4 边界）。复用 006 ~/settings/primitives。
+// active 行：头像 / 主页背景图（009 → action sheet 换图/查看）/ 昵称（→ name-edit）/
+// 性别（→ gender-edit）/ 个人简介（→ bio-edit）/ 登录管理（005 不回归）/ 注销账号（004 不回归）。
+// 占位行（邮箱/微信/google）= disabled 原生 RN Row（占位 UI 4 边界）。复用 006 ~/settings/primitives。
 import { useRouter } from 'expo-router';
 import { ScrollView } from 'react-native';
 
 import { useMe } from '~/core/api/use-me';
 import { maskPhone } from '~/format/phone';
+import { useProfileImageEditor } from '~/profile-image/use-profile-image-editor';
 import { Card, Divider, Row } from '~/settings/primitives';
 import { genderLabel } from '~/settings/gender';
 
@@ -37,15 +38,19 @@ export default function AccountSecurityIndex() {
   const phone = profile?.phone ?? null;
   const router = useRouter();
 
+  // 009：头像 / 主页背景图行点击 → action sheet 换图 / 查看大图。
+  const avatarEditor = useProfileImageEditor('avatar', profile?.avatarUrl ?? null);
+  const backgroundEditor = useProfileImageEditor('background', profile?.backgroundImageUrl ?? null);
+
   return (
     <ScrollView
       className="flex-1 bg-surface-sunken"
       contentContainerClassName="px-md pt-md pb-xl gap-md"
     >
       {/* 资料卡 — 行序 头像 / 昵称 / 性别 / 个人简介 / 主页背景图（008 FR-C01）；
-          昵称 / 性别 / 个人简介 active → 各编辑屏；头像 / 主页背景图 disabled 占位 */}
+          头像 / 主页背景图（009）+ 昵称 / 性别 / 个人简介 active → 各编辑屏 / 换图 sheet */}
       <Card>
-        <Row label={COPY.avatar} disabled />
+        <Row label={COPY.avatar} onPress={avatarEditor.open} />
         <Divider />
         <Row
           label={COPY.displayName}
@@ -64,8 +69,10 @@ export default function AccountSecurityIndex() {
           onPress={() => router.push('/(app)/settings/account-security/bio-edit')}
         />
         <Divider />
-        <Row label={COPY.homeBackground} disabled />
+        <Row label={COPY.homeBackground} onPress={backgroundEditor.open} />
       </Card>
+      {avatarEditor.overlay}
+      {backgroundEditor.overlay}
 
       {/* 身份 / 绑定卡 — 全 disabled 占位；手机号脱敏；微信 / google 为后续绑定预留挂载点 */}
       <Card>

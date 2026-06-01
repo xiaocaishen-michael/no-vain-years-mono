@@ -24,6 +24,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import Svg, { Circle, Defs, G, LinearGradient, Line, Path, Rect, Stop } from 'react-native-svg';
 import { useMe } from '~/core/api/use-me';
+import { useProfileImageEditor } from '~/profile-image/use-profile-image-editor';
 import { tokens } from '~/theme';
 
 const COPY = {
@@ -295,7 +296,10 @@ export default function ProfileScreen() {
   const [scrollY, setScrollY] = useState(0);
   const isSticky = scrollY >= STICKY_THRESHOLD;
 
-  const noop = () => undefined;
+  // 009：头像 / 主页背景图换图 + 查看大图（tap hero → action sheet）。
+  const avatarEditor = useProfileImageEditor('avatar', profile?.avatarUrl ?? null);
+  const backgroundEditor = useProfileImageEditor('background', profile?.backgroundImageUrl ?? null);
+
   // FR-017: settings stack at /(app)/settings — route now built (006-account-settings-shell).
   const pushSettings = () => router.push('/(app)/settings');
 
@@ -311,7 +315,11 @@ export default function ProfileScreen() {
           setScrollY(e.nativeEvent.contentOffset.y)
         }
       >
-        <Hero displayName={displayName} onAvatarPress={noop} onBackgroundPress={noop} />
+        <Hero
+          displayName={displayName}
+          onAvatarPress={avatarEditor.open}
+          onBackgroundPress={backgroundEditor.open}
+        />
         <SlideTabs active={activeTab} onChange={setActiveTab} />
         <View className="bg-surface min-h-[260px]">
           <TabPlaceholder tab={activeTab} />
@@ -320,6 +328,8 @@ export default function ProfileScreen() {
       <View className="absolute top-0 left-0 right-0">
         <TopNav onBlur={!isSticky} onSettingsPress={pushSettings} />
       </View>
+      {avatarEditor.overlay}
+      {backgroundEditor.overlay}
     </SafeAreaView>
   );
 }
