@@ -34,7 +34,7 @@ created_at: '2026-05-31'
 
 ## Phase 1: Setup — mobile 新依赖（阻塞所有 mobile US）
 
-- [ ] T001 [Mobile] `expo install expo-image-picker expo-image-manipulator expo-image`（+ web 裁剪 `pnpm add react-easy-crop` 仅 web 条件引入；可选 `expo install expo-file-system` 仅当需上传进度，per plan D6）——**`expo install` 取 SDK54 对齐版**（apps/mobile，per memory `expo_install_fix_partial_node_modules`：装后 `pnpm install --frozen-lockfile` + `prisma generate`）；**impl 前 context7 grounding** `expo-image-manipulator`（新 `useImageManipulator` context API vs 旧 `manipulateAsync`）+ `expo-image` API 形态 → 回填 `plan.md` frontmatter `context7_verified`（Gate 0.2 Q4）
+- [X] T001 [Mobile] `expo install expo-image-picker expo-image-manipulator expo-image`（+ web 裁剪 `pnpm add react-easy-crop` 仅 web 条件引入；可选 `expo install expo-file-system` 仅当需上传进度，per plan D6）——**`expo install` 取 SDK54 对齐版**（apps/mobile，per memory `expo_install_fix_partial_node_modules`：装后 `pnpm install --frozen-lockfile` + `prisma generate`）；**impl 前 context7 grounding** `expo-image-manipulator`（新 `useImageManipulator` context API vs 旧 `manipulateAsync`）+ `expo-image` API 形态 → 回填 `plan.md` frontmatter `context7_verified`（Gate 0.2 Q4）
 
 ## Phase 2: Foundational — server OSS infra + schema（阻塞 US1/US2 server + mobile 消费）
 

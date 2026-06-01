@@ -6,7 +6,11 @@ created_at: '2026-05-31'
 updated_at: '2026-05-31'
 adr_refs: ['0024', '0026', '0032', '0035', '0037', '0043', '0045']
 orchestrator_compat: '>=0.1.0'
-context7_verified: []
+context7_verified:
+  # T001 impl-gate (Gate 0.2 Q4) — 2026-06-01, /expo/expo sdk-54 via context7
+  - 'expo-image-manipulator@~14.0.8: 用 imperative ImageManipulator.manipulate(uri).resize({width}).renderAsync()→ref.saveAsync({format:SaveFormat.WEBP,compress})（非 hook useImageManipulator，async 流不可用 hook）；SaveFormat.WEBP=webp；manipulateAsync 已 deprecated'
+  - 'expo-image@~3.0.11: <Image source={{uri,cacheKey}} contentFit="cover" />；cacheKey 在 ImageSource 上（缩略分尺寸缓存键）'
+  - 'expo-image-picker@~17.0.11: launchImageLibraryAsync/launchCameraAsync(options{mediaTypes,allowsEditing,aspect,quality})；requestMediaLibraryPermissionsAsync（web 为 no-op）'
 ---
 
 # Implementation Plan: 009-profile-image-upload（头像 + 主页背景图 上传 / 显示 / 查看大图 — Aliyun OSS client 直传 PostObject）
