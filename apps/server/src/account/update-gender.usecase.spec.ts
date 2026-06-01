@@ -23,6 +23,8 @@ const activeRow = {
   displayName: '张三',
   bio: '美股研究员',
   gender: null,
+  avatarUrl: null,
+  backgroundImageUrl: null,
   freezeUntil: null,
   previousPhoneHash: null,
 };
@@ -44,7 +46,17 @@ describe('UpdateGenderUseCase — happy path (ACTIVE, valid enum)', () => {
   it('result has exactly the expected keys (response shape, includes gender + bio)', async () => {
     const result = await useCase.execute(42n, 'MALE');
     expect(Object.keys(result).sort()).toEqual(
-      ['accountId', 'bio', 'createdAt', 'displayName', 'gender', 'phone', 'status'].sort(),
+      [
+        'accountId',
+        'avatarUrl',
+        'backgroundImageUrl',
+        'bio',
+        'createdAt',
+        'displayName',
+        'gender',
+        'phone',
+        'status',
+      ].sort(),
     );
   });
 

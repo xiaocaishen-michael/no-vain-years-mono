@@ -16,6 +16,8 @@ import { UpdateGenderRequest } from './update-gender.request';
 import { IssueUploadCredentialUseCase } from './issue-upload-credential.usecase';
 import { IssueUploadCredentialRequest } from './issue-upload-credential.request';
 import { UploadCredentialResponse } from './upload-credential.response';
+import { ConfirmProfileImageUseCase } from './confirm-profile-image.usecase';
+import { ConfirmProfileImageRequest } from './confirm-profile-image.request';
 
 /**
  * GET /api/v1/accounts/me
@@ -35,6 +37,7 @@ export class AccountProfileController {
     private readonly updateBioUseCase: UpdateBioUseCase,
     private readonly updateGenderUseCase: UpdateGenderUseCase,
     private readonly issueUploadCredentialUseCase: IssueUploadCredentialUseCase,
+    private readonly confirmProfileImageUseCase: ConfirmProfileImageUseCase,
   ) {}
 
   @Get('me')
@@ -81,6 +84,8 @@ export class AccountProfileController {
       displayName: result.displayName,
       bio: result.bio,
       gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
       status: result.status,
       createdAt: result.createdAt,
     };
@@ -141,6 +146,8 @@ export class AccountProfileController {
       displayName: result.displayName,
       bio: result.bio,
       gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
       status: result.status,
       createdAt: result.createdAt,
     };
@@ -198,6 +205,8 @@ export class AccountProfileController {
       displayName: result.displayName,
       bio: result.bio,
       gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
       status: result.status,
       createdAt: result.createdAt,
     };
@@ -255,6 +264,8 @@ export class AccountProfileController {
       displayName: result.displayName,
       bio: result.bio,
       gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
       status: result.status,
       createdAt: result.createdAt,
     };
@@ -310,5 +321,68 @@ export class AccountProfileController {
       body.target,
       body.contentType,
     );
+  }
+
+  @Patch('me/profile-image')
+  @HttpCode(200)
+  @SkipThrottle({
+    default: true,
+    'sms-phone-24h': true,
+    'sms-ip-24h': true,
+    'me-get': true,
+    'refresh-ip': true,
+    'refresh-token': true,
+    'logout-all-ip': true,
+    'logout-all-account': true,
+    ...ALL_DELETION_BUCKETS,
+    ...DEVICE_BUCKETS,
+  })
+  @Throttle({ 'me-patch': { limit: 10, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Confirm a direct-uploaded profile image (009 EP2)',
+    description:
+      'Persists the OSS public-read URL for an uploaded object onto the account. Validates the objectKey belongs to the account prefix (anti cross-account write) + HEAD-probes the object exists and is an allowed image type before persisting. Returns the updated profile.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile image confirmed and persisted',
+    type: AccountProfileResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid target / objectKey prefix / object missing or wrong type (009 FR-S03)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'Missing / invalid / expired token, or account not ACTIVE (FR-S05) — reason not disclosed (anti-enumeration)',
+    type: ProblemDetailResponse,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Rate limit exceeded (FR-S06: 10 requests per 60s per account)',
+    type: ProblemDetailResponse,
+  })
+  async confirmProfileImage(
+    @Req() req: { user: AuthenticatedUser },
+    @Body() body: ConfirmProfileImageRequest,
+  ): Promise<AccountProfileResponse> {
+    const result = await this.confirmProfileImageUseCase.execute(
+      req.user.accountId,
+      body.target,
+      body.objectKey,
+    );
+    return {
+      accountId: result.accountId.toString(),
+      phone: result.phone,
+      displayName: result.displayName,
+      bio: result.bio,
+      gender: result.gender,
+      avatarUrl: result.avatarUrl,
+      backgroundImageUrl: result.backgroundImageUrl,
+      status: result.status,
+      createdAt: result.createdAt,
+    };
   }
 }

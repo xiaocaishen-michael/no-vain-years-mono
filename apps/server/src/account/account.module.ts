@@ -5,6 +5,8 @@ import { UpdateDisplayNameUseCase } from './update-display-name.usecase.js';
 import { UpdateBioUseCase } from './update-bio.usecase.js';
 import { UpdateGenderUseCase } from './update-gender.usecase.js';
 import { IssueUploadCredentialUseCase } from './issue-upload-credential.usecase.js';
+import { ConfirmProfileImageUseCase } from './confirm-profile-image.usecase.js';
+import { OBJECT_EXISTS_PROBE, HttpObjectExistsProbe } from './object-exists.probe.js';
 import { InspectAccountStatusUseCase } from './inspect-account-status.usecase.js';
 import { InspectAccountStatusByIdUseCase } from './inspect-account-status-by-id.usecase.js';
 import { CommitPhoneLoginUseCase } from './commit-phone-login.usecase.js';
@@ -43,6 +45,8 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     UpdateBioUseCase,
     UpdateGenderUseCase,
     IssueUploadCredentialUseCase,
+    ConfirmProfileImageUseCase,
+    { provide: OBJECT_EXISTS_PROBE, useClass: HttpObjectExistsProbe },
     InspectAccountStatusUseCase,
     InspectAccountStatusByIdUseCase,
     CommitPhoneLoginUseCase,

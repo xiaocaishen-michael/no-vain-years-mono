@@ -48,6 +48,22 @@ export class AccountProfileResponse {
   gender!: Gender | null;
 
   @ApiProperty({
+    description: 'Avatar image URL (OSS public-read); null when unset (009 FR-S04)',
+    example: 'https://mbw-profile-images.oss-cn-shanghai.aliyuncs.com/avatar/42/uuid/img',
+    nullable: true,
+    type: 'string',
+  })
+  avatarUrl!: string | null;
+
+  @ApiProperty({
+    description: 'Home background image URL (OSS public-read); null when unset (009 FR-S04)',
+    example: 'https://mbw-profile-images.oss-cn-shanghai.aliyuncs.com/background/42/uuid/img',
+    nullable: true,
+    type: 'string',
+  })
+  backgroundImageUrl!: string | null;
+
+  @ApiProperty({
     description: 'Account status',
     enum: AccountStatus,
     example: AccountStatus.ACTIVE,

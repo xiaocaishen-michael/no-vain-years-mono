@@ -44,7 +44,17 @@ describe('UpdateBioUseCase — happy path (ACTIVE, valid bio)', () => {
   it('result has exactly the expected keys (response shape, includes bio)', async () => {
     const result = await useCase.execute(42n, '美股研究员');
     expect(Object.keys(result).sort()).toEqual(
-      ['accountId', 'bio', 'createdAt', 'displayName', 'gender', 'phone', 'status'].sort(),
+      [
+        'accountId',
+        'avatarUrl',
+        'backgroundImageUrl',
+        'bio',
+        'createdAt',
+        'displayName',
+        'gender',
+        'phone',
+        'status',
+      ].sort(),
     );
   });
 
