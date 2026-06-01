@@ -83,6 +83,16 @@ describe('ConfirmProfileImageUseCase — happy path', () => {
     expect(result.avatarUrl).toContain(KEY);
     expect(update).toHaveBeenCalledOnce();
   });
+
+  it('publicBaseUrl set → persists the custom-domain URL, not the OSS endpoint', async () => {
+    const { useCase, update } = build({
+      cfg: { ...ALIYUN_CFG, publicBaseUrl: 'https://img.shintongtech.com' },
+    });
+    const result = await useCase.execute(42n, 'avatar', KEY);
+    const expectedUrl = `https://img.shintongtech.com/${KEY}`;
+    expect(update).toHaveBeenCalledWith({ where: { id: 42n }, data: { avatarUrl: expectedUrl } });
+    expect(result.avatarUrl).toBe(expectedUrl);
+  });
 });
 
 describe('ConfirmProfileImageUseCase — rejections (no DB write)', () => {
