@@ -35,7 +35,7 @@ set -euo pipefail
 COMPOSE_FILE="${COMPOSE_FILE:-/home/admin/no-vain-years-mono/docker-compose.tight.yml}"
 ENV_FILE="${ENV_FILE:-/home/admin/no-vain-years-mono/.env.production}"
 BACKUP_DIR="${BACKUP_DIR:-/home/admin/backup}"
-OSS_BUCKET="${OSS_BUCKET:-mbw-oss}"
+OSS_BACKUP_BUCKET="${OSS_BACKUP_BUCKET:-mbw-oss}"
 OSS_PROFILE="${OSS_PROFILE:-mbw-server}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
 
@@ -71,8 +71,8 @@ docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" \
 SIZE=$(du -h "$OUT" | cut -f1)
 echo "[$(date -Iseconds)] dump complete, size=$SIZE"
 
-echo "[$(date -Iseconds)] uploading to oss://${OSS_BUCKET}/pg/"
-aliyun ossutil cp "$OUT" "oss://${OSS_BUCKET}/pg/$(basename "$OUT")" \
+echo "[$(date -Iseconds)] uploading to oss://${OSS_BACKUP_BUCKET}/pg/"
+aliyun ossutil cp "$OUT" "oss://${OSS_BACKUP_BUCKET}/pg/$(basename "$OUT")" \
     --profile "$OSS_PROFILE"
 
 echo "[$(date -Iseconds)] pruning local backups older than ${RETENTION_DAYS}d"
