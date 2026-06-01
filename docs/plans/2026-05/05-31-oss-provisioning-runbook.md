@@ -5,6 +5,7 @@
 > ✅ **已 provision + 验证（2026-05-31）**：Step1-4 全做 + 实测绿 —— bucket `mbw-profile-images`(cn-shanghai/public-read) 存在；CORS 对 `app.xiaocaishen.me` 放行 / evil-origin 403；`mbw-server-xt` PutObject 在 `avatar/`+`background/` 成功、越权前缀 `other/` → 403（最小权限生效）；public GET → 200。本机验证 profile = `mbw-xt-oss`（账号 B AK `LTAI…CCV`）。
 > ⏳ **仅剩 Step5（.62 注入 `OSS_*` + recreate）推迟到 009 implement/部署时**（现在 .62 跑 main 无 oss.config.ts，注入无意义且徒增 prod recreate）。
 > 🧹 遗留：测试对象 `avatar/_smoke/test.txt` + `background/_smoke/test.txt` 待 console 删（mbw-server-xt PutObject-only 删不掉）。
+> 🔗 **后续（2026-06-01）**：默认域名对内地 bucket **强制下载**图片（`Content-Disposition: attachment`），浏览器 `<img>` 无法内联——需绑定**自定义域名** `img.shintongtech.com`（备案中）。根因 + 跨账号绑定步骤见 [06-01-oss-custom-domain-binding-runbook](../2026-06/06-01-oss-custom-domain-binding-runbook.md)。
 
 ## 前置事实（2026-05-31 实测 + 同步）
 

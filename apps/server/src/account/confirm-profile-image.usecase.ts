@@ -68,7 +68,7 @@ export class ConfirmProfileImageUseCase {
       throw new ServiceUnavailableException('OSS_NOT_CONFIGURED');
     }
 
-    const publicUrl = `${ossPublicBaseUrl(this.ossCfg.region, this.ossCfg.bucket)}/${objectKey}`;
+    const publicUrl = `${ossPublicBaseUrl(this.ossCfg.region, this.ossCfg.bucket, this.ossCfg.publicBaseUrl)}/${objectKey}`;
 
     // HEAD 校验 (plan D3): 对象必须真存在 + content-type 合白名单, 否则拒不落库。
     const probed = await this.probe.head(publicUrl);

@@ -25,6 +25,13 @@ const OssAliyunSchema = z.object({
   bucket: z.string().min(1, 'OSS_BUCKET required when OSS is configured'),
   accessKeyId: z.string().min(1, 'OSS_ACCESS_KEY_ID required when OSS is configured'),
   accessKeySecret: z.string().min(1, 'OSS_ACCESS_KEY_SECRET required when OSS is configured'),
+  // Optional custom-domain display base, e.g. `https://img.shintongtech.com`.
+  // When set, persisted avatar/background URLs use it instead of the default OSS
+  // endpoint — bypasses Aliyun's 内地-bucket default-domain force-download
+  // (`Content-Disposition: attachment`, breaks browser inline <img>). Unset →
+  // fallback to `https://<bucket>.<region>.aliyuncs.com`. Requires the custom
+  // domain be ICP-备案'd + bound to the bucket — see the OSS custom-domain runbook.
+  publicBaseUrl: z.string().url().optional(),
 });
 
 const OssConfigSchema = z.discriminatedUnion('kind', [
@@ -40,22 +47,40 @@ export const ossConfig = registerAs('oss', (): OssConfig => {
   const bucket = process.env.OSS_BUCKET;
   const accessKeyId = process.env.OSS_ACCESS_KEY_ID;
   const accessKeySecret = process.env.OSS_ACCESS_KEY_SECRET;
+  // Optional (empty → undefined so the Zod url() check is skipped, not failed).
+  const publicBaseUrl = process.env.OSS_PUBLIC_BASE_URL || undefined;
 
   // All-or-nothing: every OSS_* empty/unset → unconfigured (dev/test default,
   // keeps boot green without OSS creds). Otherwise strict-parse the aliyun
   // variant so a *partial* config (e.g. bucket set, secret missing) throws.
+  // publicBaseUrl is NOT part of the gate — it is an optional display override.
   if (!region && !bucket && !accessKeyId && !accessKeySecret) {
     return OssConfigSchema.parse({ kind: 'unconfigured' });
   }
-  return OssConfigSchema.parse({ kind: 'aliyun', region, bucket, accessKeyId, accessKeySecret });
+  return OssConfigSchema.parse({
+    kind: 'aliyun',
+    region,
+    bucket,
+    accessKeyId,
+    accessKeySecret,
+    publicBaseUrl,
+  });
 });
 
 /**
- * OSS public-read base URL (no trailing slash). `region` is endpoint-form
- * (`oss-cn-shanghai`) → `https://<bucket>.oss-cn-shanghai.aliyuncs.com`.
- * Used to compose the stored avatarUrl/backgroundImageUrl and the confirm-step
- * HEAD probe (public-read → anonymous HEAD, no signing needed).
+ * OSS public-read base URL (no trailing slash), used to compose the stored
+ * avatarUrl/backgroundImageUrl and the confirm-step HEAD probe (public-read →
+ * anonymous HEAD, no signing needed).
+ *
+ * - `publicBaseUrl` set → returned verbatim (trailing slashes stripped). This is
+ *   the bound custom domain (e.g. `https://img.shintongtech.com`), which Aliyun
+ *   does NOT force-download, so browsers render it inline.
+ * - unset → fallback `https://<bucket>.<region>.aliyuncs.com` (endpoint-form
+ *   region, e.g. `oss-cn-shanghai`). Note: on 内地 buckets this default domain
+ *   force-downloads images — fine for the server HEAD probe, broken for browser
+ *   <img>. Set publicBaseUrl in prod once the custom domain is bound.
  */
-export function ossPublicBaseUrl(region: string, bucket: string): string {
+export function ossPublicBaseUrl(region: string, bucket: string, publicBaseUrl?: string): string {
+  if (publicBaseUrl) return publicBaseUrl.replace(/\/+$/, '');
   return `https://${bucket}.${region}.aliyuncs.com`;
 }
