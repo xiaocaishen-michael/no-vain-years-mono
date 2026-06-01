@@ -2,9 +2,9 @@
 feature_id: 009-profile-image-upload
 modules: [account]
 owners: ['@xiaocaishen-michael']
-status: draft
+status: implemented
 created_at: '2026-05-30'
-updated_at: '2026-05-31'
+updated_at: '2026-06-01'
 spec_kit_version: '>=0.8.5,<0.10.0'
 orchestrator_compat: '>=0.2.0'
 web_compat: full

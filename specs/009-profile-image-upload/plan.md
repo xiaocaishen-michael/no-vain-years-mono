@@ -1,9 +1,9 @@
 ---
 feature_id: 009-profile-image-upload
 spec_ref: ./spec.md
-status: planned
+status: implemented
 created_at: '2026-05-31'
-updated_at: '2026-05-31'
+updated_at: '2026-06-01'
 adr_refs: ['0024', '0026', '0032', '0035', '0037', '0043', '0045']
 orchestrator_compat: '>=0.1.0'
 context7_verified:
